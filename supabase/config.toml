@@ -1,0 +1,2 @@
+[functions.odc-system-control]
+verify_jwt = false

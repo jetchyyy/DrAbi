@@ -1,0 +1,116 @@
+﻿import { createBrowserRouter, Navigate } from 'react-router-dom';
+
+import { AppShell } from '../components/layout/app-shell';
+import { PublicLayout } from '../components/layout/public-layout';
+import { SettingsLayout } from '../components/layout/settings-layout';
+import { AppointmentsPage } from '../features/appointments/appointments-page';
+import { ForgotPasswordPage } from '../features/auth/forgot-password-page';
+import { LoginPage } from '../features/auth/login-page';
+import { ResetPasswordPage } from '../features/auth/reset-password-page';
+import { BillingPage } from '../features/billing/billing-page';
+import { MyBookingsPage } from '../features/booking/my-bookings-page';
+import { PortalBookPage } from '../features/booking/portal-book-page';
+import { PortalHomePage } from '../features/booking/portal-home-page';
+import { DashboardPage } from '../features/dashboard/dashboard-page';
+import { InventoryPage } from '../features/inventory/inventory-page';
+import { LaboratoryPage } from '../features/laboratory/laboratory-page';
+import { PatientDetailPage } from '../features/patients/patient-detail-page';
+import { PatientsPage } from '../features/patients/patients-page';
+import { SettingsClinicPage } from '../features/settings/settings-clinic-page';
+import { SettingsServicesPage } from '../features/settings/settings-services-page';
+import { SettingsSupportPage } from '../features/settings/settings-support-page';
+import { SettingsUsersPage } from '../features/settings/settings-users-page';
+import { NotFoundPage } from '../features/shared/not-found-page';
+import { OdcPage } from '../features/shared/odc-page';
+import { PermissionGate, ProtectedRoute } from './guards';
+import { SystemAvailabilityGate } from './system-availability-gate';
+
+export const router = createBrowserRouter([
+  {
+    path: '/odc',
+    element: <OdcPage />,
+  },
+  {
+    element: <SystemAvailabilityGate />,
+    children: [
+      {
+        path: '/',
+        element: <Navigate replace to="/portal" />,
+      },
+      {
+        path: '/login',
+        element: <LoginPage />,
+      },
+      {
+        path: '/forgot-password',
+        element: <ForgotPasswordPage />,
+      },
+      {
+        path: '/reset-password',
+        element: <ResetPasswordPage />,
+      },
+      {
+        path: '/portal',
+        element: <PublicLayout />,
+        children: [
+          { index: true, element: <PortalHomePage /> },
+          { path: 'book', element: <PortalBookPage /> },
+          { path: 'my-bookings', element: <MyBookingsPage /> },
+        ],
+      },
+      {
+        element: <ProtectedRoute allowedRoles={['owner_admin', 'doctor', 'nurse_staff', 'front_desk_cashier', 'lab_staff', 'inventory_staff']} />,
+        children: [
+          {
+            path: '/app',
+            element: <AppShell />,
+            children: [
+              { index: true, element: <Navigate replace to="/app/dashboard" /> },
+              { path: 'dashboard', element: <DashboardPage /> },
+              {
+                element: <PermissionGate permission="patients.view" />,
+                children: [
+                  { path: 'patients', element: <PatientsPage /> },
+                  { path: 'patients/:patientId', element: <PatientDetailPage /> },
+                ],
+              },
+              {
+                element: <PermissionGate permission="appointments.view" />,
+                children: [
+                  { path: 'appointments', element: <AppointmentsPage /> },
+                  { path: 'consultations', element: <AppointmentsPage /> },
+                ],
+              },
+              {
+                element: <PermissionGate permission="billing.view" />,
+                children: [{ path: 'billing', element: <BillingPage /> }],
+              },
+              {
+                element: <PermissionGate permission="inventory.view" />,
+                children: [{ path: 'inventory', element: <InventoryPage /> }],
+              },
+              {
+                element: <PermissionGate permission="laboratory.view" />,
+                children: [{ path: 'laboratory', element: <LaboratoryPage /> }],
+              },
+              {
+                path: 'settings',
+                element: <SettingsLayout />,
+                children: [
+                  { path: 'clinic', element: <SettingsClinicPage /> },
+                  { path: 'catalog', element: <SettingsServicesPage /> },
+                  { path: 'users', element: <SettingsUsersPage /> },
+                  { path: 'support', element: <SettingsSupportPage /> },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    path: '*',
+    element: <NotFoundPage />,
+  },
+]);

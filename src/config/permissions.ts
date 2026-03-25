@@ -1,0 +1,65 @@
+﻿import type { Permission, Role } from '../types/domain';
+
+export const roleLabels: Record<Role, string> = {
+  owner_admin: 'Owner / Admin',
+  doctor: 'Doctor',
+  nurse_staff: 'Nurse / Staff',
+  front_desk_cashier: 'Front Desk / Cashier',
+  lab_staff: 'Lab Staff',
+  inventory_staff: 'Inventory Staff',
+  patient: 'Patient',
+};
+
+export const rolePermissions: Record<Role, Permission[]> = {
+  owner_admin: [
+    'dashboard.view',
+    'patients.view',
+    'patients.manage',
+    'appointments.view',
+    'appointments.manage',
+    'consultations.manage',
+    'billing.view',
+    'billing.manage',
+    'inventory.view',
+    'inventory.manage',
+    'laboratory.view',
+    'laboratory.manage',
+    'settings.view',
+    'settings.manage',
+    'booking.view',
+    'booking.manage',
+    'users.manage',
+  ],
+  doctor: [
+    'dashboard.view',
+    'patients.view',
+    'appointments.view',
+    'consultations.manage',
+    'laboratory.view',
+    'booking.view',
+  ],
+  nurse_staff: [
+    'dashboard.view',
+    'patients.view',
+    'patients.manage',
+    'appointments.view',
+    'appointments.manage',
+    'consultations.manage',
+    'laboratory.view',
+  ],
+  front_desk_cashier: [
+    'dashboard.view',
+    'patients.view',
+    'patients.manage',
+    'appointments.view',
+    'appointments.manage',
+    'billing.view',
+    'billing.manage',
+    'booking.view',
+    'booking.manage',
+  ],
+  lab_staff: ['dashboard.view', 'patients.view', 'laboratory.view', 'laboratory.manage'],
+  inventory_staff: ['dashboard.view', 'inventory.view', 'inventory.manage'],
+  patient: ['booking.view', 'booking.manage'],
+};
+

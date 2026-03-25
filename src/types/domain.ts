@@ -1,0 +1,273 @@
+﻿export type Role =
+  | 'owner_admin'
+  | 'doctor'
+  | 'nurse_staff'
+  | 'front_desk_cashier'
+  | 'lab_staff'
+  | 'inventory_staff'
+  | 'patient';
+
+export type Permission =
+  | 'dashboard.view'
+  | 'patients.view'
+  | 'patients.manage'
+  | 'appointments.view'
+  | 'appointments.manage'
+  | 'consultations.manage'
+  | 'billing.view'
+  | 'billing.manage'
+  | 'inventory.view'
+  | 'inventory.manage'
+  | 'laboratory.view'
+  | 'laboratory.manage'
+  | 'settings.view'
+  | 'settings.manage'
+  | 'booking.view'
+  | 'booking.manage'
+  | 'users.manage';
+
+export type AppointmentStatus =
+  | 'scheduled'
+  | 'confirmed'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled'
+  | 'no_show';
+
+export type BookingStatus = 'pending' | 'confirmed' | 'rescheduled' | 'cancelled';
+export type PaymentStatus = 'unpaid' | 'partial' | 'paid' | 'void';
+export type LabOrderStatus = 'requested' | 'collected' | 'processing' | 'ready' | 'released';
+export type StockTransactionType = 'stock_in' | 'stock_out' | 'adjustment';
+export type VisitType = 'in_person' | 'teleconsultation';
+export type ServiceDeliveryMode = 'in_person' | 'teleconsultation' | 'hybrid';
+
+export interface BaseRecord {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+export interface ClinicSettings extends BaseRecord {
+  clinicName: string;
+  legalName: string;
+  shortCode: string;
+  address: string;
+  contactNumber: string;
+  email: string;
+  website: string;
+  logoUrl: string;
+  primaryColor: string;
+  accentColor: string;
+  bookingLeadDays: number;
+  bookingCancellationHours: number;
+  appointmentSlotMinutes: number;
+  systemEnabled: boolean;
+  systemMessage: string;
+  operatingHours: Array<{
+    day: string;
+    open: string;
+    close: string;
+    enabled: boolean;
+  }>;
+}
+
+export interface UserProfile extends BaseRecord {
+  authUserId: string;
+  email: string;
+  fullName: string;
+  role: Role;
+  phone: string;
+  specialtyId?: string | null;
+  title?: string | null;
+}
+
+export interface Specialty extends BaseRecord {
+  name: string;
+  description: string;
+}
+
+export interface Service extends BaseRecord {
+  name: string;
+  description: string;
+  price: number;
+  durationMinutes: number;
+  specialtyId?: string | null;
+  isBookable: boolean;
+  deliveryMode: ServiceDeliveryMode;
+}
+
+export interface Patient extends BaseRecord {
+  userId?: string | null;
+  firstName: string;
+  lastName: string;
+  sex: 'male' | 'female' | 'other';
+  birthDate: string;
+  mobileNumber: string;
+  email: string;
+  address: string;
+  bloodType: string;
+  allergies: string;
+  medicalHistory: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+}
+
+export interface Appointment extends BaseRecord {
+  patientId: string;
+  doctorId: string;
+  specialtyId: string;
+  serviceId: string;
+  scheduledAt: string;
+  status: AppointmentStatus;
+  source: 'internal' | 'portal';
+  visitType: VisitType;
+  reason: string;
+  notes: string;
+  teleconsultationPlatform?: string | null;
+  teleconsultationUrl?: string | null;
+  teleconsultationAccessInstructions?: string | null;
+}
+
+export interface Consultation extends BaseRecord {
+  appointmentId: string;
+  patientId: string;
+  doctorId: string;
+  subjective: string;
+  objective: string;
+  assessment: string;
+  plan: string;
+  outcome: string;
+}
+
+export interface Prescription extends BaseRecord {
+  consultationId: string;
+  patientId: string;
+  medication: string;
+  dosage: string;
+  instructions: string;
+}
+
+export interface Booking extends BaseRecord {
+  patientId: string;
+  serviceId: string;
+  doctorId: string;
+  preferredDate: string;
+  preferredTime: string;
+  status: BookingStatus;
+  intakeNotes: string;
+}
+
+export interface InvoiceItem extends BaseRecord {
+  invoiceId: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  category: 'consultation' | 'laboratory' | 'medicine' | 'other';
+}
+
+export interface Invoice extends BaseRecord {
+  patientId: string;
+  appointmentId?: string | null;
+  invoiceNumber: string;
+  paymentStatus: PaymentStatus;
+  subtotal: number;
+  total: number;
+}
+
+export interface Payment extends BaseRecord {
+  invoiceId: string;
+  amount: number;
+  method: 'cash' | 'card' | 'transfer' | 'ewallet';
+  referenceNumber: string;
+  receivedBy: string;
+}
+
+export interface Supplier extends BaseRecord {
+  name: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+}
+
+export interface InventoryCategory extends BaseRecord {
+  name: string;
+}
+
+export interface InventoryItem extends BaseRecord {
+  categoryId: string;
+  supplierId?: string | null;
+  name: string;
+  sku: string;
+  unit: string;
+  stockOnHand: number;
+  reorderLevel: number;
+}
+
+export interface StockTransaction extends BaseRecord {
+  itemId: string;
+  type: StockTransactionType;
+  quantity: number;
+  remarks: string;
+}
+
+export interface LabService extends BaseRecord {
+  name: string;
+  description: string;
+  price: number;
+}
+
+export interface LabOrder extends BaseRecord {
+  patientId: string;
+  appointmentId?: string | null;
+  labServiceId: string;
+  requestedBy: string;
+  status: LabOrderStatus;
+  notes: string;
+}
+
+export interface LabResult extends BaseRecord {
+  labOrderId: string;
+  resultSummary: string;
+  releasedAt?: string | null;
+  attachmentName?: string | null;
+}
+
+export interface FileUpload extends BaseRecord {
+  patientId: string;
+  fileName: string;
+  category: string;
+  url: string;
+}
+
+export interface AuditLog extends BaseRecord {
+  actorId: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  details: string;
+}
+
+export interface AppDatabase {
+  clinicSettings: ClinicSettings;
+  users: UserProfile[];
+  specialties: Specialty[];
+  services: Service[];
+  patients: Patient[];
+  appointments: Appointment[];
+  consultations: Consultation[];
+  prescriptions: Prescription[];
+  bookings: Booking[];
+  invoices: Invoice[];
+  invoiceItems: InvoiceItem[];
+  payments: Payment[];
+  suppliers: Supplier[];
+  inventoryCategories: InventoryCategory[];
+  inventoryItems: InventoryItem[];
+  stockTransactions: StockTransaction[];
+  labServices: LabService[];
+  labOrders: LabOrder[];
+  labResults: LabResult[];
+  fileUploads: FileUpload[];
+  auditLogs: AuditLog[];
+}
