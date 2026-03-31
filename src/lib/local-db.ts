@@ -7,18 +7,20 @@ import type {
   AuditLog,
   Booking,
   ClinicSettings,
+  Consultation,
   InventoryItem,
   Invoice,
   InvoiceItem,
   LabOrder,
   LabResult,
   Patient,
+  Referral,
   Service,
   Specialty,
   Supplier,
   UserProfile,
 } from '../types/domain';
-import { generateId } from './utils';
+import { generateId, generatePatientQrCode } from './utils';
 
 const STORAGE_KEY = 'odyssey-clinic-demo-db-v1';
 
@@ -28,17 +30,33 @@ function canUseStorage() {
 
 export function getDatabase(): AppDatabase {
   if (!canUseStorage()) {
-    return createSeedDatabase();
+    return normalizeDatabase(createSeedDatabase());
   }
 
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (!stored) {
-    const seeded = createSeedDatabase();
+    const seeded = normalizeDatabase(createSeedDatabase());
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
     return seeded;
   }
 
-  return JSON.parse(stored) as AppDatabase;
+  const parsed = JSON.parse(stored) as Partial<AppDatabase>;
+  const merged = normalizeDatabase({
+    ...createSeedDatabase(),
+    ...parsed,
+    referrals: parsed.referrals ?? [],
+  } as AppDatabase);
+
+  if (
+    (parsed.patients ?? []).some((patient) => !patient.qrCode) ||
+    (parsed.services ?? []).some(
+      (service) => service.deliveryMode == null || service.isBookable == null || service.durationMinutes == null,
+    )
+  ) {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+  }
+
+  return merged;
 }
 
 export function saveDatabase(database: AppDatabase) {
@@ -57,7 +75,7 @@ export function updateDatabase(mutator: (draft: AppDatabase) => void) {
 }
 
 export function resetDemoData() {
-  const seeded = createSeedDatabase();
+  const seeded = normalizeDatabase(createSeedDatabase());
   saveDatabase(seeded);
   void queryClient.invalidateQueries();
 }
@@ -146,6 +164,7 @@ export function upsertPatient(input: Omit<Patient, 'id' | 'createdAt' | 'updated
   return updateDatabase((draft) => {
     draft.patients.unshift({
       ...input,
+      qrCode: input.qrCode || generatePatientQrCode(),
       id: generateId('pat'),
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -160,6 +179,10 @@ export function listPatients() {
 
 export function getPatientById(patientId: string) {
   return getDatabase().patients.find((patient) => patient.id === patientId) ?? null;
+}
+
+export function getPatientByQrCode(qrCode: string) {
+  return getDatabase().patients.find((patient) => patient.qrCode === qrCode) ?? null;
 }
 
 export function listAppointments() {
@@ -179,8 +202,61 @@ export function createAppointment(input: Omit<Appointment, 'id' | 'createdAt' | 
   }).appointments[0];
 }
 
+export function createConsultation(input: Omit<Consultation, 'id' | 'createdAt' | 'updatedAt'>) {
+  const timestamp = new Date().toISOString();
+  return updateDatabase((draft) => {
+    draft.consultations.unshift({
+      ...input,
+      id: generateId('consult'),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    draft.auditLogs.unshift(createAuditLog(input.doctorId, 'create', 'consultation'));
+  }).consultations[0];
+}
+
 export function listBookings() {
   return getDatabase().bookings;
+}
+
+export function listReferralsByPatient(patientId: string) {
+  return getDatabase().referrals
+    .filter((referral) => referral.patientId === patientId)
+    .sort((left, right) => right.referredAt.localeCompare(left.referredAt));
+}
+
+export function createReferral(input: Omit<Referral, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>) {
+  const timestamp = new Date().toISOString();
+  return updateDatabase((draft) => {
+    draft.referrals.unshift({
+      ...input,
+      id: generateId('ref'),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      completedAt: input.status === 'completed' ? timestamp : null,
+    });
+    draft.auditLogs.unshift(createAuditLog(input.referringDoctorId, 'create', 'referral'));
+  }).referrals[0];
+}
+
+export function updateReferralOutcome(
+  referralId: string,
+  input: Pick<Referral, 'status' | 'specialistFindings' | 'specialistRecommendations' | 'specialistVisitedAt'>,
+) {
+  return updateDatabase((draft) => {
+    const referral = draft.referrals.find((item) => item.id === referralId);
+    if (!referral) {
+      return;
+    }
+
+    referral.status = input.status;
+    referral.specialistFindings = input.specialistFindings;
+    referral.specialistRecommendations = input.specialistRecommendations;
+    referral.specialistVisitedAt = input.specialistVisitedAt;
+    referral.completedAt = input.status === 'completed' ? new Date().toISOString() : null;
+    referral.updatedAt = new Date().toISOString();
+    draft.auditLogs.unshift(createAuditLog(referral.targetDoctorId ?? 'user_owner', 'update', 'referral'));
+  }).referrals.find((item) => item.id === referralId) ?? null;
 }
 
 export function createBooking(input: Omit<Booking, 'id' | 'createdAt' | 'updatedAt' | 'status'>) {
@@ -322,6 +398,7 @@ export function createPatientProfileAccount(
     });
     draft.patients.unshift({
       ...patient,
+      qrCode: patient.qrCode || generatePatientQrCode(),
       id: generateId('pat'),
       userId,
       createdAt: timestamp,
@@ -329,3 +406,20 @@ export function createPatientProfileAccount(
     });
   });
 }
+
+function normalizeDatabase(database: AppDatabase) {
+  return {
+    ...database,
+    services: database.services.map((service) => ({
+      ...service,
+      durationMinutes: service.durationMinutes ?? 30,
+      isBookable: service.isBookable ?? true,
+      deliveryMode: service.deliveryMode ?? 'hybrid',
+    })),
+    patients: database.patients.map((patient) => ({
+      ...patient,
+      qrCode: patient.qrCode || generatePatientQrCode(),
+    })),
+  };
+}
+

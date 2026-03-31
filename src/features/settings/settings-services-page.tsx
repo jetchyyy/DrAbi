@@ -11,6 +11,7 @@ import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
 import { createService, createSpecialty, getDatabase, listServices, listSpecialties } from '../../lib/local-db';
 import { formatCurrency } from '../../lib/utils';
+import type { ServiceDeliveryMode } from '../../types/domain';
 
 const serviceSchema = z.object({
   name: z.string().min(2),
@@ -29,6 +30,10 @@ const specialtySchema = z.object({
 
 type ServiceFormValues = z.infer<typeof serviceSchema>;
 type SpecialtyFormValues = z.infer<typeof specialtySchema>;
+
+function formatDeliveryMode(deliveryMode?: ServiceDeliveryMode | null) {
+  return (deliveryMode ?? 'hybrid').replace('_', ' ');
+}
 
 export function SettingsServicesPage() {
   const database = getDatabase();
@@ -139,7 +144,7 @@ export function SettingsServicesPage() {
                 </div>
                 <p className="mt-2 text-sm text-slate-500">{service.description}</p>
                 <p className="mt-2 text-xs uppercase tracking-[0.12em] text-slate-400">
-                  {service.deliveryMode.replace('_', ' ')} • {service.durationMinutes} mins • {service.isBookable ? 'Portal enabled' : 'Internal only'}
+                  {formatDeliveryMode(service.deliveryMode)} - {service.durationMinutes ?? 30} mins - {(service.isBookable ?? true) ? 'Portal enabled' : 'Internal only'}
                 </p>
               </div>
             ))}

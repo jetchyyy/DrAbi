@@ -31,6 +31,18 @@ export function createSeedDatabase(): AppDatabase {
         title: 'Family Medicine',
       },
       {
+        id: 'user_doc_2',
+        authUserId: 'auth_doc_2',
+        createdAt: now,
+        updatedAt: now,
+        email: 'doctor.specialist@odysseyclinic.test',
+        fullName: 'Dr. Rafael Gomez',
+        role: 'doctor',
+        phone: '+63 917 100 2010',
+        specialtyId: 'spec_internal',
+        title: 'Internal Medicine',
+      },
+      {
         id: 'user_frontdesk',
         authUserId: 'auth_frontdesk',
         createdAt: now,
@@ -90,6 +102,7 @@ export function createSeedDatabase(): AppDatabase {
         userId: 'user_patient_1',
         createdAt: now,
         updatedAt: now,
+        qrCode: 'ODC-PAT-LENA19910418',
         firstName: 'Lena',
         lastName: 'Fernandez',
         sex: 'female',
@@ -107,6 +120,7 @@ export function createSeedDatabase(): AppDatabase {
         id: 'pat_2',
         createdAt: now,
         updatedAt: now,
+        qrCode: 'ODC-PAT-NOAH19871103',
         firstName: 'Noah',
         lastName: 'Villanueva',
         sex: 'male',
@@ -198,6 +212,27 @@ export function createSeedDatabase(): AppDatabase {
         preferredTime: '09:30',
         status: 'confirmed',
         intakeNotes: 'Mild cough and sore throat.',
+      },
+    ],
+    referrals: [
+      {
+        id: 'ref_1',
+        createdAt: now,
+        updatedAt: now,
+        patientId: 'pat_1',
+        appointmentId: 'appt_1',
+        referringDoctorId: 'user_doc_1',
+        targetDoctorId: 'user_doc_2',
+        targetSpecialtyId: 'spec_internal',
+        reason: 'Persistent elevated blood pressure with headache',
+        clinicalSummary: 'Family medicine consult noted recurrent headache and uncontrolled BP despite home medication.',
+        referralNotes: 'Please evaluate for secondary causes and optimize long-term management.',
+        status: 'completed',
+        specialistFindings: 'Internal medicine review confirmed poorly controlled hypertension without red flag neurologic findings.',
+        specialistRecommendations: 'Increase maintenance therapy, continue BP log, follow up with generalist in 2 weeks.',
+        referredAt: '2026-03-25T11:00:00.000Z',
+        specialistVisitedAt: '2026-03-27T09:00:00.000Z',
+        completedAt: '2026-03-27T09:45:00.000Z',
       },
     ],
     invoices: [
@@ -316,4 +351,8 @@ export function createSeedDatabase(): AppDatabase {
     ],
   };
 }
+
+
+
+
 

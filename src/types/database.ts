@@ -105,6 +105,7 @@ export interface Database {
         Row: {
           id: string;
           user_id: string | null;
+          qr_code: string;
           first_name: string;
           last_name: string;
           sex: string;
@@ -123,6 +124,7 @@ export interface Database {
         };
         Insert: {
           user_id?: string | null;
+          qr_code?: string;
           first_name: string;
           last_name: string;
           sex: string;
@@ -163,6 +165,45 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['bookings']['Insert']>;
       };
+      referrals: {
+        Row: {
+          id: string;
+          patient_id: string;
+          appointment_id: string | null;
+          referring_doctor_id: string;
+          target_doctor_id: string | null;
+          target_specialty_id: string | null;
+          reason: string;
+          clinical_summary: string;
+          referral_notes: string;
+          status: string;
+          specialist_findings: string;
+          specialist_recommendations: string;
+          referred_at: string;
+          specialist_visited_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          patient_id: string;
+          appointment_id?: string | null;
+          referring_doctor_id: string;
+          target_doctor_id?: string | null;
+          target_specialty_id?: string | null;
+          reason: string;
+          clinical_summary?: string;
+          referral_notes?: string;
+          status?: string;
+          specialist_findings?: string;
+          specialist_recommendations?: string;
+          referred_at?: string;
+          specialist_visited_at?: string | null;
+          completed_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['referrals']['Insert']>;
+      };
       appointments: {
         Row: {
           id: string;
@@ -190,3 +231,7 @@ export interface Database {
     };
   };
 }
+
+
+
+

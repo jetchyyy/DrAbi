@@ -1,9 +1,9 @@
 ﻿import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { queryClient } from '../../../app/query-client';
-import { listPatients, upsertPatient } from '../../../lib/local-db';
+import { createConsultation, listPatients, upsertPatient } from '../../../lib/local-db';
 import { queryKeys } from '../../../lib/query-keys';
-import type { Patient } from '../../../types/domain';
+import type { Consultation, Patient } from '../../../types/domain';
 
 export function usePatients() {
   return useQuery({
@@ -15,6 +15,15 @@ export function usePatients() {
 export function useCreatePatient() {
   return useMutation({
     mutationFn: async (payload: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'>) => upsertPatient(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
+    },
+  });
+}
+
+export function useCreateConsultation() {
+  return useMutation({
+    mutationFn: async (payload: Omit<Consultation, 'id' | 'createdAt' | 'updatedAt'>) => createConsultation(payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
     },

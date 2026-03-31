@@ -1,4 +1,4 @@
-﻿export const queryKeys = {
+export const queryKeys = {
   clinicSettings: ['clinic-settings'] as const,
   services: ['services'] as const,
   doctors: ['doctors'] as const,
@@ -9,8 +9,10 @@
   appointments: ['appointments'] as const,
   bookings: ['bookings'] as const,
   myBookings: (userId: string | null) => ['my-bookings', userId] as const,
+  referrals: (patientId: string | null) => ['referrals', patientId] as const,
   invoices: ['invoices'] as const,
   inventory: ['inventory'] as const,
   laboratory: ['laboratory'] as const,
   dashboard: ['dashboard'] as const,
 };
+

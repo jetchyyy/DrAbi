@@ -1,4 +1,4 @@
-﻿import { CalendarRange, Clock3, MapPin, PhoneCall } from 'lucide-react';
+import { CalendarRange, Clock3, MapPin, PhoneCall } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { Badge } from '../../components/ui/badge';
@@ -7,10 +7,12 @@ import { Card, CardTitle } from '../../components/ui/card';
 import { useBookableServices, useClinicSettingsData } from '../../hooks/use-clinic-data';
 import { defaultClinicSettings } from '../../config/clinic';
 import { formatCurrency } from '../../lib/utils';
+import { useAuth } from '../auth/auth-context';
 
 export function PortalHomePage() {
   const { data: clinic = defaultClinicSettings } = useClinicSettingsData();
   const { data: services = [] } = useBookableServices();
+  const { isAuthenticated } = useAuth();
 
   return (
     <div className="space-y-8">
@@ -20,15 +22,26 @@ export function PortalHomePage() {
             Patient-first booking
           </Badge>
           <h1 className="mt-5 text-5xl font-semibold leading-tight">
-            Book clinic visits in a few taps.
+            Create your account before you book.
           </h1>
           <p className="mt-5 max-w-xl text-base text-slate-300">
-            Browse services, choose your doctor or specialty, and manage upcoming appointments from one mobile-friendly portal.
+            Patients sign in first so medical history, appointment requests, referrals, and future visits all stay under one secure chart.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/portal/book">
-              <Button>Book an appointment</Button>
-            </Link>
+            {isAuthenticated ? (
+              <Link to="/portal/book">
+                <Button>Book an appointment</Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/portal/register">
+                  <Button>Create account</Button>
+                </Link>
+                <Link to="/login">
+                  <Button variant="secondary">Sign in to book</Button>
+                </Link>
+              </>
+            )}
             <Link to="/portal/my-bookings">
               <Button variant="secondary">View my bookings</Button>
             </Link>

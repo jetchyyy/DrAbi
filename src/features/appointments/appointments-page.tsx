@@ -1,6 +1,6 @@
 ﻿import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from '@tanstack/react-query';
 import { useForm, useWatch } from 'react-hook-form';
+import { Link } from 'react-router-dom';
 import { z } from 'zod';
 
 import { FormField } from '../../components/forms/form-field';
@@ -10,9 +10,10 @@ import { Card, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
-import { createAppointment, getDatabase } from '../../lib/local-db';
+import { getDatabase } from '../../lib/local-db';
 import { formatDateTimeLabel } from '../../lib/utils';
-import { useAppointments } from './hooks/use-appointments';
+import { isTeleconsultJoinableStatus } from '../teleconsult/teleconsult-data';
+import { useAppointments, useCreateAppointment } from './hooks/use-appointments';
 
 const appointmentSchema = z.object({
   patientId: z.string().min(1),
@@ -26,7 +27,6 @@ const appointmentSchema = z.object({
   reason: z.string().min(4),
   notes: z.string().min(2),
   teleconsultationPlatform: z.string().optional(),
-  teleconsultationUrl: z.string().optional(),
   teleconsultationAccessInstructions: z.string().optional(),
 });
 
@@ -35,10 +35,7 @@ type AppointmentFormValues = z.infer<typeof appointmentSchema>;
 export function AppointmentsPage() {
   const database = getDatabase();
   const { data: appointments = [] } = useAppointments();
-  const createAppointmentMutation = useMutation({
-    mutationFn: async (values: Omit<AppointmentFormValues, 'scheduledAt'> & { scheduledAt: string }) =>
-      createAppointment(values),
-  });
+  const createAppointmentMutation = useCreateAppointment();
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
     defaultValues: {
@@ -52,8 +49,7 @@ export function AppointmentsPage() {
       visitType: 'in_person',
       reason: '',
       notes: '',
-      teleconsultationPlatform: '',
-      teleconsultationUrl: '',
+      teleconsultationPlatform: 'Jitsi Meet',
       teleconsultationAccessInstructions: '',
     },
   });
@@ -64,17 +60,16 @@ export function AppointmentsPage() {
     await createAppointmentMutation.mutateAsync({
       ...values,
       scheduledAt: new Date(values.scheduledAt).toISOString(),
-      teleconsultationPlatform: values.visitType === 'teleconsultation' ? values.teleconsultationPlatform || undefined : undefined,
-      teleconsultationUrl: values.visitType === 'teleconsultation' ? values.teleconsultationUrl || undefined : undefined,
+      teleconsultationPlatform: values.visitType === 'teleconsultation' ? values.teleconsultationPlatform || 'Jitsi Meet' : undefined,
       teleconsultationAccessInstructions:
         values.visitType === 'teleconsultation' ? values.teleconsultationAccessInstructions || undefined : undefined,
     });
+
     form.reset({
       ...values,
       reason: '',
       notes: '',
-      teleconsultationPlatform: '',
-      teleconsultationUrl: '',
+      teleconsultationPlatform: 'Jitsi Meet',
       teleconsultationAccessInstructions: '',
     });
   });
@@ -87,13 +82,14 @@ export function AppointmentsPage() {
             <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Operations</p>
             <CardTitle className="mt-2 text-3xl">Appointments and queue</CardTitle>
           </div>
-          <Badge intent="info">Teleconsultation-ready workflow</Badge>
+          <Badge intent="info">In-app teleconsult workflow</Badge>
         </div>
         <div className="mt-6 space-y-4">
           {appointments.map((appointment) => {
             const patient = database.patients.find((item) => item.id === appointment.patientId);
             const doctor = database.users.find((item) => item.id === appointment.doctorId);
             const service = database.services.find((item) => item.id === appointment.serviceId);
+
             return (
               <div key={appointment.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -117,8 +113,13 @@ export function AppointmentsPage() {
                   {appointment.teleconsultationPlatform ? <Badge>{appointment.teleconsultationPlatform}</Badge> : null}
                 </div>
                 <p className="mt-3 text-sm text-slate-600">{appointment.reason}</p>
-                {appointment.teleconsultationUrl ? (
-                  <p className="mt-2 text-sm text-slate-500">Join link: {appointment.teleconsultationUrl}</p>
+                {appointment.teleconsultationAccessInstructions ? (
+                  <p className="mt-2 text-sm text-slate-500">{appointment.teleconsultationAccessInstructions}</p>
+                ) : null}
+                {appointment.visitType === 'teleconsultation' && isTeleconsultJoinableStatus(appointment.status) ? (
+                  <Link className="mt-3 inline-flex text-sm font-semibold text-[var(--color-primary)]" to={`/app/teleconsult/${appointment.id}`}>
+                    Join teleconsult
+                  </Link>
                 ) : null}
               </div>
             );
@@ -199,13 +200,10 @@ export function AppointmentsPage() {
           {visitType === 'teleconsultation' ? (
             <div className="grid gap-4">
               <FormField label="Teleconsultation platform">
-                <Input placeholder="Zoom, Google Meet, Microsoft Teams" {...form.register('teleconsultationPlatform')} />
-              </FormField>
-              <FormField label="Teleconsultation URL">
-                <Input placeholder="https://..." {...form.register('teleconsultationUrl')} />
+                <Input placeholder="Jitsi Meet" {...form.register('teleconsultationPlatform')} />
               </FormField>
               <FormField label="Access instructions">
-                <Textarea {...form.register('teleconsultationAccessInstructions')} />
+                <Textarea placeholder="Tell the patient what to prepare before joining." {...form.register('teleconsultationAccessInstructions')} />
               </FormField>
             </div>
           ) : null}
@@ -223,5 +221,4 @@ export function AppointmentsPage() {
     </div>
   );
 }
-
 

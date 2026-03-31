@@ -1,5 +1,5 @@
 ﻿import { zodResolver } from '@hookform/resolvers/zod';
-import { Search, UserRoundPlus } from 'lucide-react';
+import { QrCode, Search, UserRoundPlus } from 'lucide-react';
 import { useDeferredValue, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
@@ -56,7 +56,7 @@ export function PatientsPage() {
   });
 
   const filteredPatients = patients.filter((patient) =>
-    `${patient.firstName} ${patient.lastName} ${patient.email}`
+    `${patient.firstName} ${patient.lastName} ${patient.email} ${patient.qrCode}`
       .toLowerCase()
       .includes(deferredSearch.toLowerCase()),
   );
@@ -65,6 +65,7 @@ export function PatientsPage() {
     await createPatient.mutateAsync({
       ...values,
       userId: null,
+      qrCode: '',
     });
     form.reset();
   });
@@ -77,15 +78,22 @@ export function PatientsPage() {
             <div>
               <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Patient management</p>
               <CardTitle className="mt-2 text-3xl">Unified patient registry</CardTitle>
+              <p className="mt-2 text-sm text-slate-500">Every patient record now gets a unique QR code for faster SOAP chart access.</p>
             </div>
-            <div className="flex w-full max-w-sm items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-              <Search className="size-4 text-slate-400" />
-              <input
-                className="w-full bg-transparent text-sm outline-none"
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search patients"
-                value={search}
-              />
+            <div className="flex flex-wrap items-center gap-3">
+              <Link className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" to="/app/patients/scan">
+                <QrCode className="mr-2 size-4" />
+                Scan patient QR
+              </Link>
+              <div className="flex w-full max-w-sm items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <Search className="size-4 text-slate-400" />
+                <input
+                  className="w-full bg-transparent text-sm outline-none"
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search patient or QR code"
+                  value={search}
+                />
+              </div>
             </div>
           </div>
         </Card>
@@ -110,6 +118,7 @@ export function PatientsPage() {
                     </div>
                     <p className="mt-2 text-sm text-slate-500">{patient.email} • {patient.mobileNumber}</p>
                     <p className="mt-1 text-sm text-slate-500">Born {formatDateLabel(patient.birthDate)}</p>
+                    <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-400">QR {patient.qrCode}</p>
                   </div>
                   <Link className="text-sm font-semibold text-[var(--color-primary)]" to={`/app/patients/${patient.id}`}>
                     Open record

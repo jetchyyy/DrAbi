@@ -1,4 +1,4 @@
-﻿import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -12,7 +12,7 @@ import { Input } from '../../../components/ui/input';
 import { useAuth } from '../auth-context';
 
 const loginSchema = z.object({
-  email: z.email(),
+  email: z.string().email(),
   password: z.string().min(6, 'Password must be at least 6 characters.'),
 });
 
@@ -76,8 +76,8 @@ export function LoginForm() {
         <Link className="text-[var(--color-primary)]" to="/forgot-password">
           Forgot password?
         </Link>
-        <Link className="text-slate-500" to="/portal">
-          Go to patient portal
+        <Link className="text-slate-500" to="/portal/register">
+          Create account
         </Link>
       </div>
     </Card>

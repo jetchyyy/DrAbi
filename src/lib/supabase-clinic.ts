@@ -6,6 +6,7 @@ import { getClinicSettings as getDemoClinicSettings, getDatabase } from './local
 import { isSupabaseConfigured, supabase } from './supabase';
 import type { ClinicSettings, Patient, Role, Service, ServiceDeliveryMode, UserProfile } from '../types/domain';
 import type { Database } from '../types/database';
+import { generatePatientQrCode } from './utils';
 
 export interface DoctorDirectoryItem {
   id: string;
@@ -128,6 +129,7 @@ export function mapPatient(row: PatientRow): Patient {
   return {
     id: row.id,
     userId: row.user_id,
+    qrCode: row.qr_code,
     firstName: row.first_name,
     lastName: row.last_name,
     sex: row.sex === 'male' || row.sex === 'female' || row.sex === 'other' ? row.sex : 'other',
@@ -334,6 +336,7 @@ export async function ensurePatientForUser(user: User) {
   const name = splitFullName(fullName);
   const payload: Database['public']['Tables']['patients']['Insert'] = {
     user_id: user.id,
+    qr_code: generatePatientQrCode(),
     first_name: name.firstName,
     last_name: name.lastName,
     sex: metadata.sex ?? 'other',
@@ -341,11 +344,11 @@ export async function ensurePatientForUser(user: User) {
     mobile_number: metadata.phone ?? null,
     email: user.email ?? null,
     address: metadata.address ?? null,
-    blood_type: null,
-    allergies: '',
-    medical_history: '',
-    emergency_contact_name: fullName,
-    emergency_contact_phone: metadata.phone ?? null,
+    blood_type: metadata.blood_type ?? null,
+    allergies: metadata.allergies ?? '',
+    medical_history: metadata.medical_history ?? '',
+    emergency_contact_name: metadata.emergency_contact_name ?? fullName,
+    emergency_contact_phone: metadata.emergency_contact_phone ?? metadata.phone ?? null,
   };
 
   const { data, error } = await client.from('patients').insert(payload as never).select('*').single();
@@ -502,3 +505,6 @@ export async function updateSystemControlLiveOrDemo(
 
   return mapClinicSettings(data.clinicSettings);
 }
+
+
+

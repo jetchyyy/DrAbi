@@ -24,6 +24,12 @@ interface AuthContextValue {
     password: string;
     phone: string;
     birthDate: string;
+    sex: 'male' | 'female' | 'other';
+    address: string;
+    allergies: string;
+    medicalHistory: string;
+    emergencyContactName: string;
+    emergencyContactPhone: string;
   }) => Promise<{ requiresEmailConfirmation: boolean }>;
   can: (permission: Permission) => boolean;
 }
@@ -183,6 +189,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
                 full_name: input.fullName,
                 phone: input.phone,
                 birth_date: input.birthDate,
+                sex: input.sex,
+                address: input.address,
+                allergies: input.allergies,
+                medical_history: input.medicalHistory,
+                emergency_contact_name: input.emergencyContactName,
+                emergency_contact_phone: input.emergencyContactPhone,
               },
             },
           });
@@ -204,18 +216,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
             },
             {
               userId: null,
+              qrCode: '',
               firstName,
               lastName: rest.join(' ') || 'Patient',
-              sex: 'other',
+              sex: input.sex,
               birthDate: input.birthDate,
               mobileNumber: input.phone,
               email: input.email,
-              address: '',
+              address: input.address,
               bloodType: '',
-              allergies: '',
-              medicalHistory: '',
-              emergencyContactName: input.fullName,
-              emergencyContactPhone: input.phone,
+              allergies: input.allergies,
+              medicalHistory: input.medicalHistory,
+              emergencyContactName: input.emergencyContactName,
+              emergencyContactPhone: input.emergencyContactPhone,
             },
           );
         }
@@ -240,3 +253,9 @@ export function useAuth() {
   }
   return context;
 }
+
+
+
+
+
+

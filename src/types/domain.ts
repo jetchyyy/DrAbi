@@ -35,6 +35,7 @@ export type AppointmentStatus =
   | 'no_show';
 
 export type BookingStatus = 'pending' | 'confirmed' | 'rescheduled' | 'cancelled';
+export type ReferralStatus = 'draft' | 'sent' | 'accepted' | 'completed' | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'partial' | 'paid' | 'void';
 export type LabOrderStatus = 'requested' | 'collected' | 'processing' | 'ready' | 'released';
 export type StockTransactionType = 'stock_in' | 'stock_out' | 'adjustment';
@@ -99,6 +100,7 @@ export interface Service extends BaseRecord {
 
 export interface Patient extends BaseRecord {
   userId?: string | null;
+  qrCode: string;
   firstName: string;
   lastName: string;
   sex: 'male' | 'female' | 'other';
@@ -156,6 +158,23 @@ export interface Booking extends BaseRecord {
   preferredTime: string;
   status: BookingStatus;
   intakeNotes: string;
+}
+
+export interface Referral extends BaseRecord {
+  patientId: string;
+  appointmentId?: string | null;
+  referringDoctorId: string;
+  targetDoctorId?: string | null;
+  targetSpecialtyId?: string | null;
+  reason: string;
+  clinicalSummary: string;
+  referralNotes: string;
+  status: ReferralStatus;
+  specialistFindings: string;
+  specialistRecommendations: string;
+  referredAt: string;
+  specialistVisitedAt?: string | null;
+  completedAt?: string | null;
 }
 
 export interface InvoiceItem extends BaseRecord {
@@ -258,6 +277,7 @@ export interface AppDatabase {
   consultations: Consultation[];
   prescriptions: Prescription[];
   bookings: Booking[];
+  referrals: Referral[];
   invoices: Invoice[];
   invoiceItems: InvoiceItem[];
   payments: Payment[];
@@ -271,3 +291,8 @@ export interface AppDatabase {
   fileUploads: FileUpload[];
   auditLogs: AuditLog[];
 }
+
+
+
+
+

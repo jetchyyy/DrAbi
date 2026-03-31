@@ -1,6 +1,7 @@
-﻿import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -16,11 +17,6 @@ import { useAuth } from '../auth/auth-context';
 import { useCreateBooking, useCurrentPatient } from './hooks/use-bookings';
 
 const bookingSchema = z.object({
-  fullName: z.string().min(2),
-  email: z.email(),
-  password: z.string().min(6),
-  phone: z.string().min(5),
-  birthDate: z.string().min(1),
   serviceId: z.string().min(1),
   doctorId: z.string().min(1),
   preferredDate: z.string().min(1),
@@ -31,19 +27,14 @@ const bookingSchema = z.object({
 type BookingFormValues = z.infer<typeof bookingSchema>;
 
 export function PortalBookPage() {
-  const { profile, session, signUpPatient } = useAuth();
+  const { profile, session } = useAuth();
   const { data: services = [] } = useBookableServices();
   const { data: doctors = [] } = useDoctorDirectory();
-  const { data: currentPatient, refetch: refetchPatient } = useCurrentPatient(session?.user.id ?? null, profile?.email);
+  const { data: currentPatient } = useCurrentPatient(session?.user.id ?? null, profile?.email);
   const createBooking = useCreateBooking(session?.user.id ?? null);
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
-      fullName: profile?.fullName ?? '',
-      email: profile?.email ?? '',
-      password: 'demo1234',
-      phone: profile?.phone ?? '',
-      birthDate: '1991-04-18',
       serviceId: '',
       doctorId: '',
       preferredDate: '2026-03-28',
@@ -59,41 +50,16 @@ export function PortalBookPage() {
     if (doctors[0] && !form.getValues('doctorId')) {
       form.setValue('doctorId', doctors[0].id);
     }
-    if (profile?.fullName) {
-      form.setValue('fullName', profile.fullName);
-      form.setValue('email', profile.email);
-      form.setValue('phone', profile.phone);
-    }
-  }, [doctors, form, profile, services]);
+  }, [doctors, form, services]);
 
   const onSubmit = form.handleSubmit(async (values) => {
-    let patient = currentPatient;
-
-    if (!patient) {
-      const result = await signUpPatient({
-        fullName: values.fullName,
-        email: values.email,
-        password: values.password,
-        phone: values.phone,
-        birthDate: values.birthDate,
-      });
-
-      const refreshed = await refetchPatient();
-      patient = refreshed.data ?? null;
-
-      if (!patient && result.requiresEmailConfirmation) {
-        toast.success('Your account was created. Please verify your email, sign in, and then complete the booking.');
-        return;
-      }
-    }
-
-    if (!patient) {
-      toast.error('Unable to create or resolve the patient profile.');
+    if (!currentPatient) {
+      toast.error('Your patient profile is not ready yet. Please sign in again or contact the clinic.');
       return;
     }
 
     await createBooking.mutateAsync({
-      patientId: patient.id,
+      patientId: currentPatient.id,
       serviceId: values.serviceId,
       doctorId: values.doctorId,
       preferredDate: values.preferredDate,
@@ -112,31 +78,12 @@ export function PortalBookPage() {
     <div className="grid gap-6 xl:grid-cols-[1fr_0.8fr]">
       <Card>
         <Badge intent="info">Booking portal</Badge>
-        <CardTitle className="mt-4 text-3xl">Create appointment request</CardTitle>
+        <CardTitle className="mt-4 text-3xl">Request an appointment</CardTitle>
         <p className="mt-3 text-sm text-slate-500">
-          Patients can browse services, choose a doctor, and submit intake details before the visit.
+          You are signed in as {profile?.fullName ?? profile?.email}. Your patient account already holds the medical history used by the clinic.
         </p>
 
         <form className="mt-6 space-y-4" onSubmit={onSubmit}>
-          <div className="grid gap-4 md:grid-cols-2">
-            <FormField label="Full name">
-              <Input {...form.register('fullName')} />
-            </FormField>
-            <FormField label="Email">
-              <Input {...form.register('email')} />
-            </FormField>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            <FormField hint="Used when creating a new patient account" label="Password">
-              <Input type="password" {...form.register('password')} />
-            </FormField>
-            <FormField label="Phone">
-              <Input {...form.register('phone')} />
-            </FormField>
-            <FormField label="Birth date">
-              <Input type="date" {...form.register('birthDate')} />
-            </FormField>
-          </div>
           <div className="grid gap-4 md:grid-cols-2">
             <FormField label="Service">
               <Select {...form.register('serviceId')}>
@@ -151,7 +98,7 @@ export function PortalBookPage() {
               <Select {...form.register('doctorId')}>
                 {doctors.map((doctor) => (
                   <option key={doctor.id} value={doctor.id}>
-                    {doctor.fullName}{doctor.specialtyName ? ` (${doctor.specialtyName})` : ''}
+                    {doctor.fullName}{doctor.specialtyName ? ' (' + doctor.specialtyName + ')' : ''}
                   </option>
                 ))}
               </Select>
@@ -165,23 +112,26 @@ export function PortalBookPage() {
               <Input type="time" {...form.register('preferredTime')} />
             </FormField>
           </div>
-          <FormField label="Intake notes">
+          <FormField label="Reason or intake notes">
             <Textarea {...form.register('intakeNotes')} />
           </FormField>
-          <Button className="w-full" disabled={createBooking.isPending} type="submit">
+          <Button className="w-full" disabled={createBooking.isPending || !currentPatient} type="submit">
             {createBooking.isPending ? 'Submitting...' : 'Submit booking request'}
           </Button>
         </form>
       </Card>
 
       <Card>
-        <CardTitle>Booking guidance</CardTitle>
+        <CardTitle>Before you book</CardTitle>
         <div className="mt-5 space-y-4 text-sm text-slate-600">
-          <p>Clinic settings, services, doctors, and bookings now read from your Supabase project when configured.</p>
-          <p>New patient sign-up stores auth metadata first, then boots profile and patient records after session resolution.</p>
-          <p>Bookings are still separate from appointments so staff can confirm, reschedule, or reject requests cleanly.</p>
+          <p>Booking is available only to signed-in patient accounts so the clinic can keep one continuous chart per patient.</p>
+          <p>Your medical history, allergies, emergency contacts, and referrals stay attached to your account and are visible to the care team.</p>
+          <p>
+            Need to update your details first? Return to the <Link className="font-semibold text-[var(--color-primary)]" to="/portal">patient portal</Link> or contact the clinic staff.
+          </p>
         </div>
       </Card>
     </div>
   );
 }
+

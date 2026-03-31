@@ -26,6 +26,10 @@ export function generateId(prefix: string) {
   return `${prefix}_${crypto.randomUUID().slice(0, 8)}`;
 }
 
+export function generatePatientQrCode() {
+  return `ODC-PAT-${crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()}`;
+}
+
 export function getInitials(name: string) {
   return name
     .split(' ')
@@ -33,4 +37,8 @@ export function getInitials(name: string) {
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('');
 }
+
+
+
+
 
