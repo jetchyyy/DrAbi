@@ -12,7 +12,7 @@ import { Card, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
-import { useDoctorDirectory, useBookableServices } from '../../hooks/use-clinic-data';
+import { useBookableServices, useDoctorDirectory } from '../../hooks/use-clinic-data';
 import { useAuth } from '../auth/auth-context';
 import { useCreateBooking, useCurrentPatient } from './hooks/use-bookings';
 
@@ -98,7 +98,7 @@ export function PortalBookPage() {
               <Select {...form.register('doctorId')}>
                 {doctors.map((doctor) => (
                   <option key={doctor.id} value={doctor.id}>
-                    {doctor.fullName}{doctor.specialtyName ? ' (' + doctor.specialtyName + ')' : ''}
+                    {doctor.fullName}{doctor.specialtyName ? ` (${doctor.specialtyName})` : ''}
                   </option>
                 ))}
               </Select>
@@ -134,4 +134,3 @@ export function PortalBookPage() {
     </div>
   );
 }
-

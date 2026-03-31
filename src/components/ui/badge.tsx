@@ -1,4 +1,4 @@
-﻿import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren } from 'react';
 
 import { cn } from '../../lib/utils';
 
@@ -13,11 +13,11 @@ export function Badge({ children, intent = 'neutral', className }: PropsWithChil
     success: 'bg-emerald-100 text-emerald-700',
     warning: 'bg-amber-100 text-amber-700',
     danger: 'bg-rose-100 text-rose-700',
-    info: 'bg-blue-100 text-blue-700',
+    info: 'bg-orange-100 text-orange-700',
   };
 
   return (
-    <span className={cn('inline-flex rounded-full px-3 py-1 text-xs font-medium', intents[intent], className)}>
+    <span className={cn('inline-flex rounded-none px-3 py-1 text-xs font-medium', intents[intent], className)}>
       {children}
     </span>
   );

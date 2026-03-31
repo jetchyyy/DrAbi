@@ -1,21 +1,85 @@
-﻿import { Link } from 'react-router-dom';
+import { ArrowLeft, KeyRound } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import { Button } from '../../components/ui/button';
-import { Card, CardTitle } from '../../components/ui/card';
 
 export function ResetPasswordPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#f7fbff_0%,#fefbf6_100%)] px-4">
-      <Card className="max-w-md p-8">
-        <CardTitle className="text-3xl">Password update flow</CardTitle>
-        <p className="mt-4 text-sm text-slate-500">
-          Supabase redirect handling is already enabled. Final password update UI can be attached here after your project keys are configured.
-        </p>
-        <Link className="mt-6 inline-flex" to="/login">
-          <Button>Back to sign in</Button>
-        </Link>
-      </Card>
+    <div className="min-h-screen flex">
+
+      {/* ── Left branding panel ──────────────────────────────── */}
+      <div className="hidden lg:flex lg:w-[45%] flex-col bg-[#172937] relative overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(0deg, transparent, transparent 39px, #fff 39px, #fff 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #fff 39px, #fff 40px)',
+          }}
+        />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-orange-600" />
+        <div className="relative z-10 flex flex-col h-full px-12 py-12">
+          <div>
+            <img src="/odc.jpg" alt="Odyssey Clinic Logo" className="h-16 w-16 object-contain" />
+            <p className="mt-4 text-[10px] font-extrabold uppercase tracking-[0.3em] text-orange-500">Clinic OS Access</p>
+            <h1 className="mt-1.5 text-2xl font-extrabold text-white leading-tight">
+              Odyssey Clinic<br />Operations System
+            </h1>
+          </div>
+          <div className="mt-auto">
+            <div className="p-5 bg-white/5 border border-white/10 inline-block mb-6">
+              <KeyRound className="size-10 text-orange-500" />
+            </div>
+            <p className="text-base font-semibold text-white max-w-xs leading-relaxed">
+              Set a strong new password to secure your clinic account.
+            </p>
+            <div className="mt-12 pt-8 border-t border-white/10">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                © {new Date().getFullYear()} Odyssey Diagnostic Clinic
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Right content panel ──────────────────────────────── */}
+      <div className="flex-1 flex flex-col items-center justify-center bg-white px-6 py-12 relative">
+        <div className="lg:hidden absolute top-0 left-0 right-0 h-1 bg-orange-600" />
+        <div className="lg:hidden absolute top-6 left-6 flex items-center gap-3">
+          <img src="/odc.jpg" alt="ODC Logo" className="h-9 w-9 object-contain" />
+          <p className="text-sm font-extrabold text-slate-950 uppercase tracking-widest">Odyssey Clinic</p>
+        </div>
+
+        <div className="w-full max-w-sm">
+          <Link
+            to="/login"
+            className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-slate-500 hover:text-slate-800 mb-8 transition-colors"
+          >
+            <ArrowLeft className="size-3.5" />
+            Back to Sign In
+          </Link>
+
+          <div className="mb-8">
+            <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">Password Update</p>
+            <h2 className="mt-2 text-3xl font-extrabold text-slate-950 tracking-tight">Create new password</h2>
+            <p className="mt-2 text-sm text-slate-500 leading-relaxed">
+              Supabase redirect handling is enabled. The password update form will appear here once your project keys are configured.
+            </p>
+          </div>
+
+          <div className="bg-orange-50 border border-orange-200 px-5 py-4 mb-6">
+            <p className="text-xs font-bold text-orange-800 leading-relaxed">
+              Configure your <span className="font-extrabold">VITE_SUPABASE_URL</span> and <span className="font-extrabold">VITE_SUPABASE_ANON_KEY</span> in <code className="bg-orange-100 px-1">.env</code> to activate live password reset.
+            </p>
+          </div>
+
+          <Link to="/login">
+            <Button className="w-full gap-2 rounded-none bg-orange-600 hover:bg-orange-700 font-extrabold uppercase tracking-widest text-sm py-5">
+              <ArrowLeft className="size-4" />
+              Back to Sign In
+            </Button>
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
-

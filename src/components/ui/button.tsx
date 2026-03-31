@@ -1,4 +1,4 @@
-﻿import type { ButtonHTMLAttributes, PropsWithChildren } from 'react';
+import type { ButtonHTMLAttributes, PropsWithChildren } from 'react';
 
 import { cn } from '../../lib/utils';
 
@@ -17,11 +17,11 @@ export function Button({
 }: PropsWithChildren<ButtonProps>) {
   const variants: Record<ButtonVariant, string> = {
     primary:
-      'bg-[var(--color-primary)] text-white shadow-lg shadow-blue-200 hover:opacity-95',
+      'bg-[var(--color-primary)] text-white shadow-sm shadow-orange-200/50 hover:opacity-95',
     secondary:
-      'bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-slate-50',
+      'bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-slate-50 shadow-sm',
     ghost: 'bg-transparent text-slate-700 hover:bg-slate-100',
-    danger: 'bg-rose-600 text-white hover:bg-rose-700',
+    danger: 'bg-rose-600 text-white hover:bg-rose-700 shadow-sm',
   };
 
   return (

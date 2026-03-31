@@ -1,4 +1,4 @@
-﻿import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { FileKey2, KeyRound, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -170,12 +170,12 @@ export function OdcPage() {
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f5f9ff_0%,#f8f3ea_100%)] px-4 py-8 lg:px-8">
       <div className="mx-auto max-w-6xl space-y-6">
-        <Card className="bg-slate-950 text-white">
+        <Card className="bg-white text-slate-950 border-t-4 border-t-orange-600 rounded-none shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-sm uppercase tracking-[0.18em] text-slate-400">/odc Superadmin Console</p>
-              <CardTitle className="mt-3 text-4xl text-white">{clinic.clinicName}</CardTitle>
-              <p className="mt-3 text-sm text-slate-300">
+              <p className="text-sm uppercase tracking-[0.18em] text-slate-500">/odc Superadmin Console</p>
+              <CardTitle className="mt-3 text-4xl text-slate-950">{clinic.clinicName}</CardTitle>
+              <p className="mt-3 text-sm text-slate-600">
                 Full emergency control for availability, recovery messaging, and service continuity.
               </p>
             </div>

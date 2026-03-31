@@ -1,11 +1,11 @@
-﻿import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Building2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 
 import { FormField } from '../../components/forms/form-field';
 import { Button } from '../../components/ui/button';
-import { Card, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { getClinicSettings, resetDemoData, updateClinicSettings } from '../../lib/local-db';
@@ -53,59 +53,56 @@ export function SettingsClinicPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardTitle className="text-3xl">Clinic profile and branding</CardTitle>
-        <p className="mt-3 text-sm text-slate-500">
-          Branding, contact details, colors, booking windows, and operating preferences are all stored centrally for future white-label adaptation.
-        </p>
-      </Card>
-      <Card>
-        <form className="space-y-4" onSubmit={onSubmit}>
-          <div className="grid gap-4 md:grid-cols-2">
-            <FormField label="Clinic name">
-              <Input {...form.register('clinicName')} />
-            </FormField>
-            <FormField label="Legal name">
-              <Input {...form.register('legalName')} />
-            </FormField>
+    <div className="space-y-4 max-w-3xl">
+      {/* Page header */}
+      <div className="bg-white border border-slate-200 shadow-sm px-6 py-5 flex items-center gap-3">
+        <div className="p-2.5 bg-orange-600 text-white shrink-0">
+          <Building2 className="size-5" />
+        </div>
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">Settings</p>
+          <h1 className="text-xl font-extrabold text-slate-950 tracking-tight">Clinic Profile & Branding</h1>
+          <p className="text-xs text-slate-500 mt-0.5">Branding, contact details, colors, and operating preferences are stored centrally.</p>
+        </div>
+      </div>
+
+      {/* Form */}
+      <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
+        <form className="divide-y divide-slate-100" onSubmit={onSubmit}>
+          <div className="px-6 py-5 space-y-4">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Identity</p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField label="Clinic name"><Input {...form.register('clinicName')} /></FormField>
+              <FormField label="Legal name"><Input {...form.register('legalName')} /></FormField>
+            </div>
+            <FormField label="Short code"><Input {...form.register('shortCode')} /></FormField>
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            <FormField label="Short code">
-              <Input {...form.register('shortCode')} />
-            </FormField>
-            <FormField label="Contact number">
-              <Input {...form.register('contactNumber')} />
-            </FormField>
-            <FormField label="Email">
-              <Input {...form.register('email')} />
-            </FormField>
+          <div className="px-6 py-5 space-y-4">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Contact Information</p>
+            <div className="grid gap-4 md:grid-cols-3">
+              <FormField label="Contact number"><Input {...form.register('contactNumber')} /></FormField>
+              <FormField label="Email"><Input {...form.register('email')} /></FormField>
+              <FormField label="Website"><Input {...form.register('website')} /></FormField>
+            </div>
+            <FormField label="Address"><Textarea {...form.register('address')} /></FormField>
           </div>
-          <FormField label="Address">
-            <Textarea {...form.register('address')} />
-          </FormField>
-          <FormField label="Website">
-            <Input {...form.register('website')} />
-          </FormField>
-          <div className="grid gap-4 md:grid-cols-2">
-            <FormField label="Primary color">
-              <Input {...form.register('primaryColor')} />
-            </FormField>
-            <FormField label="Accent color">
-              <Input {...form.register('accentColor')} />
-            </FormField>
+          <div className="px-6 py-5 space-y-4">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Branding Colors</p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField label="Primary color"><Input {...form.register('primaryColor')} /></FormField>
+              <FormField label="Accent color"><Input {...form.register('accentColor')} /></FormField>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Button disabled={mutation.isPending} type="submit">
-              {mutation.isPending ? 'Saving...' : 'Save clinic settings'}
+          <div className="px-6 py-4 bg-slate-50 flex flex-wrap gap-3">
+            <Button className="rounded-none bg-orange-600 hover:bg-orange-700 font-extrabold uppercase tracking-widest text-sm" disabled={mutation.isPending} type="submit">
+              {mutation.isPending ? 'Saving…' : 'Save Clinic Settings'}
             </Button>
-            <Button type="button" variant="secondary" onClick={() => resetDemoData()}>
-              Reset demo data
+            <Button className="rounded-none font-bold uppercase tracking-wide text-sm" type="button" variant="secondary" onClick={() => resetDemoData()}>
+              Reset Demo Data
             </Button>
           </div>
         </form>
-      </Card>
+      </div>
     </div>
   );
 }
-

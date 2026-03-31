@@ -1,14 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-import { isSupabaseConfigured } from '../../../lib/supabase';
 import { Button } from '../../../components/ui/button';
-import { Card, CardTitle } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
+import { isSupabaseConfigured } from '../../../lib/supabase';
 import { useAuth } from '../auth-context';
 
 const loginSchema = z.object({
@@ -23,6 +23,8 @@ export function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -47,39 +49,65 @@ export function LoginForm() {
   });
 
   return (
-    <Card className="w-full max-w-md p-8">
-      <div className="space-y-2">
-        <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Clinic OS Access</p>
-        <CardTitle className="text-3xl">Sign in</CardTitle>
-        <p className="text-sm text-slate-500">
-          {isSupabaseConfigured
-            ? 'Sign in with your live Supabase account.'
-            : 'Demo roles: owner@, doctor@, frontdesk@, lab@, inventory@, or patient@.'}
-        </p>
+    <form className="space-y-5" onSubmit={onSubmit}>
+      {!isSupabaseConfigured ? (
+        <div className="border border-orange-200 bg-orange-50 px-4 py-3">
+          <p className="mb-1 text-[11px] font-extrabold uppercase tracking-widest text-orange-600">Demo Mode</p>
+          <p className="text-xs leading-relaxed text-orange-800">
+            Use <span className="font-bold">owner@</span>, <span className="font-bold">doctor@</span>, <span className="font-bold">frontdesk@</span>, <span className="font-bold">lab@</span>, or <span className="font-bold">patient@</span> with any password.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="space-y-1.5">
+        <label className="text-xs font-extrabold uppercase tracking-widest text-slate-500" htmlFor="login-email">
+          Email Address
+        </label>
+        <Input id="login-email" placeholder="you@odysseyclinic.test" type="email" {...form.register('email')} />
+        {form.formState.errors.email?.message ? <p className="text-xs font-medium text-rose-600">{form.formState.errors.email.message}</p> : null}
       </div>
 
-      <form className="mt-8 space-y-4" onSubmit={onSubmit}>
-        <div>
-          <Input placeholder="Email address" {...form.register('email')} />
-          <p className="mt-2 text-xs text-rose-600">{form.formState.errors.email?.message}</p>
+      <div className="space-y-1.5">
+        <label className="text-xs font-extrabold uppercase tracking-widest text-slate-500" htmlFor="login-password">
+          Password
+        </label>
+        <div className="relative">
+          <Input
+            id="login-password"
+            placeholder="********"
+            type={showPassword ? 'text' : 'password'}
+            className="pr-10"
+            {...form.register('password')}
+          />
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => setShowPassword((value) => !value)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-700"
+          >
+            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
         </div>
-        <div>
-          <Input placeholder="Password" type="password" {...form.register('password')} />
-          <p className="mt-2 text-xs text-rose-600">{form.formState.errors.password?.message}</p>
-        </div>
-        <Button className="w-full" disabled={submitting} type="submit">
-          {submitting ? 'Signing in...' : 'Sign in'}
-        </Button>
-      </form>
+        {form.formState.errors.password?.message ? <p className="text-xs font-medium text-rose-600">{form.formState.errors.password.message}</p> : null}
+      </div>
 
-      <div className="mt-6 flex items-center justify-between text-sm">
-        <Link className="text-[var(--color-primary)]" to="/forgot-password">
+      <Button
+        className="w-full gap-2 rounded-none bg-orange-600 py-5 text-sm font-extrabold uppercase tracking-widest transition-colors hover:bg-orange-700"
+        disabled={submitting}
+        type="submit"
+      >
+        <LogIn className="size-4" />
+        {submitting ? 'Signing in...' : 'Sign In'}
+      </Button>
+
+      <div className="flex items-center justify-between pt-1">
+        <Link className="text-xs font-bold uppercase tracking-widest text-orange-600 hover:underline" to="/forgot-password">
           Forgot password?
         </Link>
-        <Link className="text-slate-500" to="/portal/register">
+        <Link className="text-xs font-bold uppercase tracking-widest text-slate-500 transition-colors hover:text-slate-800" to="/portal/register">
           Create account
         </Link>
       </div>
-    </Card>
+    </form>
   );
 }
