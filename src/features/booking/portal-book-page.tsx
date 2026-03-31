@@ -133,12 +133,12 @@ export function PortalBookPage() {
     <div className="mx-auto max-w-5xl pb-16">
 
       {/* Page header */}
-      <div className="mb-8 border-l-4 border-orange-600 pl-5">
+      <div className="mb-8 border-l-4 border-orange-600 pl-5 animate-slide-left">
         <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 uppercase">Book an Appointment</h1>
         <p className="mt-1 text-sm text-slate-500 font-medium">Fill out the form below and our staff will confirm your request within 24 hours.</p>
       </div>
 
-      <div className="grid gap-6 items-start lg:grid-cols-[1fr_300px]">
+      <div className="grid gap-6 items-start lg:grid-cols-[1fr_300px] animate-fade-up delay-100">
 
         {/* ── Main form ─────────────────────────────── */}
         <div className="border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -296,7 +296,7 @@ export function PortalBookPage() {
         </div>
 
         {/* ── Sidebar ───────────────────────────────── */}
-        <div className="lg:sticky lg:top-28 space-y-4">
+        <div className="lg:sticky lg:top-28 space-y-4 animate-slide-right delay-200">
 
           {/* Booking guide */}
           <div className="border border-slate-200 bg-white shadow-sm overflow-hidden">
