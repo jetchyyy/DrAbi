@@ -5,12 +5,20 @@ import { portalNavigation } from '../../config/navigation';
 import { defaultClinicSettings } from '../../config/clinic';
 import { useClinicSettingsData } from '../../hooks/use-clinic-data';
 import { Button } from '../ui/button';
+import { PortalChatbot } from '../ui/portal-chatbot';
 
 export function PublicLayout() {
   const { data: clinic = defaultClinicSettings } = useClinicSettingsData();
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div
+      className="min-h-screen flex flex-col font-sans"
+      style={{
+        backgroundColor: '#f9f7f4',
+        backgroundImage: 'radial-gradient(circle, #d4c9be 1.5px, transparent 1.5px)',
+        backgroundSize: '28px 28px',
+      }}
+    >
       <header className="sticky top-0 z-50 border-b-2 border-slate-200 bg-white shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-5 lg:px-8">
           <Link className="flex items-center gap-3 transition-opacity hover:opacity-90" to="/portal">
@@ -65,6 +73,8 @@ export function PublicLayout() {
           </p>
         </div>
       </footer>
+
+      <PortalChatbot />
     </div>
   );
 }

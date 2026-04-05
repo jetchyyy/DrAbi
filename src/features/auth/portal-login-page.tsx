@@ -1,32 +1,32 @@
-import { CalendarCheck2, ClipboardList, MoveLeft, ShieldCheck, UserPlus } from 'lucide-react';
+import { CalendarCheck2, ClipboardList, MoveLeft, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import { PatientRegisterForm } from './components/patient-register-form';
+import { PortalLoginForm } from './components/portal-login-form';
 
-const steps = [
-  {
-    icon: UserPlus,
-    title: 'Create Your Account',
-    desc: 'Fill in your personal and medical details once — we keep everything on file.',
-  },
+const benefits = [
   {
     icon: CalendarCheck2,
     title: 'Book Appointments',
-    desc: 'Choose a date, time, and service. In-person or teleconsultation.',
+    desc: 'Schedule in-person or teleconsultation visits at your convenience.',
   },
   {
     icon: ClipboardList,
-    title: 'Track Everything',
-    desc: 'View upcoming visits, past records, and referrals in one place.',
+    title: 'Track Your Bookings',
+    desc: 'View upcoming and past appointments — all in one place.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Secure & Private',
+    desc: 'Your medical and personal information is always protected.',
   },
 ];
 
-export function PatientRegisterPage() {
+export function PortalLoginPage() {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
 
       {/* ── Left branding panel ──────────────────────────────── */}
-      <div className="hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col relative overflow-hidden bg-[#08142c]">
+      <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] flex-col relative overflow-hidden bg-[#08142c]">
 
         {/* Animated aurora background */}
         <div
@@ -44,36 +44,36 @@ export function PatientRegisterPage() {
           style={{
             top: '-80px',
             right: '-60px',
-            width: '380px',
-            height: '380px',
+            width: '420px',
+            height: '420px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(96,165,250,0.22) 0%, rgba(59,130,246,0.07) 60%, transparent 80%)',
+            background: 'radial-gradient(circle, rgba(96,165,250,0.25) 0%, rgba(59,130,246,0.08) 60%, transparent 80%)',
           }}
         />
         <div
           className="pointer-events-none absolute animate-orb-2"
           style={{
             bottom: '-60px',
-            left: '5%',
-            width: '260px',
-            height: '260px',
+            left: '8%',
+            width: '300px',
+            height: '300px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(147,197,253,0.15) 0%, rgba(96,165,250,0.05) 65%, transparent 85%)',
+            background: 'radial-gradient(circle, rgba(147,197,253,0.18) 0%, rgba(96,165,250,0.06) 65%, transparent 85%)',
           }}
         />
         <div
           className="pointer-events-none absolute animate-orb-3"
           style={{
-            top: '38%',
-            left: '12%',
-            width: '160px',
-            height: '160px',
+            top: '40%',
+            left: '15%',
+            width: '180px',
+            height: '180px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(186,230,253,0.10) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(186,230,253,0.12) 0%, transparent 70%)',
           }}
         />
 
-        {/* Grid texture */}
+        {/* Subtle grid texture */}
         <div
           className="absolute inset-0 opacity-[0.03]"
           style={{
@@ -85,9 +85,9 @@ export function PatientRegisterPage() {
         {/* Top accent bar */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-[#3b82f6]" />
 
-        <div className="relative z-10 flex flex-col h-full px-12 py-12">
+        <div className="relative z-10 flex flex-col h-full px-14 py-12">
 
-          {/* Back link */}
+          {/* Back to portal link */}
           <Link
             to="/portal"
             className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors w-fit animate-fade-in"
@@ -96,7 +96,7 @@ export function PatientRegisterPage() {
             Back to Portal
           </Link>
 
-          {/* Logo */}
+          {/* Logo + name */}
           <div className="mt-8 animate-slide-left">
             <img src="/odc.jpg" alt="Odyssey Clinic Logo" className="h-16 w-16 object-contain" />
             <div className="mt-4">
@@ -109,28 +109,30 @@ export function PatientRegisterPage() {
             </div>
           </div>
 
-          {/* Hero */}
+          {/* Hero text */}
           <div className="mt-auto">
-            <div className="inline-flex items-center gap-2 border border-white/15 bg-white/10 px-4 py-2 text-sm text-white/80 animate-fade-in delay-100">
+            <div
+              className="mb-6 inline-flex items-center gap-2 border border-white/15 bg-white/10 px-4 py-2 text-sm text-white/80 animate-fade-in delay-100"
+            >
               <ShieldCheck className="size-4 text-[#93c5fd]" />
-              One account, all your records
+              Patient account required to book
             </div>
 
-            <p className="mt-5 text-2xl font-semibold text-white leading-snug max-w-xs animate-slide-left delay-200">
-              Get started in<br />
-              <span className="text-[#93c5fd]">under two minutes.</span>
+            <p className="text-2xl font-semibold text-white leading-snug max-w-md animate-slide-left delay-200">
+              Your health, your schedule —<br />
+              <span className="text-[#93c5fd]">always at your fingertips.</span>
             </p>
 
-            {/* Steps */}
+            {/* Benefit list */}
             <div className="mt-8 space-y-4 animate-fade-up delay-300">
-              {steps.map((s, i) => (
-                <div key={s.title} className="flex items-start gap-4">
-                  <div className="flex-shrink-0 flex items-center justify-center size-8 bg-white/10 text-[#93c5fd] text-xs font-extrabold">
-                    {i + 1}
+              {benefits.map((b) => (
+                <div key={b.title} className="flex items-start gap-4">
+                  <div className="p-2 bg-white/10 text-[#93c5fd] shrink-0 mt-0.5">
+                    <b.icon className="size-4" />
                   </div>
                   <div>
-                    <p className="text-sm font-extrabold text-white uppercase tracking-wide">{s.title}</p>
-                    <p className="text-xs text-white/50 mt-0.5 leading-relaxed">{s.desc}</p>
+                    <p className="text-sm font-extrabold text-white uppercase tracking-wide">{b.title}</p>
+                    <p className="text-xs text-white/50 mt-0.5 leading-relaxed">{b.desc}</p>
                   </div>
                 </div>
               ))}
@@ -152,7 +154,7 @@ export function PatientRegisterPage() {
         {/* Mobile top accent */}
         <div className="lg:hidden absolute top-0 left-0 right-0 h-1 bg-[#3b82f6]" />
 
-        {/* Mobile header */}
+        {/* Mobile logo */}
         <div className="lg:hidden absolute top-6 left-6 flex items-center gap-3">
           <img src="/odc.jpg" alt="ODC Logo" className="h-10 w-10 object-contain" />
           <p className="text-sm font-extrabold text-slate-950 uppercase tracking-widest">Odyssey Clinic</p>
@@ -169,14 +171,24 @@ export function PatientRegisterPage() {
           </Link>
         </div>
 
-        <div className="w-full max-w-2xl animate-fade-up pt-16 lg:pt-0">
-          <PatientRegisterForm />
+        <div className="w-full max-w-sm animate-fade-up">
 
-          <div className="mt-6 pt-6 border-t border-slate-100 space-y-3 text-center">
+          {/* Panel heading */}
+          <div className="mb-8">
+            <p className="text-xs font-extrabold uppercase tracking-widest text-[#2563eb]">Patient Portal</p>
+            <h2 className="mt-2 text-3xl font-extrabold text-slate-950 tracking-tight">Welcome back</h2>
+            <p className="mt-2 text-sm text-slate-500 leading-relaxed">
+              Sign in to manage your appointments and bookings.
+            </p>
+          </div>
+
+          <PortalLoginForm />
+
+          <div className="mt-8 pt-6 border-t border-slate-100 space-y-3 text-center">
             <p className="text-xs text-slate-400">
-              Already have an account?{' '}
-              <Link to="/portal/login" className="font-bold text-[#2563eb] hover:underline">
-                Sign in here
+              Don&apos;t have an account?{' '}
+              <Link to="/portal/register" className="font-bold text-[#2563eb] hover:underline">
+                Create one here
               </Link>
             </p>
             <p className="text-xs text-slate-300">
@@ -186,6 +198,7 @@ export function PatientRegisterPage() {
               </Link>
             </p>
           </div>
+
         </div>
       </div>
     </div>

@@ -12,7 +12,8 @@ export function ProtectedRoute({ allowedRoles }: { allowedRoles?: Role[] }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate replace state={{ from: location }} to="/login" />;
+    const loginPath = location.pathname.startsWith('/portal') ? '/portal/login' : '/login';
+    return <Navigate replace state={{ from: location }} to={loginPath} />;
   }
 
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {

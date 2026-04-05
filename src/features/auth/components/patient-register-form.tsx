@@ -53,7 +53,7 @@ export function PatientRegisterForm() {
       const result = await signUpPatient(values);
       if (result.requiresEmailConfirmation) {
         toast.success('Account created. Verify your email, then sign in before booking an appointment.');
-        navigate('/login', { replace: true });
+        navigate('/portal/login', { replace: true });
         return;
       }
 

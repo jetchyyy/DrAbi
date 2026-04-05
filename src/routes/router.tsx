@@ -7,6 +7,7 @@ import { AppointmentsPage } from '../features/appointments/appointments-page';
 import { ForgotPasswordPage } from '../features/auth/forgot-password-page';
 import { LoginPage } from '../features/auth/login-page';
 import { PatientRegisterPage } from '../features/auth/patient-register-page';
+import { PortalLoginPage } from '../features/auth/portal-login-page';
 import { ResetPasswordPage } from '../features/auth/reset-password-page';
 import { BillingPage } from '../features/billing/billing-page';
 import { MyBookingsPage } from '../features/booking/my-bookings-page';
@@ -47,6 +48,10 @@ export const router = createBrowserRouter([
       {
         path: '/portal/register',
         element: <PatientRegisterPage />,
+      },
+      {
+        path: '/portal/login',
+        element: <PortalLoginPage />,
       },
       {
         path: '/forgot-password',
