@@ -11,8 +11,12 @@ import type {
   InventoryItem,
   Invoice,
   InvoiceItem,
+  LabBookingRequest,
+  LabBookingStatus,
   LabOrder,
   LabResult,
+  LabService,
+  LabServiceCategory,
   Patient,
   Referral,
   Service,
@@ -45,6 +49,7 @@ export function getDatabase(): AppDatabase {
     ...createSeedDatabase(),
     ...parsed,
     referrals: parsed.referrals ?? [],
+    labBookingRequests: parsed.labBookingRequests ?? [],
   } as AppDatabase);
 
   if (
@@ -381,6 +386,78 @@ function createAuditLog(actorId: string, action: string, entityType: string): Au
     createdAt: timestamp,
     updatedAt: timestamp,
   };
+}
+
+export function updateLabService(id: string, input: Partial<Pick<LabService, 'name' | 'description' | 'price' | 'category'>>) {
+  return updateDatabase((draft) => {
+    const svc = draft.labServices.find((s) => s.id === id);
+    if (!svc) return;
+    Object.assign(svc, input, { updatedAt: new Date().toISOString() });
+  });
+}
+
+export function deleteLabService(id: string) {
+  return updateDatabase((draft) => {
+    draft.labServices = draft.labServices.filter((s) => s.id !== id);
+  });
+}
+
+export function createLabService(input: { name: string; description: string; price: number; category: LabServiceCategory }) {
+  const timestamp = new Date().toISOString();
+  return updateDatabase((draft) => {
+    draft.labServices.unshift({
+      ...input,
+      id: generateId('labsvc'),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }).labServices[0];
+}
+
+export function updateLabOrderSchedule(id: string, schedDate: string, schedTime: string) {
+  return updateDatabase((draft) => {
+    const order = draft.labOrders.find((o) => o.id === id);
+    if (!order) return;
+    order.schedDate = schedDate;
+    order.schedTime = schedTime;
+    order.updatedAt = new Date().toISOString();
+  }).labOrders.find((o) => o.id === id) ?? null;
+}
+
+export function listLabBookingRequests() {
+  return getDatabase().labBookingRequests;
+}
+
+export function createLabBookingRequest(input: Omit<LabBookingRequest, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'confirmedAt'>) {
+  const timestamp = new Date().toISOString();
+  return updateDatabase((draft) => {
+    draft.labBookingRequests.unshift({
+      ...input,
+      id: generateId('labreq'),
+      status: 'Pending',
+      confirmedAt: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }).labBookingRequests[0];
+}
+
+export function updateLabBookingRequestStatus(id: string, status: LabBookingStatus) {
+  return updateDatabase((draft) => {
+    const req = draft.labBookingRequests.find((r) => r.id === id);
+    if (!req) return;
+    req.status = status;
+    req.updatedAt = new Date().toISOString();
+    if (status === 'Confirmed') {
+      req.confirmedAt = new Date().toISOString();
+    }
+  }).labBookingRequests.find((r) => r.id === id) ?? null;
+}
+
+export function deleteLabBookingRequest(id: string) {
+  return updateDatabase((draft) => {
+    draft.labBookingRequests = draft.labBookingRequests.filter((r) => r.id !== id);
+  });
 }
 
 export function createPatientProfileAccount(

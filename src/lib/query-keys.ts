@@ -13,6 +13,8 @@ export const queryKeys = {
   invoices: ['invoices'] as const,
   inventory: ['inventory'] as const,
   laboratory: ['laboratory'] as const,
+  labServices: ['lab-services'] as const,
+  labBookingRequests: ['lab-booking-requests'] as const,
   dashboard: ['dashboard'] as const,
 };
 

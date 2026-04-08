@@ -1,6 +1,6 @@
 ﻿import { zodResolver } from '@hookform/resolvers/zod';
-import { FileText, Pill, TestTubeDiagonal } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { FileText, FlaskConical, Pill, TestTubeDiagonal } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -91,6 +91,18 @@ export function PatientDetailPage() {
   const consultations = patient ? database.consultations.filter((consultation) => consultation.patientId === patient.id) : [];
   const prescriptions = patient ? database.prescriptions.filter((prescription) => prescription.patientId === patient.id) : [];
   const labOrders = patient ? database.labOrders.filter((order) => order.patientId === patient.id) : [];
+  const [labSearch, setLabSearch] = useState('');
+  const [labStatusFilter, setLabStatusFilter] = useState('all');
+  const [labExpanded, setLabExpanded] = useState(false);
+
+  const filteredLabOrders = useMemo(() => {
+    return labOrders.filter((o) => {
+      const svc = database.labServices.find((s) => s.id === o.labServiceId);
+      const matchSearch = !labSearch || svc?.name?.toLowerCase().includes(labSearch.toLowerCase());
+      const matchStatus = labStatusFilter === 'all' || o.status === labStatusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [labOrders, labSearch, labStatusFilter, database]);
   const consultationAppointmentIds = new Set(consultations.map((consultation) => consultation.appointmentId));
   const pendingSoapVisits = visits.filter((visit) => !consultationAppointmentIds.has(visit.id));
   const selectedAppointmentId = soapForm.watch('appointmentId');
@@ -472,6 +484,97 @@ export function PatientDetailPage() {
           ) : null}
         </div>
       </div>
+
+      {/* ── Lab Test History ─────────────────────────────────────────── */}
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <FlaskConical className="size-5 text-violet-600" />
+            <CardTitle>Lab test history</CardTitle>
+          </div>
+          <Badge intent={labOrders.length > 0 ? 'info' : 'neutral'}>{labOrders.length} order{labOrders.length !== 1 ? 's' : ''}</Badge>
+        </div>
+
+        {labOrders.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-3">
+            <input
+              className="flex-1 min-w-40 border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              placeholder="Search test name…"
+              value={labSearch}
+              onChange={(e) => setLabSearch(e.target.value)}
+            />
+            <select
+              className="border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              value={labStatusFilter}
+              onChange={(e) => setLabStatusFilter(e.target.value)}
+            >
+              <option value="all">All statuses</option>
+              <option value="requested">Requested</option>
+              <option value="collected">Collected</option>
+              <option value="processing">Processing</option>
+              <option value="ready">Ready</option>
+              <option value="released">Released</option>
+            </select>
+          </div>
+        )}
+
+        <div className="mt-5 space-y-3">
+          {filteredLabOrders.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              {labOrders.length === 0
+                ? 'No lab orders have been placed for this patient yet.'
+                : 'No lab orders match the current filter.'}
+            </p>
+          ) : (
+            (labExpanded ? filteredLabOrders : filteredLabOrders.slice(0, 10)).map((order) => {
+              const svc = database.labServices.find((s) => s.id === order.labServiceId);
+              const doctor = database.users.find((u) => u.id === order.requestedBy);
+              return (
+                <div key={order.id} className="rounded-sm bg-slate-50 p-4 border border-slate-100">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-sm text-slate-950">{svc?.name ?? 'Unknown test'}</p>
+                        {order.urgentFlag && (
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 bg-rose-100 text-rose-600">Urgent</span>
+                        )}
+                      </div>
+                      {doctor && <p className="text-xs text-slate-500 mt-0.5">Requested by {doctor.fullName}</p>}
+                      {order.schedDate && (
+                        <p className="text-xs text-sky-600 mt-0.5 font-medium">
+                          Scheduled: {order.schedDate}{order.schedTime ? ` at ${order.schedTime}` : ''}
+                        </p>
+                      )}
+                      {order.notes && <p className="text-xs text-slate-400 mt-1 italic">{order.notes}</p>}
+                    </div>
+                    <span className={
+                      order.status === 'released'
+                        ? 'bg-emerald-100 text-emerald-700 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1'
+                        : order.status === 'ready'
+                        ? 'bg-sky-100 text-sky-700 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1'
+                        : order.status === 'processing'
+                        ? 'bg-violet-100 text-violet-700 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1'
+                        : 'bg-orange-100 text-orange-700 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1'
+                    }>
+                      {order.status}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {filteredLabOrders.length > 10 && (
+          <button
+            type="button"
+            className="mt-4 text-xs font-bold uppercase tracking-widest text-violet-600 hover:text-violet-800 transition-colors"
+            onClick={() => setLabExpanded((v) => !v)}
+          >
+            {labExpanded ? 'Show less' : `Show all ${filteredLabOrders.length} orders`}
+          </button>
+        )}
+      </Card>
     </div>
   );
 }

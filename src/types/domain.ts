@@ -230,10 +230,13 @@ export interface StockTransaction extends BaseRecord {
   remarks: string;
 }
 
+export type LabServiceCategory = 'laboratoryTests' | 'imagingTests';
+
 export interface LabService extends BaseRecord {
   name: string;
   description: string;
   price: number;
+  category: LabServiceCategory;
 }
 
 export interface LabOrder extends BaseRecord {
@@ -243,6 +246,20 @@ export interface LabOrder extends BaseRecord {
   requestedBy: string;
   status: LabOrderStatus;
   notes: string;
+  schedDate?: string | null;
+  schedTime?: string | null;
+  urgentFlag?: boolean;
+}
+
+export type LabBookingStatus = 'Pending' | 'Confirmed' | 'Completed' | 'Cancelled';
+
+export interface LabBookingRequest extends BaseRecord {
+  patientName: string;
+  email: string;
+  labTestName: string;
+  slotNumber?: string | null;
+  status: LabBookingStatus;
+  confirmedAt?: string | null;
 }
 
 export interface LabResult extends BaseRecord {
@@ -288,6 +305,7 @@ export interface AppDatabase {
   labServices: LabService[];
   labOrders: LabOrder[];
   labResults: LabResult[];
+  labBookingRequests: LabBookingRequest[];
   fileUploads: FileUpload[];
   auditLogs: AuditLog[];
 }
