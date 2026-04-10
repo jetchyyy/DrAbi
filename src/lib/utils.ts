@@ -30,6 +30,14 @@ export function generatePatientQrCode() {
   return `ODC-PAT-${crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()}`;
 }
 
+export function generateInventoryQrCode() {
+  return `ODC-INV-${crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()}`;
+}
+
+export function generateBookingReceiptCode() {
+  return `ODC-BKG-${crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()}`;
+}
+
 export function getInitials(name: string) {
   return name
     .split(' ')

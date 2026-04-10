@@ -98,7 +98,7 @@ export function SettingsClinicPage() {
               {mutation.isPending ? 'Saving…' : 'Save Clinic Settings'}
             </Button>
             <Button className="rounded-none font-bold uppercase tracking-wide text-sm" type="button" variant="secondary" onClick={() => resetDemoData()}>
-              Reset Demo Data
+              Clear Local Data
             </Button>
           </div>
         </form>

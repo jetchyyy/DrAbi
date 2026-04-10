@@ -1,19 +1,24 @@
-﻿import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { queryClient } from '../../app/query-client';
 import { FormField } from '../../components/forms/form-field';
 import { Button } from '../../components/ui/button';
 import { Card, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
-import { createService, createSpecialty, getDatabase, listServices, listSpecialties } from '../../lib/local-db';
+import { useServicesCatalog, useSpecialtiesCatalog } from '../../hooks/use-clinic-data';
+import { queryKeys } from '../../lib/query-keys';
+import { createServiceLiveOrDemo, createSpecialtyLiveOrDemo } from '../../lib/supabase-clinic';
 import { formatCurrency } from '../../lib/utils';
-import type { ServiceDeliveryMode } from '../../types/domain';
+import type { ServiceDeliveryMode, ServiceType } from '../../types/domain';
 
 const serviceSchema = z.object({
+  serviceType: z.enum(['medical_service', 'consultation', 'follow_up']),
   name: z.string().min(2),
   description: z.string().min(4),
   price: z.number().min(0),
@@ -35,13 +40,19 @@ function formatDeliveryMode(deliveryMode?: ServiceDeliveryMode | null) {
   return (deliveryMode ?? 'hybrid').replace('_', ' ');
 }
 
+function formatServiceType(serviceType: ServiceType) {
+  if (serviceType === 'consultation') return 'Consultation';
+  if (serviceType === 'follow_up') return 'Follow-up';
+  return 'Medical Service';
+}
+
 export function SettingsServicesPage() {
-  const database = getDatabase();
-  const { data: services = [] } = useQuery({ queryKey: ['settings-services'], queryFn: async () => listServices() });
-  const { data: specialties = [] } = useQuery({ queryKey: ['settings-specialties'], queryFn: async () => listSpecialties() });
+  const { data: services = [] } = useServicesCatalog();
+  const { data: specialties = [] } = useSpecialtiesCatalog();
   const createServiceMutation = useMutation({
     mutationFn: async (values: ServiceFormValues) =>
-      createService({
+      createServiceLiveOrDemo({
+        serviceType: values.serviceType,
         name: values.name,
         description: values.description,
         price: values.price,
@@ -50,23 +61,36 @@ export function SettingsServicesPage() {
         isBookable: values.isBookable === 'true',
         deliveryMode: values.deliveryMode,
       }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.services });
+    },
   });
   const createSpecialtyMutation = useMutation({
-    mutationFn: async (values: SpecialtyFormValues) => createSpecialty(values),
+    mutationFn: async (values: SpecialtyFormValues) => createSpecialtyLiveOrDemo(values),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.specialties });
+    },
   });
 
   const serviceForm = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceSchema),
     defaultValues: {
+      serviceType: 'medical_service',
       name: '',
       description: '',
       price: 800,
       durationMinutes: 30,
-      specialtyId: database.specialties[0]?.id ?? '',
+      specialtyId: '',
       isBookable: 'true',
       deliveryMode: 'hybrid',
     },
   });
+
+  useEffect(() => {
+    if (!serviceForm.getValues('specialtyId') && specialties[0]) {
+      serviceForm.setValue('specialtyId', specialties[0].id);
+    }
+  }, [serviceForm, specialties]);
 
   const specialtyForm = useForm<SpecialtyFormValues>({
     resolver: zodResolver(specialtySchema),
@@ -88,14 +112,21 @@ export function SettingsServicesPage() {
               serviceForm.reset({ ...values, name: '', description: '' });
             })}
           >
-            <FormField label="Service name">
+            <FormField label="Service Type">
+              <Select {...serviceForm.register('serviceType')}>
+                <option value="medical_service">Medical Service</option>
+                <option value="consultation">Consultation</option>
+                <option value="follow_up">Follow-up</option>
+              </Select>
+            </FormField>
+            <FormField label="Name">
               <Input {...serviceForm.register('name')} />
             </FormField>
             <FormField label="Description">
               <Textarea {...serviceForm.register('description')} />
             </FormField>
             <div className="grid gap-4 md:grid-cols-2">
-              <FormField label="Price">
+              <FormField label="Service Fee">
                 <Input type="number" {...serviceForm.register('price', { valueAsNumber: true })} />
               </FormField>
               <FormField label="Duration (minutes)">
@@ -143,6 +174,7 @@ export function SettingsServicesPage() {
                   <p className="text-sm font-semibold text-slate-950">{formatCurrency(service.price)}</p>
                 </div>
                 <p className="mt-2 text-sm text-slate-500">{service.description}</p>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-orange-600">{formatServiceType(service.serviceType)}</p>
                 <p className="mt-2 text-xs uppercase tracking-[0.12em] text-slate-400">
                   {formatDeliveryMode(service.deliveryMode)} - {service.durationMinutes ?? 30} mins - {(service.isBookable ?? true) ? 'Portal enabled' : 'Internal only'}
                 </p>

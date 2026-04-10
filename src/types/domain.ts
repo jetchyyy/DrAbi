@@ -35,12 +35,17 @@ export type AppointmentStatus =
   | 'no_show';
 
 export type BookingStatus = 'pending' | 'confirmed' | 'rescheduled' | 'cancelled';
+export type BookingFeeType = 'consultation' | 'follow_up' | 'service_fee';
+export type BookingPaymentStatus = 'pending_cashier' | 'paid';
+export type ServiceType = 'medical_service' | 'consultation' | 'follow_up';
 export type ReferralStatus = 'draft' | 'sent' | 'accepted' | 'completed' | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'partial' | 'paid' | 'void';
 export type LabOrderStatus = 'requested' | 'collected' | 'processing' | 'ready' | 'released';
 export type StockTransactionType = 'stock_in' | 'stock_out' | 'adjustment';
 export type VisitType = 'in_person' | 'teleconsultation';
 export type ServiceDeliveryMode = 'in_person' | 'teleconsultation' | 'hybrid';
+export type PatientIntakeSource = 'online_registration' | 'staff_walk_in';
+export type PatientVisitStatus = 'registered_no_visit' | 'visited_clinic';
 
 export interface BaseRecord {
   id: string;
@@ -81,6 +86,28 @@ export interface UserProfile extends BaseRecord {
   phone: string;
   specialtyId?: string | null;
   title?: string | null;
+  consultationFee?: number | null;
+  followUpFee?: number | null;
+}
+
+export interface AdminCreateUserInput {
+  firstName: string;
+  lastName: string;
+  contactNumber: string;
+  email: string;
+  password: string;
+  role: Exclude<Role, 'patient'>;
+  prcLicenseNumber?: string;
+  prcLicenseExpiry?: string;
+  birNumber?: string;
+  prcIdFile?: File | null;
+  consultationFee?: number;
+  followUpFee?: number;
+}
+
+export interface DoctorFeeSettings {
+  consultationFee: number;
+  followUpFee: number;
 }
 
 export interface Specialty extends BaseRecord {
@@ -89,6 +116,7 @@ export interface Specialty extends BaseRecord {
 }
 
 export interface Service extends BaseRecord {
+  serviceType: ServiceType;
   name: string;
   description: string;
   price: number;
@@ -101,6 +129,8 @@ export interface Service extends BaseRecord {
 export interface Patient extends BaseRecord {
   userId?: string | null;
   qrCode: string;
+  intakeSource: PatientIntakeSource;
+  visitStatus: PatientVisitStatus;
   firstName: string;
   lastName: string;
   sex: 'male' | 'female' | 'other';
@@ -131,10 +161,32 @@ export interface Appointment extends BaseRecord {
   teleconsultationAccessInstructions?: string | null;
 }
 
+export interface DoctorAvailability extends BaseRecord {
+  doctorId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  slotMinutes: number;
+}
+
 export interface Consultation extends BaseRecord {
   appointmentId: string;
   patientId: string;
   doctorId: string;
+  consultationType: string;
+  consultationDate: string;
+  consultationTime: string;
+  providerName: string;
+  clinicalSummary: string;
+  diagnosis: string;
+  presentIllnessHistory: string;
+  reviewOfSymptoms: string;
+  allergies: string;
+  vitals: string;
+  treatmentPlan: string;
+  medications: string;
+  labResults: string;
+  differentialDiagnosis: string;
   subjective: string;
   objective: string;
   assessment: string;
@@ -145,9 +197,9 @@ export interface Consultation extends BaseRecord {
 export interface Prescription extends BaseRecord {
   consultationId: string;
   patientId: string;
-  medication: string;
+  prescriptionName: string;
   dosage: string;
-  instructions: string;
+  instruction: string;
 }
 
 export interface Booking extends BaseRecord {
@@ -158,6 +210,10 @@ export interface Booking extends BaseRecord {
   preferredTime: string;
   status: BookingStatus;
   intakeNotes: string;
+  feeType: BookingFeeType;
+  feeAmount: number;
+  receiptCode: string;
+  paymentStatus: BookingPaymentStatus;
 }
 
 export interface Referral extends BaseRecord {
@@ -216,6 +272,7 @@ export interface InventoryCategory extends BaseRecord {
 export interface InventoryItem extends BaseRecord {
   categoryId: string;
   supplierId?: string | null;
+  qrCode: string;
   name: string;
   sku: string;
   unit: string;
@@ -228,6 +285,16 @@ export interface StockTransaction extends BaseRecord {
   type: StockTransactionType;
   quantity: number;
   remarks: string;
+}
+
+export interface InventoryUsageLog extends BaseRecord {
+  patientId: string;
+  itemId: string;
+  appointmentId?: string | null;
+  quantity: number;
+  notes: string;
+  scannedCode: string;
+  recordedBy: string;
 }
 
 export type LabServiceCategory = 'laboratoryTests' | 'imagingTests';
@@ -289,6 +356,7 @@ export interface AppDatabase {
   users: UserProfile[];
   specialties: Specialty[];
   services: Service[];
+  doctorAvailability: DoctorAvailability[];
   patients: Patient[];
   appointments: Appointment[];
   consultations: Consultation[];
@@ -302,6 +370,7 @@ export interface AppDatabase {
   inventoryCategories: InventoryCategory[];
   inventoryItems: InventoryItem[];
   stockTransactions: StockTransaction[];
+  inventoryUsageLogs: InventoryUsageLog[];
   labServices: LabService[];
   labOrders: LabOrder[];
   labResults: LabResult[];

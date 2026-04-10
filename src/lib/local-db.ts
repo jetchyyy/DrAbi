@@ -8,7 +8,10 @@ import type {
   Booking,
   ClinicSettings,
   Consultation,
+  DoctorFeeSettings,
+  DoctorAvailability,
   InventoryItem,
+  InventoryUsageLog,
   Invoice,
   InvoiceItem,
   LabBookingRequest,
@@ -18,15 +21,16 @@ import type {
   LabService,
   LabServiceCategory,
   Patient,
+  Prescription,
   Referral,
   Service,
   Specialty,
   Supplier,
   UserProfile,
 } from '../types/domain';
-import { generateId, generatePatientQrCode } from './utils';
+import { generateBookingReceiptCode, generateId, generateInventoryQrCode, generatePatientQrCode } from './utils';
 
-const STORAGE_KEY = 'odyssey-clinic-demo-db-v1';
+const STORAGE_KEY = 'odyssey-clinic-demo-db-v2';
 
 function canUseStorage() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -48,12 +52,15 @@ export function getDatabase(): AppDatabase {
   const merged = normalizeDatabase({
     ...createSeedDatabase(),
     ...parsed,
+    doctorAvailability: parsed.doctorAvailability ?? [],
     referrals: parsed.referrals ?? [],
     labBookingRequests: parsed.labBookingRequests ?? [],
   } as AppDatabase);
 
   if (
     (parsed.patients ?? []).some((patient) => !patient.qrCode) ||
+    (parsed.inventoryItems ?? []).some((item) => !item.qrCode) ||
+    parsed.inventoryUsageLogs == null ||
     (parsed.services ?? []).some(
       (service) => service.deliveryMode == null || service.isBookable == null || service.durationMinutes == null,
     )
@@ -136,11 +143,55 @@ export function listServices() {
   return getDatabase().services;
 }
 
+export function listDoctorAvailabilityByDoctor(doctorId: string) {
+  return getDatabase().doctorAvailability
+    .filter((slot) => slot.doctorId === doctorId)
+    .sort((left, right) => left.dayOfWeek - right.dayOfWeek || left.startTime.localeCompare(right.startTime));
+}
+
+export function updateDoctorFeeSettings(doctorId: string, input: DoctorFeeSettings) {
+  return updateDatabase((draft) => {
+    const doctorUser = draft.users.find((item) => item.id === doctorId);
+    if (!doctorUser) {
+      throw new Error('Doctor record not found.');
+    }
+
+    Object.assign(doctorUser, {
+      consultationFee: input.consultationFee,
+      followUpFee: input.followUpFee,
+      updatedAt: new Date().toISOString(),
+    });
+  }).users.find((item) => item.id === doctorId) ?? null;
+}
+
+export function replaceDoctorAvailability(
+  doctorId: string,
+  slots: Array<Omit<DoctorAvailability, 'id' | 'createdAt' | 'updatedAt'>>,
+) {
+  const timestamp = new Date().toISOString();
+
+  return updateDatabase((draft) => {
+    draft.doctorAvailability = draft.doctorAvailability.filter((item) => item.doctorId !== doctorId);
+    draft.doctorAvailability.unshift(
+      ...slots.map((slot) => ({
+        ...slot,
+        id: generateId('avail'),
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      })),
+    );
+    draft.auditLogs.unshift(createAuditLog(doctorId, 'update', 'doctor_availability'));
+  }).doctorAvailability
+    .filter((item) => item.doctorId === doctorId)
+    .sort((left, right) => left.dayOfWeek - right.dayOfWeek || left.startTime.localeCompare(right.startTime));
+}
+
 export function createService(input: Omit<Service, 'id' | 'createdAt' | 'updatedAt'>) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.services.unshift({
       ...input,
+      serviceType: input.serviceType || 'medical_service',
       id: generateId('svc'),
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -170,6 +221,8 @@ export function upsertPatient(input: Omit<Patient, 'id' | 'createdAt' | 'updated
     draft.patients.unshift({
       ...input,
       qrCode: input.qrCode || generatePatientQrCode(),
+      intakeSource: input.intakeSource ?? 'staff_walk_in',
+      visitStatus: input.visitStatus ?? 'visited_clinic',
       id: generateId('pat'),
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -218,6 +271,19 @@ export function createConsultation(input: Omit<Consultation, 'id' | 'createdAt' 
     });
     draft.auditLogs.unshift(createAuditLog(input.doctorId, 'create', 'consultation'));
   }).consultations[0];
+}
+
+export function createPrescription(input: Omit<Prescription, 'id' | 'createdAt' | 'updatedAt'>) {
+  const timestamp = new Date().toISOString();
+  return updateDatabase((draft) => {
+    draft.prescriptions.unshift({
+      ...input,
+      id: generateId('rx'),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    draft.auditLogs.unshift(createAuditLog(input.patientId, 'create', 'prescription'));
+  }).prescriptions[0];
 }
 
 export function listBookings() {
@@ -271,10 +337,60 @@ export function createBooking(input: Omit<Booking, 'id' | 'createdAt' | 'updated
       ...input,
       id: generateId('book'),
       status: 'pending',
+      receiptCode: input.receiptCode || generateBookingReceiptCode(),
+      paymentStatus: input.paymentStatus || 'pending_cashier',
       createdAt: timestamp,
       updatedAt: timestamp,
     });
   }).bookings[0];
+}
+
+export function getBookingByReceiptCode(receiptCode: string) {
+  return getDatabase().bookings.find((booking) => booking.receiptCode === receiptCode) ?? null;
+}
+
+export function markBookingPaidAndCreateInvoice(receiptCode: string) {
+  const database = getDatabase();
+  const booking = database.bookings.find((item) => item.receiptCode === receiptCode);
+  if (!booking) {
+    throw new Error('Booking receipt not found.');
+  }
+
+  if (booking.paymentStatus === 'paid') {
+    return { booking, invoice: database.invoices.find((invoice) => invoice.patientId === booking.patientId) ?? null };
+  }
+
+  const invoiceNumber = `INV-${Date.now()}`;
+  const description = booking.feeType === 'follow_up' ? 'Follow-up Fee' : booking.feeType === 'consultation' ? 'Consultation Fee' : 'Medical Service Fee';
+  const invoice = createInvoice(
+    {
+      patientId: booking.patientId,
+      appointmentId: null,
+      invoiceNumber,
+      paymentStatus: 'paid',
+      subtotal: booking.feeAmount,
+      total: booking.feeAmount,
+    },
+    [
+      {
+        description,
+        quantity: 1,
+        unitPrice: booking.feeAmount,
+        category: 'consultation',
+      },
+    ],
+  );
+
+  const updatedBooking = updateDatabase((draft) => {
+    const target = draft.bookings.find((item) => item.receiptCode === receiptCode);
+    if (!target) {
+      return;
+    }
+    target.paymentStatus = 'paid';
+    target.updatedAt = new Date().toISOString();
+  }).bookings.find((item) => item.receiptCode === receiptCode) ?? null;
+
+  return { booking: updatedBooking, invoice };
 }
 
 export function listInvoices() {
@@ -310,16 +426,72 @@ export function listInventoryItems() {
   return getDatabase().inventoryItems;
 }
 
-export function createInventoryItem(input: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>) {
+export function createInventoryItem(
+  input: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt' | 'qrCode'> & { qrCode?: string },
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.inventoryItems.unshift({
       ...input,
+      qrCode: input.qrCode || generateInventoryQrCode(),
       id: generateId('item'),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
   }).inventoryItems[0];
+}
+
+export function getInventoryItemByQrCode(qrCode: string) {
+  return getDatabase().inventoryItems.find((item) => item.qrCode === qrCode) ?? null;
+}
+
+export function listInventoryUsageLogsByPatient(patientId: string) {
+  return getDatabase().inventoryUsageLogs
+    .filter((log) => log.patientId === patientId)
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
+export function recordInventoryUsage(
+  input: Omit<InventoryUsageLog, 'id' | 'createdAt' | 'updatedAt'>,
+) {
+  const timestamp = new Date().toISOString();
+
+  return updateDatabase((draft) => {
+    const item = draft.inventoryItems.find((inventoryItem) => inventoryItem.id === input.itemId);
+    if (!item) {
+      throw new Error('Inventory item not found.');
+    }
+
+    if (input.quantity <= 0) {
+      throw new Error('Quantity used must be at least 1.');
+    }
+
+    if (item.stockOnHand < input.quantity) {
+      throw new Error(`Only ${item.stockOnHand} ${item.unit} remaining for ${item.name}.`);
+    }
+
+    item.stockOnHand -= input.quantity;
+    item.updatedAt = timestamp;
+
+    draft.stockTransactions.unshift({
+      id: generateId('stock'),
+      itemId: item.id,
+      type: 'stock_out',
+      quantity: input.quantity,
+      remarks: `Used for patient ${input.patientId}. ${input.notes}`.trim(),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    draft.inventoryUsageLogs.unshift({
+      ...input,
+      id: generateId('invuse'),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    draft.auditLogs.unshift(createAuditLog(input.recordedBy, 'create', 'inventory_usage'));
+  }).inventoryUsageLogs[0];
 }
 
 export function listLabOrders() {
@@ -476,6 +648,8 @@ export function createPatientProfileAccount(
     draft.patients.unshift({
       ...patient,
       qrCode: patient.qrCode || generatePatientQrCode(),
+      intakeSource: patient.intakeSource ?? 'online_registration',
+      visitStatus: patient.visitStatus ?? 'registered_no_visit',
       id: generateId('pat'),
       userId,
       createdAt: timestamp,
@@ -484,19 +658,69 @@ export function createPatientProfileAccount(
   });
 }
 
+export function updatePatientProfileAccount(
+  userId: string,
+  input: Pick<Patient, 'mobileNumber' | 'address' | 'allergies' | 'medicalHistory' | 'emergencyContactName' | 'emergencyContactPhone'>,
+) {
+  return updateDatabase((draft) => {
+    const user = draft.users.find((item) => item.id === userId || item.authUserId === userId);
+    if (user) {
+      user.phone = input.mobileNumber;
+      user.updatedAt = new Date().toISOString();
+    }
+
+    const patient = draft.patients.find((item) => item.userId === userId);
+    if (!patient) {
+      throw new Error('Patient profile not found.');
+    }
+
+    patient.mobileNumber = input.mobileNumber;
+    patient.address = input.address;
+    patient.allergies = input.allergies;
+    patient.medicalHistory = input.medicalHistory;
+    patient.emergencyContactName = input.emergencyContactName;
+    patient.emergencyContactPhone = input.emergencyContactPhone;
+    patient.updatedAt = new Date().toISOString();
+  }).patients.find((item) => item.userId === userId) ?? null;
+}
+
 function normalizeDatabase(database: AppDatabase) {
   return {
     ...database,
     services: database.services.map((service) => ({
       ...service,
+      serviceType: service.serviceType ?? 'medical_service',
       durationMinutes: service.durationMinutes ?? 30,
       isBookable: service.isBookable ?? true,
       deliveryMode: service.deliveryMode ?? 'hybrid',
     })),
+    users: database.users.map((user) => ({
+      ...user,
+      consultationFee: user.consultationFee ?? 0,
+      followUpFee: user.followUpFee ?? 0,
+    })),
+    doctorAvailability: (database.doctorAvailability ?? []).map((slot) => ({
+      ...slot,
+      slotMinutes: slot.slotMinutes ?? 30,
+    })),
+    bookings: database.bookings.map((booking) => ({
+      ...booking,
+      feeType: booking.feeType ?? 'consultation',
+      feeAmount: booking.feeAmount ?? 0,
+      receiptCode: booking.receiptCode ?? generateBookingReceiptCode(),
+      paymentStatus: booking.paymentStatus ?? 'pending_cashier',
+    })),
     patients: database.patients.map((patient) => ({
       ...patient,
       qrCode: patient.qrCode || generatePatientQrCode(),
+      intakeSource: patient.intakeSource ?? (patient.userId ? 'online_registration' : 'staff_walk_in'),
+      visitStatus: patient.visitStatus ?? (patient.userId ? 'registered_no_visit' : 'visited_clinic'),
     })),
+    inventoryItems: database.inventoryItems.map((item) => ({
+      ...item,
+      qrCode: item.qrCode || generateInventoryQrCode(),
+    })),
+    inventoryUsageLogs: database.inventoryUsageLogs ?? [],
   };
 }
 

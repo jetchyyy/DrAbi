@@ -8,9 +8,9 @@ A full TypeScript clinic management scaffold built with React, Vite, Tailwind CS
 - Patient-facing booking portal
 - Typed role-based access control and protected routing
 - White-label-ready clinic branding and settings model
-- Typed local demo datastore so the UI runs before Supabase keys are configured
+- Typed local datastore so the UI can run before Supabase keys are configured
 - Supabase SQL migration with normalized schema, timestamps, soft-delete fields, enums, and RLS policies
-- Seed data for catalog, inventory, and baseline clinic settings
+- Empty local/Supabase starting state for manual data entry during testing
 
 ## Stack
 
@@ -36,26 +36,16 @@ A full TypeScript clinic management scaffold built with React, Vite, Tailwind CS
    `npm run build`
    `npm run lint`
 
-## Demo mode
+## Local mode
 
-If `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are not configured, the app runs in local demo mode with seeded clinic data stored in browser localStorage. This keeps the UI functional while you wire Supabase tables, policies, storage buckets, and auth users.
-
-Demo sign-in examples:
-
-- `owner@odysseyclinic.test`
-- `doctor@odysseyclinic.test`
-- `frontdesk@odysseyclinic.test`
-- `lab@odysseyclinic.test`
-- `inventory@odysseyclinic.test`
-- `patient@odysseyclinic.test`
-
-Use any password with at least 6 characters in demo mode.
+If `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are not configured, the app runs in local mode with browser localStorage persistence. The local database now starts empty so records can be added manually during testing.
+Use any email and a password with at least 6 characters in local mode.
 
 ## Supabase setup
 
 1. Create a Supabase project.
 2. Run the SQL in `supabase/migrations/202603250001_initial_schema.sql`.
-3. Run `supabase/seed.sql` for development catalog data.
+3. Add your own test data manually. `supabase/seed.sql` is intentionally blank.
 4. Create storage buckets such as `patient-files` if you plan to use file uploads immediately.
 5. Create auth users for staff and patients, then populate `public.profiles` with matching `auth.users.id` values.
 
@@ -69,7 +59,7 @@ Use any password with at least 6 characters in demo mode.
 
 - `src/config/clinic.ts` centralizes clinic identity and white-label-friendly settings.
 - `src/config/permissions.ts` defines the frontend permission matrix.
-- `src/lib/local-db.ts` provides a typed demo persistence layer.
+- `src/lib/local-db.ts` provides a typed local persistence layer.
 - `src/lib/supabase.ts` is the integration point for live Supabase auth and table queries.
 - `docs/architecture.md` contains the folder structure, route map, RBAC summary, and schema strategy.
 

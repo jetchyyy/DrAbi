@@ -5,7 +5,7 @@ import { rolePermissions } from '../../config/permissions';
 import { getDatabase } from '../../lib/local-db';
 import { queryClient } from '../../app/query-client';
 import { queryKeys } from '../../lib/query-keys';
-import { ensurePatientForUser, ensureProfileForUser, getCurrentProfile } from '../../lib/supabase-clinic';
+import { ensureDoctorForUser, ensurePatientForUser, ensureProfileForUser, getCurrentProfile } from '../../lib/supabase-clinic';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import type { Permission, Role, UserProfile } from '../../types/domain';
 
@@ -79,6 +79,9 @@ async function resolveLiveProfile(user: User) {
   }
 
   const userRole = (user.user_metadata.role as string | undefined) ?? profile?.role ?? 'patient';
+  if (userRole === 'doctor') {
+    await ensureDoctorForUser(user);
+  }
   if (userRole === 'patient') {
     await ensurePatientForUser(user);
   }
@@ -217,6 +220,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
             {
               userId: null,
               qrCode: '',
+              intakeSource: 'online_registration',
+              visitStatus: 'registered_no_visit',
               firstName,
               lastName: rest.join(' ') || 'Patient',
               sex: input.sex,

@@ -11,11 +11,18 @@ import { Link } from 'react-router-dom';
 
 import { Badge } from '../../components/ui/badge';
 import { Card, CardTitle } from '../../components/ui/card';
-import { formatDateTimeLabel } from '../../lib/utils';
+import { formatCurrency, formatDateTimeLabel } from '../../lib/utils';
 import { useAuth } from '../auth/auth-context';
 import { useMyTeleconsultAppointments } from '../teleconsult/hooks/use-teleconsult';
 import { isTeleconsultJoinableStatus } from '../teleconsult/teleconsult-data';
+import { BookingReceiptCard } from './components/booking-receipt-card';
 import { useMyBookings } from './hooks/use-bookings';
+
+function formatFeeLabel(feeType: 'consultation' | 'follow_up' | 'service_fee') {
+  if (feeType === 'follow_up') return 'Follow-up Fee';
+  if (feeType === 'consultation') return 'Consultation Fee';
+  return 'Medical Service Fee';
+}
 
 export function MyBookingsPage() {
   const { profile, session } = useAuth();
@@ -35,11 +42,11 @@ export function MyBookingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl pb-16">
+    <div className="mx-auto max-w-5xl pb-16">
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4 animate-slide-left">
         <div className="border-l-4 border-orange-600 pl-4">
           <h1 className="text-3xl font-extrabold uppercase tracking-tight text-slate-950">My Bookings</h1>
-          <p className="mt-1 text-sm font-medium text-slate-500">Track your appointment requests and their current status.</p>
+          <p className="mt-1 text-sm font-medium text-slate-500">Track your appointment requests, receipt QR, and cashier payment status.</p>
         </div>
         <Link to="/portal/book">
           <button className="flex items-center gap-2 border border-orange-600 px-5 py-2.5 text-xs font-extrabold uppercase tracking-widest text-orange-600 transition-colors hover:bg-orange-50">
@@ -95,12 +102,12 @@ export function MyBookingsPage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-4">
-          {bookings.map((booking, i) => (
+        <div className="space-y-6">
+          {bookings.map((booking, index) => (
             <div
               key={booking.id}
               className={`animate-fade-up border border-slate-200 border-l-[5px] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${getStatusColor(booking.status)}`}
-              style={{ animationDelay: `${0.05 * i}s` }}
+              style={{ animationDelay: `${0.05 * index}s` }}
             >
               <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-5">
                 <div className="flex min-w-0 items-start gap-4">
@@ -111,7 +118,7 @@ export function MyBookingsPage() {
                     <h3 className="truncate text-lg font-extrabold uppercase leading-tight tracking-tight text-slate-950">{booking.serviceName}</h3>
                     <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-slate-500">
                       <Stethoscope className="size-3.5 shrink-0 text-orange-600" />
-                      {booking.doctorName ?? 'Any Available Specialist'}
+                      {booking.doctorName ?? 'Clinic medical service'}
                     </p>
                   </div>
                 </div>
@@ -131,6 +138,19 @@ export function MyBookingsPage() {
                     {booking.preferredDate} at {booking.preferredTime}
                   </p>
                 </div>
+                <div>
+                  <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Booking charge</p>
+                  <p className="text-sm font-bold text-slate-900">
+                    {formatFeeLabel(booking.feeType)} - {formatCurrency(booking.feeAmount)}
+                  </p>
+                </div>
+                <div>
+                  <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Receipt / Payment</p>
+                  <p className="text-sm font-bold text-slate-900">{booking.receiptCode}</p>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {booking.paymentStatus === 'paid' ? 'Paid at cashier' : 'Pending cashier payment'}
+                  </p>
+                </div>
                 {booking.intakeNotes ? (
                   <div>
                     <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Reason / Notes</p>
@@ -139,6 +159,10 @@ export function MyBookingsPage() {
                     </p>
                   </div>
                 ) : null}
+              </div>
+
+              <div className="mx-6 mb-6 border-t border-slate-100 pt-4">
+                <BookingReceiptCard booking={booking} />
               </div>
             </div>
           ))}

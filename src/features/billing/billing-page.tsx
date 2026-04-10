@@ -3,17 +3,19 @@ import { Coins, Receipt } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 
 import { FormField } from '../../components/forms/form-field';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
-import { createInvoice, getDatabase, listInvoices } from '../../lib/local-db';
+import { createInvoice, getDatabase, listBookings, listInvoices } from '../../lib/local-db';
 import { queryKeys } from '../../lib/query-keys';
 import { formatCurrency } from '../../lib/utils';
 
 const billingSchema = z.object({
   patientId: z.string().min(1),
+  bookingId: z.string().optional(),
   description: z.string().min(2),
   category: z.enum(['consultation', 'laboratory', 'medicine', 'other']),
   quantity: z.number().min(1),
@@ -30,6 +32,7 @@ function PaymentBadge({ status }: { status: string }) {
 
 export function BillingPage() {
   const database = getDatabase();
+  const bookings = listBookings();
   const { data: invoices = [] } = useQuery({
     queryKey: queryKeys.invoices,
     queryFn: async () => listInvoices(),
@@ -47,6 +50,7 @@ export function BillingPage() {
     resolver: zodResolver(billingSchema),
     defaultValues: {
       patientId: database.patients[0]?.id ?? '',
+      bookingId: '',
       description: 'General Consultation',
       category: 'consultation',
       quantity: 1,
@@ -54,9 +58,12 @@ export function BillingPage() {
     },
   });
 
+  const selectedBookingId = form.watch('bookingId');
+  const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId) ?? null;
+
   const onSubmit = form.handleSubmit(async (values) => {
     await mutation.mutateAsync(values);
-    form.reset({ ...values, description: '' });
+    form.reset({ ...values, bookingId: '', description: '' });
   });
 
   return (
@@ -105,6 +112,9 @@ export function BillingPage() {
         <div className="bg-emerald-600 px-6 py-4">
           <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-100">New Invoice</p>
           <p className="text-sm font-bold text-white mt-0.5">Create Invoice</p>
+          <Link className="mt-3 inline-flex text-xs font-semibold uppercase tracking-widest text-emerald-100 underline" to="/app/bookings/scan">
+            Scan booking receipt
+          </Link>
         </div>
         <form className="divide-y divide-slate-100" onSubmit={onSubmit}>
           <div className="px-6 py-5 space-y-4">
@@ -116,6 +126,39 @@ export function BillingPage() {
                 ))}
               </Select>
             </FormField>
+            <FormField label="Tag from booking">
+              <Select
+                {...form.register('bookingId')}
+                onChange={(event) => {
+                  const booking = bookings.find((item) => item.id === event.target.value) ?? null;
+                  form.setValue('bookingId', event.target.value);
+                  if (!booking) {
+                    return;
+                  }
+
+                  form.setValue('patientId', booking.patientId);
+                  form.setValue('description', booking.feeType === 'follow_up' ? 'Follow-up Consultation' : 'Consultation Fee');
+                  form.setValue('category', 'consultation');
+                  form.setValue('quantity', 1);
+                  form.setValue('unitPrice', booking.feeAmount);
+                }}
+              >
+                <option value="">Manual entry</option>
+                {bookings.map((booking) => {
+                  const patient = database.patients.find((item) => item.id === booking.patientId);
+                  return (
+                    <option key={booking.id} value={booking.id}>
+                      {patient?.firstName} {patient?.lastName} - {booking.feeType === 'follow_up' ? 'Follow-up' : 'Consultation'}
+                    </option>
+                  );
+                })}
+              </Select>
+            </FormField>
+            {selectedBooking ? (
+              <p className="text-xs text-slate-500">
+                Tagged booking amount: {formatCurrency(selectedBooking.feeAmount)}
+              </p>
+            ) : null}
           </div>
           <div className="px-6 py-5 space-y-4">
             <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Line Item</p>

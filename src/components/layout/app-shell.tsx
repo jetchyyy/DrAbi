@@ -35,7 +35,7 @@ export function AppShell() {
         <nav className="flex-1 px-3 pt-4 pb-2 space-y-0.5 overflow-y-auto">
           <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 px-3 pb-2">Main Menu</p>
           {appNavigation
-            .filter((item) => can(item.permission))
+            .filter((item) => can(item.permission) && (!item.roles || (profile ? item.roles.includes(profile.role) : false)))
             .map((item) => (
               <NavLink
                 key={item.to}

@@ -10,10 +10,13 @@ import { PatientRegisterPage } from '../features/auth/patient-register-page';
 import { PortalLoginPage } from '../features/auth/portal-login-page';
 import { ResetPasswordPage } from '../features/auth/reset-password-page';
 import { BillingPage } from '../features/billing/billing-page';
+import { BookingReceiptScanPage } from '../features/booking/booking-receipt-scan-page';
 import { MyBookingsPage } from '../features/booking/my-bookings-page';
+import { PatientProfilePage } from '../features/booking/patient-profile-page';
 import { PortalBookPage } from '../features/booking/portal-book-page';
 import { PortalHomePage } from '../features/booking/portal-home-page';
 import { DashboardPage } from '../features/dashboard/dashboard-page';
+import { DoctorAvailabilityPage } from '../features/doctor/doctor-availability-page';
 import { InventoryPage } from '../features/inventory/inventory-page';
 import { LaboratoryPage } from '../features/laboratory/laboratory-page';
 import { PatientDetailPage } from '../features/patients/patient-detail-page';
@@ -71,6 +74,7 @@ export const router = createBrowserRouter([
             children: [
               { path: 'book', element: <PortalBookPage /> },
               { path: 'my-bookings', element: <MyBookingsPage /> },
+              { path: 'profile', element: <PatientProfilePage /> },
               { path: 'teleconsult/:appointmentId', element: <TeleconsultRoomPage /> },
             ],
           },
@@ -100,6 +104,14 @@ export const router = createBrowserRouter([
                   { path: 'consultations', element: <AppointmentsPage /> },
                   { path: 'teleconsult/:appointmentId', element: <TeleconsultRoomPage /> },
                 ],
+              },
+              {
+                element: <ProtectedRoute allowedRoles={['doctor']} />,
+                children: [{ path: 'doctor-availability', element: <DoctorAvailabilityPage /> }],
+              },
+              {
+                element: <ProtectedRoute allowedRoles={['owner_admin', 'front_desk_cashier', 'lab_staff', 'nurse_staff']} />,
+                children: [{ path: 'bookings/scan', element: <BookingReceiptScanPage /> }],
               },
               {
                 element: <PermissionGate permission="billing.view" />,

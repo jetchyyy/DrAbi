@@ -1,14 +1,32 @@
-import { ArrowRight, Stethoscope } from 'lucide-react';
+import { ArrowRight, ChevronDown, LogOut, Stethoscope, UserRound } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 
 import { portalNavigation } from '../../config/navigation';
 import { defaultClinicSettings } from '../../config/clinic';
 import { useClinicSettingsData } from '../../hooks/use-clinic-data';
-import { Button } from '../ui/button';
+import { useAuth } from '../../features/auth/auth-context';
 import { PortalChatbot } from '../ui/portal-chatbot';
 
 export function PublicLayout() {
   const { data: clinic = defaultClinicSettings } = useClinicSettingsData();
+  const { profile, isAuthenticated, signOut } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    if (menuOpen) {
+      window.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => window.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
 
   return (
     <div
@@ -49,10 +67,68 @@ export function PublicLayout() {
             ))}
           </nav>
 
-          <Button className="gap-2 rounded-none font-semibold uppercase tracking-wide" type="button" variant="secondary">
-            Need help?
-            <ArrowRight className="size-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {isAuthenticated ? (
+              <div className="relative" ref={menuRef}>
+                <button
+                  className="inline-flex items-center gap-2 rounded-none border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+                  onClick={() => setMenuOpen((value) => !value)}
+                  type="button"
+                >
+                  <UserRound className="size-4 text-orange-600" />
+                  <span className="hidden md:inline">{profile?.fullName ?? profile?.email ?? 'Patient'}</span>
+                  <ChevronDown className="size-4 text-slate-500" />
+                </button>
+
+                {menuOpen ? (
+                  <div className="absolute right-0 top-full z-50 mt-2 w-56 border border-slate-200 bg-white shadow-lg">
+                    <div className="border-b border-slate-100 px-4 py-3">
+                      <p className="text-xs font-extrabold uppercase tracking-widest text-slate-400">Patient account</p>
+                      <p className="mt-1 text-sm font-bold text-slate-950">{profile?.fullName ?? 'Patient'}</p>
+                      <p className="text-xs text-slate-500">{profile?.email}</p>
+                    </div>
+                    <div className="p-2">
+                      <Link
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950"
+                        onClick={() => setMenuOpen(false)}
+                        to="/portal/profile"
+                      >
+                        <UserRound className="size-4 text-orange-600" />
+                        User profile
+                      </Link>
+                      <button
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          void signOut();
+                        }}
+                        type="button"
+                      >
+                        <LogOut className="size-4 text-orange-600" />
+                        Log out
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <>
+                <Link
+                  className="inline-flex items-center justify-center rounded-none bg-white px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-slate-900 ring-1 ring-slate-200 shadow-sm transition hover:bg-slate-50"
+                  to="/portal/login"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  className="inline-flex items-center justify-center gap-2 rounded-none bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-white shadow-sm shadow-orange-200/50 transition hover:opacity-95"
+                  to="/portal/register"
+                >
+                  Register
+                  <ArrowRight className="size-4" />
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </header>
 

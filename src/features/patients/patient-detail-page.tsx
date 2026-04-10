@@ -1,9 +1,10 @@
 ﻿import { zodResolver } from '@hookform/resolvers/zod';
-import { FileText, FlaskConical, Pill, TestTubeDiagonal } from 'lucide-react';
+import { FileText, FlaskConical, Pill, QrCode, ScanLine, TestTubeDiagonal } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
+import { toast } from 'sonner';
 
 import { FormField } from '../../components/forms/form-field';
 import { Badge } from '../../components/ui/badge';
@@ -13,11 +14,20 @@ import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
 import { useDoctorDirectory } from '../../hooks/use-clinic-data';
-import { getDatabase, getPatientById } from '../../lib/local-db';
+import { getDatabase } from '../../lib/local-db';
 import { formatDateLabel, formatDateTimeLabel } from '../../lib/utils';
 import { useAuth } from '../auth/auth-context';
+import { extractInventoryItemQrCode } from '../inventory/inventory-qr';
 import { PatientQrCard } from './components/patient-qr-card';
-import { useCreateConsultation } from './hooks/use-patients';
+import {
+  useCreateConsultation,
+  useCreatePrescription,
+  usePatientAppointments,
+  usePatientConsultations,
+  usePatientDetail,
+  usePatientPrescriptions,
+  useRecordInventoryUsage,
+} from './hooks/use-patients';
 import { useCreateReferral, useReferrals, useUpdateReferralOutcome } from '../referrals/hooks/use-referrals';
 
 const referralSchema = z.object({
@@ -36,11 +46,39 @@ const specialistUpdateSchema = z.object({
 
 const soapSchema = z.object({
   appointmentId: z.string().min(1),
+  consultationType: z.string().min(2),
+  consultationDate: z.string().min(1),
+  consultationTime: z.string().min(1),
+  providerName: z.string().min(2),
+  clinicalSummary: z.string().min(4),
+  diagnosis: z.string().min(4),
+  presentIllnessHistory: z.string().min(4),
+  reviewOfSymptoms: z.string().min(4),
+  allergies: z.string().min(2),
+  vitals: z.string().min(2),
+  treatmentPlan: z.string().min(4),
+  medications: z.string().min(2),
+  labResults: z.string().min(2),
+  differentialDiagnosis: z.string().min(2),
   subjective: z.string().min(4),
   objective: z.string().min(4),
   assessment: z.string().min(4),
   plan: z.string().min(4),
   outcome: z.string().min(4),
+});
+
+const prescriptionSchema = z.object({
+  consultationId: z.string().min(1, 'Save a consultation first or choose an existing one.'),
+  prescriptionName: z.string().min(2, 'Prescription name is required.'),
+  dosage: z.string().min(2, 'Dosage is required.'),
+  instruction: z.string().min(2, 'Instruction is required.'),
+});
+
+const inventoryUsageSchema = z.object({
+  scannedCode: z.string().min(1, 'Scan or paste the inventory QR code.'),
+  appointmentId: z.string().optional(),
+  quantity: z.number().min(1, 'Quantity must be at least 1.'),
+  notes: z.string().min(4, 'Add a short note about how the item was used.'),
 });
 
 export function PatientDetailPage() {
@@ -52,7 +90,13 @@ export function PatientDetailPage() {
   const createReferral = useCreateReferral(patientId || null);
   const updateReferralOutcome = useUpdateReferralOutcome(patientId || null);
   const createConsultation = useCreateConsultation();
-  const patient = getPatientById(patientId);
+  const createPrescription = useCreatePrescription();
+  const recordInventoryUsage = useRecordInventoryUsage();
+  const patientQuery = usePatientDetail(patientId || null);
+  const { data: patient } = patientQuery;
+  const { data: visits = [] } = usePatientAppointments(patientId || null);
+  const { data: consultations = [] } = usePatientConsultations(patientId || null);
+  const { data: prescriptions = [] } = usePatientPrescriptions(patientId || null);
   const database = getDatabase();
 
   const currentDoctor = doctors.find((doctor) => doctor.profileId === profile?.id);
@@ -79,6 +123,20 @@ export function PatientDetailPage() {
     resolver: zodResolver(soapSchema),
     defaultValues: {
       appointmentId: '',
+      consultationType: 'Initial Consultation',
+      consultationDate: new Date().toISOString().slice(0, 10),
+      consultationTime: new Date().toISOString().slice(11, 16),
+      providerName: profile?.fullName ?? '',
+      clinicalSummary: '',
+      diagnosis: '',
+      presentIllnessHistory: '',
+      reviewOfSymptoms: '',
+      allergies: patient?.allergies ?? '',
+      vitals: '',
+      treatmentPlan: '',
+      medications: '',
+      labResults: '',
+      differentialDiagnosis: '',
       subjective: '',
       objective: '',
       assessment: '',
@@ -86,11 +144,31 @@ export function PatientDetailPage() {
       outcome: 'For follow-up monitoring.',
     },
   });
+  const prescriptionForm = useForm<z.infer<typeof prescriptionSchema>>({
+    resolver: zodResolver(prescriptionSchema),
+    defaultValues: {
+      consultationId: '',
+      prescriptionName: '',
+      dosage: '',
+      instruction: '',
+    },
+  });
+  const inventoryUsageForm = useForm<z.infer<typeof inventoryUsageSchema>>({
+    resolver: zodResolver(inventoryUsageSchema),
+    defaultValues: {
+      scannedCode: '',
+      appointmentId: '',
+      quantity: 1,
+      notes: '',
+    },
+  });
 
-  const visits = patient ? database.appointments.filter((appointment) => appointment.patientId === patient.id) : [];
-  const consultations = patient ? database.consultations.filter((consultation) => consultation.patientId === patient.id) : [];
-  const prescriptions = patient ? database.prescriptions.filter((prescription) => prescription.patientId === patient.id) : [];
   const labOrders = patient ? database.labOrders.filter((order) => order.patientId === patient.id) : [];
+  const inventoryUsageLogs = patient
+    ? database.inventoryUsageLogs
+      .filter((log) => log.patientId === patient.id)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    : [];
   const [labSearch, setLabSearch] = useState('');
   const [labStatusFilter, setLabStatusFilter] = useState('all');
   const [labExpanded, setLabExpanded] = useState(false);
@@ -109,6 +187,8 @@ export function PatientDetailPage() {
   const selectedAppointment = visits.find((visit) => visit.id === selectedAppointmentId) ?? pendingSoapVisits[0] ?? null;
   const soapDoctorId = currentDoctor?.id ?? selectedAppointment?.doctorId ?? visits[0]?.doctorId ?? profile?.id ?? 'user_owner';
   const openedFromQr = searchParams.get('source') === 'qr';
+  const scannedInventoryCode = extractInventoryItemQrCode(inventoryUsageForm.watch('scannedCode'));
+  const scannedInventoryItem = database.inventoryItems.find((item) => item.qrCode === scannedInventoryCode) ?? null;
 
   const pendingSpecialistReferral =
     currentDoctor
@@ -138,6 +218,14 @@ export function PatientDetailPage() {
       })),
     [consultations, visits],
   );
+
+  if (patientQuery.isLoading) {
+    return (
+      <Card>
+        <CardTitle>Loading patient record...</CardTitle>
+      </Card>
+    );
+  }
 
   if (!patient) {
     return (
@@ -190,10 +278,24 @@ export function PatientDetailPage() {
   });
 
   const handleCreateSoap = soapForm.handleSubmit(async (values) => {
-    await createConsultation.mutateAsync({
+    const createdConsultation = await createConsultation.mutateAsync({
       appointmentId: values.appointmentId,
       patientId: patient.id,
       doctorId: soapDoctorId,
+      consultationType: values.consultationType,
+      consultationDate: values.consultationDate,
+      consultationTime: values.consultationTime,
+      providerName: values.providerName,
+      clinicalSummary: values.clinicalSummary,
+      diagnosis: values.diagnosis,
+      presentIllnessHistory: values.presentIllnessHistory,
+      reviewOfSymptoms: values.reviewOfSymptoms,
+      allergies: values.allergies,
+      vitals: values.vitals,
+      treatmentPlan: values.treatmentPlan,
+      medications: values.medications,
+      labResults: values.labResults,
+      differentialDiagnosis: values.differentialDiagnosis,
       subjective: values.subjective,
       objective: values.objective,
       assessment: values.assessment,
@@ -201,15 +303,80 @@ export function PatientDetailPage() {
       outcome: values.outcome,
     });
 
+    prescriptionForm.setValue('consultationId', createdConsultation.id, { shouldValidate: true });
+
     const nextAppointmentId = pendingSoapVisits.find((visit) => visit.id !== values.appointmentId)?.id ?? '';
     soapForm.reset({
       appointmentId: nextAppointmentId,
+      consultationType: values.consultationType,
+      consultationDate: new Date().toISOString().slice(0, 10),
+      consultationTime: new Date().toISOString().slice(11, 16),
+      providerName: profile?.fullName ?? '',
+      clinicalSummary: '',
+      diagnosis: '',
+      presentIllnessHistory: '',
+      reviewOfSymptoms: '',
+      allergies: patient.allergies,
+      vitals: '',
+      treatmentPlan: '',
+      medications: '',
+      labResults: '',
+      differentialDiagnosis: '',
       subjective: '',
       objective: '',
       assessment: '',
       plan: '',
       outcome: 'For follow-up monitoring.',
     });
+  });
+
+  const handleCreatePrescription = prescriptionForm.handleSubmit(async (values) => {
+    await createPrescription.mutateAsync({
+      consultationId: values.consultationId,
+      patientId: patient.id,
+      prescriptionName: values.prescriptionName,
+      dosage: values.dosage,
+      instruction: values.instruction,
+    });
+
+    prescriptionForm.reset({
+      consultationId: values.consultationId,
+      prescriptionName: '',
+      dosage: '',
+      instruction: '',
+    });
+  });
+
+  const handleRecordInventoryUsage = inventoryUsageForm.handleSubmit(async (values) => {
+    const normalizedCode = extractInventoryItemQrCode(values.scannedCode);
+    const item = database.inventoryItems.find((inventoryItem) => inventoryItem.qrCode === normalizedCode);
+
+    if (!item) {
+      toast.error('That QR code is not linked to an inventory item yet.');
+      return;
+    }
+
+    try {
+      await recordInventoryUsage.mutateAsync({
+        patientId: patient.id,
+        itemId: item.id,
+        appointmentId: values.appointmentId || null,
+        quantity: values.quantity,
+        notes: values.notes,
+        scannedCode: normalizedCode,
+        recordedBy: profile?.id ?? 'user_owner',
+      });
+
+      toast.success(`${item.name} recorded for ${patient.firstName}.`);
+      inventoryUsageForm.reset({
+        scannedCode: '',
+        appointmentId: values.appointmentId ?? '',
+        quantity: 1,
+        notes: '',
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to record inventory usage.');
+    }
   });
 
   return (
@@ -285,7 +452,7 @@ export function PatientDetailPage() {
             </div>
           </Card>
 
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             <Card>
               <div className="flex items-center gap-3">
                 <FileText className="size-5 text-[var(--color-primary)]" />
@@ -299,6 +466,13 @@ export function PatientDetailPage() {
                 <CardTitle className="text-base">Prescriptions</CardTitle>
               </div>
               <p className="mt-4 text-3xl font-semibold text-slate-950">{prescriptions.length}</p>
+            </Card>
+            <Card>
+              <div className="flex items-center gap-3">
+                <QrCode className="size-5 text-[var(--color-primary)]" />
+                <CardTitle className="text-base">Items used</CardTitle>
+              </div>
+              <p className="mt-4 text-3xl font-semibold text-slate-950">{inventoryUsageLogs.length}</p>
             </Card>
             <Card>
               <div className="flex items-center gap-3">
@@ -327,6 +501,20 @@ export function PatientDetailPage() {
                     <Badge intent="info">SOAP completed</Badge>
                   </div>
                   <div className="mt-4 space-y-3 text-sm text-slate-700">
+                    <p><span className="font-semibold text-slate-950">Consultation Type:</span> {consultation.consultationType}</p>
+                    <p><span className="font-semibold text-slate-950">Consultation Date:</span> {consultation.consultationDate}</p>
+                    <p><span className="font-semibold text-slate-950">Consultation Time:</span> {consultation.consultationTime}</p>
+                    <p><span className="font-semibold text-slate-950">Provider / Doctor Name:</span> {consultation.providerName}</p>
+                    <p><span className="font-semibold text-slate-950">Clinical Summary:</span> {consultation.clinicalSummary}</p>
+                    <p><span className="font-semibold text-slate-950">Diagnosis:</span> {consultation.diagnosis}</p>
+                    <p><span className="font-semibold text-slate-950">Present Illness History:</span> {consultation.presentIllnessHistory}</p>
+                    <p><span className="font-semibold text-slate-950">Review of Symptoms:</span> {consultation.reviewOfSymptoms}</p>
+                    <p><span className="font-semibold text-slate-950">Allergies:</span> {consultation.allergies}</p>
+                    <p><span className="font-semibold text-slate-950">Vitals:</span> {consultation.vitals}</p>
+                    <p><span className="font-semibold text-slate-950">Treatment Plan:</span> {consultation.treatmentPlan}</p>
+                    <p><span className="font-semibold text-slate-950">Medications:</span> {consultation.medications}</p>
+                    <p><span className="font-semibold text-slate-950">Lab Results:</span> {consultation.labResults}</p>
+                    <p><span className="font-semibold text-slate-950">Differential Diagnosis:</span> {consultation.differentialDiagnosis}</p>
                     <p><span className="font-semibold text-slate-950">Subjective:</span> {consultation.subjective}</p>
                     <p><span className="font-semibold text-slate-950">Objective:</span> {consultation.objective}</p>
                     <p><span className="font-semibold text-slate-950">Assessment:</span> {consultation.assessment}</p>
@@ -361,6 +549,54 @@ export function PatientDetailPage() {
                     ))}
                   </Select>
                 </FormField>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField error={soapForm.formState.errors.consultationType?.message} label="Consultation Type">
+                    <Input {...soapForm.register('consultationType')} />
+                  </FormField>
+                  <FormField error={soapForm.formState.errors.providerName?.message} label="Provider / Doctor Name">
+                    <Input {...soapForm.register('providerName')} />
+                  </FormField>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField error={soapForm.formState.errors.consultationDate?.message} label="Consultation Date">
+                    <Input type="date" {...soapForm.register('consultationDate')} />
+                  </FormField>
+                  <FormField error={soapForm.formState.errors.consultationTime?.message} label="Consultation Time">
+                    <Input type="time" {...soapForm.register('consultationTime')} />
+                  </FormField>
+                </div>
+                <FormField error={soapForm.formState.errors.clinicalSummary?.message} label="Clinical Summary">
+                  <Textarea rows={3} {...soapForm.register('clinicalSummary')} />
+                </FormField>
+                <FormField error={soapForm.formState.errors.diagnosis?.message} label="Diagnosis">
+                  <Textarea rows={2} {...soapForm.register('diagnosis')} />
+                </FormField>
+                <FormField error={soapForm.formState.errors.presentIllnessHistory?.message} label="Present Illness History">
+                  <Textarea rows={3} {...soapForm.register('presentIllnessHistory')} />
+                </FormField>
+                <FormField error={soapForm.formState.errors.reviewOfSymptoms?.message} label="Review of Symptoms">
+                  <Textarea rows={3} {...soapForm.register('reviewOfSymptoms')} />
+                </FormField>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField error={soapForm.formState.errors.allergies?.message} label="Allergies">
+                    <Textarea rows={2} {...soapForm.register('allergies')} />
+                  </FormField>
+                  <FormField error={soapForm.formState.errors.vitals?.message} label="Vitals">
+                    <Textarea rows={2} {...soapForm.register('vitals')} />
+                  </FormField>
+                </div>
+                <FormField error={soapForm.formState.errors.treatmentPlan?.message} label="Treatment Plan">
+                  <Textarea rows={3} {...soapForm.register('treatmentPlan')} />
+                </FormField>
+                <FormField error={soapForm.formState.errors.medications?.message} label="Medications">
+                  <Textarea rows={2} {...soapForm.register('medications')} />
+                </FormField>
+                <FormField error={soapForm.formState.errors.labResults?.message} label="Lab Results">
+                  <Textarea rows={2} {...soapForm.register('labResults')} />
+                </FormField>
+                <FormField error={soapForm.formState.errors.differentialDiagnosis?.message} label="Differential Diagnosis">
+                  <Textarea rows={2} {...soapForm.register('differentialDiagnosis')} />
+                </FormField>
                 <FormField error={soapForm.formState.errors.subjective?.message} label="Subjective">
                   <Textarea rows={3} {...soapForm.register('subjective')} />
                 </FormField>
@@ -381,6 +617,85 @@ export function PatientDetailPage() {
                 </Button>
               </form>
             )}
+          </Card>
+
+          <Card>
+            <CardTitle>Prescription details</CardTitle>
+            <p className="mt-2 text-sm text-slate-500">
+              Add the patient prescription after saving the consultation, or attach it to an existing consultation entry.
+            </p>
+            <form className="mt-5 space-y-4" onSubmit={handleCreatePrescription}>
+              <FormField error={prescriptionForm.formState.errors.consultationId?.message} label="Consultation record">
+                <Select {...prescriptionForm.register('consultationId')}>
+                  <option value="">Select consultation</option>
+                  {consultations.map((consultation) => (
+                    <option key={consultation.id} value={consultation.id}>
+                      {consultation.consultationDate} {consultation.consultationTime} - {consultation.diagnosis}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+              <FormField error={prescriptionForm.formState.errors.prescriptionName?.message} label="Prescription Name">
+                <Input {...prescriptionForm.register('prescriptionName')} />
+              </FormField>
+              <FormField error={prescriptionForm.formState.errors.dosage?.message} label="Dosage">
+                <Input {...prescriptionForm.register('dosage')} />
+              </FormField>
+              <FormField error={prescriptionForm.formState.errors.instruction?.message} label="Instruction">
+                <Textarea rows={3} {...prescriptionForm.register('instruction')} />
+              </FormField>
+              <Button className="w-full" disabled={createPrescription.isPending} type="submit">
+                {createPrescription.isPending ? 'Saving prescription...' : 'Save prescription'}
+              </Button>
+            </form>
+          </Card>
+
+          <Card>
+            <CardTitle>Scan medicine or supply QR</CardTitle>
+            <p className="mt-2 text-sm text-slate-500">
+              Scan the inventory item used for this patient. Stock will be deducted automatically after saving.
+            </p>
+            <form className="mt-5 space-y-4" onSubmit={handleRecordInventoryUsage}>
+              <FormField error={inventoryUsageForm.formState.errors.scannedCode?.message} label="Item QR code">
+                <div className="flex items-center gap-3 border border-slate-200 bg-slate-50 px-4 py-3">
+                  <ScanLine className="size-4 text-slate-400" />
+                  <Input
+                    className="border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0"
+                    placeholder="Scan item QR or paste item code"
+                    {...inventoryUsageForm.register('scannedCode')}
+                  />
+                </div>
+              </FormField>
+              {scannedInventoryItem ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <p className="text-sm font-semibold text-emerald-950">{scannedInventoryItem.name}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-emerald-700">
+                    {scannedInventoryItem.qrCode} - {scannedInventoryItem.stockOnHand} {scannedInventoryItem.unit} available
+                  </p>
+                </div>
+              ) : null}
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField label="Linked visit">
+                  <Select {...inventoryUsageForm.register('appointmentId')}>
+                    <option value="">No specific visit</option>
+                    {visits.map((visit) => (
+                      <option key={visit.id} value={visit.id}>
+                        {formatDateTimeLabel(visit.scheduledAt)} - {visit.reason}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+                <FormField error={inventoryUsageForm.formState.errors.quantity?.message} label="Quantity used">
+                  <Input type="number" {...inventoryUsageForm.register('quantity', { valueAsNumber: true })} />
+                </FormField>
+              </div>
+              <FormField error={inventoryUsageForm.formState.errors.notes?.message} label="Usage notes">
+                <Textarea rows={3} placeholder="Example: 2 tablets dispensed after consultation." {...inventoryUsageForm.register('notes')} />
+              </FormField>
+              <Button className="w-full" disabled={recordInventoryUsage.isPending} type="submit">
+                {recordInventoryUsage.isPending ? 'Recording usage...' : 'Record item usage'}
+              </Button>
+            </form>
           </Card>
 
           <Card>
@@ -484,6 +799,68 @@ export function PatientDetailPage() {
           ) : null}
         </div>
       </div>
+
+      <Card>
+        <CardTitle>Inventory usage history</CardTitle>
+        <div className="mt-5 space-y-4">
+          {inventoryUsageLogs.length === 0 ? (
+            <p className="text-sm text-slate-500">No medicines or supplies have been recorded for this patient yet.</p>
+          ) : (
+            inventoryUsageLogs.map((log) => {
+              const item = database.inventoryItems.find((inventoryItem) => inventoryItem.id === log.itemId);
+              const linkedVisit = visits.find((visit) => visit.id === log.appointmentId);
+
+              return (
+                <div key={log.id} className="rounded-3xl bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-slate-950">{item?.name ?? 'Inventory item removed'}</p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {log.quantity} {item?.unit ?? 'unit'} used
+                        {linkedVisit ? ` during ${formatDateTimeLabel(linkedVisit.scheduledAt)}` : ''}
+                      </p>
+                    </div>
+                    <Badge intent="info">{formatDateTimeLabel(log.createdAt)}</Badge>
+                  </div>
+                  <p className="mt-3 text-sm text-slate-700">{log.notes}</p>
+                  <p className="mt-3 break-all font-mono text-xs uppercase tracking-[0.18em] text-slate-400">
+                    Scanned code {log.scannedCode}
+                  </p>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Prescription history</CardTitle>
+        <div className="mt-5 space-y-4">
+          {prescriptions.length === 0 ? (
+            <p className="text-sm text-slate-500">No prescriptions have been recorded for this patient yet.</p>
+          ) : (
+            prescriptions.map((prescription) => {
+              const linkedConsultation = consultations.find((consultation) => consultation.id === prescription.consultationId);
+              return (
+                <div key={prescription.id} className="rounded-3xl bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="font-medium text-slate-950">{prescription.prescriptionName}</p>
+                    <Badge intent="info">
+                      {linkedConsultation ? `${linkedConsultation.consultationDate} ${linkedConsultation.consultationTime}` : 'Prescription saved'}
+                    </Badge>
+                  </div>
+                  <p className="mt-3 text-sm text-slate-700">
+                    <span className="font-semibold text-slate-950">Dosage:</span> {prescription.dosage}
+                  </p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    <span className="font-semibold text-slate-950">Instruction:</span> {prescription.instruction}
+                  </p>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </Card>
 
       {/* ── Lab Test History ─────────────────────────────────────────── */}
       <Card>

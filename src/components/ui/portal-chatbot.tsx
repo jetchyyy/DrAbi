@@ -156,7 +156,7 @@ function getBotResponse(
   /* Registration / new patient */
   if (/new patient|register|sign up|create account|first time/.test(q)) {
     return {
-      text: `**Getting started as a new patient:**\n\n1. Go to the portal login page and click **Sign Up**\n2. Fill in your personal details\n3. Verify your email address\n4. Log in and book your first appointment\n\nYour patient profile will be activated after your first confirmed booking.`,
+      text: `**Getting started as a new patient:**\n\n1. Go to the portal login page and click **Sign Up**\n2. Fill in your personal details\n3. Verify your email address\n4. Log in and book your first appointment\n\nYour patient record is added to the clinic registry right after sign-up and stays tagged as not yet visited until your first clinic visit.`,
       quickReplies: [
         { label: 'Book first appointment', value: 'How do I book an appointment?' },
         { label: 'Contact us', value: 'What is the contact number?' },

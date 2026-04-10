@@ -28,8 +28,8 @@ export function LoginForm() {
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'owner@odysseyclinic.test',
-      password: 'demo1234',
+      email: '',
+      password: '',
     },
   });
 
@@ -52,9 +52,9 @@ export function LoginForm() {
     <form className="space-y-5" onSubmit={onSubmit}>
       {!isSupabaseConfigured ? (
         <div className="border border-orange-200 bg-orange-50 px-4 py-3">
-          <p className="mb-1 text-[11px] font-extrabold uppercase tracking-widest text-orange-600">Demo Mode</p>
+          <p className="mb-1 text-[11px] font-extrabold uppercase tracking-widest text-orange-600">Local Mode</p>
           <p className="text-xs leading-relaxed text-orange-800">
-            Use <span className="font-bold">owner@</span>, <span className="font-bold">doctor@</span>, <span className="font-bold">frontdesk@</span>, <span className="font-bold">lab@</span>, or <span className="font-bold">patient@</span> with any password.
+            The local database starts empty. Sign in with any email and password to begin adding records manually.
           </p>
         </div>
       ) : null}

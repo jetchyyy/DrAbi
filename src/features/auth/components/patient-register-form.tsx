@@ -70,7 +70,7 @@ export function PatientRegisterForm() {
         <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Patient Portal</p>
         <CardTitle className="text-3xl">Create account</CardTitle>
         <p className="text-sm text-slate-500">
-          Patients need an account before booking so their medical history, bookings, and referrals stay under one chart.
+          Patients who register here are added to the clinic registry right away and stay tagged as not yet visited until their first clinic visit.
         </p>
       </div>
 

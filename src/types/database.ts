@@ -74,6 +74,7 @@ export interface Database {
       services: {
         Row: {
           id: string;
+          service_type: string;
           name: string;
           description: string;
           price: number;
@@ -93,6 +94,11 @@ export interface Database {
           id: string;
           profile_id: string;
           license_number: string | null;
+          license_expiry: string | null;
+          bir_number: string | null;
+          prc_id_path: string | null;
+          consultation_fee: number;
+          follow_up_fee: number;
           specialty_id: string | null;
           created_at: string;
           updated_at: string;
@@ -101,11 +107,27 @@ export interface Database {
         Insert: Partial<Database['public']['Tables']['doctors']['Row']>;
         Update: Partial<Database['public']['Tables']['doctors']['Row']>;
       };
+      doctor_availability: {
+        Row: {
+          id: string;
+          doctor_id: string;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          slot_minutes: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['doctor_availability']['Row']>;
+        Update: Partial<Database['public']['Tables']['doctor_availability']['Row']>;
+      };
       patients: {
         Row: {
           id: string;
           user_id: string | null;
           qr_code: string;
+          intake_source: string;
+          visit_status: string;
           first_name: string;
           last_name: string;
           sex: string;
@@ -125,6 +147,8 @@ export interface Database {
         Insert: {
           user_id?: string | null;
           qr_code?: string;
+          intake_source?: string;
+          visit_status?: string;
           first_name: string;
           last_name: string;
           sex: string;
@@ -150,6 +174,10 @@ export interface Database {
           preferred_time: string;
           status: string;
           intake_notes: string;
+          fee_type: string;
+          fee_amount: number;
+          receipt_code: string | null;
+          payment_status: string;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -162,6 +190,10 @@ export interface Database {
           preferred_time: string;
           status?: string;
           intake_notes?: string;
+          fee_type?: string;
+          fee_amount?: number;
+          receipt_code?: string | null;
+          payment_status?: string;
         };
         Update: Partial<Database['public']['Tables']['bookings']['Insert']>;
       };
@@ -227,6 +259,53 @@ export interface Database {
         };
         Insert: Partial<Database['public']['Tables']['appointments']['Row']>;
         Update: Partial<Database['public']['Tables']['appointments']['Row']>;
+      };
+      consultations: {
+        Row: {
+          id: string;
+          appointment_id: string;
+          patient_id: string;
+          doctor_id: string;
+          consultation_type: string | null;
+          consultation_date: string | null;
+          consultation_time: string | null;
+          provider_name: string | null;
+          clinical_summary: string | null;
+          diagnosis: string | null;
+          present_illness_history: string | null;
+          review_of_symptoms: string | null;
+          allergies: string | null;
+          vitals: string | null;
+          treatment_plan: string | null;
+          medications: string | null;
+          lab_results: string | null;
+          differential_diagnosis: string | null;
+          subjective: string;
+          objective: string;
+          assessment: string;
+          plan: string;
+          outcome: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['consultations']['Row']>;
+        Update: Partial<Database['public']['Tables']['consultations']['Row']>;
+      };
+      prescriptions: {
+        Row: {
+          id: string;
+          consultation_id: string;
+          patient_id: string;
+          medication: string;
+          dosage: string;
+          instructions: string;
+          prescription_name: string | null;
+          instruction: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['prescriptions']['Row']>;
+        Update: Partial<Database['public']['Tables']['prescriptions']['Row']>;
       };
     };
   };
