@@ -1,4 +1,4 @@
-﻿create extension if not exists pgcrypto;
+create extension if not exists pgcrypto;
 
 create type public.app_role as enum ('owner_admin','doctor','nurse_staff','front_desk_cashier','lab_staff','inventory_staff','patient');
 create type public.appointment_status as enum ('scheduled','confirmed','in_progress','completed','cancelled','no_show');

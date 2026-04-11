@@ -4,7 +4,6 @@ import { queryClient } from '../../../app/query-client';
 import { recordInventoryUsage } from '../../../lib/local-db';
 import { queryKeys } from '../../../lib/query-keys';
 import {
-  createConsultationLiveOrDemo,
   createPatientLiveOrDemo,
   createPrescriptionLiveOrDemo,
   getPatientByIdLiveOrDemo,
@@ -13,7 +12,8 @@ import {
   listPatientsLiveOrDemo,
   listPrescriptionsByPatientIdLiveOrDemo,
 } from '../../../lib/supabase-clinic';
-import type { Consultation, InventoryUsageLog, Patient, Prescription } from '../../../types/domain';
+import type { InventoryUsageLog, Patient, Prescription } from '../../../types/domain';
+import { consultationService, type ConsultationSubmissionPayload } from '../../consultation/services/consultation-service';
 
 export function usePatients() {
   return useQuery({
@@ -33,7 +33,7 @@ export function useCreatePatient() {
 
 export function useCreateConsultation() {
   return useMutation({
-    mutationFn: async (payload: Omit<Consultation, 'id' | 'createdAt' | 'updatedAt'>) => createConsultationLiveOrDemo(payload),
+    mutationFn: async (payload: ConsultationSubmissionPayload) => consultationService.submitConsultation(payload),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
       void queryClient.invalidateQueries({ queryKey: queryKeys.patientConsultations(variables.patientId) });
