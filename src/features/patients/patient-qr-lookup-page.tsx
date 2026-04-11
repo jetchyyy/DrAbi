@@ -45,7 +45,7 @@ export function PatientQrLookupPage() {
 
     const patient = getPatientByQrCode(extractPatientQrCode(initialQuery));
     if (patient) {
-      void navigate(`/app/patients/${patient.id}?source=qr`, { replace: true });
+      void navigate(`/app/consultation/${patient.id}?source=qr`, { replace: true });
       return;
     }
 
@@ -90,7 +90,7 @@ export function PatientQrLookupPage() {
           const patient = getPatientByQrCode(code);
           if (patient) {
             stopCamera();
-            void navigate(`/app/patients/${patient.id}?source=qr`);
+            void navigate(`/app/consultation/${patient.id}?source=qr`);
             return;
           }
 
@@ -156,7 +156,7 @@ export function PatientQrLookupPage() {
     }
 
     setError('');
-    void navigate(`/app/patients/${patient.id}?source=qr`);
+    void navigate(`/app/consultation/${patient.id}?source=qr`);
   };
 
   return (
@@ -208,7 +208,7 @@ export function PatientQrLookupPage() {
           <div className="flex flex-wrap gap-3">
             <Button className="gap-2" type="submit">
               <Search className="size-4" />
-              Open patient chart
+              Start consultation
             </Button>
             <Link
               className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -225,8 +225,8 @@ export function PatientQrLookupPage() {
         <CardTitle className="mt-2 text-white">Doctor scanning workflow</CardTitle>
         <div className="mt-5 space-y-4 text-sm text-slate-300">
           <p>The page asks for camera permission before opening the live scanner.</p>
-          <p>Once the patient QR is detected, the app opens the matching patient chart automatically.</p>
-          <p>From the chart, the doctor can save the full consultation record, SOAP notes, and prescription details.</p>
+          <p>Once the patient QR is detected, the app opens the consultation flow automatically.</p>
+          <p>From this flow, the doctor can save the full consultation record, SOAP notes, and prescription details.</p>
         </div>
       </Card>
     </div>

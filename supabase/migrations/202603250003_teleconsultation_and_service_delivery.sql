@@ -1,4 +1,4 @@
-﻿alter table public.services
+alter table public.services
 add column if not exists delivery_mode text not null default 'in_person';
 
 alter table public.appointments

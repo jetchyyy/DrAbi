@@ -2,7 +2,7 @@
 import { FileText, FlaskConical, Pill, QrCode, ScanLine, TestTubeDiagonal } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { toast } from 'sonner';
 
@@ -51,20 +51,20 @@ const soapSchema = z.object({
   consultationTime: z.string().min(1),
   providerName: z.string().min(2),
   clinicalSummary: z.string().min(4),
-  diagnosis: z.string().min(4),
+  diagnosis: z.string(),
   presentIllnessHistory: z.string().min(4),
-  reviewOfSymptoms: z.string().min(4),
-  allergies: z.string().min(2),
-  vitals: z.string().min(2),
-  treatmentPlan: z.string().min(4),
-  medications: z.string().min(2),
-  labResults: z.string().min(2),
-  differentialDiagnosis: z.string().min(2),
-  subjective: z.string().min(4),
-  objective: z.string().min(4),
-  assessment: z.string().min(4),
-  plan: z.string().min(4),
-  outcome: z.string().min(4),
+  reviewOfSymptoms: z.string(),
+  allergies: z.string(),
+  vitals: z.string(),
+  treatmentPlan: z.string(),
+  medications: z.string(),
+  labResults: z.string(),
+  differentialDiagnosis: z.string(),
+  subjective: z.string(),
+  objective: z.string(),
+  assessment: z.string(),
+  plan: z.string(),
+  outcome: z.string(),
 });
 
 const prescriptionSchema = z.object({
@@ -282,6 +282,7 @@ export function PatientDetailPage() {
       appointmentId: values.appointmentId,
       patientId: patient.id,
       doctorId: soapDoctorId,
+      actor: profile?.id ?? soapDoctorId,
       consultationType: values.consultationType,
       consultationDate: values.consultationDate,
       consultationTime: values.consultationTime,
@@ -400,6 +401,12 @@ export function PatientDetailPage() {
               <p className="mt-2 text-sm font-medium text-slate-700">QR code: <span className="font-mono">{patient.qrCode}</span></p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Link
+                className="inline-flex items-center rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-orange-700 transition hover:bg-orange-100"
+                to={`/app/consultation/${patient.id}`}
+              >
+                Start Consultation
+              </Link>
               <Badge>{patient.bloodType || 'Blood type pending'}</Badge>
               <Badge intent="warning">{patient.allergies}</Badge>
             </div>
@@ -529,7 +536,7 @@ export function PatientDetailPage() {
 
         <div className="space-y-6">
           <Card>
-            <CardTitle>New SOAP entry</CardTitle>
+            <CardTitle>Consultation flow (6 steps)</CardTitle>
             <p className="mt-2 text-sm text-slate-500">
               Use this after scanning the patient QR to attach SOAP documentation to a visit that is still pending.
             </p>
@@ -539,6 +546,7 @@ export function PatientDetailPage() {
               </p>
             ) : (
               <form className="mt-5 space-y-4" onSubmit={handleCreateSoap}>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Step 1. Patient history</p>
                 <FormField error={soapForm.formState.errors.appointmentId?.message} label="Visit to document">
                   <Select {...soapForm.register('appointmentId')}>
                     <option value="">Select appointment</option>
@@ -577,6 +585,7 @@ export function PatientDetailPage() {
                 <FormField error={soapForm.formState.errors.reviewOfSymptoms?.message} label="Review of Symptoms">
                   <Textarea rows={3} {...soapForm.register('reviewOfSymptoms')} />
                 </FormField>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Step 2. Findings</p>
                 <div className="grid gap-4 md:grid-cols-2">
                   <FormField error={soapForm.formState.errors.allergies?.message} label="Allergies">
                     <Textarea rows={2} {...soapForm.register('allergies')} />
@@ -594,9 +603,11 @@ export function PatientDetailPage() {
                 <FormField error={soapForm.formState.errors.labResults?.message} label="Lab Results">
                   <Textarea rows={2} {...soapForm.register('labResults')} />
                 </FormField>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Step 3. Diagnoses</p>
                 <FormField error={soapForm.formState.errors.differentialDiagnosis?.message} label="Differential Diagnosis">
                   <Textarea rows={2} {...soapForm.register('differentialDiagnosis')} />
                 </FormField>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Step 4. SOAP notes (optional)</p>
                 <FormField error={soapForm.formState.errors.subjective?.message} label="Subjective">
                   <Textarea rows={3} {...soapForm.register('subjective')} />
                 </FormField>
@@ -609,9 +620,11 @@ export function PatientDetailPage() {
                 <FormField error={soapForm.formState.errors.plan?.message} label="Plan">
                   <Textarea rows={3} {...soapForm.register('plan')} />
                 </FormField>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Step 5. Treatment and summary</p>
                 <FormField error={soapForm.formState.errors.outcome?.message} label="Outcome / follow-up">
                   <Textarea rows={2} {...soapForm.register('outcome')} />
                 </FormField>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Step 6. Supplementary docs (optional)</p>
                 <Button className="w-full" disabled={createConsultation.isPending} type="submit">
                   {createConsultation.isPending ? 'Saving SOAP...' : 'Save SOAP note'}
                 </Button>

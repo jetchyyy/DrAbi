@@ -15,6 +15,7 @@ import { MyBookingsPage } from '../features/booking/my-bookings-page';
 import { PatientProfilePage } from '../features/booking/patient-profile-page';
 import { PortalBookPage } from '../features/booking/portal-book-page';
 import { PortalHomePage } from '../features/booking/portal-home-page';
+import { ConsultationEntryPage } from '../features/consultation/consultation-entry-page';
 import { DashboardPage } from '../features/dashboard/dashboard-page';
 import { DoctorAvailabilityPage } from '../features/doctor/doctor-availability-page';
 import { InventoryPage } from '../features/inventory/inventory-page';
@@ -95,6 +96,7 @@ export const router = createBrowserRouter([
                   { path: 'patients', element: <PatientsPage /> },
                   { path: 'patients/scan', element: <PatientQrLookupPage /> },
                   { path: 'patients/:patientId', element: <PatientDetailPage /> },
+                  { path: 'consultation/:patientId', element: <ConsultationEntryPage /> },
                 ],
               },
               {
