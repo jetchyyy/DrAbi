@@ -173,6 +173,9 @@ export interface Appointment extends BaseRecord {
   teleconsultationPlatform?: string | null;
   teleconsultationUrl?: string | null;
   teleconsultationAccessInstructions?: string | null;
+  consultationId?: string | null;
+  completedBy?: string | null;
+  completedAt?: string | null;
 }
 
 export interface DoctorAvailability extends BaseRecord {
@@ -192,20 +195,20 @@ export interface Consultation extends BaseRecord {
   consultationTime: string;
   providerName: string;
   clinicalSummary: string;
-  diagnosis: string;
+  diagnosis?: string;
   presentIllnessHistory: string;
-  reviewOfSymptoms: string;
-  allergies: string;
-  vitals: string;
-  treatmentPlan: string;
-  medications: string;
-  labResults: string;
-  differentialDiagnosis: string;
-  subjective: string;
-  objective: string;
-  assessment: string;
-  plan: string;
-  outcome: string;
+  reviewOfSymptoms?: string;
+  allergies?: string;
+  vitals?: string;
+  treatmentPlan?: string;
+  medications?: string;
+  labResults?: string;
+  differentialDiagnosis?: string;
+  subjective?: string;
+  objective?: string;
+  assessment?: string;
+  plan?: string;
+  outcome?: string;
 }
 
 export interface Prescription extends BaseRecord {

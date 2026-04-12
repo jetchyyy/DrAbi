@@ -253,12 +253,28 @@ export interface Database {
           teleconsultation_platform: string | null;
           teleconsultation_url: string | null;
           teleconsultation_access_instructions: string | null;
+          consultation_id: string | null;
+          completed_by: string | null;
+          completed_at: string | null;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
         };
         Insert: Partial<Database['public']['Tables']['appointments']['Row']>;
         Update: Partial<Database['public']['Tables']['appointments']['Row']>;
+      };
+      consultation_types: {
+        Row: {
+          id: string;
+          code: string;
+          name: string;
+          description: string;
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['consultation_types']['Row']>;
+        Update: Partial<Database['public']['Tables']['consultation_types']['Row']>;
       };
       consultations: {
         Row: {
@@ -290,6 +306,42 @@ export interface Database {
         };
         Insert: Partial<Database['public']['Tables']['consultations']['Row']>;
         Update: Partial<Database['public']['Tables']['consultations']['Row']>;
+      };
+      patient_medical_history_entries: {
+        Row: {
+          id: string;
+          patient_id: string;
+          consultation_id: string | null;
+          appointment_id: string | null;
+          provider_id: string | null;
+          history_text: string;
+          findings_text: string;
+          diagnoses_text: string;
+          treatment_summary_text: string;
+          soap_notes_text: string;
+          supplementary_docs_text: string;
+          actor: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['patient_medical_history_entries']['Row']>;
+        Update: Partial<Database['public']['Tables']['patient_medical_history_entries']['Row']>;
+      };
+      medical_services_transactions: {
+        Row: {
+          id: string;
+          consultation_id: string | null;
+          appointment_id: string | null;
+          patient_id: string;
+          provider_id: string | null;
+          consultation_type: string;
+          amount: number;
+          actor: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['medical_services_transactions']['Row']>;
+        Update: Partial<Database['public']['Tables']['medical_services_transactions']['Row']>;
       };
       prescriptions: {
         Row: {

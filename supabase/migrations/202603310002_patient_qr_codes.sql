@@ -1,4 +1,4 @@
-﻿alter table public.patients
+alter table public.patients
 add column if not exists qr_code text;
 
 update public.patients

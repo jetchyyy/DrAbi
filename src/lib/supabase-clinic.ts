@@ -321,8 +321,15 @@ function mapAppointment(row: AppointmentRow): Appointment {
     notes: row.notes,
     teleconsultationPlatform: row.teleconsultation_platform,
     teleconsultationUrl: row.teleconsultation_url,
+<<<<<<< HEAD
     teleconsultationAccessInstructions:
       row.teleconsultation_access_instructions,
+=======
+    teleconsultationAccessInstructions: row.teleconsultation_access_instructions,
+    consultationId: row.consultation_id,
+    completedBy: row.completed_by,
+    completedAt: row.completed_at,
+>>>>>>> 9ca31c6fcd2bf5cce3554828323799fd72bc6510
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,

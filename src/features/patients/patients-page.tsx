@@ -100,6 +100,9 @@ function PatientSection({
               <Link className="shrink-0 text-xs font-extrabold uppercase tracking-widest text-orange-600 hover:underline" to={`/app/patients/${patient.id}`}>
                 Open Record
               </Link>
+              <Link className="shrink-0 text-xs font-extrabold uppercase tracking-widest text-sky-700 hover:underline" to={`/app/consultation/${patient.id}`}>
+                Start Consultation
+              </Link>
             </div>
           );
         })}

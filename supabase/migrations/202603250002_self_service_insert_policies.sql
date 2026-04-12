@@ -1,4 +1,4 @@
-﻿create policy "profiles self insert"
+create policy "profiles self insert"
 on public.profiles
 for insert
 with check (auth.uid() = id);
