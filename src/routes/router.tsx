@@ -1,6 +1,5 @@
 ﻿import { createBrowserRouter, Navigate } from "react-router-dom";
 
-<<<<<<< HEAD
 import { AppShell } from "../components/layout/app-shell";
 import { PublicLayout } from "../components/layout/public-layout";
 import { SettingsLayout } from "../components/layout/settings-layout";
@@ -16,6 +15,7 @@ import { MyBookingsPage } from "../features/booking/my-bookings-page";
 import { PatientProfilePage } from "../features/booking/patient-profile-page";
 import { PortalBookPage } from "../features/booking/portal-book-page";
 import { PortalHomePage } from "../features/booking/portal-home-page";
+import { ConsultationEntryPage } from "../features/consultation/consultation-entry-page";
 import { DashboardPage } from "../features/dashboard/dashboard-page";
 import { DoctorAvailabilityPage } from "../features/doctor/doctor-availability-page";
 import { InventoryPage } from "../features/inventory/inventory-page";
@@ -32,40 +32,6 @@ import { OdcPage } from "../features/shared/odc-page";
 import { TeleconsultRoomPage } from "../features/teleconsult/teleconsult-room-page";
 import { PermissionGate, ProtectedRoute } from "./guards";
 import { SystemAvailabilityGate } from "./system-availability-gate";
-=======
-import { AppShell } from '../components/layout/app-shell';
-import { PublicLayout } from '../components/layout/public-layout';
-import { SettingsLayout } from '../components/layout/settings-layout';
-import { AppointmentsPage } from '../features/appointments/appointments-page';
-import { ForgotPasswordPage } from '../features/auth/forgot-password-page';
-import { LoginPage } from '../features/auth/login-page';
-import { PatientRegisterPage } from '../features/auth/patient-register-page';
-import { PortalLoginPage } from '../features/auth/portal-login-page';
-import { ResetPasswordPage } from '../features/auth/reset-password-page';
-import { BillingPage } from '../features/billing/billing-page';
-import { BookingReceiptScanPage } from '../features/booking/booking-receipt-scan-page';
-import { MyBookingsPage } from '../features/booking/my-bookings-page';
-import { PatientProfilePage } from '../features/booking/patient-profile-page';
-import { PortalBookPage } from '../features/booking/portal-book-page';
-import { PortalHomePage } from '../features/booking/portal-home-page';
-import { ConsultationEntryPage } from '../features/consultation/consultation-entry-page';
-import { DashboardPage } from '../features/dashboard/dashboard-page';
-import { DoctorAvailabilityPage } from '../features/doctor/doctor-availability-page';
-import { InventoryPage } from '../features/inventory/inventory-page';
-import { LaboratoryPage } from '../features/laboratory/laboratory-page';
-import { PatientDetailPage } from '../features/patients/patient-detail-page';
-import { PatientQrLookupPage } from '../features/patients/patient-qr-lookup-page';
-import { PatientsPage } from '../features/patients/patients-page';
-import { SettingsClinicPage } from '../features/settings/settings-clinic-page';
-import { SettingsServicesPage } from '../features/settings/settings-services-page';
-import { SettingsSupportPage } from '../features/settings/settings-support-page';
-import { SettingsUsersPage } from '../features/settings/settings-users-page';
-import { NotFoundPage } from '../features/shared/not-found-page';
-import { OdcPage } from '../features/shared/odc-page';
-import { TeleconsultRoomPage } from '../features/teleconsult/teleconsult-room-page';
-import { PermissionGate, ProtectedRoute } from './guards';
-import { SystemAvailabilityGate } from './system-availability-gate';
->>>>>>> 9ca31c6fcd2bf5cce3554828323799fd72bc6510
 
 export const router = createBrowserRouter([
   {
@@ -144,19 +110,16 @@ export const router = createBrowserRouter([
               {
                 element: <PermissionGate permission="patients.view" />,
                 children: [
-<<<<<<< HEAD
                   { path: "patients", element: <PatientsPage /> },
                   { path: "patients/scan", element: <PatientQrLookupPage /> },
                   {
                     path: "patients/:patientId",
                     element: <PatientDetailPage />,
                   },
-=======
-                  { path: 'patients', element: <PatientsPage /> },
-                  { path: 'patients/scan', element: <PatientQrLookupPage /> },
-                  { path: 'patients/:patientId', element: <PatientDetailPage /> },
-                  { path: 'consultation/:patientId', element: <ConsultationEntryPage /> },
->>>>>>> 9ca31c6fcd2bf5cce3554828323799fd72bc6510
+                  {
+                    path: "consultation/:patientId",
+                    element: <ConsultationEntryPage />,
+                  },
                 ],
               },
               {
