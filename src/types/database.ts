@@ -42,6 +42,8 @@ export interface Database {
           role: string;
           phone: string | null;
           title: string | null;
+          security_pin_hash: string | null;
+          pin_updated_at: string | null;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -53,6 +55,8 @@ export interface Database {
           role?: string;
           phone?: string | null;
           title?: string | null;
+          security_pin_hash?: string | null;
+          pin_updated_at?: string | null;
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;

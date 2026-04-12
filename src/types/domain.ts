@@ -98,11 +98,21 @@ export interface UserProfile extends BaseRecord {
   fullName: string;
   role: Role;
   permissions?: Permission[];
+  accessRoleId?: string | null;
+  accessRoleName?: string | null;
   phone: string;
   specialtyId?: string | null;
   title?: string | null;
   consultationFee?: number | null;
   followUpFee?: number | null;
+}
+
+export interface AccessRoleTemplate extends BaseRecord {
+  name: string;
+  description: string;
+  baseRole: Exclude<Role, 'patient'>;
+  permissions: Permission[];
+  isSystem?: boolean;
 }
 
 export interface AdminCreateUserInput {

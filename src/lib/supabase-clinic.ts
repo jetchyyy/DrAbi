@@ -3,7 +3,9 @@
 import { defaultClinicSettings } from "../config/clinic";
 import { odcAccessConfig } from "../config/odc-access";
 import {
+  applyUserAccessRoleAssignment,
   applyUserPermissionOverride,
+  clearUserAccessRoleAssignment,
   clearUserPermissionOverride,
   getClinicSettings as getDemoClinicSettings,
   getDatabase,
@@ -261,7 +263,7 @@ function readFileAsDataUrl(file: File) {
 }
 
 export function mapProfile(row: ProfileRow): UserProfile {
-  return applyUserPermissionOverride({
+  return applyUserPermissionOverride(applyUserAccessRoleAssignment({
     id: row.id,
     authUserId: row.id,
     email: row.email,
@@ -272,7 +274,7 @@ export function mapProfile(row: ProfileRow): UserProfile {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
-  });
+  }));
 }
 
 export function mapPatient(row: PatientRow): Patient {
@@ -1842,6 +1844,7 @@ export async function deleteAdminUserLiveOrDemo(
 ) {
   if (!isSupabaseConfigured) {
     deleteUserProfileRecord(userId);
+    clearUserAccessRoleAssignment({ userId, email: options?.email });
     clearUserPermissionOverride({ userId, email: options?.email });
     return;
   }
@@ -1917,6 +1920,68 @@ export async function updateCurrentUserPasswordLiveOrDemo(newPassword: string) {
   if (error) {
     throw error;
   }
+}
+
+export async function updateCurrentStaffProfileLiveOrDemo(
+  profileId: string,
+  input: {
+    phone: string;
+    title?: string | null;
+  },
+) {
+  if (!profileId) {
+    throw new Error("User profile not found.");
+  }
+
+  if (!isSupabaseConfigured) {
+    const existingProfile = getDatabase().users.find(
+      (user) => user.id === profileId || user.authUserId === profileId,
+    );
+    if (!existingProfile) {
+      throw new Error("User profile not found.");
+    }
+
+    const updatedProfile = updateUserProfileRecord(profileId, {
+      authUserId: existingProfile.authUserId,
+      email: existingProfile.email,
+      fullName: existingProfile.fullName,
+      role: existingProfile.role,
+      permissions: existingProfile.permissions,
+      accessRoleId: existingProfile.accessRoleId,
+      accessRoleName: existingProfile.accessRoleName,
+      phone: input.phone.trim(),
+      title: input.title?.trim() || null,
+      specialtyId: existingProfile.specialtyId ?? null,
+      consultationFee: existingProfile.consultationFee ?? null,
+      followUpFee: existingProfile.followUpFee ?? null,
+    });
+
+    if (!updatedProfile) {
+      throw new Error("Updated user profile could not be loaded.");
+    }
+
+    return updatedProfile;
+  }
+
+  const client = requireSupabase();
+  const { error } = await client
+    .from("profiles")
+    .update({
+      phone: input.phone.trim() || null,
+      title: input.title?.trim() || null,
+    } as never)
+    .eq("id", profileId);
+
+  if (error) {
+    throw error;
+  }
+
+  const refreshedProfile = await getCurrentProfile(profileId);
+  if (!refreshedProfile) {
+    throw new Error("Updated user profile could not be loaded.");
+  }
+
+  return refreshedProfile;
 }
 
 export async function verifyOdcCredentialLiveOrDemo(input: OdcCredentialInput) {

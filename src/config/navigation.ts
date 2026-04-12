@@ -3,6 +3,7 @@ import {
   ClipboardList,
   CalendarDays,
   Clock3,
+  ClipboardPlus,
   FlaskConical,
   LayoutDashboard,
   Package2,
@@ -13,6 +14,8 @@ import {
   BriefcaseBusiness,
   Boxes,
   ShieldCheck,
+  KeyRound,
+  UserRound,
 } from "lucide-react";
 
 import type { Permission, Role } from "../types/domain";
@@ -65,6 +68,13 @@ export const appNavigation: NavItem[] = [
     roles: ["doctor"],
   },
   {
+    label: "Specialist Referrals",
+    to: "/app/specialist-referrals",
+    icon: ClipboardPlus,
+    permission: "patients.view",
+    roles: ["doctor"],
+  },
+  {
     label: "Scan Patient",
     to: "/app/patients/scan",
     icon: ScanLine,
@@ -103,9 +113,15 @@ export const appNavigation: NavItem[] = [
     permission: "settings.view",
   },
   {
-    label: "User and Role Management",
+    label: "User Management",
     to: "/app/settings/users",
     icon: ShieldCheck,
+    permission: "settings.view",
+  },
+  {
+    label: "Role Management",
+    to: "/app/settings/roles",
+    icon: KeyRound,
     permission: "settings.view",
   },
   {
@@ -120,6 +136,13 @@ export const appNavigation: NavItem[] = [
     icon: Settings,
     permission: "settings.view",
   },
+  {
+    label: "My Profile",
+    to: "/app/profile",
+    icon: UserRound,
+    permission: "dashboard.view",
+    roles: ["owner_admin", "doctor", "nurse_staff", "front_desk_cashier", "lab_staff", "inventory_staff"],
+  },
 ];
 
 export const portalNavigation = [
@@ -132,6 +155,7 @@ export const portalNavigation = [
 export const settingsNavigation = [
   { label: "Clinic Profile", to: "/app/settings/clinic" },
   { label: "Service Catalog", to: "/app/settings/catalog" },
-  { label: "User and Role Management", to: "/app/settings/users" },
+  { label: "User Management", to: "/app/settings/users" },
+  { label: "Role Management", to: "/app/settings/roles" },
   { label: "Supplier Management", to: "/app/settings/support" },
 ];

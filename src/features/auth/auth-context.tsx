@@ -2,11 +2,12 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 
 import { rolePermissions } from '../../config/permissions';
-import { applyUserPermissionOverride, getDatabase } from '../../lib/local-db';
+import { applyUserAccessRoleAssignment, applyUserPermissionOverride, getDatabase, hasUserPin, saveUserPin, verifyUserPin } from '../../lib/local-db';
 import { queryClient } from '../../app/query-client';
 import { queryKeys } from '../../lib/query-keys';
 import { ensureDoctorForUser, ensurePatientForUser, ensureProfileForUser, getCurrentProfile } from '../../lib/supabase-clinic';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
+import { hashSecret } from '../../lib/utils';
 import type { Permission, Role, UserProfile } from '../../types/domain';
 
 interface AuthContextValue {
@@ -14,9 +15,14 @@ interface AuthContextValue {
   session: Session | null;
   profile: UserProfile | null;
   permissions: Permission[];
+  hasSecurityPin: boolean;
+  pinSetupRequired: boolean;
+  pinVerificationRequired: boolean;
   isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  setSecurityPin: (pin: string) => Promise<void>;
+  verifySecurityPin: (pin: string) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   signUpPatient: (input: {
     fullName: string;
@@ -57,10 +63,10 @@ function getStoredDemoEmail() {
 function getDemoProfile(email: string, user?: User | null) {
   const matchedProfile = getDatabase().users.find((profile) => profile.email.toLowerCase() === email.toLowerCase());
   if (matchedProfile) {
-    return applyUserPermissionOverride(matchedProfile);
+    return applyUserPermissionOverride(applyUserAccessRoleAssignment(matchedProfile));
   }
 
-  return applyUserPermissionOverride({
+  return applyUserPermissionOverride(applyUserAccessRoleAssignment({
     id: `profile_${email}`,
     authUserId: user?.id ?? `demo_${email}`,
     createdAt: new Date().toISOString(),
@@ -69,7 +75,81 @@ function getDemoProfile(email: string, user?: User | null) {
     fullName: email.split('@')[0].replaceAll('.', ' '),
     role: (user?.app_metadata.role as Role | undefined) ?? roleFromEmail(email),
     phone: '',
-  } satisfies UserProfile);
+  } satisfies UserProfile));
+}
+
+async function loadSecurityPinHash(profileId: string) {
+  if (!isSupabaseConfigured || !supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('security_pin_hash')
+    .eq('id', profileId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data?.security_pin_hash ?? null;
+}
+
+async function loadHasSecurityPin(profile: UserProfile | null) {
+  if (!profile) {
+    return false;
+  }
+
+  if (!isSupabaseConfigured || !supabase) {
+    return hasUserPin(profile);
+  }
+
+  return Boolean(await loadSecurityPinHash(profile.id));
+}
+
+async function saveSecurityPin(profile: UserProfile, pin: string) {
+  if (!isSupabaseConfigured || !supabase) {
+    await saveUserPin(profile, pin);
+    return;
+  }
+
+  const securityPinHash = await hashSecret(pin);
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      security_pin_hash: securityPinHash,
+      pin_updated_at: new Date().toISOString(),
+    })
+    .eq('id', profile.id);
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function verifySecurityPinValue(profile: UserProfile, pin: string) {
+  if (!/^\d{6}$/.test(pin)) {
+    throw new Error('PIN must be exactly 6 digits.');
+  }
+
+  if (!isSupabaseConfigured || !supabase) {
+    const pinMatches = await verifyUserPin(profile, pin);
+    if (!pinMatches) {
+      throw new Error('The security PIN you entered is incorrect.');
+    }
+    return;
+  }
+
+  const storedPinHash = await loadSecurityPinHash(profile.id);
+  if (!storedPinHash) {
+    throw new Error('No security PIN is set for this account yet.');
+  }
+
+  const providedPinHash = await hashSecret(pin);
+  if (providedPinHash !== storedPinHash) {
+    throw new Error('The security PIN you entered is incorrect.');
+  }
 }
 
 async function resolveLiveProfile(user: User) {
@@ -92,6 +172,8 @@ async function resolveLiveProfile(user: User) {
 export function AuthProvider({ children }: PropsWithChildren) {
   const [loading, setLoading] = useState(isSupabaseConfigured);
   const [session, setSession] = useState<Session | null>(null);
+  const [hasSecurityPin, setHasSecurityPin] = useState(false);
+  const [pinVerified, setPinVerified] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(() => {
     const storedEmail = getStoredDemoEmail();
     return storedEmail ? getDemoProfile(storedEmail) : null;
@@ -106,6 +188,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setSession(nextSession);
       if (!nextSession?.user) {
         setProfile(null);
+        setPinVerified(false);
         setLoading(false);
         return;
       }
@@ -113,6 +196,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       try {
         const nextProfile = await resolveLiveProfile(nextSession.user);
         setProfile(nextProfile);
+        const nextHasSecurityPin = await loadHasSecurityPin(nextProfile);
+        setHasSecurityPin(nextHasSecurityPin);
+        setPinVerified(nextProfile.role === 'patient' || !nextHasSecurityPin);
         await queryClient.invalidateQueries({ queryKey: queryKeys.currentProfile(nextSession.user.id) });
         await queryClient.invalidateQueries({ queryKey: queryKeys.currentPatient(nextSession.user.id) });
       } finally {
@@ -131,14 +217,40 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!profile) {
+      setHasSecurityPin(false);
+      setPinVerified(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    void loadHasSecurityPin(profile).then((value) => {
+      if (!cancelled) {
+        setHasSecurityPin(value);
+        setPinVerified(profile.role === 'patient' || !value);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profile]);
+
   const value = useMemo<AuthContextValue>(() => {
     const permissions = profile ? (profile.permissions ?? rolePermissions[profile.role]) : [];
+    const pinSetupRequired = Boolean(profile && hasSecurityPin === false && profile.role !== 'patient');
+    const pinVerificationRequired = Boolean(profile && hasSecurityPin && !pinVerified && profile.role !== 'patient');
 
     return {
       loading,
       session,
       profile,
       permissions,
+      hasSecurityPin,
+      pinSetupRequired,
+      pinVerificationRequired,
       isAuthenticated: Boolean(profile ?? session),
       async signIn(email, password) {
         if (isSupabaseConfigured && supabase) {
@@ -154,7 +266,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
 
         window.localStorage.setItem(DEMO_AUTH_KEY, email);
-        setProfile(getDemoProfile(email));
+        const nextProfile = getDemoProfile(email);
+        setProfile(nextProfile);
+        setHasSecurityPin(await hasUserPin(nextProfile));
+        setPinVerified(nextProfile.role === 'patient' || !(await hasUserPin(nextProfile)));
       },
       async signOut() {
         if (isSupabaseConfigured && supabase) {
@@ -167,6 +282,29 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
         setSession(null);
         setProfile(null);
+        setHasSecurityPin(false);
+        setPinVerified(false);
+      },
+      async setSecurityPin(pin) {
+        if (!profile) {
+          throw new Error('You must be signed in to set a PIN.');
+        }
+
+        if (!/^\d{6}$/.test(pin)) {
+          throw new Error('PIN must be exactly 6 digits.');
+        }
+
+        await saveSecurityPin(profile, pin);
+        setHasSecurityPin(true);
+        setPinVerified(true);
+      },
+      async verifySecurityPin(pin) {
+        if (!profile) {
+          throw new Error('You must be signed in to verify a PIN.');
+        }
+
+        await verifySecurityPinValue(profile, pin);
+        setPinVerified(true);
       },
       async requestPasswordReset(email) {
         if (isSupabaseConfigured && supabase) {
@@ -238,14 +376,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
           );
         }
         window.localStorage.setItem(DEMO_AUTH_KEY, input.email);
-        setProfile(getDemoProfile(input.email));
+        const nextProfile = getDemoProfile(input.email);
+        setProfile(nextProfile);
+        setHasSecurityPin(await hasUserPin(nextProfile));
+        setPinVerified(true);
         return { requiresEmailConfirmation: false };
       },
       can(permission) {
         return permissions.includes(permission);
       },
     };
-  }, [loading, profile, session]);
+  }, [hasSecurityPin, loading, pinVerified, profile, session]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -2,6 +2,7 @@
 import { defaultClinicSettings } from '../config/clinic';
 import { createSeedDatabase } from '../data/seed';
 import type {
+  AccessRoleTemplate,
   AppDatabase,
   Appointment,
   AuditLog,
@@ -31,15 +32,32 @@ import type {
   UserProfile,
 } from '../types/domain';
 import { generateBookingReceiptCode, generateId, generateInventoryQrCode, generatePatientQrCode } from './utils';
+import { hashSecret } from './utils';
 
 const STORAGE_KEY = 'odyssey-clinic-demo-db-v2';
 const PATIENT_ACTION_LOGS_KEY = 'odyssey-clinic-patient-action-logs-v1';
 const USER_PERMISSION_OVERRIDES_KEY = 'odyssey-clinic-user-permission-overrides-v1';
+const ACCESS_ROLE_TEMPLATES_KEY = 'odyssey-clinic-access-role-templates-v1';
+const USER_ACCESS_ROLE_ASSIGNMENTS_KEY = 'odyssey-clinic-user-access-role-assignments-v1';
+const USER_PIN_CREDENTIALS_KEY = 'odyssey-clinic-user-pin-credentials-v1';
 
 interface UserPermissionOverride {
   userId?: string;
   email: string;
   permissions: Permission[];
+}
+
+interface UserAccessRoleAssignment {
+  userId?: string;
+  email: string;
+  accessRoleId: string;
+}
+
+interface UserPinCredential {
+  userId?: string;
+  email: string;
+  pinHash: string;
+  updatedAt: string;
 }
 
 function canUseStorage() {
@@ -133,6 +151,166 @@ function saveUserPermissionOverridesStorage(overrides: UserPermissionOverride[])
   }
 }
 
+function buildSystemAccessRoles(): AccessRoleTemplate[] {
+  const timestamp = new Date().toISOString();
+  return [
+    {
+      id: 'access_owner_admin',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      name: 'Owner / Admin',
+      description: 'Full system access for the clinic owner or administrator.',
+      baseRole: 'owner_admin',
+      permissions: [
+        'dashboard.view',
+        'patients.view',
+        'patients.manage',
+        'appointments.view',
+        'appointments.manage',
+        'consultations.manage',
+        'billing.view',
+        'billing.manage',
+        'inventory.view',
+        'inventory.manage',
+        'laboratory.view',
+        'laboratory.manage',
+        'settings.view',
+        'settings.manage',
+        'booking.view',
+        'booking.manage',
+        'users.manage',
+      ],
+      isSystem: true,
+    },
+    {
+      id: 'access_doctor',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      name: 'Doctor',
+      description: 'Clinical access for providers handling consultations and patient review.',
+      baseRole: 'doctor',
+      permissions: ['dashboard.view', 'patients.view', 'appointments.view', 'consultations.manage', 'laboratory.view', 'booking.view'],
+      isSystem: true,
+    },
+    {
+      id: 'access_nurse_staff',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      name: 'Nurse / Staff',
+      description: 'Care-team access for patient intake, appointments, and consultation support.',
+      baseRole: 'nurse_staff',
+      permissions: ['dashboard.view', 'patients.view', 'patients.manage', 'appointments.view', 'appointments.manage', 'consultations.manage', 'laboratory.view'],
+      isSystem: true,
+    },
+    {
+      id: 'access_front_desk_cashier',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      name: 'Front Desk / Cashier',
+      description: 'Reception and payment access for scheduling, billing, and bookings.',
+      baseRole: 'front_desk_cashier',
+      permissions: ['dashboard.view', 'patients.view', 'patients.manage', 'appointments.view', 'appointments.manage', 'billing.view', 'billing.manage', 'booking.view', 'booking.manage'],
+      isSystem: true,
+    },
+    {
+      id: 'access_lab_staff',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      name: 'Lab Staff',
+      description: 'Laboratory operations access for sample processing and result handling.',
+      baseRole: 'lab_staff',
+      permissions: ['dashboard.view', 'patients.view', 'laboratory.view', 'laboratory.manage'],
+      isSystem: true,
+    },
+    {
+      id: 'access_inventory_staff',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      name: 'Inventory Staff',
+      description: 'Stock and supply access for inventory monitoring and updates.',
+      baseRole: 'inventory_staff',
+      permissions: ['dashboard.view', 'inventory.view', 'inventory.manage'],
+      isSystem: true,
+    },
+  ];
+}
+
+function getAccessRoleTemplatesStorage(): AccessRoleTemplate[] {
+  if (!canUseStorage()) {
+    return buildSystemAccessRoles();
+  }
+
+  const stored = window.localStorage.getItem(ACCESS_ROLE_TEMPLATES_KEY);
+  if (!stored) {
+    const seeded = buildSystemAccessRoles();
+    window.localStorage.setItem(ACCESS_ROLE_TEMPLATES_KEY, JSON.stringify(seeded));
+    return seeded;
+  }
+
+  try {
+    const parsed = JSON.parse(stored) as AccessRoleTemplate[];
+    const systemRoles = buildSystemAccessRoles();
+    const customRoles = parsed.filter((role) => !role.isSystem);
+    return [...systemRoles, ...customRoles];
+  } catch {
+    const seeded = buildSystemAccessRoles();
+    window.localStorage.setItem(ACCESS_ROLE_TEMPLATES_KEY, JSON.stringify(seeded));
+    return seeded;
+  }
+}
+
+function saveAccessRoleTemplatesStorage(roles: AccessRoleTemplate[]) {
+  if (canUseStorage()) {
+    window.localStorage.setItem(ACCESS_ROLE_TEMPLATES_KEY, JSON.stringify(roles));
+  }
+}
+
+function getUserAccessRoleAssignmentsStorage(): UserAccessRoleAssignment[] {
+  if (!canUseStorage()) {
+    return [];
+  }
+
+  const stored = window.localStorage.getItem(USER_ACCESS_ROLE_ASSIGNMENTS_KEY);
+  if (!stored) {
+    return [];
+  }
+
+  try {
+    return JSON.parse(stored) as UserAccessRoleAssignment[];
+  } catch {
+    return [];
+  }
+}
+
+function saveUserAccessRoleAssignmentsStorage(assignments: UserAccessRoleAssignment[]) {
+  if (canUseStorage()) {
+    window.localStorage.setItem(USER_ACCESS_ROLE_ASSIGNMENTS_KEY, JSON.stringify(assignments));
+  }
+}
+
+function getUserPinCredentialsStorage(): UserPinCredential[] {
+  if (!canUseStorage()) {
+    return [];
+  }
+
+  const stored = window.localStorage.getItem(USER_PIN_CREDENTIALS_KEY);
+  if (!stored) {
+    return [];
+  }
+
+  try {
+    return JSON.parse(stored) as UserPinCredential[];
+  } catch {
+    return [];
+  }
+}
+
+function saveUserPinCredentialsStorage(credentials: UserPinCredential[]) {
+  if (canUseStorage()) {
+    window.localStorage.setItem(USER_PIN_CREDENTIALS_KEY, JSON.stringify(credentials));
+  }
+}
+
 export function updateDatabase(mutator: (draft: AppDatabase) => void) {
   const next = structuredClone(getDatabase());
   mutator(next);
@@ -163,7 +341,7 @@ export function updateClinicSettings(input: Partial<ClinicSettings>) {
 }
 
 export function listUsers() {
-  return getDatabase().users.map(applyUserPermissionOverride);
+  return getDatabase().users.map((profile) => applyUserPermissionOverride(applyUserAccessRoleAssignment(profile)));
 }
 
 export function createUserProfile(input: Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'>) {
@@ -245,6 +423,159 @@ export function applyUserPermissionOverride(profile: UserProfile): UserProfile {
     ...profile,
     permissions: override.permissions,
   };
+}
+
+export function listAccessRoles() {
+  return getAccessRoleTemplatesStorage();
+}
+
+export function createAccessRole(input: Omit<AccessRoleTemplate, 'id' | 'createdAt' | 'updatedAt' | 'isSystem'>) {
+  const timestamp = new Date().toISOString();
+  const nextRole: AccessRoleTemplate = {
+    ...input,
+    id: generateId('accessrole'),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    isSystem: false,
+  };
+
+  saveAccessRoleTemplatesStorage([nextRole, ...getAccessRoleTemplatesStorage()]);
+  void queryClient.invalidateQueries();
+  return nextRole;
+}
+
+export function updateAccessRoleRecord(id: string, input: Omit<AccessRoleTemplate, 'id' | 'createdAt' | 'updatedAt' | 'isSystem'>) {
+  const nextRoles = getAccessRoleTemplatesStorage().map((role) => {
+    if (role.id !== id) {
+      return role;
+    }
+
+    if (role.isSystem) {
+      throw new Error('System roles cannot be edited here.');
+    }
+
+    return {
+      ...role,
+      ...input,
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  saveAccessRoleTemplatesStorage(nextRoles);
+  void queryClient.invalidateQueries();
+  return nextRoles.find((role) => role.id === id) ?? null;
+}
+
+export function deleteAccessRoleRecord(id: string) {
+  const targetRole = getAccessRoleTemplatesStorage().find((role) => role.id === id);
+  if (targetRole?.isSystem) {
+    throw new Error('System roles cannot be deleted.');
+  }
+
+  saveAccessRoleTemplatesStorage(getAccessRoleTemplatesStorage().filter((role) => role.id !== id));
+  saveUserAccessRoleAssignmentsStorage(getUserAccessRoleAssignmentsStorage().filter((assignment) => assignment.accessRoleId !== id));
+  void queryClient.invalidateQueries();
+}
+
+export function saveUserAccessRoleAssignment(input: { userId?: string; email: string; accessRoleId: string }) {
+  const normalizedEmail = input.email.trim().toLowerCase();
+  const filteredAssignments = getUserAccessRoleAssignmentsStorage().filter(
+    (item) => item.email.toLowerCase() !== normalizedEmail && (!input.userId || item.userId !== input.userId),
+  );
+
+  filteredAssignments.unshift({
+    userId: input.userId,
+    email: normalizedEmail,
+    accessRoleId: input.accessRoleId,
+  });
+
+  saveUserAccessRoleAssignmentsStorage(filteredAssignments);
+  void queryClient.invalidateQueries();
+}
+
+export function clearUserAccessRoleAssignment(input: { userId?: string; email?: string }) {
+  const normalizedEmail = input.email?.trim().toLowerCase();
+  const filteredAssignments = getUserAccessRoleAssignmentsStorage().filter(
+    (item) =>
+      (input.userId ? item.userId !== input.userId : true) &&
+      (normalizedEmail ? item.email.toLowerCase() !== normalizedEmail : true),
+  );
+
+  saveUserAccessRoleAssignmentsStorage(filteredAssignments);
+  void queryClient.invalidateQueries();
+}
+
+export function applyUserAccessRoleAssignment(profile: UserProfile): UserProfile {
+  const assignment = getUserAccessRoleAssignmentsStorage().find(
+    (item) =>
+      (item.userId && (item.userId === profile.id || item.userId === profile.authUserId)) ||
+      item.email.toLowerCase() === profile.email.toLowerCase(),
+  );
+
+  if (!assignment) {
+    return profile;
+  }
+
+  const accessRole = getAccessRoleTemplatesStorage().find((role) => role.id === assignment.accessRoleId);
+  if (!accessRole) {
+    return profile;
+  }
+
+  return {
+    ...profile,
+    accessRoleId: accessRole.id,
+    accessRoleName: accessRole.name,
+    permissions: accessRole.permissions,
+  };
+}
+
+export async function hasUserPin(profile: Pick<UserProfile, 'id' | 'authUserId' | 'email'>) {
+  const normalizedEmail = profile.email.trim().toLowerCase();
+  return getUserPinCredentialsStorage().some(
+    (item) =>
+      (item.userId && (item.userId === profile.id || item.userId === profile.authUserId)) ||
+      item.email.toLowerCase() === normalizedEmail,
+  );
+}
+
+export async function saveUserPin(
+  profile: Pick<UserProfile, 'id' | 'authUserId' | 'email'>,
+  pin: string,
+) {
+  const normalizedEmail = profile.email.trim().toLowerCase();
+  const pinHash = await hashSecret(pin);
+  const updatedAt = new Date().toISOString();
+  const filteredCredentials = getUserPinCredentialsStorage().filter(
+    (item) =>
+      item.email.toLowerCase() !== normalizedEmail &&
+      item.userId !== profile.id &&
+      item.userId !== profile.authUserId,
+  );
+
+  filteredCredentials.unshift({
+    userId: profile.authUserId || profile.id,
+    email: normalizedEmail,
+    pinHash,
+    updatedAt,
+  });
+
+  saveUserPinCredentialsStorage(filteredCredentials);
+  void queryClient.invalidateQueries();
+}
+
+export async function verifyUserPin(
+  profile: Pick<UserProfile, 'id' | 'authUserId' | 'email'>,
+  pin: string,
+) {
+  const normalizedEmail = profile.email.trim().toLowerCase();
+  const pinHash = await hashSecret(pin);
+
+  return getUserPinCredentialsStorage().some(
+    (item) =>
+      item.pinHash === pinHash &&
+      ((item.userId && (item.userId === profile.id || item.userId === profile.authUserId)) ||
+        item.email.toLowerCase() === normalizedEmail),
+  );
 }
 
 export function listSpecialties() {
@@ -540,6 +871,12 @@ export function listBookings() {
 export function listReferralsByPatient(patientId: string) {
   return getDatabase().referrals
     .filter((referral) => referral.patientId === patientId)
+    .sort((left, right) => right.referredAt.localeCompare(left.referredAt));
+}
+
+export function listReferralsByTargetDoctor(targetDoctorId: string) {
+  return getDatabase().referrals
+    .filter((referral) => referral.targetDoctorId === targetDoctorId)
     .sort((left, right) => right.referredAt.localeCompare(left.referredAt));
 }
 

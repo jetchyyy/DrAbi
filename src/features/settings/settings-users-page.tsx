@@ -10,8 +10,12 @@ import { Button } from '../../components/ui/button';
 import { FeedbackModal } from '../../components/ui/feedback-modal';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
-import { roleLabels, rolePermissions } from '../../config/permissions';
-import { saveUserPermissionOverride } from '../../lib/local-db';
+import { roleLabels } from '../../config/permissions';
+import {
+  clearUserPermissionOverride,
+  listAccessRoles,
+  saveUserAccessRoleAssignment,
+} from '../../lib/local-db';
 import {
   createAdminUserLiveOrDemo,
   deleteAdminUserLiveOrDemo,
@@ -19,19 +23,9 @@ import {
   updateAdminUserLiveOrDemo,
 } from '../../lib/supabase-clinic';
 import { isSupabaseConfigured } from '../../lib/supabase';
-import type { AdminCreateUserInput, Permission, Role, UserProfile } from '../../types/domain';
-
-const staffRoleOptions = [
-  'owner_admin',
-  'doctor',
-  'nurse_staff',
-  'front_desk_cashier',
-  'lab_staff',
-  'inventory_staff',
-] as const satisfies ReadonlyArray<Exclude<Role, 'patient'>>;
+import type { AccessRoleTemplate, AdminCreateUserInput, UserProfile } from '../../types/domain';
 
 const PASSWORD_RULES_HINT = 'At least 6 characters, with uppercase, lowercase, and a number.';
-const permissionOptions = Array.from(new Set(Object.values(rolePermissions).flat())) as Permission[];
 
 const userSchema = z
   .object({
@@ -42,8 +36,8 @@ const userSchema = z
     email: z.string().email('Enter a valid email address.'),
     password: z.string().optional(),
     confirmPassword: z.string().optional(),
-    role: z.enum(staffRoleOptions),
-    permissions: z.array(z.enum(permissionOptions as [Permission, ...Permission[]])).min(1, 'Select at least one permission.'),
+    accessRoleId: z.string().min(1, 'Select an access role.'),
+    baseRole: z.enum(['owner_admin', 'doctor', 'nurse_staff', 'front_desk_cashier', 'lab_staff', 'inventory_staff']),
     prcLicenseNumber: z.string().optional(),
     prcLicenseExpiry: z.string().optional(),
     birNumber: z.string().optional(),
@@ -56,64 +50,28 @@ const userSchema = z
       const confirmPassword = value.confirmPassword ?? '';
 
       if (password.length < 6 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['password'],
-          message: PASSWORD_RULES_HINT,
-        });
+        ctx.addIssue({ code: 'custom', path: ['password'], message: PASSWORD_RULES_HINT });
       }
 
       if (password !== confirmPassword) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['confirmPassword'],
-          message: 'Passwords do not match.',
-        });
+        ctx.addIssue({ code: 'custom', path: ['confirmPassword'], message: 'Passwords do not match.' });
       }
     }
 
-    if (value.role !== 'doctor' || value.mode === 'edit') {
+    if (value.baseRole !== 'doctor' || value.mode === 'edit') {
       return;
     }
 
     if (!value.prcLicenseNumber?.trim()) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['prcLicenseNumber'],
-        message: 'PRC license number is required for doctors.',
-      });
+      ctx.addIssue({ code: 'custom', path: ['prcLicenseNumber'], message: 'PRC license number is required for doctor access roles.' });
     }
 
     if (!value.prcLicenseExpiry?.trim()) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['prcLicenseExpiry'],
-        message: 'PRC license expiry is required for doctors.',
-      });
+      ctx.addIssue({ code: 'custom', path: ['prcLicenseExpiry'], message: 'PRC license expiry is required for doctor access roles.' });
     }
 
     if (!value.birNumber?.trim()) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['birNumber'],
-        message: 'BIR number is required for doctors.',
-      });
-    }
-
-    if (typeof value.consultationFee !== 'number' || Number.isNaN(value.consultationFee)) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['consultationFee'],
-        message: 'Consultation fee is required for doctors.',
-      });
-    }
-
-    if (typeof value.followUpFee !== 'number' || Number.isNaN(value.followUpFee)) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['followUpFee'],
-        message: 'Follow-up fee is required for doctors.',
-      });
+      ctx.addIssue({ code: 'custom', path: ['birNumber'], message: 'BIR number is required for doctor access roles.' });
     }
   });
 
@@ -139,31 +97,32 @@ function splitFullName(fullName: string) {
   };
 }
 
-function buildCreateUserInput(values: UserFormValues): AdminCreateUserInput {
+function getEffectiveRoleLabel(user: UserProfile) {
+  return user.accessRoleName ?? roleLabels[user.role];
+}
+
+function buildCreateUserInput(values: UserFormValues, accessRole: AccessRoleTemplate): AdminCreateUserInput {
   return {
     firstName: values.firstName.trim(),
     lastName: values.lastName.trim(),
     contactNumber: values.contactNumber.trim(),
     email: values.email.trim().toLowerCase(),
     password: values.password ?? '',
-    role: values.role,
-    permissions: values.permissions,
-    prcLicenseNumber: values.role === 'doctor' ? values.prcLicenseNumber?.trim() ?? '' : undefined,
-    prcLicenseExpiry: values.role === 'doctor' ? values.prcLicenseExpiry?.trim() ?? '' : undefined,
-    birNumber: values.role === 'doctor' ? values.birNumber?.trim() ?? '' : undefined,
-    consultationFee: values.role === 'doctor' ? values.consultationFee ?? 0 : undefined,
-    followUpFee: values.role === 'doctor' ? values.followUpFee ?? 0 : undefined,
+    role: accessRole.baseRole,
+    permissions: accessRole.permissions,
+    prcLicenseNumber: accessRole.baseRole === 'doctor' ? values.prcLicenseNumber?.trim() ?? '' : undefined,
+    prcLicenseExpiry: accessRole.baseRole === 'doctor' ? values.prcLicenseExpiry?.trim() ?? '' : undefined,
+    birNumber: accessRole.baseRole === 'doctor' ? values.birNumber?.trim() ?? '' : undefined,
+    consultationFee: accessRole.baseRole === 'doctor' ? values.consultationFee ?? 0 : undefined,
+    followUpFee: accessRole.baseRole === 'doctor' ? values.followUpFee ?? 0 : undefined,
     prcIdFile: null,
   };
-}
-
-function formatPermissions(user: UserProfile) {
-  return (user.permissions ?? rolePermissions[user.role]).join(', ');
 }
 
 export function SettingsUsersPage() {
   const queryClient = useQueryClient();
   const { data: users = [] } = useQuery({ queryKey: ['settings-users'], queryFn: listUsersLiveOrDemo });
+  const { data: accessRoles = [] } = useQuery({ queryKey: ['access-roles'], queryFn: async () => listAccessRoles() });
   const [search, setSearch] = useState('');
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -183,14 +142,14 @@ export function SettingsUsersPage() {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: async ({ id, values }: { id: string; values: UserFormValues }) =>
+    mutationFn: async ({ id, values, accessRole }: { id: string; values: UserFormValues; accessRole: AccessRoleTemplate }) =>
       updateAdminUserLiveOrDemo(id, {
         firstName: values.firstName.trim(),
         lastName: values.lastName.trim(),
         contactNumber: values.contactNumber.trim(),
         email: values.email.trim().toLowerCase(),
-        role: values.role,
-        permissions: values.permissions,
+        role: accessRole.baseRole,
+        permissions: accessRole.permissions,
         prcLicenseNumber: values.prcLicenseNumber?.trim(),
         prcLicenseExpiry: values.prcLicenseExpiry?.trim(),
         birNumber: values.birNumber?.trim(),
@@ -198,12 +157,14 @@ export function SettingsUsersPage() {
         followUpFee: values.followUpFee ?? 0,
       }),
     onSuccess: async (_updatedUser, variables) => {
-      saveUserPermissionOverride({
+      clearUserPermissionOverride({ userId: variables.id, email: variables.values.email.trim().toLowerCase() });
+      saveUserAccessRoleAssignment({
         userId: variables.id,
         email: variables.values.email.trim().toLowerCase(),
-        permissions: variables.values.permissions,
+        accessRoleId: variables.accessRole.id,
       });
       await queryClient.invalidateQueries({ queryKey: ['settings-users'] });
+      await queryClient.invalidateQueries({ queryKey: ['access-roles'] });
     },
   });
 
@@ -224,8 +185,8 @@ export function SettingsUsersPage() {
       email: '',
       password: '',
       confirmPassword: '',
-      role: 'nurse_staff',
-      permissions: [...rolePermissions.nurse_staff],
+      accessRoleId: '',
+      baseRole: 'nurse_staff',
       prcLicenseNumber: '',
       prcLicenseExpiry: '',
       birNumber: '',
@@ -234,17 +195,18 @@ export function SettingsUsersPage() {
     },
   });
 
-  const selectedRole = useWatch({ control: form.control, name: 'role' });
   const formMode = useWatch({ control: form.control, name: 'mode' });
-  const selectedPermissions = useWatch({ control: form.control, name: 'permissions' });
-  const isDoctor = selectedRole === 'doctor';
+  const selectedAccessRoleId = useWatch({ control: form.control, name: 'accessRoleId' });
+  const selectedBaseRole = useWatch({ control: form.control, name: 'baseRole' });
+  const selectedAccessRole = accessRoles.find((role) => role.id === selectedAccessRoleId) ?? null;
+  const isDoctorRole = selectedBaseRole === 'doctor';
   const isEditing = formMode === 'edit';
   const isLiveEdit = isEditing && isSupabaseConfigured;
 
   const filteredUsers = useMemo(
     () =>
       users.filter((user) =>
-        `${user.fullName} ${user.email} ${user.phone} ${roleLabels[user.role]} ${formatPermissions(user)}`.toLowerCase().includes(deferredSearch.toLowerCase()),
+        `${user.fullName} ${user.email} ${user.phone} ${getEffectiveRoleLabel(user)} ${roleLabels[user.role]}`.toLowerCase().includes(deferredSearch.toLowerCase()),
       ),
     [deferredSearch, users],
   );
@@ -278,8 +240,8 @@ export function SettingsUsersPage() {
       email: '',
       password: '',
       confirmPassword: '',
-      role: 'nurse_staff',
-      permissions: [...rolePermissions.nurse_staff],
+      accessRoleId: accessRoles[0]?.id ?? '',
+      baseRole: accessRoles[0]?.baseRole ?? 'nurse_staff',
       prcLicenseNumber: '',
       prcLicenseExpiry: '',
       birNumber: '',
@@ -292,7 +254,7 @@ export function SettingsUsersPage() {
 
   const openEditModal = (user: UserProfile) => {
     const { firstName, lastName } = splitFullName(user.fullName);
-    const permissions = user.permissions ?? [...rolePermissions[user.role]];
+    const matchingAccessRole = accessRoles.find((role) => role.id === user.accessRoleId) ?? accessRoles.find((role) => role.baseRole === user.role) ?? null;
 
     form.reset({
       mode: 'edit',
@@ -302,8 +264,8 @@ export function SettingsUsersPage() {
       email: user.email,
       password: '',
       confirmPassword: '',
-      role: user.role as Exclude<Role, 'patient'>,
-      permissions,
+      accessRoleId: matchingAccessRole?.id ?? '',
+      baseRole: matchingAccessRole?.baseRole ?? user.role,
       prcLicenseNumber: '',
       prcLicenseExpiry: '',
       birNumber: '',
@@ -315,9 +277,30 @@ export function SettingsUsersPage() {
   };
 
   const onSubmit = form.handleSubmit(async (values) => {
+    const accessRole = accessRoles.find((role) => role.id === values.accessRoleId);
+    if (!accessRole) {
+      setFeedbackModal({
+        open: true,
+        title: 'Missing access role',
+        message: 'Select a valid access role before saving the user.',
+        variant: 'error',
+      });
+      return;
+    }
+
+    if (editingUser && isSupabaseConfigured && accessRole.baseRole !== editingUser.role) {
+      setFeedbackModal({
+        open: true,
+        title: 'Base role locked',
+        message: 'Live accounts can only switch between access roles that share the same base staff role.',
+        variant: 'error',
+      });
+      return;
+    }
+
     try {
       if (editingUser) {
-        await updateUserMutation.mutateAsync({ id: editingUser.id, values });
+        await updateUserMutation.mutateAsync({ id: editingUser.id, values, accessRole });
         setFeedbackModal({
           open: true,
           title: 'User updated',
@@ -325,16 +308,17 @@ export function SettingsUsersPage() {
           variant: 'success',
         });
       } else {
-        const createdUser = await createUserMutation.mutateAsync(buildCreateUserInput(values));
-        saveUserPermissionOverride({
+        const createdUser = await createUserMutation.mutateAsync(buildCreateUserInput(values, accessRole));
+        clearUserPermissionOverride({ userId: createdUser.id, email: createdUser.email });
+        saveUserAccessRoleAssignment({
           userId: createdUser.id,
           email: createdUser.email,
-          permissions: values.permissions,
+          accessRoleId: accessRole.id,
         });
         setFeedbackModal({
           open: true,
           title: 'User created',
-          message: `${roleLabels[values.role]} account created successfully.`,
+          message: `${accessRole.name} account created successfully.`,
           variant: 'success',
         });
       }
@@ -381,8 +365,8 @@ export function SettingsUsersPage() {
                 <ShieldCheck className="size-5" />
               </div>
               <div>
-                <h1 className="text-xl font-extrabold tracking-tight text-slate-950">User and Role Management</h1>
-                <p className="mt-1 text-sm text-slate-500">Manage staff accounts from a searchable table with modal-based create and edit forms.</p>
+                <h1 className="text-xl font-extrabold tracking-tight text-slate-950">User Management</h1>
+                <p className="mt-1 text-sm text-slate-500">Manage user accounts in a table and assign them to access roles from the Role Management page.</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -395,7 +379,7 @@ export function SettingsUsersPage() {
                 <input
                   className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search user, role, or permission"
+                  placeholder="Search user or assigned role"
                   value={search}
                 />
               </div>
@@ -410,9 +394,9 @@ export function SettingsUsersPage() {
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">User</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Role</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Access Role</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Base Staff Role</th>
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Contact</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Permissions</th>
                     <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Actions</th>
                   </tr>
                 </thead>
@@ -423,11 +407,9 @@ export function SettingsUsersPage() {
                         <p className="font-bold text-slate-950">{user.fullName}</p>
                         <p className="mt-1 text-sm text-slate-500">{user.email}</p>
                       </td>
-                      <td className="px-6 py-4 align-top text-sm font-medium text-slate-700">{roleLabels[user.role]}</td>
+                      <td className="px-6 py-4 align-top text-sm font-medium text-slate-700">{getEffectiveRoleLabel(user)}</td>
+                      <td className="px-6 py-4 align-top text-sm text-slate-600">{roleLabels[user.role]}</td>
                       <td className="px-6 py-4 align-top text-sm text-slate-600">{user.phone || 'No contact number set'}</td>
-                      <td className="px-6 py-4 align-top text-sm text-slate-600">
-                        <p className="max-w-md">{formatPermissions(user)}</p>
-                      </td>
                       <td className="px-6 py-4 align-top">
                         <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
                           <button className="inline-flex items-center gap-1 text-slate-600 hover:underline" onClick={() => openEditModal(user)} type="button">
@@ -456,24 +438,23 @@ export function SettingsUsersPage() {
 
           <div className="space-y-6">
             <div className="border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-950">Role matrix</h2>
+              <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-950">Access role summary</h2>
               <div className="mt-5 space-y-4">
-                {Object.entries(rolePermissions)
-                  .filter(([role]) => role !== 'patient')
-                  .map(([role, permissions]) => (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4" key={role}>
-                      <p className="font-semibold text-slate-950">{roleLabels[role as Role]}</p>
-                      <p className="mt-2 text-sm text-slate-500">{permissions.join(', ')}</p>
-                    </div>
-                  ))}
+                {accessRoles.map((role) => (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4" key={role.id}>
+                    <p className="font-semibold text-slate-950">{role.name}</p>
+                    <p className="mt-1 text-xs font-bold uppercase tracking-widest text-slate-400">{roleLabels[role.baseRole]}</p>
+                    <p className="mt-2 text-sm text-slate-500">{role.description}</p>
+                  </div>
+                ))}
               </div>
             </div>
 
             <div className="border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-950">Live account note</h2>
               <div className="mt-4 space-y-3 text-sm text-slate-600">
-                <p>Create works in both demo and live mode.</p>
-                <p>Edit works for profile details and permission overrides.</p>
+                <p>Access roles control what pages and actions a user can use.</p>
+                <p>The base staff role stays underneath for compatibility with current route guards and doctor-specific workflows.</p>
                 <p>Deleting live accounts still needs an admin auth-delete backend, so the delete button will show a clear error until that flow is added.</p>
               </div>
             </div>
@@ -483,7 +464,7 @@ export function SettingsUsersPage() {
 
       {isUserModalOpen ? (
         <div aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4 sm:p-6" onClick={closeUserModal} role="dialog">
-          <div className="my-auto flex w-full max-w-3xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]" onClick={(event) => event.stopPropagation()}>
+          <div className="my-auto flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl sm:max-h-[80vh]" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4 bg-orange-600 px-6 py-4">
               <div>
                 <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">User Form</p>
@@ -495,10 +476,10 @@ export function SettingsUsersPage() {
             </div>
 
             <form className="flex min-h-0 flex-1 flex-col" onSubmit={onSubmit}>
-              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
                 {isLiveEdit ? (
                   <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                    Role and email stay locked when editing live accounts. You can still update the contact number, doctor fees, and permission checklist here.
+                    Email stays locked when editing live accounts. You can still update the contact number, assigned access role, and doctor fees here.
                   </div>
                 ) : null}
 
@@ -531,81 +512,61 @@ export function SettingsUsersPage() {
                   </div>
                 ) : null}
 
-                <FormField error={form.formState.errors.role?.message} label="Role">
+                <FormField error={form.formState.errors.accessRoleId?.message} label="Access role">
                   <Select
-                    disabled={isLiveEdit}
                     onChange={(event) => {
-                      const nextRole = event.target.value as Exclude<Role, 'patient'>;
-                      form.setValue('role', nextRole, { shouldDirty: true, shouldValidate: true });
-                      form.setValue('permissions', [...rolePermissions[nextRole]], { shouldDirty: true, shouldValidate: true });
+                      const role = accessRoles.find((item) => item.id === event.target.value) ?? null;
+                      form.setValue('accessRoleId', event.target.value, { shouldDirty: true, shouldValidate: true });
+                      form.setValue('baseRole', role?.baseRole ?? 'nurse_staff', { shouldDirty: true, shouldValidate: true });
                     }}
-                    value={selectedRole}
+                    value={selectedAccessRoleId}
                   >
-                    {staffRoleOptions.map((role) => (
-                      <option key={role} value={role}>
-                        {roleLabels[role]}
+                    <option value="">Select access role</option>
+                    {accessRoles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
                       </option>
                     ))}
                   </Select>
                 </FormField>
 
-                <FormField error={form.formState.errors.permissions?.message} hint="Check the actions this account should be allowed to perform." label="Permission checklist">
-                  <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
-                    {permissionOptions.map((permission) => {
-                      const isChecked = selectedPermissions?.includes(permission) ?? false;
-
-                      return (
-                        <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700" key={permission}>
-                          <input
-                            checked={isChecked}
-                            className="mt-1"
-                            onChange={(event) => {
-                              const currentPermissions = form.getValues('permissions') ?? [];
-                              if (event.target.checked) {
-                                form.setValue('permissions', [...new Set([...currentPermissions, permission])], { shouldDirty: true, shouldValidate: true });
-                                return;
-                              }
-
-                              form.setValue(
-                                'permissions',
-                                currentPermissions.filter((item) => item !== permission),
-                                { shouldDirty: true, shouldValidate: true },
-                              );
-                            }}
-                            type="checkbox"
-                          />
-                          <span className="font-medium">{permission}</span>
-                        </label>
-                      );
-                    })}
+                {selectedAccessRole ? (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                    <p className="font-semibold text-slate-950">{selectedAccessRole.name}</p>
+                    <p className="mt-1 text-xs font-bold uppercase tracking-widest text-slate-400">{roleLabels[selectedAccessRole.baseRole]}</p>
+                    <p className="mt-2">{selectedAccessRole.description}</p>
+                    <p className="mt-3 text-xs text-slate-500">{selectedAccessRole.permissions.join(', ')}</p>
                   </div>
-                </FormField>
+                ) : null}
 
-                {isDoctor ? (
+                {isDoctorRole ? (
                   <div className="space-y-4 rounded-2xl border border-orange-200 bg-orange-50/50 p-4">
                     <p className="text-sm font-semibold text-orange-900">Doctor account fields</p>
+                    {!isEditing ? (
+                      <>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <FormField label="PRC license number">
+                            <Input {...form.register('prcLicenseNumber')} />
+                          </FormField>
+                          <FormField label="PRC license expiry">
+                            <Input type="date" {...form.register('prcLicenseExpiry')} />
+                          </FormField>
+                        </div>
+                        <FormField label="BIR number">
+                          <Input {...form.register('birNumber')} />
+                        </FormField>
+                      </>
+                    ) : (
+                      <p className="text-xs text-orange-700">Doctor credential fields stay read-only during edit to avoid breaking the verified doctor setup.</p>
+                    )}
                     <div className="grid gap-4 md:grid-cols-2">
-                      <FormField error={form.formState.errors.prcLicenseNumber?.message} label="PRC license number">
-                        <Input disabled={isEditing} {...form.register('prcLicenseNumber')} />
-                      </FormField>
-                      <FormField error={form.formState.errors.prcLicenseExpiry?.message} label="PRC license expiry">
-                        <Input disabled={isEditing} type="date" {...form.register('prcLicenseExpiry')} />
-                      </FormField>
-                    </div>
-                    <FormField error={form.formState.errors.birNumber?.message} label="BIR number">
-                      <Input disabled={isEditing} {...form.register('birNumber')} />
-                    </FormField>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <FormField error={form.formState.errors.consultationFee?.message} label="Consultation fee">
+                      <FormField label="Consultation fee">
                         <Input min="0" step="0.01" type="number" {...form.register('consultationFee', { valueAsNumber: true })} />
                       </FormField>
-                      <FormField error={form.formState.errors.followUpFee?.message} label="Follow-up fee">
+                      <FormField label="Follow-up fee">
                         <Input min="0" step="0.01" type="number" {...form.register('followUpFee', { valueAsNumber: true })} />
                       </FormField>
                     </div>
-                    {isEditing ? (
-                      <p className="text-xs text-orange-700">Doctor credential files and license details stay read-only during edit to avoid breaking the verified doctor setup.</p>
-                    ) : null}
                   </div>
                 ) : null}
               </div>
