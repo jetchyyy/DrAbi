@@ -31,6 +31,7 @@ import type {
   ServiceType,
   Specialty,
   UserProfile,
+  InventoryItem,
 } from "../types/domain";
 import type { Database } from "../types/database";
 import { generateBookingReceiptCode, generatePatientQrCode } from "./utils";
@@ -39,6 +40,7 @@ import {
   FunctionsHttpError,
   FunctionsRelayError,
 } from "@supabase/supabase-js";
+import type { InventoryFormValues } from "../features/inventory/inventory-page";
 
 export interface DoctorDirectoryItem {
   id: string;
@@ -137,6 +139,7 @@ type DoctorAvailabilityRow =
 type AppointmentRow = Database["public"]["Tables"]["appointments"]["Row"];
 type ConsultationRow = Database["public"]["Tables"]["consultations"]["Row"];
 type PrescriptionRow = Database["public"]["Tables"]["prescriptions"]["Row"];
+
 
 export interface OdcCredentialInput {
   accessKey?: string;
@@ -1970,3 +1973,62 @@ export async function updateSystemControlLiveOrDemo(
 
   return mapClinicSettings(data.clinicSettings);
 }
+
+/* Inventory Related */
+export async function createInventoryItem(values:InventoryFormValues){
+  const client = requireSupabase();
+  const payload = {
+    category_id: values.categoryId,
+    supplier_id: values.supplierId,
+    name: values.name,
+    sku: values.sku,
+    unit: values.unit,
+    stock_on_hand: values.stockOnHand,
+    reorder_level: values.reorderLevel,
+  }
+  const {error} = await client.from('inventory_items').insert(payload as never);
+  if(error){
+    console.log(error)
+    throw error;
+  }
+}
+
+export async function getInventoryItems(page: number): Promise<InventoryItem[]> {
+  const limit = 10;
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+  const client = requireSupabase();
+
+  const { data, error } = await client
+    .from("inventory_items")
+    .select("*")
+    .range(from, to);
+
+  if (error) throw error;
+
+  return data ?? [];
+}
+
+export async function getCategories() {
+  const client = requireSupabase();
+  
+  const { data, error } = await client
+    .from("inventory_categories")
+    .select("*");
+
+  if (error) throw error;
+
+  return data;
+}
+
+export async function getSupplier() {
+  const client = requireSupabase();
+
+  const { data, error } = await client
+    .from("suppliers")
+    .select("*");
+
+  if (error) throw error;
+  return data;
+}
+

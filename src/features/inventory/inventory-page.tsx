@@ -11,10 +11,12 @@ import { Button } from '../../components/ui/button';
 import { FeedbackModal } from '../../components/ui/feedback-modal';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
-import { createInventoryItem, deleteInventoryItemRecord, getDatabase, listInventoryItems, updateInventoryItemRecord } from '../../lib/local-db';
+import {  deleteInventoryItemRecord, getDatabase, listInventoryItems, updateInventoryItemRecord } from '../../lib/local-db';
 import { queryKeys } from '../../lib/query-keys';
 import { InventoryItemQrCard } from './components/inventory-item-qr-card';
 import { extractInventoryItemQrCode } from './inventory-qr';
+import { createInventoryItem, getCategories, getInventoryItems, getSupplier } from '../../lib/supabase-clinic';
+import type { InventoryItem } from '../../types/domain';
 
 const inventorySchema = z.object({
   categoryId: z.string().min(1, 'Category is required.'),
@@ -26,7 +28,7 @@ const inventorySchema = z.object({
   reorderLevel: z.number().min(0, 'Reorder level cannot be negative.'),
 });
 
-type InventoryFormValues = z.infer<typeof inventorySchema>;
+export type InventoryFormValues = z.infer<typeof inventorySchema>;
 
 interface FeedbackModalState {
   open: boolean;
@@ -34,6 +36,7 @@ interface FeedbackModalState {
   message: string;
   variant: 'success' | 'error';
 }
+
 
 export function InventoryPage() {
   const [searchParams] = useSearchParams();
@@ -50,10 +53,35 @@ export function InventoryPage() {
   });
   const deferredSearch = useDeferredValue(search);
 
-  const { data: items = [] } = useQuery({
-    queryKey: queryKeys.inventory,
-    queryFn: async () => listInventoryItems(),
+
+  const page = 1;
+  
+  const { data: items = [] } = useQuery<InventoryItem[]>({
+  queryKey: [queryKeys.inventory, page],
+  queryFn: () => getInventoryItems(page),
+});
+
+    type Category = {
+    id: string;
+    name: string;
+  };
+
+  type Supplier = {
+    id:string;
+    name: string;
+  }
+
+  const { data: categories } = useQuery<Category[]>({
+    queryKey: ["categories"],
+    queryFn: getCategories,
   });
+
+  const { data: suppliers } = useQuery<Supplier[]>({
+    queryKey: ["suppliers"],
+    queryFn: getSupplier,
+  });
+
+  
 
   const createItemMutation = useMutation({
     mutationFn: async (values: InventoryFormValues) => createInventoryItem(values),
@@ -432,7 +460,7 @@ export function InventoryPage() {
                   <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Classification</p>
                   <FormField error={form.formState.errors.categoryId?.message} label="Category">
                     <Select {...form.register('categoryId')}>
-                      {database.inventoryCategories.map((category) => (
+                     {categories?.map((category) => (
                         <option key={category.id} value={category.id}>
                           {category.name}
                         </option>
@@ -441,7 +469,7 @@ export function InventoryPage() {
                   </FormField>
                   <FormField error={form.formState.errors.supplierId?.message} label="Supplier">
                     <Select {...form.register('supplierId')}>
-                      {database.suppliers.map((supplier) => (
+                      {suppliers?.map((supplier) => (
                         <option key={supplier.id} value={supplier.id}>
                           {supplier.name}
                         </option>
