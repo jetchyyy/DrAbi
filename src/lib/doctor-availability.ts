@@ -1,13 +1,13 @@
-import type { DoctorAvailability } from '../types/domain';
+import type { DoctorAvailability } from "../types/domain";
 
 export const DOCTOR_AVAILABILITY_DAY_OPTIONS = [
-  { value: 0, label: 'Sunday' },
-  { value: 1, label: 'Monday' },
-  { value: 2, label: 'Tuesday' },
-  { value: 3, label: 'Wednesday' },
-  { value: 4, label: 'Thursday' },
-  { value: 5, label: 'Friday' },
-  { value: 6, label: 'Saturday' },
+  { value: 0, label: "Sunday" },
+  { value: 1, label: "Monday" },
+  { value: 2, label: "Tuesday" },
+  { value: 3, label: "Wednesday" },
+  { value: 4, label: "Thursday" },
+  { value: 5, label: "Friday" },
+  { value: 6, label: "Saturday" },
 ] as const;
 
 export const DOCTOR_SLOT_MINUTE_OPTIONS = [15, 30, 60] as const;
@@ -16,39 +16,48 @@ const DEFAULT_START_MINUTES = 6 * 60;
 const DEFAULT_END_MINUTES = 21 * 60;
 
 export function timeToMinutes(value: string) {
-  const [hours, minutes] = value.split(':').map(Number);
+  const [hours, minutes] = value.split(":").map(Number);
   return hours * 60 + minutes;
 }
 
 export function minutesToTime(value: number) {
   const hours = Math.floor(value / 60)
     .toString()
-    .padStart(2, '0');
-  const minutes = (value % 60).toString().padStart(2, '0');
+    .padStart(2, "0");
+  const minutes = (value % 60).toString().padStart(2, "0");
   return `${hours}:${minutes}`;
 }
 
 export function formatTimeLabel(value: string) {
-  const [hoursText, minutesText] = value.split(':');
+  const [hoursText, minutesText] = value.split(":");
   const hours = Number(hoursText);
   const minutes = Number(minutesText);
-  const suffix = hours >= 12 ? 'PM' : 'AM';
+  const suffix = hours >= 12 ? "PM" : "AM";
   const normalizedHours = hours % 12 || 12;
-  return `${normalizedHours}:${minutes.toString().padStart(2, '0')} ${suffix}`;
+  return `${normalizedHours}:${minutes.toString().padStart(2, "0")} ${suffix}`;
 }
 
 export function buildDailyTimeSlots(slotMinutes: number) {
   const normalizedMinutes = Math.max(15, slotMinutes || 30);
   const slots: string[] = [];
 
-  for (let cursor = DEFAULT_START_MINUTES; cursor < DEFAULT_END_MINUTES; cursor += normalizedMinutes) {
+  for (
+    let cursor = DEFAULT_START_MINUTES;
+    cursor < DEFAULT_END_MINUTES;
+    cursor += normalizedMinutes
+  ) {
     slots.push(minutesToTime(cursor));
   }
 
   return slots;
 }
 
-export function toAvailabilityRowInput(doctorId: string, dayOfWeek: number, startTime: string, slotMinutes: number) {
+export function toAvailabilityRowInput(
+  doctorId: string,
+  dayOfWeek: number,
+  startTime: string,
+  slotMinutes: number,
+) {
   return {
     doctorId,
     dayOfWeek,
@@ -58,7 +67,10 @@ export function toAvailabilityRowInput(doctorId: string, dayOfWeek: number, star
   };
 }
 
-export function getAvailableTimeSlotsForDate(availability: DoctorAvailability[], date: string) {
+export function getAvailableTimeSlotsForDate(
+  availability: DoctorAvailability[],
+  date: string,
+) {
   if (!date) {
     return [];
   }
@@ -67,6 +79,9 @@ export function getAvailableTimeSlotsForDate(availability: DoctorAvailability[],
 
   return availability
     .filter((slot) => slot.dayOfWeek === dayOfWeek)
-    .sort((left, right) => timeToMinutes(left.startTime) - timeToMinutes(right.startTime))
-    .map((slot) => slot.startTime);
+    .sort(
+      (left, right) =>
+        timeToMinutes(left.startTime) - timeToMinutes(right.startTime),
+    )
+    .map((slot) => slot.startTime.slice(0, 5)); // ✅ normalize to HH:MM
 }

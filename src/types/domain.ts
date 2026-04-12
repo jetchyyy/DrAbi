@@ -1,51 +1,65 @@
 ﻿export type Role =
-  | 'owner_admin'
-  | 'doctor'
-  | 'nurse_staff'
-  | 'front_desk_cashier'
-  | 'lab_staff'
-  | 'inventory_staff'
-  | 'patient';
+  | "owner_admin"
+  | "doctor"
+  | "nurse_staff"
+  | "front_desk_cashier"
+  | "lab_staff"
+  | "inventory_staff"
+  | "patient";
 
 export type Permission =
-  | 'dashboard.view'
-  | 'patients.view'
-  | 'patients.manage'
-  | 'appointments.view'
-  | 'appointments.manage'
-  | 'consultations.manage'
-  | 'billing.view'
-  | 'billing.manage'
-  | 'inventory.view'
-  | 'inventory.manage'
-  | 'laboratory.view'
-  | 'laboratory.manage'
-  | 'settings.view'
-  | 'settings.manage'
-  | 'booking.view'
-  | 'booking.manage'
-  | 'users.manage';
+  | "dashboard.view"
+  | "patients.view"
+  | "patients.manage"
+  | "appointments.view"
+  | "appointments.manage"
+  | "consultations.manage"
+  | "billing.view"
+  | "billing.manage"
+  | "inventory.view"
+  | "inventory.manage"
+  | "laboratory.view"
+  | "laboratory.manage"
+  | "settings.view"
+  | "settings.manage"
+  | "booking.view"
+  | "booking.manage"
+  | "users.manage";
 
 export type AppointmentStatus =
-  | 'scheduled'
-  | 'confirmed'
-  | 'in_progress'
-  | 'completed'
-  | 'cancelled'
-  | 'no_show';
+  | "scheduled"
+  | "confirmed"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
+  | "no_show";
 
-export type BookingStatus = 'pending' | 'confirmed' | 'rescheduled' | 'cancelled';
-export type BookingFeeType = 'consultation' | 'follow_up' | 'service_fee';
-export type BookingPaymentStatus = 'pending_cashier' | 'paid';
-export type ServiceType = 'medical_service' | 'consultation' | 'follow_up';
-export type ReferralStatus = 'draft' | 'sent' | 'accepted' | 'completed' | 'cancelled';
-export type PaymentStatus = 'unpaid' | 'partial' | 'paid' | 'void';
-export type LabOrderStatus = 'requested' | 'collected' | 'processing' | 'ready' | 'released';
-export type StockTransactionType = 'stock_in' | 'stock_out' | 'adjustment';
-export type VisitType = 'in_person' | 'teleconsultation';
-export type ServiceDeliveryMode = 'in_person' | 'teleconsultation' | 'hybrid';
-export type PatientIntakeSource = 'online_registration' | 'staff_walk_in';
-export type PatientVisitStatus = 'registered_no_visit' | 'visited_clinic';
+export type BookingStatus =
+  | "pending"
+  | "confirmed"
+  | "rescheduled"
+  | "cancelled";
+export type BookingFeeType = "consultation" | "follow_up" | "service_fee";
+export type BookingPaymentStatus = "pending_cashier" | "paid";
+export type ServiceType = "medical_service" | "consultation" | "follow_up";
+export type ReferralStatus =
+  | "draft"
+  | "sent"
+  | "accepted"
+  | "completed"
+  | "cancelled";
+export type PaymentStatus = "unpaid" | "partial" | "paid" | "void";
+export type LabOrderStatus =
+  | "requested"
+  | "collected"
+  | "processing"
+  | "ready"
+  | "released";
+export type StockTransactionType = "stock_in" | "stock_out" | "adjustment";
+export type VisitType = "in_person" | "teleconsultation";
+export type ServiceDeliveryMode = "in_person" | "teleconsultation" | "hybrid";
+export type PatientIntakeSource = "online_registration" | "staff_walk_in";
+export type PatientVisitStatus = "registered_no_visit" | "visited_clinic";
 
 export interface BaseRecord {
   id: string;
@@ -96,7 +110,7 @@ export interface AdminCreateUserInput {
   contactNumber: string;
   email: string;
   password: string;
-  role: Exclude<Role, 'patient'>;
+  role: Exclude<Role, "patient">;
   prcLicenseNumber?: string;
   prcLicenseExpiry?: string;
   birNumber?: string;
@@ -133,7 +147,7 @@ export interface Patient extends BaseRecord {
   visitStatus: PatientVisitStatus;
   firstName: string;
   lastName: string;
-  sex: 'male' | 'female' | 'other';
+  sex: "male" | "female" | "other";
   birthDate: string;
   mobileNumber: string;
   email: string;
@@ -152,7 +166,7 @@ export interface Appointment extends BaseRecord {
   serviceId: string;
   scheduledAt: string;
   status: AppointmentStatus;
-  source: 'internal' | 'portal';
+  source: "internal" | "portal";
   visitType: VisitType;
   reason: string;
   notes: string;
@@ -215,6 +229,9 @@ export interface Booking extends BaseRecord {
   receiptCode: string;
   paymentStatus: BookingPaymentStatus;
 }
+interface CreateReferralPageProps {
+  referringDoctorId: string;
+}
 
 export interface Referral extends BaseRecord {
   patientId: string;
@@ -238,7 +255,7 @@ export interface InvoiceItem extends BaseRecord {
   description: string;
   quantity: number;
   unitPrice: number;
-  category: 'consultation' | 'laboratory' | 'medicine' | 'other';
+  category: "consultation" | "laboratory" | "medicine" | "other";
 }
 
 export interface Invoice extends BaseRecord {
@@ -253,7 +270,7 @@ export interface Invoice extends BaseRecord {
 export interface Payment extends BaseRecord {
   invoiceId: string;
   amount: number;
-  method: 'cash' | 'card' | 'transfer' | 'ewallet';
+  method: "cash" | "card" | "transfer" | "ewallet";
   referenceNumber: string;
   receivedBy: string;
 }
@@ -297,7 +314,7 @@ export interface InventoryUsageLog extends BaseRecord {
   recordedBy: string;
 }
 
-export type LabServiceCategory = 'laboratoryTests' | 'imagingTests';
+export type LabServiceCategory = "laboratoryTests" | "imagingTests";
 
 export interface LabService extends BaseRecord {
   name: string;
@@ -318,7 +335,11 @@ export interface LabOrder extends BaseRecord {
   urgentFlag?: boolean;
 }
 
-export type LabBookingStatus = 'Pending' | 'Confirmed' | 'Completed' | 'Cancelled';
+export type LabBookingStatus =
+  | "Pending"
+  | "Confirmed"
+  | "Completed"
+  | "Cancelled";
 
 export interface LabBookingRequest extends BaseRecord {
   patientName: string;
@@ -378,8 +399,3 @@ export interface AppDatabase {
   fileUploads: FileUpload[];
   auditLogs: AuditLog[];
 }
-
-
-
-
-

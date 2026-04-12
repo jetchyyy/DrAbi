@@ -1,8 +1,8 @@
-﻿import { useMutation, useQuery } from '@tanstack/react-query';
+﻿import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { queryClient } from '../../../app/query-client';
-import { getDatabase } from '../../../lib/local-db';
-import { queryKeys } from '../../../lib/query-keys';
+import { queryClient } from "../../../app/query-client";
+import { getDatabase } from "../../../lib/local-db";
+import { queryKeys } from "../../../lib/query-keys";
 import {
   createBookingLiveOrDemo,
   getBookingByReceiptCodeLiveOrDemo,
@@ -10,9 +10,9 @@ import {
   getCurrentPatient,
   listBlockedBookingSlotsLiveOrDemo,
   markBookingPaidAndCreateInvoiceLiveOrDemo,
-} from '../../../lib/supabase-clinic';
-import { isSupabaseConfigured } from '../../../lib/supabase';
-import type { Booking } from '../../../types/domain';
+} from "../../../lib/supabase-clinic";
+import { isSupabaseConfigured } from "../../../lib/supabase";
+import type { Booking } from "../../../types/domain";
 
 export function useMyBookings(userId: string | null) {
   return useQuery({
@@ -25,13 +25,19 @@ export function useMyBookings(userId: string | null) {
   });
 }
 
-export function useCurrentPatient(userId: string | null, email: string | null | undefined) {
+export function useCurrentPatient(
+  userId: string | null,
+  email: string | null | undefined,
+) {
   return useQuery({
     queryKey: queryKeys.currentPatient(userId ?? email ?? null),
     queryFn: async () => {
       if (!isSupabaseConfigured) {
         if (!email) return null;
-        return getDatabase().patients.find((patient) => patient.email === email) ?? null;
+        return (
+          getDatabase().patients.find((patient) => patient.email === email) ??
+          null
+        );
       }
       if (!userId) return null;
       return getCurrentPatient(userId);
@@ -40,12 +46,20 @@ export function useCurrentPatient(userId: string | null, email: string | null | 
   });
 }
 
-export function useBlockedBookingSlots(input: { date: string | null; doctorId?: string | null; serviceId?: string | null }) {
+export function useBlockedBookingSlots(input: {
+  date: string | null;
+  doctorId?: string | null;
+  serviceId?: string | null;
+}) {
   return useQuery({
-    queryKey: queryKeys.blockedBookingSlots(input.date, input.doctorId ?? null, input.serviceId ?? null),
+    queryKey: queryKeys.blockedBookingSlots(
+      input.date,
+      input.doctorId ?? null,
+      input.serviceId ?? null,
+    ),
     queryFn: () =>
       listBlockedBookingSlotsLiveOrDemo({
-        date: input.date ?? '',
+        date: input.date ?? "",
         doctorId: input.doctorId ?? null,
         serviceId: input.serviceId ?? null,
       }),
@@ -66,18 +80,23 @@ export function useBookingReceipt(receiptCode: string | null) {
 
 export function useMarkBookingPaid() {
   return useMutation({
-    mutationFn: (receiptCode: string) => markBookingPaidAndCreateInvoiceLiveOrDemo(receiptCode),
+    mutationFn: (receiptCode: string) =>
+      markBookingPaidAndCreateInvoiceLiveOrDemo(receiptCode),
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.bookings });
       void queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.bookingReceipt(result.booking?.receiptCode ?? null) });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.bookingReceipt(result.booking?.receiptCode ?? null),
+      });
     },
   });
 }
 
 export function useCreateBooking(userId: string | null) {
   return useMutation({
-    mutationFn: async (payload: Omit<Booking, 'id' | 'createdAt' | 'updatedAt' | 'status'>) =>
+    mutationFn: async (
+      payload: Omit<Booking, "id" | "createdAt" | "updatedAt" | "status">,
+    ) =>
       createBookingLiveOrDemo({
         patientId: payload.patientId,
         serviceId: payload.serviceId,
@@ -90,9 +109,16 @@ export function useCreateBooking(userId: string | null) {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.bookings });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.myBookings(userId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.currentPatient(userId) });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.myBookings(userId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.currentPatient(userId),
+      });
       void queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
+      void queryClient.invalidateQueries({
+        queryKey: ["blocked-booking-slots"],
+      });
     },
   });
 }
