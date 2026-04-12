@@ -1,4 +1,4 @@
-import { getDatabase, createAppointment, listAppointments } from '../../lib/local-db';
+import { createAppointment, deleteAppointmentRecord, listAppointments, updateAppointmentRecord } from '../../lib/local-db';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import type { Database } from '../../types/database';
 import type { Appointment, Role } from '../../types/domain';
@@ -220,6 +220,53 @@ export async function createAppointmentLiveOrDemo(input: AppointmentInput) {
   }
 
   return mapAppointmentRow(data as AppointmentRowLoose);
+}
+
+export async function updateAppointmentLiveOrDemo(appointmentId: string, input: AppointmentInput) {
+  const normalized = normalizeAppointmentInput(input);
+
+  if (!isSupabaseConfigured) {
+    return updateAppointmentRecord(appointmentId, normalized);
+  }
+
+  const client = getClient();
+  const payload = {
+    patient_id: normalized.patientId,
+    doctor_id: normalized.doctorId || null,
+    specialty_id: normalized.specialtyId || null,
+    service_id: normalized.serviceId || null,
+    scheduled_at: normalized.scheduledAt,
+    status: normalized.status,
+    source: normalized.source,
+    visit_type: normalized.visitType,
+    reason: normalized.reason,
+    notes: normalized.notes,
+    teleconsultation_provider: normalized.teleconsultationProvider,
+    teleconsultation_room_name: normalized.teleconsultationRoomName,
+    teleconsultation_platform: normalized.teleconsultationPlatform,
+    teleconsultation_url: normalized.teleconsultationUrl,
+    teleconsultation_access_instructions: normalized.teleconsultationAccessInstructions,
+  };
+
+  const { data, error } = await client.from('appointments').update(payload as never).eq('id', appointmentId).select('*').single();
+  if (error) {
+    throw error;
+  }
+
+  return mapAppointmentRow(data as AppointmentRowLoose);
+}
+
+export async function deleteAppointmentLiveOrDemo(appointmentId: string) {
+  if (!isSupabaseConfigured) {
+    deleteAppointmentRecord(appointmentId);
+    return;
+  }
+
+  const client = getClient();
+  const { error } = await client.from('appointments').update({ deleted_at: new Date().toISOString() } as never).eq('id', appointmentId);
+  if (error) {
+    throw error;
+  }
 }
 
 export async function getTeleconsultAppointmentsForUser(input: {

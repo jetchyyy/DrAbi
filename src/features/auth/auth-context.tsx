@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 
 import { rolePermissions } from '../../config/permissions';
-import { getDatabase } from '../../lib/local-db';
+import { applyUserPermissionOverride, getDatabase } from '../../lib/local-db';
 import { queryClient } from '../../app/query-client';
 import { queryKeys } from '../../lib/query-keys';
 import { ensureDoctorForUser, ensurePatientForUser, ensureProfileForUser, getCurrentProfile } from '../../lib/supabase-clinic';
@@ -57,10 +57,10 @@ function getStoredDemoEmail() {
 function getDemoProfile(email: string, user?: User | null) {
   const matchedProfile = getDatabase().users.find((profile) => profile.email.toLowerCase() === email.toLowerCase());
   if (matchedProfile) {
-    return matchedProfile;
+    return applyUserPermissionOverride(matchedProfile);
   }
 
-  return {
+  return applyUserPermissionOverride({
     id: `profile_${email}`,
     authUserId: user?.id ?? `demo_${email}`,
     createdAt: new Date().toISOString(),
@@ -69,7 +69,7 @@ function getDemoProfile(email: string, user?: User | null) {
     fullName: email.split('@')[0].replaceAll('.', ' '),
     role: (user?.app_metadata.role as Role | undefined) ?? roleFromEmail(email),
     phone: '',
-  } satisfies UserProfile;
+  } satisfies UserProfile);
 }
 
 async function resolveLiveProfile(user: User) {
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const value = useMemo<AuthContextValue>(() => {
-    const permissions = profile ? rolePermissions[profile.role] : [];
+    const permissions = profile ? (profile.permissions ?? rolePermissions[profile.role]) : [];
 
     return {
       loading,

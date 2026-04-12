@@ -20,7 +20,9 @@ import type {
   LabResult,
   LabService,
   LabServiceCategory,
+  PatientActionLog,
   Patient,
+  Permission,
   Prescription,
   Referral,
   Service,
@@ -31,6 +33,14 @@ import type {
 import { generateBookingReceiptCode, generateId, generateInventoryQrCode, generatePatientQrCode } from './utils';
 
 const STORAGE_KEY = 'odyssey-clinic-demo-db-v2';
+const PATIENT_ACTION_LOGS_KEY = 'odyssey-clinic-patient-action-logs-v1';
+const USER_PERMISSION_OVERRIDES_KEY = 'odyssey-clinic-user-permission-overrides-v1';
+
+interface UserPermissionOverride {
+  userId?: string;
+  email: string;
+  permissions: Permission[];
+}
 
 function canUseStorage() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -77,6 +87,52 @@ export function saveDatabase(database: AppDatabase) {
   }
 }
 
+function getPatientActionLogsStorage(): PatientActionLog[] {
+  if (!canUseStorage()) {
+    return [];
+  }
+
+  const stored = window.localStorage.getItem(PATIENT_ACTION_LOGS_KEY);
+  if (!stored) {
+    return [];
+  }
+
+  try {
+    return JSON.parse(stored) as PatientActionLog[];
+  } catch {
+    return [];
+  }
+}
+
+function savePatientActionLogs(logs: PatientActionLog[]) {
+  if (canUseStorage()) {
+    window.localStorage.setItem(PATIENT_ACTION_LOGS_KEY, JSON.stringify(logs));
+  }
+}
+
+function getUserPermissionOverridesStorage(): UserPermissionOverride[] {
+  if (!canUseStorage()) {
+    return [];
+  }
+
+  const stored = window.localStorage.getItem(USER_PERMISSION_OVERRIDES_KEY);
+  if (!stored) {
+    return [];
+  }
+
+  try {
+    return JSON.parse(stored) as UserPermissionOverride[];
+  } catch {
+    return [];
+  }
+}
+
+function saveUserPermissionOverridesStorage(overrides: UserPermissionOverride[]) {
+  if (canUseStorage()) {
+    window.localStorage.setItem(USER_PERMISSION_OVERRIDES_KEY, JSON.stringify(overrides));
+  }
+}
+
 export function updateDatabase(mutator: (draft: AppDatabase) => void) {
   const next = structuredClone(getDatabase());
   mutator(next);
@@ -107,7 +163,7 @@ export function updateClinicSettings(input: Partial<ClinicSettings>) {
 }
 
 export function listUsers() {
-  return getDatabase().users;
+  return getDatabase().users.map(applyUserPermissionOverride);
 }
 
 export function createUserProfile(input: Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'>) {
@@ -121,6 +177,74 @@ export function createUserProfile(input: Omit<UserProfile, 'id' | 'createdAt' | 
     });
     draft.auditLogs.unshift(createAuditLog('user_owner', 'create', 'profile'));
   }).users[0];
+}
+
+export function updateUserProfileRecord(
+  id: string,
+  input: Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'>,
+) {
+  return updateDatabase((draft) => {
+    const user = draft.users.find((item) => item.id === id);
+    if (!user) {
+      throw new Error('User not found.');
+    }
+
+    Object.assign(user, input, {
+      updatedAt: new Date().toISOString(),
+    });
+  }).users.find((item) => item.id === id) ?? null;
+}
+
+export function deleteUserProfileRecord(id: string) {
+  return updateDatabase((draft) => {
+    draft.users = draft.users.filter((item) => item.id !== id);
+  }).users;
+}
+
+export function saveUserPermissionOverride(input: { userId?: string; email: string; permissions: Permission[] }) {
+  const normalizedEmail = input.email.trim().toLowerCase();
+  const existingOverrides = getUserPermissionOverridesStorage();
+  const filteredOverrides = existingOverrides.filter(
+    (item) => item.email.toLowerCase() !== normalizedEmail && (!input.userId || item.userId !== input.userId),
+  );
+
+  filteredOverrides.unshift({
+    userId: input.userId,
+    email: normalizedEmail,
+    permissions: input.permissions,
+  });
+
+  saveUserPermissionOverridesStorage(filteredOverrides);
+  void queryClient.invalidateQueries();
+}
+
+export function clearUserPermissionOverride(input: { userId?: string; email?: string }) {
+  const normalizedEmail = input.email?.trim().toLowerCase();
+  const filteredOverrides = getUserPermissionOverridesStorage().filter(
+    (item) =>
+      (input.userId ? item.userId !== input.userId : true) &&
+      (normalizedEmail ? item.email.toLowerCase() !== normalizedEmail : true),
+  );
+
+  saveUserPermissionOverridesStorage(filteredOverrides);
+  void queryClient.invalidateQueries();
+}
+
+export function applyUserPermissionOverride(profile: UserProfile): UserProfile {
+  const override = getUserPermissionOverridesStorage().find(
+    (item) =>
+      (item.userId && (item.userId === profile.id || item.userId === profile.authUserId)) ||
+      item.email.toLowerCase() === profile.email.toLowerCase(),
+  );
+
+  if (!override) {
+    return profile;
+  }
+
+  return {
+    ...profile,
+    permissions: override.permissions,
+  };
 }
 
 export function listSpecialties() {
@@ -137,6 +261,25 @@ export function createSpecialty(input: Omit<Specialty, 'id' | 'createdAt' | 'upd
       updatedAt: timestamp,
     });
   }).specialties[0];
+}
+
+export function updateSpecialtyRecord(id: string, input: Omit<Specialty, 'id' | 'createdAt' | 'updatedAt'>) {
+  return updateDatabase((draft) => {
+    const specialty = draft.specialties.find((item) => item.id === id);
+    if (!specialty) {
+      throw new Error('Specialty not found.');
+    }
+
+    Object.assign(specialty, input, {
+      updatedAt: new Date().toISOString(),
+    });
+  }).specialties.find((item) => item.id === id) ?? null;
+}
+
+export function deleteSpecialtyRecord(id: string) {
+  return updateDatabase((draft) => {
+    draft.specialties = draft.specialties.filter((item) => item.id !== id);
+  }).specialties;
 }
 
 export function listServices() {
@@ -199,6 +342,25 @@ export function createService(input: Omit<Service, 'id' | 'createdAt' | 'updated
   }).services[0];
 }
 
+export function updateServiceRecord(id: string, input: Omit<Service, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>) {
+  return updateDatabase((draft) => {
+    const service = draft.services.find((item) => item.id === id);
+    if (!service) {
+      throw new Error('Service not found.');
+    }
+
+    Object.assign(service, input, {
+      updatedAt: new Date().toISOString(),
+    });
+  }).services.find((item) => item.id === id) ?? null;
+}
+
+export function deleteServiceRecord(id: string) {
+  return updateDatabase((draft) => {
+    draft.services = draft.services.filter((item) => item.id !== id);
+  }).services;
+}
+
 export function listSuppliers() {
   return getDatabase().suppliers;
 }
@@ -215,6 +377,25 @@ export function createSupplier(input: Omit<Supplier, 'id' | 'createdAt' | 'updat
   }).suppliers[0];
 }
 
+export function updateSupplierRecord(id: string, input: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>) {
+  return updateDatabase((draft) => {
+    const supplier = draft.suppliers.find((item) => item.id === id);
+    if (!supplier) {
+      throw new Error('Supplier not found.');
+    }
+
+    Object.assign(supplier, input, {
+      updatedAt: new Date().toISOString(),
+    });
+  }).suppliers.find((item) => item.id === id) ?? null;
+}
+
+export function deleteSupplierRecord(id: string) {
+  return updateDatabase((draft) => {
+    draft.suppliers = draft.suppliers.filter((item) => item.id !== id);
+  }).suppliers;
+}
+
 export function upsertPatient(input: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'>) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
@@ -229,6 +410,50 @@ export function upsertPatient(input: Omit<Patient, 'id' | 'createdAt' | 'updated
     });
     draft.auditLogs.unshift(createAuditLog('user_owner', 'create', 'patient'));
   }).patients[0];
+}
+
+export function updatePatientRecord(
+  patientId: string,
+  input: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'>,
+) {
+  return updateDatabase((draft) => {
+    const patient = draft.patients.find((item) => item.id === patientId);
+    if (!patient) {
+      throw new Error('Patient record not found.');
+    }
+
+    Object.assign(patient, input, {
+      updatedAt: new Date().toISOString(),
+    });
+  }).patients.find((item) => item.id === patientId) ?? null;
+}
+
+export function deletePatientRecord(patientId: string) {
+  return updateDatabase((draft) => {
+    draft.patients = draft.patients.filter((item) => item.id !== patientId);
+  }).patients;
+}
+
+export function listPatientActionLogs() {
+  return getPatientActionLogsStorage().sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
+export function createPatientActionLog(
+  input: Omit<PatientActionLog, 'id' | 'createdAt' | 'updatedAt'>,
+) {
+  const timestamp = new Date().toISOString();
+  const nextLog: PatientActionLog = {
+    ...input,
+    id: generateId('patientlog'),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  const nextLogs = [nextLog, ...getPatientActionLogsStorage()];
+  savePatientActionLogs(nextLogs);
+  void queryClient.invalidateQueries({ queryKey: ['patient-action-logs'] });
+
+  return nextLog;
 }
 
 export function listPatients() {
@@ -258,6 +483,28 @@ export function createAppointment(input: Omit<Appointment, 'id' | 'createdAt' | 
     });
     draft.auditLogs.unshift(createAuditLog('user_owner', 'create', 'appointment'));
   }).appointments[0];
+}
+
+export function updateAppointmentRecord(
+  appointmentId: string,
+  input: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>,
+) {
+  return updateDatabase((draft) => {
+    const appointment = draft.appointments.find((item) => item.id === appointmentId);
+    if (!appointment) {
+      throw new Error('Appointment record not found.');
+    }
+
+    Object.assign(appointment, input, {
+      updatedAt: new Date().toISOString(),
+    });
+  }).appointments.find((item) => item.id === appointmentId) ?? null;
+}
+
+export function deleteAppointmentRecord(appointmentId: string) {
+  return updateDatabase((draft) => {
+    draft.appointments = draft.appointments.filter((item) => item.id !== appointmentId);
+  }).appointments;
 }
 
 export function createConsultation(input: Omit<Consultation, 'id' | 'createdAt' | 'updatedAt'>) {
@@ -422,6 +669,51 @@ export function createInvoice(
   }).invoices[0];
 }
 
+export function updateInvoiceRecord(
+  invoiceId: string,
+  invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>,
+  item: Omit<InvoiceItem, 'id' | 'createdAt' | 'updatedAt' | 'invoiceId'>,
+) {
+  const timestamp = new Date().toISOString();
+
+  return updateDatabase((draft) => {
+    const targetInvoice = draft.invoices.find((entry) => entry.id === invoiceId);
+    if (!targetInvoice) {
+      throw new Error('Invoice record not found.');
+    }
+
+    Object.assign(targetInvoice, invoice, {
+      updatedAt: timestamp,
+    });
+
+    const existingItems = draft.invoiceItems.filter((entry) => entry.invoiceId === invoiceId);
+    if (existingItems.length > 0) {
+      Object.assign(existingItems[0], item, {
+        updatedAt: timestamp,
+      });
+      if (existingItems.length > 1) {
+        const [firstItem] = existingItems;
+        draft.invoiceItems = draft.invoiceItems.filter((entry) => entry.invoiceId !== invoiceId || entry.id === firstItem.id);
+      }
+    } else {
+      draft.invoiceItems.unshift({
+        ...item,
+        id: generateId('inv_item'),
+        invoiceId,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+  }).invoices.find((entry) => entry.id === invoiceId) ?? null;
+}
+
+export function deleteInvoiceRecord(invoiceId: string) {
+  return updateDatabase((draft) => {
+    draft.invoices = draft.invoices.filter((entry) => entry.id !== invoiceId);
+    draft.invoiceItems = draft.invoiceItems.filter((entry) => entry.invoiceId !== invoiceId);
+  }).invoices;
+}
+
 export function listInventoryItems() {
   return getDatabase().inventoryItems;
 }
@@ -439,6 +731,30 @@ export function createInventoryItem(
       updatedAt: timestamp,
     });
   }).inventoryItems[0];
+}
+
+export function updateInventoryItemRecord(
+  itemId: string,
+  input: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt' | 'qrCode'> & { qrCode?: string },
+) {
+  return updateDatabase((draft) => {
+    const item = draft.inventoryItems.find((entry) => entry.id === itemId);
+    if (!item) {
+      throw new Error('Inventory item not found.');
+    }
+
+    Object.assign(item, {
+      ...input,
+      qrCode: input.qrCode || item.qrCode,
+      updatedAt: new Date().toISOString(),
+    });
+  }).inventoryItems.find((entry) => entry.id === itemId) ?? null;
+}
+
+export function deleteInventoryItemRecord(itemId: string) {
+  return updateDatabase((draft) => {
+    draft.inventoryItems = draft.inventoryItems.filter((entry) => entry.id !== itemId);
+  }).inventoryItems;
 }
 
 export function getInventoryItemByQrCode(qrCode: string) {
@@ -521,6 +837,51 @@ export function createLabOrder(order: Omit<LabOrder, 'id' | 'createdAt' | 'updat
       draft.labResults.unshift(result);
     }
   }).labOrders[0];
+}
+
+export function updateLabOrder(
+  id: string,
+  order: Omit<LabOrder, 'id' | 'createdAt' | 'updatedAt'>,
+  resultSummary?: string,
+) {
+  const timestamp = new Date().toISOString();
+
+  return updateDatabase((draft) => {
+    const existingOrder = draft.labOrders.find((entry) => entry.id === id);
+    if (!existingOrder) {
+      throw new Error('Lab order not found.');
+    }
+
+    Object.assign(existingOrder, order, {
+      updatedAt: timestamp,
+    });
+
+    const existingResult = draft.labResults.find((entry) => entry.labOrderId === id);
+    if (resultSummary && resultSummary.trim()) {
+      if (existingResult) {
+        existingResult.resultSummary = resultSummary;
+        existingResult.releasedAt = order.status === 'released' ? timestamp : existingResult.releasedAt;
+        existingResult.updatedAt = timestamp;
+      } else {
+        draft.labResults.unshift({
+          id: generateId('labresult'),
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          labOrderId: id,
+          resultSummary,
+          releasedAt: order.status === 'released' ? timestamp : null,
+          attachmentName: null,
+        });
+      }
+    }
+  }).labOrders.find((entry) => entry.id === id) ?? null;
+}
+
+export function deleteLabOrder(id: string) {
+  return updateDatabase((draft) => {
+    draft.labOrders = draft.labOrders.filter((entry) => entry.id !== id);
+    draft.labResults = draft.labResults.filter((entry) => entry.labOrderId !== id);
+  }).labOrders;
 }
 
 export function getDashboardSnapshot() {

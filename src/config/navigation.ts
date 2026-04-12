@@ -1,5 +1,6 @@
 import {
   ScanLine,
+  ClipboardList,
   CalendarDays,
   Clock3,
   FlaskConical,
@@ -9,6 +10,9 @@ import {
   Settings,
   Stethoscope,
   Users,
+  BriefcaseBusiness,
+  Boxes,
+  ShieldCheck,
 } from "lucide-react";
 
 import type { Permission, Role } from "../types/domain";
@@ -33,6 +37,13 @@ export const appNavigation: NavItem[] = [
     to: "/app/patients",
     icon: Users,
     permission: "patients.view",
+  },
+  {
+    label: "Patient Logs",
+    to: "/app/patients/logs",
+    icon: ClipboardList,
+    permission: "patients.view",
+    roles: ["owner_admin", "nurse_staff", "front_desk_cashier"],
   },
   {
     label: "Appointments",
@@ -86,6 +97,24 @@ export const appNavigation: NavItem[] = [
     permission: "laboratory.view",
   },
   {
+    label: "Service Catalog",
+    to: "/app/settings/catalog",
+    icon: BriefcaseBusiness,
+    permission: "settings.view",
+  },
+  {
+    label: "User and Role Management",
+    to: "/app/settings/users",
+    icon: ShieldCheck,
+    permission: "settings.view",
+  },
+  {
+    label: "Supplier Management",
+    to: "/app/settings/support",
+    icon: Boxes,
+    permission: "settings.view",
+  },
+  {
     label: "Settings",
     to: "/app/settings/clinic",
     icon: Settings,
@@ -102,7 +131,7 @@ export const portalNavigation = [
 
 export const settingsNavigation = [
   { label: "Clinic Profile", to: "/app/settings/clinic" },
-  { label: "Services & Specialties", to: "/app/settings/catalog" },
-  { label: "Users & Roles", to: "/app/settings/users" },
-  { label: "Suppliers & Preferences", to: "/app/settings/support" },
+  { label: "Service Catalog", to: "/app/settings/catalog" },
+  { label: "User and Role Management", to: "/app/settings/users" },
+  { label: "Supplier Management", to: "/app/settings/support" },
 ];

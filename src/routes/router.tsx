@@ -21,6 +21,7 @@ import { DoctorAvailabilityPage } from "../features/doctor/doctor-availability-p
 import { InventoryPage } from "../features/inventory/inventory-page";
 import { LaboratoryPage } from "../features/laboratory/laboratory-page";
 import { PatientDetailPage } from "../features/patients/patient-detail-page";
+import { PatientActionLogsPage } from "../features/patients/patient-action-logs-page";
 import { PatientQrLookupPage } from "../features/patients/patient-qr-lookup-page";
 import { PatientsPage } from "../features/patients/patients-page";
 import { SettingsClinicPage } from "../features/settings/settings-clinic-page";
@@ -111,6 +112,7 @@ export const router = createBrowserRouter([
                 element: <PermissionGate permission="patients.view" />,
                 children: [
                   { path: "patients", element: <PatientsPage /> },
+                  { path: "patients/logs", element: <PatientActionLogsPage /> },
                   { path: "patients/scan", element: <PatientQrLookupPage /> },
                   {
                     path: "patients/:patientId",
@@ -175,13 +177,11 @@ export const router = createBrowserRouter([
               {
                 path: "settings",
                 element: <SettingsLayout />,
-                children: [
-                  { path: "clinic", element: <SettingsClinicPage /> },
-                  { path: "catalog", element: <SettingsServicesPage /> },
-                  { path: "users", element: <SettingsUsersPage /> },
-                  { path: "support", element: <SettingsSupportPage /> },
-                ],
+                children: [{ path: "clinic", element: <SettingsClinicPage /> }],
               },
+              { path: "settings/catalog", element: <SettingsServicesPage /> },
+              { path: "settings/users", element: <SettingsUsersPage /> },
+              { path: "settings/support", element: <SettingsSupportPage /> },
             ],
           },
         ],

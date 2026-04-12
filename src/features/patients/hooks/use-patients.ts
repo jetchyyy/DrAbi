@@ -1,18 +1,20 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { queryClient } from '../../../app/query-client';
-import { recordInventoryUsage } from '../../../lib/local-db';
+import { createPatientActionLog, listPatientActionLogs, recordInventoryUsage } from '../../../lib/local-db';
 import { queryKeys } from '../../../lib/query-keys';
 import {
   createPatientLiveOrDemo,
   createPrescriptionLiveOrDemo,
+  deletePatientLiveOrDemo,
   getPatientByIdLiveOrDemo,
   listAppointmentsByPatientIdLiveOrDemo,
+  updatePatientLiveOrDemo,
   listConsultationsByPatientIdLiveOrDemo,
   listPatientsLiveOrDemo,
   listPrescriptionsByPatientIdLiveOrDemo,
 } from '../../../lib/supabase-clinic';
-import type { InventoryUsageLog, Patient, Prescription } from '../../../types/domain';
+import type { InventoryUsageLog, Patient, PatientActionLog, Prescription } from '../../../types/domain';
 import { consultationService, type ConsultationSubmissionPayload } from '../../consultation/services/consultation-service';
 
 export function usePatients() {
@@ -27,6 +29,43 @@ export function useCreatePatient() {
     mutationFn: async (payload: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'>) => createPatientLiveOrDemo(payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
+    },
+  });
+}
+
+export function useUpdatePatient() {
+  return useMutation({
+    mutationFn: async ({ patientId, payload }: { patientId: string; payload: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'> }) =>
+      updatePatientLiveOrDemo(patientId, payload),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.patientDetail(variables.patientId) });
+    },
+  });
+}
+
+export function useDeletePatient() {
+  return useMutation({
+    mutationFn: async (patientId: string) => deletePatientLiveOrDemo(patientId),
+    onSuccess: (_result, patientId) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.patientDetail(patientId) });
+    },
+  });
+}
+
+export function usePatientActionLogs() {
+  return useQuery({
+    queryKey: queryKeys.patientActionLogs,
+    queryFn: async () => listPatientActionLogs(),
+  });
+}
+
+export function useCreatePatientActionLog() {
+  return useMutation({
+    mutationFn: async (payload: Omit<PatientActionLog, 'id' | 'createdAt' | 'updatedAt'>) => createPatientActionLog(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.patientActionLogs });
     },
   });
 }

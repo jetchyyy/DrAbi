@@ -3,10 +3,14 @@
 import { defaultClinicSettings } from "../config/clinic";
 import { odcAccessConfig } from "../config/odc-access";
 import {
+  applyUserPermissionOverride,
+  clearUserPermissionOverride,
   getClinicSettings as getDemoClinicSettings,
   getDatabase,
   listDoctorAvailabilityByDoctor,
   replaceDoctorAvailability,
+  updateUserProfileRecord,
+  deleteUserProfileRecord,
   updatePatientProfileAccount,
 } from "./local-db";
 import { isSupabaseConfigured, supabase } from "./supabase";
@@ -257,7 +261,7 @@ function readFileAsDataUrl(file: File) {
 }
 
 export function mapProfile(row: ProfileRow): UserProfile {
-  return {
+  return applyUserPermissionOverride({
     id: row.id,
     authUserId: row.id,
     email: row.email,
@@ -268,7 +272,7 @@ export function mapProfile(row: ProfileRow): UserProfile {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
-  };
+  });
 }
 
 export function mapPatient(row: PatientRow): Patient {
@@ -497,6 +501,65 @@ export async function createPatientLiveOrDemo(
   }
 
   return mapPatient(data);
+}
+
+export async function updatePatientLiveOrDemo(
+  patientId: string,
+  input: Omit<Patient, "id" | "createdAt" | "updatedAt">,
+) {
+  if (!isSupabaseConfigured) {
+    const { updatePatientRecord } = await import("./local-db");
+    return updatePatientRecord(patientId, input);
+  }
+
+  const client = requireSupabase();
+  const payload: Database["public"]["Tables"]["patients"]["Update"] = {
+    user_id: input.userId ?? null,
+    qr_code: input.qrCode || generatePatientQrCode(),
+    intake_source: input.intakeSource,
+    visit_status: input.visitStatus,
+    first_name: input.firstName,
+    last_name: input.lastName,
+    sex: input.sex,
+    birth_date: input.birthDate,
+    mobile_number: input.mobileNumber || null,
+    email: input.email || null,
+    address: input.address || null,
+    blood_type: input.bloodType || null,
+    allergies: input.allergies,
+    medical_history: input.medicalHistory,
+    emergency_contact_name: input.emergencyContactName || null,
+    emergency_contact_phone: input.emergencyContactPhone || null,
+  };
+
+  const { data, error } = await client
+    .from("patients")
+    .update(payload as never)
+    .eq("id", patientId)
+    .select("*")
+    .single();
+  if (error) {
+    throw error;
+  }
+
+  return mapPatient(data);
+}
+
+export async function deletePatientLiveOrDemo(patientId: string) {
+  if (!isSupabaseConfigured) {
+    const { deletePatientRecord } = await import("./local-db");
+    deletePatientRecord(patientId);
+    return;
+  }
+
+  const client = requireSupabase();
+  const { error } = await client
+    .from("patients")
+    .update({ deleted_at: new Date().toISOString() } as never)
+    .eq("id", patientId);
+  if (error) {
+    throw error;
+  }
 }
 
 export async function getPatientByIdLiveOrDemo(patientId: string) {
@@ -797,6 +860,49 @@ export async function createServiceLiveOrDemo(
   return mapService(data as ServiceRow);
 }
 
+export async function updateServiceLiveOrDemo(
+  id: string,
+  input: Omit<Service, "id" | "createdAt" | "updatedAt" | "deletedAt">,
+) {
+  if (!isSupabaseConfigured) {
+    const { updateServiceRecord } = await import("./local-db");
+    return updateServiceRecord(id, input);
+  }
+
+  const client = requireSupabase();
+  const payload: Database["public"]["Tables"]["services"]["Update"] = {
+    service_type: input.serviceType,
+    name: input.name,
+    description: input.description,
+    price: input.price,
+    duration_minutes: input.durationMinutes,
+    specialty_id: input.specialtyId ?? null,
+    is_bookable: input.isBookable,
+    delivery_mode: input.deliveryMode,
+  };
+
+  const { data, error } = await client.from("services").update(payload as never).eq("id", id).select("*").single();
+  if (error) {
+    throw error;
+  }
+
+  return mapService(data as ServiceRow);
+}
+
+export async function deleteServiceLiveOrDemo(id: string) {
+  if (!isSupabaseConfigured) {
+    const { deleteServiceRecord } = await import("./local-db");
+    deleteServiceRecord(id);
+    return;
+  }
+
+  const client = requireSupabase();
+  const { error } = await client.from("services").update({ deleted_at: new Date().toISOString() } as never).eq("id", id);
+  if (error) {
+    throw error;
+  }
+}
+
 export async function listSpecialtiesLiveOrDemo() {
   if (!isSupabaseConfigured) {
     const { listSpecialties } = await import("./local-db");
@@ -840,6 +946,41 @@ export async function createSpecialtyLiveOrDemo(
   }
 
   return mapSpecialty(data as SpecialtyRow);
+}
+
+export async function updateSpecialtyLiveOrDemo(
+  id: string,
+  input: Omit<Specialty, "id" | "createdAt" | "updatedAt" | "deletedAt">,
+) {
+  if (!isSupabaseConfigured) {
+    const { updateSpecialtyRecord } = await import("./local-db");
+    return updateSpecialtyRecord(id, input);
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client.from("specialties").update({
+    name: input.name,
+    description: input.description,
+  } as never).eq("id", id).select("*").single();
+  if (error) {
+    throw error;
+  }
+
+  return mapSpecialty(data as SpecialtyRow);
+}
+
+export async function deleteSpecialtyLiveOrDemo(id: string) {
+  if (!isSupabaseConfigured) {
+    const { deleteSpecialtyRecord } = await import("./local-db");
+    deleteSpecialtyRecord(id);
+    return;
+  }
+
+  const client = requireSupabase();
+  const { error } = await client.from("specialties").update({ deleted_at: new Date().toISOString() } as never).eq("id", id);
+  if (error) {
+    throw error;
+  }
 }
 
 export async function getDoctorDirectoryLiveOrDemo(): Promise<
@@ -1612,6 +1753,102 @@ export async function createAdminUserLiveOrDemo(input: AdminCreateUserInput) {
   }
 
   return data.user;
+}
+
+export interface AdminUpdateUserInput {
+  firstName: string;
+  lastName: string;
+  contactNumber: string;
+  email: string;
+  role: Exclude<Role, "patient">;
+  permissions?: AdminCreateUserInput["permissions"];
+  prcLicenseNumber?: string;
+  prcLicenseExpiry?: string;
+  birNumber?: string;
+  consultationFee?: number;
+  followUpFee?: number;
+}
+
+export async function updateAdminUserLiveOrDemo(
+  userId: string,
+  input: AdminUpdateUserInput,
+) {
+  const fullName = `${input.firstName.trim()} ${input.lastName.trim()}`.trim();
+
+  if (!isSupabaseConfigured) {
+    const updatedUser = updateUserProfileRecord(userId, {
+      authUserId: userId,
+      email: input.email.trim().toLowerCase(),
+      fullName,
+      role: input.role,
+      permissions: input.permissions,
+      phone: input.contactNumber.trim(),
+      title: null,
+      specialtyId: null,
+      consultationFee:
+        input.role === "doctor" ? (input.consultationFee ?? 0) : null,
+      followUpFee: input.role === "doctor" ? (input.followUpFee ?? 0) : null,
+    });
+
+    if (!updatedUser) {
+      throw new Error("Updated user could not be loaded.");
+    }
+
+    return applyUserPermissionOverride(updatedUser);
+  }
+
+  const existingProfile = await getCurrentProfile(userId);
+  if (!existingProfile) {
+    throw new Error("User profile not found.");
+  }
+
+  if (existingProfile.role !== input.role) {
+    throw new Error(
+      "Changing the role of a live account is not supported from this screen yet.",
+    );
+  }
+
+  const client = requireSupabase();
+  const { error: profileError } = await client
+    .from("profiles")
+    .update({
+      full_name: fullName,
+      phone: input.contactNumber.trim() || null,
+    } as never)
+    .eq("id", userId);
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  if (input.role === "doctor") {
+    await saveDoctorFeeSettingsForProfileLiveOrDemo(userId, {
+      consultationFee: input.consultationFee ?? 0,
+      followUpFee: input.followUpFee ?? 0,
+    });
+  }
+
+  const refreshedProfile = await getCurrentProfile(userId);
+  if (!refreshedProfile) {
+    throw new Error("Updated user profile could not be loaded.");
+  }
+
+  return refreshedProfile;
+}
+
+export async function deleteAdminUserLiveOrDemo(
+  userId: string,
+  options?: { email?: string },
+) {
+  if (!isSupabaseConfigured) {
+    deleteUserProfileRecord(userId);
+    clearUserPermissionOverride({ userId, email: options?.email });
+    return;
+  }
+
+  throw new Error(
+    "Deleting live user accounts is not available yet because the auth account also needs an admin-side delete flow.",
+  );
 }
 
 export async function updatePatientAccountLiveOrDemo(
