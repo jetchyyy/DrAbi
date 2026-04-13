@@ -11,10 +11,12 @@ import { Button } from '../../components/ui/button';
 import { FeedbackModal } from '../../components/ui/feedback-modal';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
-import { createInventoryItem, deleteInventoryItemRecord, getDatabase, listInventoryItems, updateInventoryItemRecord } from '../../lib/local-db';
+import {  deleteInventoryItemRecord, getDatabase, listInventoryItems, updateInventoryItemRecord } from '../../lib/local-db';
 import { queryKeys } from '../../lib/query-keys';
 import { InventoryItemQrCard } from './components/inventory-item-qr-card';
 import { extractInventoryItemQrCode } from './inventory-qr';
+import { createInventoryItem, deleteInventoryItem, getCategories, getInventoryItems, getSupplier, updateInventoryItems } from '../../lib/supabase-clinic';
+import type { InventoryItem } from '../../types/domain';
 
 const inventorySchema = z.object({
   categoryId: z.string().min(1, 'Category is required.'),
@@ -26,7 +28,7 @@ const inventorySchema = z.object({
   reorderLevel: z.number().min(0, 'Reorder level cannot be negative.'),
 });
 
-type InventoryFormValues = z.infer<typeof inventorySchema>;
+export type InventoryFormValues = z.infer<typeof inventorySchema>;
 
 interface FeedbackModalState {
   open: boolean;
@@ -34,6 +36,7 @@ interface FeedbackModalState {
   message: string;
   variant: 'success' | 'error';
 }
+
 
 export function InventoryPage() {
   const [searchParams] = useSearchParams();
@@ -50,35 +53,56 @@ export function InventoryPage() {
   });
   const deferredSearch = useDeferredValue(search);
 
-  const { data: items = [] } = useQuery({
-    queryKey: queryKeys.inventory,
-    queryFn: async () => listInventoryItems(),
+
+  const page = 1;
+  
+  const { data: items = [] } = useQuery<InventoryItem[]>({
+  queryKey: [queryKeys.inventory, page],
+  queryFn: () => getInventoryItems(page),
+});
+
+    type Category = {
+    id: string;
+    name: string;
+  };
+
+  type Supplier = {
+    id:string;
+    name: string;
+  }
+
+  const { data: categories } = useQuery<Category[]>({
+    queryKey: ["categories"],
+    queryFn: getCategories,
   });
+
+  const { data: suppliers } = useQuery<Supplier[]>({
+    queryKey: ["suppliers"],
+    queryFn: getSupplier,
+  });
+
+  
 
   const createItemMutation = useMutation({
     mutationFn: async (values: InventoryFormValues) => createInventoryItem(values),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
+      await queryClient.invalidateQueries({ queryKey: [queryKeys.inventory] });
     },
   });
 
   const updateItemMutation = useMutation({
     mutationFn: async ({ itemId, values }: { itemId: string; values: InventoryFormValues }) => {
-      const currentItem = items.find((entry) => entry.id === itemId);
-      return updateInventoryItemRecord(itemId, {
-        ...values,
-        qrCode: currentItem?.qrCode,
-      });
+      return updateInventoryItems(itemId, values)
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
+      await queryClient.invalidateQueries({ queryKey: [queryKeys.inventory] });
     },
   });
 
   const deleteItemMutation = useMutation({
-    mutationFn: async (itemId: string) => deleteInventoryItemRecord(itemId),
+    mutationFn: async (itemId: string) => deleteInventoryItem(itemId),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
+      await queryClient.invalidateQueries({ queryKey: [queryKeys.inventory] });
     },
   });
 
@@ -144,8 +168,8 @@ export function InventoryPage() {
     }
 
     form.reset({
-      categoryId: item.categoryId,
-      supplierId: item.supplierId ?? '',
+      categoryId: item.category_id,
+      supplierId: item.supplier_id?? '',
       name: item.name,
       sku: item.sku,
       unit: item.unit,
@@ -330,8 +354,8 @@ export function InventoryPage() {
                     filteredItems.map((item) => {
                       const isLow = item.stockOnHand <= item.reorderLevel;
                       const isScanned = item.id === scannedItem?.id;
-                      const category = database.inventoryCategories.find((entry) => entry.id === item.categoryId);
-                      const supplier = database.suppliers.find((entry) => entry.id === item.supplierId);
+                      const category = categories?.find((entry) => entry.id === item.category_id);
+                      const supplier = suppliers?.find((entry) => entry.id === item.supplier_id);
 
                       return (
                         <tr className={isScanned ? 'bg-emerald-50 transition-colors' : 'transition-colors hover:bg-slate-50'} key={item.id}>
@@ -432,7 +456,7 @@ export function InventoryPage() {
                   <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Classification</p>
                   <FormField error={form.formState.errors.categoryId?.message} label="Category">
                     <Select {...form.register('categoryId')}>
-                      {database.inventoryCategories.map((category) => (
+                     {categories?.map((category) => (
                         <option key={category.id} value={category.id}>
                           {category.name}
                         </option>
@@ -441,7 +465,7 @@ export function InventoryPage() {
                   </FormField>
                   <FormField error={form.formState.errors.supplierId?.message} label="Supplier">
                     <Select {...form.register('supplierId')}>
-                      {database.suppliers.map((supplier) => (
+                      {suppliers?.map((supplier) => (
                         <option key={supplier.id} value={supplier.id}>
                           {supplier.name}
                         </option>

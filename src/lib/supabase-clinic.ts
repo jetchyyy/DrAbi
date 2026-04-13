@@ -33,6 +33,8 @@ import type {
   ServiceType,
   Specialty,
   UserProfile,
+  InventoryItem,
+  Supplier,
 } from "../types/domain";
 import type { Database } from "../types/database";
 import { generateBookingReceiptCode, generatePatientQrCode } from "./utils";
@@ -41,6 +43,8 @@ import {
   FunctionsHttpError,
   FunctionsRelayError,
 } from "@supabase/supabase-js";
+import type { InventoryFormValues } from "../features/inventory/inventory-page";
+import type { SupplierFormValues } from "../features/settings/settings-support-page";
 
 export interface DoctorDirectoryItem {
   id: string;
@@ -139,6 +143,7 @@ type DoctorAvailabilityRow =
 type AppointmentRow = Database["public"]["Tables"]["appointments"]["Row"];
 type ConsultationRow = Database["public"]["Tables"]["consultations"]["Row"];
 type PrescriptionRow = Database["public"]["Tables"]["prescriptions"]["Row"];
+
 
 export interface OdcCredentialInput {
   accessKey?: string;
@@ -2103,3 +2108,129 @@ export async function updateSystemControlLiveOrDemo(
 
   return mapClinicSettings(data.clinicSettings);
 }
+
+/* Supplier Related*/
+export async function createSupplier(values:SupplierFormValues) {
+  const client = requireSupabase();
+
+  const payload = {
+    name: values.name,
+    contact_person: values.contact_person,
+    phone:values.phone,
+    email:values.email
+  };
+
+  const {error} = await client.from("suppliers").insert(payload as never).select().single();
+  if (error) throw error;
+}
+
+export async function updateSupplier(id:string, values:SupplierFormValues) {
+  const client = requireSupabase();
+
+  const payload = {
+    name: values.name,
+    contact_person:values.contact_person,
+    phone:values.phone,
+    email:values.email,
+  }
+  const {data,error} = await client.from("suppliers").update(payload as never).eq("id",id).select().single();
+
+  if(error)throw error;
+
+  return data;
+}
+
+
+export async function getSupplier(): Promise<Supplier[]> {
+  const client = requireSupabase();
+
+  const { data, error } = await client
+    .from("suppliers")
+    .select("*");
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteSupplier(id:string) {
+  const client = requireSupabase();
+
+  const {error} = await client.from("suppliers").delete().eq("id",id).select().single();
+
+  if(error) throw error;
+}
+
+
+/* Inventory Related */
+export async function createInventoryItem(values:InventoryFormValues){
+  const client = requireSupabase();
+  const payload = {
+    category_id: values.categoryId,
+    supplier_id: values.supplierId,
+    name: values.name,
+    sku: values.sku,
+    unit: values.unit,
+    stock_on_hand: values.stockOnHand,
+    reorder_level: values.reorderLevel,
+  }
+  const {error} = await client.from('inventory_items').insert(payload as never);
+  if(error){
+    throw error;
+  }
+}
+export async function updateInventoryItems(itemId:string,values:InventoryFormValues) {
+  const client = requireSupabase();
+
+  const payload = {
+    category_id: values.categoryId,
+    supplier_id: values.supplierId,
+    name: values.name,
+    sku: values.sku,
+    unit: values.unit,
+    stock_on_hand: values.stockOnHand,
+    reorder_level: values.reorderLevel,
+  };
+
+  const {data,error} = await client.from("inventory_items").update(payload as never).eq("id" ,itemId).select().single();
+
+   if (error) throw error;
+
+  return data;
+}
+
+export async function deleteInventoryItem(id:string) {
+  const client = requireSupabase();
+
+  const {error} = await client.from("inventory_items").delete().eq("id",id).select().single();
+
+  if(error) throw error;
+}
+
+export async function getInventoryItems(page: number): Promise<InventoryItem[]> {
+  const limit = 10;
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+  const client = requireSupabase();
+
+  const { data, error } = await client
+    .from("inventory_items")
+    .select("*")
+    .range(from, to);
+
+  if (error) throw error;
+
+  return data ?? [];
+}
+
+export async function getCategories() {
+  const client = requireSupabase();
+  
+  const { data, error } = await client
+    .from("inventory_categories")
+    .select("*");
+
+  if (error) throw error;
+
+  return data;
+}
+
