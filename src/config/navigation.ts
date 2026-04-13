@@ -55,6 +55,12 @@ export const appNavigation: NavItem[] = [
     permission: "appointments.view",
   },
   {
+    label: "Referrals",
+    to: "/app/referrals",
+    icon: CalendarDays,
+    permission: "appointments.view",
+  },
+  {
     label: "Consultations",
     to: "/app/consultations",
     icon: Stethoscope,
