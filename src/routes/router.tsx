@@ -12,7 +12,7 @@ import { ResetPasswordPage } from "../features/auth/reset-password-page";
 import { BillingPage } from "../features/billing/billing-page";
 import { BookingReceiptScanPage } from "../features/booking/booking-receipt-scan-page";
 import { MyBookingsPage } from "../features/booking/my-bookings-page";
-import { ReferralPage } from "../features/referrals/referral-page";
+import { ReferralPage } from "../features/referrals/referral-frontdesk-page";
 import { PatientProfilePage } from "../features/booking/patient-profile-page";
 import { PortalBookPage } from "../features/booking/portal-book-page";
 import { PortalHomePage } from "../features/booking/portal-home-page";

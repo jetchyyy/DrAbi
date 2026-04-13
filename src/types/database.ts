@@ -180,7 +180,6 @@ export interface Database {
           doctor_id: string | null;
           preferred_date: string;
           preferred_time: string;
-          relatedReferral_id: string | null;
           status: string;
           intake_notes: string;
           fee_type: string;
@@ -259,6 +258,7 @@ export interface Database {
           visit_type: string;
           reason: string;
           notes: string;
+          related_referral_id: string | null;
           teleconsultation_platform: string | null;
           teleconsultation_url: string | null;
           teleconsultation_access_instructions: string | null;
