@@ -652,6 +652,47 @@ export async function listPrescriptionsByPatientIdLiveOrDemo(
   return ((data ?? []) as PrescriptionRow[]).map(mapPrescription);
 }
 
+export async function createAppointmentLiveOrDemo(
+  input: Omit<Appointment, "id" | "createdAt" | "updatedAt">,
+) {
+  if (!isSupabaseConfigured) {
+    const { createAppointment } = await import("./local-db");
+    return createAppointment(input);
+  }
+
+  const client = requireSupabase();
+  const payload: Database["public"]["Tables"]["appointments"]["Insert"] = {
+    patient_id: input.patientId,
+    doctor_id: input.doctorId || null,
+    specialty_id: input.specialtyId || null,
+    service_id: input.serviceId || null,
+    scheduled_at: input.scheduledAt,
+    status: input.status,
+    source: input.source,
+    visit_type: input.visitType,
+    reason: input.reason,
+    notes: input.notes,
+    teleconsultation_platform: input.teleconsultationPlatform ?? null,
+    teleconsultation_url: input.teleconsultationUrl ?? null,
+    teleconsultation_access_instructions: input.teleconsultationAccessInstructions ?? null,
+    consultation_id: input.consultationId ?? null,
+    completed_by: input.completedBy ?? null,
+    completed_at: input.completedAt ?? null,
+  };
+
+  const { data, error } = await client
+    .from("appointments")
+    .insert(payload as never)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapAppointment(data as AppointmentRow);
+}
+
 export async function createConsultationLiveOrDemo(
   input: Omit<Consultation, "id" | "createdAt" | "updatedAt">,
 ) {
@@ -662,7 +703,7 @@ export async function createConsultationLiveOrDemo(
 
   const client = requireSupabase();
   const payload: Database["public"]["Tables"]["consultations"]["Insert"] = {
-    appointment_id: input.appointmentId,
+    appointment_id: input.appointmentId ?? null,
     patient_id: input.patientId,
     doctor_id: input.doctorId,
     consultation_type: input.consultationType,
@@ -1286,6 +1327,33 @@ export async function getCurrentPatient(userId: string) {
   if (error) {
     throw error;
   }
+  return data ? mapPatient(data) : null;
+}
+
+export async function getPatientByQrCodeLiveOrDemo(qrCode: string) {
+  const normalizedCode = qrCode.trim().toUpperCase();
+  if (!normalizedCode) {
+    return null;
+  }
+
+  if (!isSupabaseConfigured) {
+    return (
+      getDatabase().patients.find(
+        (patient) => patient.qrCode.trim().toUpperCase() === normalizedCode,
+      ) ?? null
+    );
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("patients")
+    .select("*")
+    .eq("qr_code", normalizedCode)
+    .maybeSingle();
+  if (error) {
+    throw error;
+  }
+
   return data ? mapPatient(data) : null;
 }
 

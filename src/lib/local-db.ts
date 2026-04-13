@@ -914,6 +914,24 @@ export function updateReferralOutcome(
   }).referrals.find((item) => item.id === referralId) ?? null;
 }
 
+export function updateReferralStatus(
+  referralId: string,
+  input: Pick<Referral, 'status' | 'referralNotes'>,
+) {
+  return updateDatabase((draft) => {
+    const referral = draft.referrals.find((item) => item.id === referralId);
+    if (!referral) {
+      return;
+    }
+
+    referral.status = input.status;
+    referral.referralNotes = input.referralNotes;
+    referral.completedAt = input.status === 'completed' ? new Date().toISOString() : null;
+    referral.updatedAt = new Date().toISOString();
+    draft.auditLogs.unshift(createAuditLog(referral.targetDoctorId ?? 'user_owner', 'update', 'referral'));
+  }).referrals.find((item) => item.id === referralId) ?? null;
+}
+
 export function createBooking(input: Omit<Booking, 'id' | 'createdAt' | 'updatedAt' | 'status'>) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {

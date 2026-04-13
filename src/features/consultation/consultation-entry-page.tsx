@@ -10,10 +10,12 @@ import { FormField } from '../../components/forms/form-field';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardTitle } from '../../components/ui/card';
+import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
 import { useDoctorDirectory } from '../../hooks/use-clinic-data';
 import { formatDateLabel } from '../../lib/utils';
 import { useAuth } from '../auth/auth-context';
+import { useCreateReferral } from '../referrals/hooks/use-referrals';
 import { 
   useCreateConsultation, 
   usePatientAppointments, 
@@ -22,7 +24,7 @@ import {
 } from '../patients/hooks/use-patients';
 
 const consultationSchema = z.object({
-  appointmentId: z.string().min(1, 'Please select an appointment'),
+  appointmentId: z.string().optional(),
   consultationType: z.string().min(2, 'Consultation type is required'),
   consultationDate: z.string().min(1, 'Consultation date is required'),
   consultationTime: z.string().min(1, 'Consultation time is required'),
@@ -32,6 +34,10 @@ const consultationSchema = z.object({
   presentIllnessHistory: z.string().min(4, 'Present illness history is required'),
   reviewOfSymptoms: z.string().optional(),
   allergies: z.string().optional(),
+  referToSpecialist: z.boolean(),
+  specialistDoctorId: z.string().optional(),
+  specialistReason: z.string().optional(),
+  specialistNotes: z.string().optional(),
   
   // Step 2: Findings
   vitals: z.string().optional(),
@@ -52,6 +58,14 @@ const consultationSchema = z.object({
   clinicalSummary: z.string().min(4, 'Clinical summary is required'),
   treatmentPlan: z.string().optional(),
   outcome: z.string().optional(),
+}).superRefine((values, context) => {
+  if (values.referToSpecialist && !values.specialistDoctorId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['specialistDoctorId'],
+      message: 'Please choose a specialist to refer this patient to.',
+    });
+  }
 });
 
 type ConsultationFormData = z.infer<typeof consultationSchema>;
@@ -68,7 +82,7 @@ const CONSULTATION_STEPS: Step[] = [
     id: 'appointment',
     title: 'Appointment & Consultation Info',
     description: 'Select appointment and start consultation details',
-    fields: ['appointmentId', 'consultationType', 'consultationDate', 'consultationTime', 'providerName'],
+    fields: ['consultationType', 'consultationDate', 'consultationTime', 'providerName'],
   },
   {
     id: 'history',
@@ -114,7 +128,9 @@ export function ConsultationEntryPage() {
   const { data: consultations = [] } = usePatientConsultations(patientId || null);
   
   const createConsultation = useCreateConsultation();
+  const createReferral = useCreateReferral(patientId || null);
   const currentDoctor = doctors.find((doctor) => doctor.profileId === profile?.id);
+  const assignableDoctors = doctors.filter((doctor) => doctor.id !== currentDoctor?.id);
   
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const currentStep = CONSULTATION_STEPS[currentStepIndex];
@@ -134,6 +150,10 @@ export function ConsultationEntryPage() {
       presentIllnessHistory: '',
       reviewOfSymptoms: '',
       allergies: patient?.allergies ?? '',
+      referToSpecialist: false,
+      specialistDoctorId: '',
+      specialistReason: '',
+      specialistNotes: '',
       vitals: '',
       medications: '',
       labResults: '',
@@ -148,12 +168,6 @@ export function ConsultationEntryPage() {
       outcome: 'For follow-up monitoring.',
     },
   });
-
-  useEffect(() => {
-    if (pendingSoapVisits.length > 0 && !form.getValues('appointmentId')) {
-      form.setValue('appointmentId', pendingSoapVisits[0].id, { shouldValidate: true });
-    }
-  }, [pendingSoapVisits, form]);
 
   useEffect(() => {
     if (patient?.allergies && !form.getValues('allergies')) {
@@ -180,7 +194,7 @@ export function ConsultationEntryPage() {
   const selectedAppointmentId = form.watch('appointmentId');
   const selectedAppointment = visits.find((visit: any) => visit.id === selectedAppointmentId) ?? null;
   
-  const soapDoctorId = currentDoctor?.id ?? selectedAppointment?.doctorId ?? visits[0]?.doctorId ?? profile?.id ?? 'user_owner';
+  const soapDoctorId = currentDoctor?.id ?? selectedAppointment?.doctorId ?? profile?.id ?? 'user_owner';
 
   const canProceedToNext = async () => {
     const fieldsToValidate = currentStep.fields as string[];
@@ -204,14 +218,9 @@ export function ConsultationEntryPage() {
   };
 
   const handleSubmit = form.handleSubmit(async (values) => {
-    if (!selectedAppointmentId) {
-      toast.error('Please select an appointment before submitting.');
-      return;
-    }
-
     try {
-      await createConsultation.mutateAsync({
-        appointmentId: selectedAppointmentId,
+      const consultation = await createConsultation.mutateAsync({
+        appointmentId: selectedAppointmentId || null,
         patientId: patient.id,
         doctorId: soapDoctorId,
         actor: profile?.id ?? soapDoctorId,
@@ -237,6 +246,22 @@ export function ConsultationEntryPage() {
       });
 
       toast.success('Consultation saved successfully!');
+
+      if (values.referToSpecialist && values.specialistDoctorId) {
+        await createReferral.mutateAsync({
+          patientId: patient.id,
+          appointmentId: consultation.appointmentId,
+          referringDoctorId: soapDoctorId,
+          targetDoctorId: values.specialistDoctorId,
+          targetSpecialtyId: doctors.find((doctor) => doctor.id === values.specialistDoctorId)?.specialtyId ?? null,
+          reason: values.specialistReason?.trim() || values.diagnosis || values.consultationType,
+          clinicalSummary: values.clinicalSummary,
+          referralNotes: values.specialistNotes?.trim() || values.outcome || '',
+        });
+
+        toast.success('Specialist referral created.');
+      }
+
       setTimeout(() => {
         navigate(`/app/patients/${patientId}`);
       }, 1500);
@@ -253,8 +278,8 @@ export function ConsultationEntryPage() {
   const stepFields: Record<string, { label: string; placeholder: string; required: boolean }> = {
     appointmentId: {
       label: 'Select Appointment',
-      placeholder: 'Choose a pending appointment',
-      required: true,
+      placeholder: 'Optional: choose a pending appointment',
+      required: false,
     },
     consultationType: {
       label: 'Consultation Type',
@@ -289,6 +314,26 @@ export function ConsultationEntryPage() {
     allergies: {
       label: 'Allergies',
       placeholder: 'Known allergies and reactions...',
+      required: false,
+    },
+    referToSpecialist: {
+      label: 'Refer to Specialist',
+      placeholder: '',
+      required: false,
+    },
+    specialistDoctorId: {
+      label: 'Specialist',
+      placeholder: 'Choose a specialist',
+      required: false,
+    },
+    specialistReason: {
+      label: 'Referral Reason',
+      placeholder: 'Why is the patient being referred?',
+      required: false,
+    },
+    specialistNotes: {
+      label: 'Referral Notes',
+      placeholder: 'Additional notes for the specialist...',
       required: false,
     },
     vitals: {
@@ -418,20 +463,21 @@ export function ConsultationEntryPage() {
             <div className="space-y-4">
               {/* Appointment Selection */}
               <FormField
-                label={`${stepFields.appointmentId.label} *`}
+                label={stepFields.appointmentId.label}
                 error={form.formState.errors.appointmentId?.message}
               >
                 <select
                   {...form.register('appointmentId')}
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
                 >
-                  <option value="">Select an appointment...</option>
+                  <option value="">No appointment linked</option>
                   {pendingSoapVisits.map((visit: any) => (
                     <option key={visit.id} value={visit.id}>
                       {formatDateLabel(visit.appointmentDate)} at {visit.timeSlot} - {visit.type ?? 'Consultation'}
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-slate-500">You can save this consultation without linking it to an appointment.</p>
               </FormField>
 
               <FormField
@@ -699,6 +745,66 @@ export function ConsultationEntryPage() {
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
                 />
               </FormField>
+
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    {...form.register('referToSpecialist')}
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div className="min-w-0 flex-1 space-y-4">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">Refer to specialist after saving</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Create a referral from this consultation before returning to the patient chart.
+                      </p>
+                    </div>
+
+                    {form.watch('referToSpecialist') ? (
+                      <>
+                        <FormField
+                          label={stepFields.specialistDoctorId.label}
+                          error={form.formState.errors.specialistDoctorId?.message}
+                        >
+                          <Select {...form.register('specialistDoctorId')}>
+                            <option value="">Select specialist</option>
+                            {assignableDoctors.map((doctor) => (
+                              <option key={doctor.id} value={doctor.id}>
+                                {doctor.fullName}{doctor.specialtyName ? ` (${doctor.specialtyName})` : ''}
+                              </option>
+                            ))}
+                          </Select>
+                        </FormField>
+
+                        <FormField
+                          label={stepFields.specialistReason.label}
+                          error={form.formState.errors.specialistReason?.message}
+                        >
+                          <Textarea
+                            {...form.register('specialistReason')}
+                            placeholder={stepFields.specialistReason.placeholder}
+                            rows={3}
+                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                          />
+                        </FormField>
+
+                        <FormField
+                          label={stepFields.specialistNotes.label}
+                          error={form.formState.errors.specialistNotes?.message}
+                        >
+                          <Textarea
+                            {...form.register('specialistNotes')}
+                            placeholder={stepFields.specialistNotes.placeholder}
+                            rows={3}
+                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                          />
+                        </FormField>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

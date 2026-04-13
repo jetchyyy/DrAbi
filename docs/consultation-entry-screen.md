@@ -1,11 +1,13 @@
 # Multi-Step Consultation Entry Screen
 
 ## Overview
+
 A dedicated, focused consultation entry experience has been created as a dedicated screen accessible at `/app/consultation/:patientId`. This replaces the inline SOAP form in the patient detail page.
 
 ## Key Features
 
 ### 1. **Six-Step Guided Workflow**
+
 The consultation is broken into clear, logical steps to guide doctors through comprehensive clinical documentation:
 
 - **Step 1: Appointment & Consultation Info**
@@ -14,17 +16,17 @@ The consultation is broken into clear, logical steps to guide doctors through co
   - Date and time
   - Provider name
 
-- **Step 2: Patient History** *(Required: at least presentIllnessHistory)*
+- **Step 2: Patient History** _(Required: at least presentIllnessHistory)_
   - Present illness history
   - Review of symptoms
   - Known allergies
 
-- **Step 3: Clinical Findings** *(Required: at least one of vitals, medications, or lab results)*
+- **Step 3: Clinical Findings** _(Required: at least one of vitals, medications, or lab results)_
   - Vital signs (BP, HR, RR, Temp, etc.)
   - Current medications
   - Lab results
 
-- **Step 4: Diagnoses** *(Required: at least one diagnosis type)*
+- **Step 4: Diagnoses** _(Required: at least one diagnosis type)_
   - Primary diagnosis
   - Differential diagnoses
 
@@ -35,33 +37,40 @@ The consultation is broken into clear, logical steps to guide doctors through co
     - Assessment (A): Clinical impression
     - Plan (P): Treatment plan
 
-- **Step 6: Treatment & Summary** *(Required: clinicalSummary)*
+- **Step 6: Treatment & Summary** _(Required: clinicalSummary)_
   - Clinical summary
   - Treatment plan
   - Consultation outcome
 
 ### 2. **Patient Information Header**
+
 Displays key patient demographics at the top:
+
 - Full name
 - Contact information
 - Date of birth
 - Current status badge
 
 ### 3. **Progress Indicator**
+
 Visual progress bar showing:
+
 - Completed steps (green)
 - Current step (blue)
 - Remaining steps (gray)
 - Current step number and title
 
 ### 4. **Smart Navigation**
+
 - **Previous/Next buttons** to move between steps
 - Auto-validation triggers when moving to next step
 - Final step shows "Save Consultation" button (green)
 - Previous button disabled on first step
 
 ### 5. **Automatic Data Persistence**
+
 All submitted consultation data is:
+
 - Recorded to patient medical record (medical_services_transactions table)
 - Linked to the appointment (marks as completed)
 - Saved as medical history entry
@@ -70,12 +79,15 @@ All submitted consultation data is:
 ## Technical Implementation
 
 ### New Component
+
 **File:** `src/features/consultation/consultation-entry-page.tsx`
+
 - Standalone React component with multi-step form logic
 - Uses React Hook Form for validation and state management
 - Zod schemas for type-safe validation
 
 ### Integration Points
+
 1. **Route:** `/app/consultation/:patientId`
    - Updated in `src/routes/router.tsx`
 
@@ -89,25 +101,31 @@ All submitted consultation data is:
    - Automatically creates appointment linkage, transaction records, and medical history entries
 
 ### Type Updates
+
 **File:** `src/types/domain.ts`
+
 - Made optional fields truly optional in Consultation interface
 - Reflects actual validation requirements
 
 **File:** `src/features/consultation/services/consultation-service.ts`
+
 - Updated `normalizePayload()` to handle optional fields safely
 - No breaking changes to existing validation logic
 
 ## Entry Points
 
 ### 1. Patient Detail Page
+
 - Header button: "Start Consultation"
 - Links to `/app/consultation/:patientId`
 
 ### 2. Patient List
+
 - Each row has "Start Consultation" action link
 - Quick access to consultation entry
 
 ### 3. QR Code Scanner
+
 - Patient QR scan redirects to `/app/consultation/:patientId`
 - Streamlined workflow for clinic floor use
 
@@ -115,14 +133,14 @@ All submitted consultation data is:
 
 The form enforces the six-step consultation model:
 
-| Step | Field(s) | Requirement |
-|------|----------|-------------|
-| 1 | appointmentId, consultationType, consultationDate, consultationTime, providerName | All required |
-| 2 | presentIllnessHistory | Required |
-| 3 | vitals OR medications OR labResults | At least one required |
-| 4 | diagnosis OR differentialDiagnosis | At least one required |
-| 5 | subjective, objective, assessment, plan | Optional |
-| 6 | clinicalSummary | Required |
+| Step | Field(s)                                                                          | Requirement           |
+| ---- | --------------------------------------------------------------------------------- | --------------------- |
+| 1    | appointmentId, consultationType, consultationDate, consultationTime, providerName | All required          |
+| 2    | presentIllnessHistory                                                             | Required              |
+| 3    | vitals OR medications OR labResults                                               | At least one required |
+| 4    | diagnosis OR differentialDiagnosis                                                | At least one required |
+| 5    | subjective, objective, assessment, plan                                           | Optional              |
+| 6    | clinicalSummary                                                                   | Required              |
 
 ## User Experience Flow
 
