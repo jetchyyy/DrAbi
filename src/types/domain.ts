@@ -45,8 +45,11 @@ export type ServiceType = "medical_service" | "consultation" | "follow_up";
 export type ReferralStatus =
   | "draft"
   | "sent"
+  | "pending"
   | "accepted"
+  | "confirmed"
   | "completed"
+  | "declined"
   | "cancelled";
 export type PaymentStatus = "unpaid" | "partial" | "paid" | "void";
 export type LabOrderStatus =
@@ -199,7 +202,7 @@ export interface DoctorAvailability extends BaseRecord {
 }
 
 export interface Consultation extends BaseRecord {
-  appointmentId: string;
+  appointmentId: string | null;
   patientId: string;
   doctorId: string;
   consultationType: string;
@@ -290,7 +293,7 @@ export interface Payment extends BaseRecord {
 
 export interface Supplier extends BaseRecord {
   name: string;
-  contactPerson: string;
+  contact_person: string;
   phone: string;
   email: string;
 }
@@ -300,8 +303,8 @@ export interface InventoryCategory extends BaseRecord {
 }
 
 export interface InventoryItem extends BaseRecord {
-  categoryId: string;
-  supplierId?: string | null;
+  category_id: string;
+  supplier_id?: string | null;
   qrCode: string;
   name: string;
   sku: string;

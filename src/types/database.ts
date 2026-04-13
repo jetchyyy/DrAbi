@@ -210,12 +210,21 @@ export interface Database {
           id: string;
           patient_id: string;
           appointment_id: string | null;
+          source_appointment_id: string | null;
+          source_consultation_id: string | null;
           referring_doctor_id: string;
+          referring_generalist_id: string | null;
           target_doctor_id: string | null;
+          assigned_specialist_id: string | null;
           target_specialty_id: string | null;
+          appointment_date: string | null;
+          appointment_time: string | null;
           reason: string;
           clinical_summary: string;
           referral_notes: string;
+          generalist_notes: string;
+          practice_location: Json;
+          specialist_schedule_id: string | null;
           status: string;
           specialist_findings: string;
           specialist_recommendations: string;
@@ -229,12 +238,21 @@ export interface Database {
         Insert: {
           patient_id: string;
           appointment_id?: string | null;
+          source_appointment_id?: string | null;
+          source_consultation_id?: string | null;
           referring_doctor_id: string;
+          referring_generalist_id?: string | null;
           target_doctor_id?: string | null;
+          assigned_specialist_id?: string | null;
           target_specialty_id?: string | null;
+          appointment_date?: string | null;
+          appointment_time?: string | null;
           reason: string;
           clinical_summary?: string;
           referral_notes?: string;
+          generalist_notes?: string;
+          practice_location?: Json;
+          specialist_schedule_id?: string | null;
           status?: string;
           specialist_findings?: string;
           specialist_recommendations?: string;
@@ -258,11 +276,11 @@ export interface Database {
           visit_type: string;
           reason: string;
           notes: string;
-          related_referral_id: string | null;
           teleconsultation_platform: string | null;
           teleconsultation_url: string | null;
           teleconsultation_access_instructions: string | null;
           consultation_id: string | null;
+          related_referral_id: string | null;
           completed_by: string | null;
           completed_at: string | null;
           created_at: string;
@@ -271,6 +289,88 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["appointments"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["appointments"]["Row"]>;
+      };
+      specialist_schedules: {
+        Row: {
+          id: string;
+          specialist_id: string;
+          recurrence: Json;
+          slot_template: Json;
+          is_active: boolean;
+          valid_from: string | null;
+          practice_location: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<
+          Database["public"]["Tables"]["specialist_schedules"]["Row"]
+        >;
+        Update: Partial<
+          Database["public"]["Tables"]["specialist_schedules"]["Row"]
+        >;
+      };
+      specialist_appointments: {
+        Row: {
+          id: string;
+          specialist_id: string;
+          schedule_id: string | null;
+          referral_id: string | null;
+          patient_id: string;
+          slot_date: string;
+          slot_time: string;
+          is_booked: boolean;
+          status: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<
+          Database["public"]["Tables"]["specialist_appointments"]["Row"]
+        >;
+        Update: Partial<
+          Database["public"]["Tables"]["specialist_appointments"]["Row"]
+        >;
+      };
+      chat_threads: {
+        Row: {
+          id: string;
+          participant_a: string;
+          participant_b: string;
+          thread_key: string;
+          type: string;
+          linked_appointment_id: string | null;
+          linked_referral_id: string | null;
+          last_message_text: string | null;
+          last_message_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["chat_threads"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["chat_threads"]["Row"]>;
+      };
+      messages: {
+        Row: {
+          id: string;
+          thread_id: string;
+          sender_id: string;
+          text: string;
+          sent_at: string;
+          read_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["messages"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["messages"]["Row"]>;
+      };
+      thread_unread: {
+        Row: {
+          thread_id: string;
+          user_id: string;
+          unread_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["thread_unread"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["thread_unread"]["Row"]>;
       };
       consultation_types: {
         Row: {
@@ -292,7 +392,7 @@ export interface Database {
       consultations: {
         Row: {
           id: string;
-          appointment_id: string;
+          appointment_id: string | null;
           patient_id: string;
           doctor_id: string;
           consultation_type: string | null;

@@ -10,16 +10,17 @@ import { Button } from '../../components/ui/button';
 import { FeedbackModal } from '../../components/ui/feedback-modal';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
-import { createSupplier, deleteSupplierRecord, getDatabase, listSuppliers, updateSupplierRecord } from '../../lib/local-db';
+import {  deleteSupplierRecord, getDatabase, listSuppliers, updateSupplierRecord } from '../../lib/local-db';
+import { createSupplier, deleteSupplier, getSupplier, updateSupplier } from '../../lib/supabase-clinic';
 
 const supplierSchema = z.object({
   name: z.string().min(2, 'Supplier name must be at least 2 characters.'),
-  contactPerson: z.string().min(2, 'Contact person must be at least 2 characters.'),
+  contact_person: z.string().min(2, 'Contact person must be at least 2 characters.'),
   phone: z.string().min(5, 'Phone number must be at least 5 characters.'),
   email: z.email('Enter a valid email address.'),
 });
 
-type SupplierFormValues = z.infer<typeof supplierSchema>;
+export type SupplierFormValues = z.infer<typeof supplierSchema>;
 
 interface FeedbackModalState {
   open: boolean;
@@ -32,7 +33,6 @@ export function SettingsSupportPage() {
   const queryClient = useQueryClient();
   const database = getDatabase();
   const clinic = database.clinicSettings;
-  const { data: suppliers = [] } = useQuery({ queryKey: ['settings-suppliers'], queryFn: async () => listSuppliers() });
   const [search, setSearch] = useState('');
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [editingSupplierId, setEditingSupplierId] = useState<string | null>(null);
@@ -42,15 +42,22 @@ export function SettingsSupportPage() {
     message: '',
     variant: 'success',
   });
+
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ['settings-suppliers'],
+    queryFn: getSupplier,
+  });
   const deferredSearch = useDeferredValue(search);
 
   const filteredSuppliers = useMemo(
-    () =>
-      suppliers.filter((supplier) =>
-        `${supplier.name} ${supplier.contactPerson} ${supplier.phone} ${supplier.email}`.toLowerCase().includes(deferredSearch.toLowerCase()),
-      ),
-    [deferredSearch, suppliers],
-  );
+  () =>
+    suppliers.filter((supplier) =>
+      `${supplier.name} ${supplier.contact_person} ${supplier.phone} ${supplier.email}`
+        .toLowerCase()
+        .includes(deferredSearch.toLowerCase()),
+    ),
+  [deferredSearch, suppliers],
+);
 
   const createSupplierMutation = useMutation({
     mutationFn: async (values: SupplierFormValues) => createSupplier(values),
@@ -60,14 +67,14 @@ export function SettingsSupportPage() {
   });
 
   const updateSupplierMutation = useMutation({
-    mutationFn: async ({ id, values }: { id: string; values: SupplierFormValues }) => updateSupplierRecord(id, values),
+    mutationFn: async ({ id, values }: { id: string; values: SupplierFormValues }) => updateSupplier(id, values),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['settings-suppliers'] });
     },
   });
 
   const deleteSupplierMutation = useMutation({
-    mutationFn: async (id: string) => deleteSupplierRecord(id),
+    mutationFn: async (id: string) => deleteSupplier(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['settings-suppliers'] });
     },
@@ -77,7 +84,7 @@ export function SettingsSupportPage() {
     resolver: zodResolver(supplierSchema),
     defaultValues: {
       name: '',
-      contactPerson: '',
+      contact_person: '',
       phone: '',
       email: '',
     },
@@ -93,7 +100,7 @@ export function SettingsSupportPage() {
   }, [isSupplierModalOpen]);
 
   const openCreateModal = () => {
-    form.reset({ name: '', contactPerson: '', phone: '', email: '' });
+    form.reset({ name: '', contact_person: '', phone: '', email: '' });
     setEditingSupplierId(null);
     setIsSupplierModalOpen(true);
   };
@@ -103,7 +110,7 @@ export function SettingsSupportPage() {
     if (!supplier) return;
     form.reset({
       name: supplier.name,
-      contactPerson: supplier.contactPerson,
+      contact_person: supplier.contact_person,
       phone: supplier.phone,
       email: supplier.email,
     });
@@ -198,7 +205,7 @@ export function SettingsSupportPage() {
                   {filteredSuppliers.map((supplier) => (
                     <tr className="transition-colors hover:bg-slate-50" key={supplier.id}>
                       <td className="px-6 py-4 align-top font-bold text-slate-950">{supplier.name}</td>
-                      <td className="px-6 py-4 align-top text-sm text-slate-600">{supplier.contactPerson}</td>
+                      <td className="px-6 py-4 align-top text-sm text-slate-600">{supplier.contact_person}</td>
                       <td className="px-6 py-4 align-top text-sm text-slate-600">
                         <p>{supplier.phone}</p>
                         <p className="mt-1 text-xs text-slate-400">{supplier.email}</p>
@@ -261,8 +268,8 @@ Email: ${clinic.email}`} />
               <FormField error={form.formState.errors.name?.message} label="Supplier name">
                 <Input {...form.register('name')} />
               </FormField>
-              <FormField error={form.formState.errors.contactPerson?.message} label="Contact person">
-                <Input {...form.register('contactPerson')} />
+              <FormField error={form.formState.errors.contact_person?.message} label="Contact person">
+                <Input {...form.register('contact_person')} />
               </FormField>
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField error={form.formState.errors.phone?.message} label="Phone">

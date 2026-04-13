@@ -1,4 +1,5 @@
 import { Camera, QrCode, ScanLine, Search, StopCircle } from 'lucide-react';
+import jsQR from 'jsqr';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -12,16 +13,31 @@ import { useAuth } from '../auth/auth-context';
 import { extractBookingReceiptCode } from './booking-receipt';
 import { useBookingReceipt, useMarkBookingPaid } from './hooks/use-bookings';
 
-type DetectorInstance = {
-  detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>>;
-};
-
-type DetectorConstructor = new (options?: { formats?: string[] }) => DetectorInstance;
-
 function formatFeeLabel(feeType: 'consultation' | 'follow_up' | 'service_fee') {
   if (feeType === 'follow_up') return 'Follow-up Fee';
   if (feeType === 'consultation') return 'Consultation Fee';
   return 'Medical Service Fee';
+}
+
+function readQrFromVideoFrame(video: HTMLVideoElement, canvas: HTMLCanvasElement) {
+  if (video.videoWidth === 0 || video.videoHeight === 0) {
+    return '';
+  }
+
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) {
+    return '';
+  }
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const decoded = jsQR(imageData.data, imageData.width, imageData.height, {
+    inversionAttempts: 'attemptBoth',
+  });
+
+  return decoded?.data?.trim() ?? '';
 }
 
 export function BookingReceiptScanPage() {
@@ -34,8 +50,8 @@ export function BookingReceiptScanPage() {
   const [cameraState, setCameraState] = useState<'idle' | 'requesting' | 'active' | 'unsupported' | 'denied'>('idle');
   const [cameraMessage, setCameraMessage] = useState('');
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const detectorRef = useRef<DetectorInstance | null>(null);
   const normalizedCode = useMemo(() => extractBookingReceiptCode(value), [value]);
   const { data: booking, isLoading } = useBookingReceipt(submittedReceiptCode || null);
   const markPaid = useMarkBookingPaid();
@@ -45,21 +61,12 @@ export function BookingReceiptScanPage() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) {
+      videoRef.current.pause();
       videoRef.current.srcObject = null;
     }
     setCameraState((current) => (current === 'unsupported' ? current : 'idle'));
     setCameraMessage('');
   };
-
-  useEffect(() => {
-    const detectorConstructor = (window as typeof window & { BarcodeDetector?: DetectorConstructor }).BarcodeDetector;
-    if (!detectorConstructor) {
-      setCameraState('unsupported');
-      return;
-    }
-
-    detectorRef.current = new detectorConstructor({ formats: ['qr_code'] });
-  }, []);
 
   useEffect(
     () => () => {
@@ -81,20 +88,19 @@ export function BookingReceiptScanPage() {
   }, [booking, isLoading, submittedReceiptCode]);
 
   useEffect(() => {
-    if (cameraState !== 'active' || !videoRef.current || !detectorRef.current) {
+    if (cameraState !== 'active' || !videoRef.current || !canvasRef.current) {
       return;
     }
 
     let cancelled = false;
 
     const scanFrame = async () => {
-      if (cancelled || !videoRef.current || !detectorRef.current) {
+      if (cancelled || !videoRef.current || !canvasRef.current) {
         return;
       }
 
       try {
-        const detected = await detectorRef.current.detect(videoRef.current);
-        const rawValue = detected[0]?.rawValue ?? '';
+        const rawValue = readQrFromVideoFrame(videoRef.current, canvasRef.current);
         const code = extractBookingReceiptCode(rawValue);
         if (code) {
           setValue(rawValue);
@@ -117,6 +123,23 @@ export function BookingReceiptScanPage() {
     };
   }, [cameraState]);
 
+  useEffect(() => {
+    if (cameraState !== 'requesting' && cameraState !== 'active') {
+      return;
+    }
+
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!video || !stream) {
+      return;
+    }
+
+    video.srcObject = stream;
+    void video.play().catch(() => {
+      setCameraMessage('Camera is ready. Tap Start camera again if preview does not appear.');
+    });
+  }, [cameraState]);
+
   const startCamera = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraState('unsupported');
@@ -124,6 +147,7 @@ export function BookingReceiptScanPage() {
       return;
     }
 
+    stopCamera();
     setError('');
     setCameraState('requesting');
     setCameraMessage('Requesting camera permission...');
@@ -135,11 +159,6 @@ export function BookingReceiptScanPage() {
       });
 
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-
       setCameraState('active');
       setCameraMessage('Camera ready. Point it at the booking receipt QR.');
     } catch {
@@ -193,9 +212,10 @@ export function BookingReceiptScanPage() {
               ) : null}
             </div>
             {cameraMessage ? <p className="text-sm text-slate-600">{cameraMessage}</p> : null}
-            {cameraState === 'active' ? (
+            {cameraState === 'requesting' || cameraState === 'active' ? (
               <div className="overflow-hidden rounded-3xl border border-slate-200 bg-black">
                 <video className="aspect-video w-full object-cover" muted playsInline ref={videoRef} />
+                <canvas className="hidden" ref={canvasRef} />
               </div>
             ) : null}
           </div>

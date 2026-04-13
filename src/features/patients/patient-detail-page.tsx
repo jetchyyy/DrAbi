@@ -1,6 +1,6 @@
 ﻿import { zodResolver } from '@hookform/resolvers/zod';
 import { FileText, FlaskConical, Pill, QrCode, ScanLine, TestTubeDiagonal } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -20,7 +20,6 @@ import { useAuth } from '../auth/auth-context';
 import { extractInventoryItemQrCode } from '../inventory/inventory-qr';
 import { PatientQrCard } from './components/patient-qr-card';
 import {
-  useCreateConsultation,
   useCreatePrescription,
   usePatientAppointments,
   usePatientConsultations,
@@ -28,7 +27,7 @@ import {
   usePatientPrescriptions,
   useRecordInventoryUsage,
 } from './hooks/use-patients';
-import { useCreateReferral, useReferrals, useUpdateReferralOutcome } from '../referrals/hooks/use-referrals';
+import { useCreateReferral, useReferrals, useUpdateReferralOutcome, useUpdateReferralStatus } from '../referrals/hooks/use-referrals';
 
 const referralSchema = z.object({
   targetDoctorId: z.string().min(1),
@@ -44,27 +43,9 @@ const specialistUpdateSchema = z.object({
   status: z.enum(['accepted', 'completed']),
 });
 
-const soapSchema = z.object({
-  appointmentId: z.string().min(1),
-  consultationType: z.string().min(2),
-  consultationDate: z.string().min(1),
-  consultationTime: z.string().min(1),
-  providerName: z.string().min(2),
-  clinicalSummary: z.string().min(4),
-  diagnosis: z.string(),
-  presentIllnessHistory: z.string().min(4),
-  reviewOfSymptoms: z.string(),
-  allergies: z.string(),
-  vitals: z.string(),
-  treatmentPlan: z.string(),
-  medications: z.string(),
-  labResults: z.string(),
-  differentialDiagnosis: z.string(),
-  subjective: z.string(),
-  objective: z.string(),
-  assessment: z.string(),
-  plan: z.string(),
-  outcome: z.string(),
+const frontDeskConfirmationSchema = z.object({
+  status: z.enum(['confirmed', 'cancelled']),
+  referralNotes: z.string().min(4),
 });
 
 const prescriptionSchema = z.object({
@@ -89,7 +70,7 @@ export function PatientDetailPage() {
   const { data: referrals = [] } = useReferrals(patientId || null);
   const createReferral = useCreateReferral(patientId || null);
   const updateReferralOutcome = useUpdateReferralOutcome(patientId || null);
-  const createConsultation = useCreateConsultation();
+  const updateReferralStatus = useUpdateReferralStatus(patientId || null);
   const createPrescription = useCreatePrescription();
   const recordInventoryUsage = useRecordInventoryUsage();
   const patientQuery = usePatientDetail(patientId || null);
@@ -119,29 +100,11 @@ export function PatientDetailPage() {
       status: 'completed',
     },
   });
-  const soapForm = useForm<z.infer<typeof soapSchema>>({
-    resolver: zodResolver(soapSchema),
+  const frontDeskForm = useForm<z.infer<typeof frontDeskConfirmationSchema>>({
+    resolver: zodResolver(frontDeskConfirmationSchema),
     defaultValues: {
-      appointmentId: '',
-      consultationType: 'Initial Consultation',
-      consultationDate: new Date().toISOString().slice(0, 10),
-      consultationTime: new Date().toISOString().slice(11, 16),
-      providerName: profile?.fullName ?? '',
-      clinicalSummary: '',
-      diagnosis: '',
-      presentIllnessHistory: '',
-      reviewOfSymptoms: '',
-      allergies: patient?.allergies ?? '',
-      vitals: '',
-      treatmentPlan: '',
-      medications: '',
-      labResults: '',
-      differentialDiagnosis: '',
-      subjective: '',
-      objective: '',
-      assessment: '',
-      plan: '',
-      outcome: 'For follow-up monitoring.',
+      status: 'confirmed',
+      referralNotes: '',
     },
   });
   const prescriptionForm = useForm<z.infer<typeof prescriptionSchema>>({
@@ -182,10 +145,6 @@ export function PatientDetailPage() {
     });
   }, [labOrders, labSearch, labStatusFilter, database]);
   const consultationAppointmentIds = new Set(consultations.map((consultation) => consultation.appointmentId));
-  const pendingSoapVisits = visits.filter((visit) => !consultationAppointmentIds.has(visit.id));
-  const selectedAppointmentId = soapForm.watch('appointmentId');
-  const selectedAppointment = visits.find((visit) => visit.id === selectedAppointmentId) ?? pendingSoapVisits[0] ?? null;
-  const soapDoctorId = currentDoctor?.id ?? selectedAppointment?.doctorId ?? visits[0]?.doctorId ?? profile?.id ?? 'user_owner';
   const openedFromQr = searchParams.get('source') === 'qr';
   const scannedInventoryCode = extractInventoryItemQrCode(inventoryUsageForm.watch('scannedCode'));
   const scannedInventoryItem = database.inventoryItems.find((item) => item.qrCode === scannedInventoryCode) ?? null;
@@ -195,20 +154,21 @@ export function PatientDetailPage() {
       ? referrals.find(
           (referral) =>
             referral.targetDoctorId === currentDoctor.id &&
-            referral.status !== 'completed' &&
-            referral.status !== 'cancelled',
+            (referral.status === 'confirmed' || referral.status === 'accepted'),
         ) ?? null
       : null;
 
-  useEffect(() => {
-    if (pendingSoapVisits.length === 0) {
-      return;
-    }
+  const waitingFrontDeskReferral =
+    currentDoctor
+      ? referrals.find(
+          (referral) =>
+            referral.targetDoctorId === currentDoctor.id &&
+            (referral.status === 'pending' || referral.status === 'sent'),
+        ) ?? null
+      : null;
 
-    if (!soapForm.getValues('appointmentId')) {
-      soapForm.setValue('appointmentId', pendingSoapVisits[0].id, { shouldValidate: true });
-    }
-  }, [pendingSoapVisits, soapForm]);
+  const frontDeskPendingReferral = referrals.find((referral) => referral.status === 'pending' || referral.status === 'sent') ?? null;
+  const canConfirmReferral = profile?.role === 'front_desk_cashier' || profile?.role === 'owner_admin';
 
   const consultationTimeline = useMemo(
     () =>
@@ -277,57 +237,20 @@ export function PatientDetailPage() {
     });
   });
 
-  const handleCreateSoap = soapForm.handleSubmit(async (values) => {
-    const createdConsultation = await createConsultation.mutateAsync({
-      appointmentId: values.appointmentId,
-      patientId: patient.id,
-      doctorId: soapDoctorId,
-      actor: profile?.id ?? soapDoctorId,
-      consultationType: values.consultationType,
-      consultationDate: values.consultationDate,
-      consultationTime: values.consultationTime,
-      providerName: values.providerName,
-      clinicalSummary: values.clinicalSummary,
-      diagnosis: values.diagnosis,
-      presentIllnessHistory: values.presentIllnessHistory,
-      reviewOfSymptoms: values.reviewOfSymptoms,
-      allergies: values.allergies,
-      vitals: values.vitals,
-      treatmentPlan: values.treatmentPlan,
-      medications: values.medications,
-      labResults: values.labResults,
-      differentialDiagnosis: values.differentialDiagnosis,
-      subjective: values.subjective,
-      objective: values.objective,
-      assessment: values.assessment,
-      plan: values.plan,
-      outcome: values.outcome,
+  const handleFrontDeskConfirmation = frontDeskForm.handleSubmit(async (values) => {
+    if (!frontDeskPendingReferral) {
+      return;
+    }
+
+    await updateReferralStatus.mutateAsync({
+      referralId: frontDeskPendingReferral.id,
+      status: values.status,
+      referralNotes: values.referralNotes,
     });
 
-    prescriptionForm.setValue('consultationId', createdConsultation.id, { shouldValidate: true });
-
-    const nextAppointmentId = pendingSoapVisits.find((visit) => visit.id !== values.appointmentId)?.id ?? '';
-    soapForm.reset({
-      appointmentId: nextAppointmentId,
-      consultationType: values.consultationType,
-      consultationDate: new Date().toISOString().slice(0, 10),
-      consultationTime: new Date().toISOString().slice(11, 16),
-      providerName: profile?.fullName ?? '',
-      clinicalSummary: '',
-      diagnosis: '',
-      presentIllnessHistory: '',
-      reviewOfSymptoms: '',
-      allergies: patient.allergies,
-      vitals: '',
-      treatmentPlan: '',
-      medications: '',
-      labResults: '',
-      differentialDiagnosis: '',
-      subjective: '',
-      objective: '',
-      assessment: '',
-      plan: '',
-      outcome: 'For follow-up monitoring.',
+    frontDeskForm.reset({
+      status: 'confirmed',
+      referralNotes: '',
     });
   });
 
@@ -385,7 +308,7 @@ export function PatientDetailPage() {
       {openedFromQr ? (
         <Card className="border-emerald-100 bg-emerald-50/80">
           <p className="text-sm font-medium text-emerald-700">Patient record opened from QR scan.</p>
-          <p className="mt-1 text-sm text-emerald-900">You can continue directly to the SOAP section below.</p>
+          <p className="mt-1 text-sm text-emerald-900">You can continue directly to consultation entry from the button below.</p>
         </Card>
       ) : null}
 
@@ -535,103 +458,6 @@ export function PatientDetailPage() {
         </Card>
 
         <div className="space-y-6">
-          <Card>
-            <CardTitle>Consultation flow (6 steps)</CardTitle>
-            <p className="mt-2 text-sm text-slate-500">
-              Use this after scanning the patient QR to attach SOAP documentation to a visit that is still pending.
-            </p>
-            {pendingSoapVisits.length === 0 ? (
-              <p className="mt-5 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                Every current visit already has a SOAP note. Create a new appointment first if you need another chart entry.
-              </p>
-            ) : (
-              <form className="mt-5 space-y-4" onSubmit={handleCreateSoap}>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Step 1. Patient history</p>
-                <FormField error={soapForm.formState.errors.appointmentId?.message} label="Visit to document">
-                  <Select {...soapForm.register('appointmentId')}>
-                    <option value="">Select appointment</option>
-                    {pendingSoapVisits.map((visit) => (
-                      <option key={visit.id} value={visit.id}>
-                        {formatDateTimeLabel(visit.scheduledAt)} - {visit.reason}
-                      </option>
-                    ))}
-                  </Select>
-                </FormField>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField error={soapForm.formState.errors.consultationType?.message} label="Consultation Type">
-                    <Input {...soapForm.register('consultationType')} />
-                  </FormField>
-                  <FormField error={soapForm.formState.errors.providerName?.message} label="Provider / Doctor Name">
-                    <Input {...soapForm.register('providerName')} />
-                  </FormField>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField error={soapForm.formState.errors.consultationDate?.message} label="Consultation Date">
-                    <Input type="date" {...soapForm.register('consultationDate')} />
-                  </FormField>
-                  <FormField error={soapForm.formState.errors.consultationTime?.message} label="Consultation Time">
-                    <Input type="time" {...soapForm.register('consultationTime')} />
-                  </FormField>
-                </div>
-                <FormField error={soapForm.formState.errors.clinicalSummary?.message} label="Clinical Summary">
-                  <Textarea rows={3} {...soapForm.register('clinicalSummary')} />
-                </FormField>
-                <FormField error={soapForm.formState.errors.diagnosis?.message} label="Diagnosis">
-                  <Textarea rows={2} {...soapForm.register('diagnosis')} />
-                </FormField>
-                <FormField error={soapForm.formState.errors.presentIllnessHistory?.message} label="Present Illness History">
-                  <Textarea rows={3} {...soapForm.register('presentIllnessHistory')} />
-                </FormField>
-                <FormField error={soapForm.formState.errors.reviewOfSymptoms?.message} label="Review of Symptoms">
-                  <Textarea rows={3} {...soapForm.register('reviewOfSymptoms')} />
-                </FormField>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Step 2. Findings</p>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField error={soapForm.formState.errors.allergies?.message} label="Allergies">
-                    <Textarea rows={2} {...soapForm.register('allergies')} />
-                  </FormField>
-                  <FormField error={soapForm.formState.errors.vitals?.message} label="Vitals">
-                    <Textarea rows={2} {...soapForm.register('vitals')} />
-                  </FormField>
-                </div>
-                <FormField error={soapForm.formState.errors.treatmentPlan?.message} label="Treatment Plan">
-                  <Textarea rows={3} {...soapForm.register('treatmentPlan')} />
-                </FormField>
-                <FormField error={soapForm.formState.errors.medications?.message} label="Medications">
-                  <Textarea rows={2} {...soapForm.register('medications')} />
-                </FormField>
-                <FormField error={soapForm.formState.errors.labResults?.message} label="Lab Results">
-                  <Textarea rows={2} {...soapForm.register('labResults')} />
-                </FormField>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Step 3. Diagnoses</p>
-                <FormField error={soapForm.formState.errors.differentialDiagnosis?.message} label="Differential Diagnosis">
-                  <Textarea rows={2} {...soapForm.register('differentialDiagnosis')} />
-                </FormField>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Step 4. SOAP notes (optional)</p>
-                <FormField error={soapForm.formState.errors.subjective?.message} label="Subjective">
-                  <Textarea rows={3} {...soapForm.register('subjective')} />
-                </FormField>
-                <FormField error={soapForm.formState.errors.objective?.message} label="Objective">
-                  <Textarea rows={3} {...soapForm.register('objective')} />
-                </FormField>
-                <FormField error={soapForm.formState.errors.assessment?.message} label="Assessment">
-                  <Textarea rows={3} {...soapForm.register('assessment')} />
-                </FormField>
-                <FormField error={soapForm.formState.errors.plan?.message} label="Plan">
-                  <Textarea rows={3} {...soapForm.register('plan')} />
-                </FormField>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Step 5. Treatment and summary</p>
-                <FormField error={soapForm.formState.errors.outcome?.message} label="Outcome / follow-up">
-                  <Textarea rows={2} {...soapForm.register('outcome')} />
-                </FormField>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Step 6. Supplementary docs (optional)</p>
-                <Button className="w-full" disabled={createConsultation.isPending} type="submit">
-                  {createConsultation.isPending ? 'Saving SOAP...' : 'Save SOAP note'}
-                </Button>
-              </form>
-            )}
-          </Card>
-
           <Card>
             <CardTitle>Prescription details</CardTitle>
             <p className="mt-2 text-sm text-slate-500">
@@ -806,6 +632,38 @@ export function PatientDetailPage() {
                 </FormField>
                 <Button className="w-full" disabled={updateReferralOutcome.isPending} type="submit">
                   {updateReferralOutcome.isPending ? 'Saving...' : 'Save specialist update'}
+                </Button>
+              </form>
+            </Card>
+          ) : null}
+
+          {waitingFrontDeskReferral ? (
+            <Card className="border-amber-200 bg-amber-50/70">
+              <CardTitle>Awaiting front desk confirmation</CardTitle>
+              <p className="mt-2 text-sm text-amber-800">
+                This referral must be confirmed by front desk (specialist schedule and patient confirmation) before specialist update can proceed.
+              </p>
+            </Card>
+          ) : null}
+
+          {canConfirmReferral && frontDeskPendingReferral ? (
+            <Card>
+              <CardTitle>Front desk referral confirmation</CardTitle>
+              <p className="mt-2 text-sm text-slate-500">
+                Confirm specialist scheduling and patient coordination before specialist acceptance.
+              </p>
+              <form className="mt-5 space-y-4" onSubmit={handleFrontDeskConfirmation}>
+                <FormField label="Status">
+                  <Select {...frontDeskForm.register('status')}>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </Select>
+                </FormField>
+                <FormField label="Front desk notes">
+                  <Textarea rows={3} {...frontDeskForm.register('referralNotes')} />
+                </FormField>
+                <Button className="w-full" disabled={updateReferralStatus.isPending} type="submit">
+                  {updateReferralStatus.isPending ? 'Saving...' : 'Confirm referral coordination'}
                 </Button>
               </form>
             </Card>
