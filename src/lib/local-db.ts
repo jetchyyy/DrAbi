@@ -715,7 +715,7 @@ export function deleteInvoiceRecord(invoiceId: string) {
 }
 
 export function listInventoryItems() {
-  return getDatabase().inventoryItems;
+  return getDatabase().inventoryItems;  
 }
 
 export function createInventoryItem(

@@ -32,6 +32,7 @@ import type {
   Specialty,
   UserProfile,
   InventoryItem,
+  Supplier,
 } from "../types/domain";
 import type { Database } from "../types/database";
 import { generateBookingReceiptCode, generatePatientQrCode } from "./utils";
@@ -41,6 +42,7 @@ import {
   FunctionsRelayError,
 } from "@supabase/supabase-js";
 import type { InventoryFormValues } from "../features/inventory/inventory-page";
+import type { SupplierFormValues } from "../features/settings/settings-support-page";
 
 export interface DoctorDirectoryItem {
   id: string;
@@ -1974,6 +1976,58 @@ export async function updateSystemControlLiveOrDemo(
   return mapClinicSettings(data.clinicSettings);
 }
 
+/* Supplier Related*/
+export async function createSupplier(values:SupplierFormValues) {
+  const client = requireSupabase();
+
+  const payload = {
+    name: values.name,
+    contact_person: values.contact_person,
+    phone:values.phone,
+    email:values.email
+  };
+
+  const {error} = await client.from("suppliers").insert(payload as never).select().single();
+  if (error) throw error;
+}
+
+export async function updateSupplier(id:string, values:SupplierFormValues) {
+  const client = requireSupabase();
+
+  const payload = {
+    name: values.name,
+    contact_person:values.contact_person,
+    phone:values.phone,
+    email:values.email,
+  }
+  const {data,error} = await client.from("suppliers").update(payload as never).eq("id",id).select().single();
+
+  if(error)throw error;
+
+  return data;
+}
+
+
+export async function getSupplier(): Promise<Supplier[]> {
+  const client = requireSupabase();
+
+  const { data, error } = await client
+    .from("suppliers")
+    .select("*");
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteSupplier(id:string) {
+  const client = requireSupabase();
+
+  const {error} = await client.from("suppliers").delete().eq("id",id).select().single();
+
+  if(error) throw error;
+}
+
+
 /* Inventory Related */
 export async function createInventoryItem(values:InventoryFormValues){
   const client = requireSupabase();
@@ -1988,9 +2042,35 @@ export async function createInventoryItem(values:InventoryFormValues){
   }
   const {error} = await client.from('inventory_items').insert(payload as never);
   if(error){
-    console.log(error)
     throw error;
   }
+}
+export async function updateInventoryItems(itemId:string,values:InventoryFormValues) {
+  const client = requireSupabase();
+
+  const payload = {
+    category_id: values.categoryId,
+    supplier_id: values.supplierId,
+    name: values.name,
+    sku: values.sku,
+    unit: values.unit,
+    stock_on_hand: values.stockOnHand,
+    reorder_level: values.reorderLevel,
+  };
+
+  const {data,error} = await client.from("inventory_items").update(payload as never).eq("id" ,itemId).select().single();
+
+   if (error) throw error;
+
+  return data;
+}
+
+export async function deleteInventoryItem(id:string) {
+  const client = requireSupabase();
+
+  const {error} = await client.from("inventory_items").delete().eq("id",id).select().single();
+
+  if(error) throw error;
 }
 
 export async function getInventoryItems(page: number): Promise<InventoryItem[]> {
@@ -2018,17 +2098,6 @@ export async function getCategories() {
 
   if (error) throw error;
 
-  return data;
-}
-
-export async function getSupplier() {
-  const client = requireSupabase();
-
-  const { data, error } = await client
-    .from("suppliers")
-    .select("*");
-
-  if (error) throw error;
   return data;
 }
 

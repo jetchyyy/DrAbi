@@ -278,7 +278,7 @@ export interface Payment extends BaseRecord {
 
 export interface Supplier extends BaseRecord {
   name: string;
-  contactPerson: string;
+  contact_person: string;
   phone: string;
   email: string;
 }
@@ -288,8 +288,8 @@ export interface InventoryCategory extends BaseRecord {
 }
 
 export interface InventoryItem extends BaseRecord {
-  categoryId: string;
-  supplierId?: string | null;
+  category_id: string;
+  supplier_id?: string | null;
   qrCode: string;
   name: string;
   sku: string;
