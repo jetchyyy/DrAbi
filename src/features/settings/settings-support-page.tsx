@@ -10,7 +10,7 @@ import { Button } from '../../components/ui/button';
 import { FeedbackModal } from '../../components/ui/feedback-modal';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
-import {  deleteSupplierRecord, getDatabase, listSuppliers, updateSupplierRecord } from '../../lib/local-db';
+import { getDatabase } from '../../lib/local-db';
 import { createSupplier, deleteSupplier, getSupplier, updateSupplier } from '../../lib/supabase-clinic';
 
 const supplierSchema = z.object({

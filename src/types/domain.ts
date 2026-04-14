@@ -1,6 +1,7 @@
 ﻿export type Role =
   | "owner_admin"
   | "doctor"
+  | "specialist"
   | "nurse_staff"
   | "front_desk_cashier"
   | "lab_staff"

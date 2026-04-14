@@ -15,6 +15,7 @@ import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
 import { useDoctorDirectory } from '../../hooks/use-clinic-data';
 import { formatDateLabel, formatDateTimeLabel } from '../../lib/utils';
+import { getHomePathForRole } from '../../lib/role-routing';
 import type { Booking } from '../../types/domain';
 import { useAuth } from '../auth/auth-context';
 import { useCreateReferral } from '../referrals/hooks/use-referrals';
@@ -195,6 +196,12 @@ export function ConsultationEntryPage() {
       return;
     }
 
+    if (profile?.role === 'specialist') {
+      setAccessState('allowed');
+      setAccessError('');
+      return;
+    }
+
     let isCancelled = false;
 
     void (async () => {
@@ -234,7 +241,7 @@ export function ConsultationEntryPage() {
     return () => {
       isCancelled = true;
     };
-  }, [patientId, retryToken, searchParams, form]);
+  }, [patientId, profile?.role, retryToken, searchParams, form]);
 
   if (patientQuery.isLoading) {
     return (
@@ -272,7 +279,7 @@ export function ConsultationEntryPage() {
           <Button type="button" onClick={() => setRetryToken((value) => value + 1)}>
             Retry validation
           </Button>
-          <Button type="button" variant="secondary" onClick={() => navigate('/app/appointments')}>
+          <Button type="button" variant="secondary" onClick={() => navigate(getHomePathForRole(profile?.role))}>
             Back to appointment queue
           </Button>
         </div>
@@ -291,7 +298,7 @@ export function ConsultationEntryPage() {
           autoCloseMs={120000}
           onClose={() => {
             setBlockingAlert({ open: false, title: '', message: '' });
-            void navigate('/app/appointments');
+            void navigate(getHomePathForRole(profile?.role));
           }}
         />
         <Card>
@@ -377,7 +384,8 @@ export function ConsultationEntryPage() {
       }
 
       setTimeout(() => {
-        navigate(`/app/patients/${patientId}`);
+        const patientRoutePrefix = profile?.role === 'specialist' ? '/specialist/patients' : '/app/patients';
+        navigate(`${patientRoutePrefix}/${patientId}`);
       }, 1500);
     } catch (error) {
       console.error('Consultation submission error:', error);

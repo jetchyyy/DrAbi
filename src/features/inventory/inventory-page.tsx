@@ -11,7 +11,7 @@ import { Button } from '../../components/ui/button';
 import { FeedbackModal } from '../../components/ui/feedback-modal';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
-import {  deleteInventoryItemRecord, getDatabase, listInventoryItems, updateInventoryItemRecord } from '../../lib/local-db';
+import { getDatabase } from '../../lib/local-db';
 import { queryKeys } from '../../lib/query-keys';
 import { InventoryItemQrCard } from './components/inventory-item-qr-card';
 import { extractInventoryItemQrCode } from './inventory-qr';

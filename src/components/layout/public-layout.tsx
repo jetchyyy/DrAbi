@@ -115,7 +115,7 @@ export function PublicLayout() {
               <>
                 <Link
                   className="inline-flex items-center justify-center rounded-none bg-white px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-slate-900 ring-1 ring-slate-200 shadow-sm transition hover:bg-slate-50"
-                  to="/portal/login"
+                  to="/login"
                 >
                   Sign in
                 </Link>

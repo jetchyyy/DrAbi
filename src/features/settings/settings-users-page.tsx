@@ -25,7 +25,7 @@ import {
 import { isSupabaseConfigured } from '../../lib/supabase';
 import type { AccessRoleTemplate, AdminCreateUserInput, Role, UserProfile } from '../../types/domain';
 
-const staffRoleOptions = ['owner_admin', 'doctor', 'nurse_staff', 'front_desk_cashier', 'lab_staff', 'inventory_staff'] as const satisfies ReadonlyArray<Exclude<Role, 'patient'>>;
+const staffRoleOptions = ['owner_admin', 'doctor', 'specialist', 'nurse_staff', 'front_desk_cashier', 'lab_staff', 'inventory_staff'] as const satisfies ReadonlyArray<Exclude<Role, 'patient'>>;
 
 const PASSWORD_RULES_HINT = 'At least 6 characters, with uppercase, lowercase, and a number.';
 
@@ -63,24 +63,24 @@ const userSchema = z
       }
     }
 
-    if (value.staffRole !== 'doctor' || value.mode === 'edit') {
+    if ((value.staffRole !== 'doctor' && value.staffRole !== 'specialist') || value.mode === 'edit') {
       return;
     }
 
     if (!value.prcLicenseNumber?.trim()) {
-      ctx.addIssue({ code: 'custom', path: ['prcLicenseNumber'], message: 'PRC license number is required for doctor accounts.' });
+      ctx.addIssue({ code: 'custom', path: ['prcLicenseNumber'], message: 'PRC license number is required for doctor and specialist accounts.' });
     }
 
     if (!value.prcLicenseExpiry?.trim()) {
-      ctx.addIssue({ code: 'custom', path: ['prcLicenseExpiry'], message: 'PRC license expiry is required for doctor accounts.' });
+      ctx.addIssue({ code: 'custom', path: ['prcLicenseExpiry'], message: 'PRC license expiry is required for doctor and specialist accounts.' });
     }
 
     if (!value.birNumber?.trim()) {
-      ctx.addIssue({ code: 'custom', path: ['birNumber'], message: 'BIR number is required for doctor accounts.' });
+      ctx.addIssue({ code: 'custom', path: ['birNumber'], message: 'BIR number is required for doctor and specialist accounts.' });
     }
 
     if (!value.prcIdFile) {
-      ctx.addIssue({ code: 'custom', path: ['prcIdFile'], message: 'PRC ID upload is required for doctor accounts.' });
+      ctx.addIssue({ code: 'custom', path: ['prcIdFile'], message: 'PRC ID upload is required for doctor and specialist accounts.' });
     }
   });
 
@@ -119,12 +119,12 @@ function buildCreateUserInput(values: UserFormValues, accessRole: AccessRoleTemp
     password: values.password ?? '',
     role: values.staffRole,
     permissions: accessRole.permissions,
-    prcLicenseNumber: values.staffRole === 'doctor' ? values.prcLicenseNumber?.trim() ?? '' : undefined,
-    prcLicenseExpiry: values.staffRole === 'doctor' ? values.prcLicenseExpiry?.trim() ?? '' : undefined,
-    birNumber: values.staffRole === 'doctor' ? values.birNumber?.trim() ?? '' : undefined,
-    consultationFee: values.staffRole === 'doctor' ? values.consultationFee ?? 0 : undefined,
-    followUpFee: values.staffRole === 'doctor' ? values.followUpFee ?? 0 : undefined,
-    prcIdFile: values.staffRole === 'doctor' ? values.prcIdFile ?? null : null,
+    prcLicenseNumber: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.prcLicenseNumber?.trim() ?? '' : undefined,
+    prcLicenseExpiry: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.prcLicenseExpiry?.trim() ?? '' : undefined,
+    birNumber: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.birNumber?.trim() ?? '' : undefined,
+    consultationFee: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.consultationFee ?? 0 : undefined,
+    followUpFee: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.followUpFee ?? 0 : undefined,
+    prcIdFile: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.prcIdFile ?? null : null,
   };
 }
 
@@ -209,7 +209,7 @@ export function SettingsUsersPage() {
   const selectedAccessRoleId = useWatch({ control: form.control, name: 'accessRoleId' });
   const selectedStaffRole = useWatch({ control: form.control, name: 'staffRole' });
   const selectedAccessRole = accessRoles.find((role) => role.id === selectedAccessRoleId) ?? null;
-  const isDoctorRole = selectedStaffRole === 'doctor';
+  const isDoctorRole = selectedStaffRole === 'doctor' || selectedStaffRole === 'specialist';
   const isEditing = formMode === 'edit';
   const isLiveEdit = isEditing && isSupabaseConfigured;
 
@@ -554,7 +554,7 @@ export function SettingsUsersPage() {
 
                 {isDoctorRole ? (
                   <div className="space-y-4 rounded-2xl border border-orange-200 bg-orange-50/50 p-4">
-                    <p className="text-sm font-semibold text-orange-900">Doctor account fields</p>
+                    <p className="text-sm font-semibold text-orange-900">Provider account fields</p>
                     {!isEditing ? (
                       <>
                         <div className="grid gap-4 md:grid-cols-2">

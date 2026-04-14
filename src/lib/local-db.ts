@@ -191,6 +191,15 @@ function buildSystemAccessRoles(): AccessRoleTemplate[] {
       isSystem: true,
     },
     {
+      id: 'access_specialist',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      name: 'Specialist',
+      description: 'External specialist access for referrals, patient chart review, SOAP documentation, and schedule management.',
+      permissions: ['patients.view', 'appointments.view', 'consultations.manage', 'booking.view'],
+      isSystem: true,
+    },
+    {
       id: 'access_nurse_staff',
       createdAt: timestamp,
       updatedAt: timestamp,

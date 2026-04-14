@@ -39,6 +39,12 @@ docs/
 - `/portal/book`
 - `/portal/my-bookings`
 
+### Specialist portal
+- `/specialist/referrals`
+- `/specialist/availability`
+- `/specialist/patients/:patientId`
+- `/specialist/consultation/:patientId`
+
 ### Auth
 - `/login`
 - `/forgot-password`
@@ -63,6 +69,7 @@ docs/
 ### Roles
 - `owner_admin`
 - `doctor`
+- `specialist`
 - `nurse_staff`
 - `front_desk_cashier`
 - `lab_staff`

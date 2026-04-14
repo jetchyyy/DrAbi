@@ -118,7 +118,7 @@ export function PortalHomePage() {
                       Create account <ArrowRight className="size-4" />
                     </Button>
                   </Link>
-                  <Link to="/portal/login">
+                  <Link to="/login">
                     <Button className="rounded-none border border-white/20 bg-white/10 px-8 py-6 text-sm font-bold uppercase tracking-wider text-white transition-colors hover:bg-white/20" variant="secondary">
                       Sign in to book
                     </Button>

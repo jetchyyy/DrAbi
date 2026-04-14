@@ -11,6 +11,7 @@ const PASSWORD_RULES_MESSAGE =
 const ALLOWED_ROLES = new Set([
   'owner_admin',
   'doctor',
+  'specialist',
   'nurse_staff',
   'front_desk_cashier',
   'lab_staff',
@@ -130,9 +131,9 @@ function validatePayload(body: CreateUserPayload) {
     throw new Error(PASSWORD_RULES_MESSAGE);
   }
 
-  if (role === 'doctor') {
+  if (role === 'doctor' || role === 'specialist') {
     if (!body.prcLicenseNumber?.trim() || !body.prcLicenseExpiry?.trim() || !body.birNumber?.trim() || !body.prcIdFile) {
-      throw new Error('Doctor accounts require PRC license number, PRC license expiry, BIR number, and PRC ID upload.');
+      throw new Error('Doctor and specialist accounts require PRC license number, PRC license expiry, BIR number, and PRC ID upload.');
     }
   }
 
@@ -180,7 +181,7 @@ Deno.serve(async (request) => {
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
     let uploadedPrcIdPath: string | null = null;
-    if (payload.role === 'doctor' && payload.prcIdFile) {
+    if ((payload.role === 'doctor' || payload.role === 'specialist') && payload.prcIdFile) {
       const { mimeType, bytes } = decodeDataUrl(payload.prcIdFile.dataUrl);
 
       if (!ALLOWED_PRC_MIME_TYPES.has(mimeType) || !ALLOWED_PRC_MIME_TYPES.has(payload.prcIdFile.type)) {
@@ -260,7 +261,7 @@ Deno.serve(async (request) => {
         throw new Error(profileError.message);
       }
 
-      if (payload.role === 'doctor') {
+      if (payload.role === 'doctor' || payload.role === 'specialist') {
         const finalPrcIdPath = uploadedPrcIdPath
           ? `doctors/${createdUser.user.id}/prc-id.${getFileExtension(payload.prcIdFile!)}`
           : null;

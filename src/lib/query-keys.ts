@@ -4,6 +4,7 @@ export const queryKeys = {
   specialties: ['specialties'] as const,
   doctors: ['doctors'] as const,
   doctorAvailability: (doctorId: string | null) => ['doctor-availability', doctorId] as const,
+  specialistAvailability: (doctorId: string | null) => ['specialist-availability', doctorId] as const,
   blockedBookingSlots: (date: string | null, doctorId: string | null, serviceId: string | null) =>
     ['blocked-booking-slots', date, doctorId, serviceId] as const,
   currentProfile: (userId: string | null) => ['current-profile', userId] as const,
@@ -24,6 +25,8 @@ export const queryKeys = {
   bookingReceipt: (receiptCode: string | null) => ['booking-receipt', receiptCode] as const,
   referrals: (patientId: string | null) => ['referrals', patientId] as const,
   specialistReferrals: (doctorId: string | null) => ['specialist-referrals', doctorId] as const,
+  chatContacts: (userId: string | null) => ['chat-contacts', userId] as const,
+  chatThreads: (userId: string | null) => ['chat-threads', userId] as const,
   invoices: ['invoices'] as const,
   inventory: ['inventory'] as const,
   laboratory: ['laboratory'] as const,

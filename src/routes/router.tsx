@@ -2,12 +2,12 @@
 
 import { AppShell } from "../components/layout/app-shell";
 import { PublicLayout } from "../components/layout/public-layout";
+import { SpecialistShell } from "../components/layout/specialist-shell";
 import { SettingsLayout } from "../components/layout/settings-layout";
 import { AppointmentsPage } from "../features/appointments/appointments-page";
 import { ForgotPasswordPage } from "../features/auth/forgot-password-page";
 import { LoginPage } from "../features/auth/login-page";
 import { PatientRegisterPage } from "../features/auth/patient-register-page";
-import { PortalLoginPage } from "../features/auth/portal-login-page";
 import { ResetPasswordPage } from "../features/auth/reset-password-page";
 import { BillingPage } from "../features/billing/billing-page";
 import { BookingReceiptScanPage } from "../features/booking/booking-receipt-scan-page";
@@ -60,7 +60,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "/portal/login",
-        element: <PortalLoginPage />,
+        element: <Navigate replace to="/login" />,
+      },
+      {
+        path: "/specialist/login",
+        element: <Navigate replace to="/login" />,
       },
       {
         path: "/forgot-password",
@@ -85,6 +89,47 @@ export const router = createBrowserRouter([
                 path: "teleconsult/:appointmentId",
                 element: <TeleconsultRoomPage />,
               },
+            ],
+          },
+        ],
+      },
+      {
+        element: (
+          <ProtectedRoute allowedRoles={["specialist"]} />
+        ),
+        children: [
+          {
+            path: "/specialist",
+            element: <SpecialistShell />,
+            children: [
+              {
+                index: true,
+                element: <Navigate replace to="/specialist/referrals" />,
+              },
+              {
+                element: <PermissionGate permission="patients.view" />,
+                children: [
+                  { path: "referrals", element: <SpecialistReferralsPage /> },
+                  {
+                    path: "patients/:patientId",
+                    element: <PatientDetailPage />,
+                  },
+                  {
+                    path: "consultation/:patientId",
+                    element: <ConsultationEntryPage />,
+                  },
+                ],
+              },
+              {
+                element: <PermissionGate permission="appointments.view" />,
+                children: [
+                  {
+                    path: "availability",
+                    element: <DoctorAvailabilityPage />,
+                  },
+                ],
+              },
+              { path: "profile", element: <StaffProfilePage /> },
             ],
           },
         ],

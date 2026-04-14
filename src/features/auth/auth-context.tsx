@@ -19,7 +19,7 @@ interface AuthContextValue {
   pinSetupRequired: boolean;
   pinVerificationRequired: boolean;
   isAuthenticated: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<Role>;
   signOut: () => Promise<void>;
   setSecurityPin: (pin: string) => Promise<void>;
   verifySecurityPin: (pin: string) => Promise<void>;
@@ -45,6 +45,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function roleFromEmail(email: string): Role {
   if (email.startsWith('doctor')) return 'doctor';
+  if (email.startsWith('specialist')) return 'specialist';
   if (email.startsWith('frontdesk')) return 'front_desk_cashier';
   if (email.startsWith('lab')) return 'lab_staff';
   if (email.startsWith('inventory')) return 'inventory_staff';
@@ -160,7 +161,7 @@ async function resolveLiveProfile(user: User) {
   }
 
   const userRole = (user.user_metadata.role as string | undefined) ?? profile?.role ?? 'patient';
-  if (userRole === 'doctor') {
+  if (userRole === 'doctor' || userRole === 'specialist') {
     await ensureDoctorForUser(user);
   }
   if (userRole === 'patient') {
@@ -269,12 +270,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
       async signIn(email, password) {
         if (isSupabaseConfigured && supabase) {
           requirePinOnNextAuthenticatedSessionRef.current = true;
-          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) {
             requirePinOnNextAuthenticatedSessionRef.current = false;
             throw error;
           }
-          return;
+
+          const sessionUser = data.user;
+          if (!sessionUser) {
+            return 'patient';
+          }
+
+          const nextProfile = await resolveLiveProfile(sessionUser);
+          return nextProfile?.role ?? ((sessionUser.user_metadata.role as Role | undefined) ?? 'patient');
         }
 
         if (!password) {
@@ -286,6 +294,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setProfile(nextProfile);
         setHasSecurityPin(await hasUserPin(nextProfile));
         setPinVerified(nextProfile.role === 'patient' || !(await hasUserPin(nextProfile)));
+        return nextProfile.role;
       },
       async signOut() {
         if (isSupabaseConfigured && supabase) {

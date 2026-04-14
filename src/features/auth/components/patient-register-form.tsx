@@ -57,7 +57,7 @@ export function PatientRegisterForm() {
         toast.success(
           "Account created. Verify your email, then sign in before booking an appointment.",
         );
-        navigate("/portal/login", { replace: true });
+        navigate("/login", { replace: true });
         return;
       }
 

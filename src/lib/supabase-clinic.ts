@@ -149,6 +149,8 @@ type BookingRow = Database["public"]["Tables"]["bookings"]["Row"];
 type DoctorRow = Database["public"]["Tables"]["doctors"]["Row"];
 type DoctorAvailabilityRow =
   Database["public"]["Tables"]["doctor_availability"]["Row"];
+type SpecialistScheduleRow =
+  Database["public"]["Tables"]["specialist_schedules"]["Row"];
 type AppointmentRow = Database["public"]["Tables"]["appointments"]["Row"];
 type ConsultationRow = Database["public"]["Tables"]["consultations"]["Row"];
 type PrescriptionRow = Database["public"]["Tables"]["prescriptions"]["Row"];
@@ -176,6 +178,7 @@ function splitFullName(fullName: string) {
 function mapRole(value: string | null | undefined): Role {
   switch (value) {
     case "doctor":
+    case "specialist":
     case "nurse_staff":
     case "front_desk_cashier":
     case "lab_staff":
@@ -662,6 +665,71 @@ function mapDoctorAvailability(row: DoctorAvailabilityRow): DoctorAvailability {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function parseJsonArray<T>(value: unknown): T[] {
+  if (Array.isArray(value)) {
+    return value as T[];
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+function mapSpecialistRecurrenceDayToJsDay(day: number) {
+  return (day + 1) % 7;
+}
+
+function mapJsDayToSpecialistRecurrenceDay(day: number) {
+  return (day + 6) % 7;
+}
+
+function mapSpecialistScheduleRowsToAvailability(
+  specialistId: string,
+  schedules: SpecialistScheduleRow[],
+): DoctorAvailability[] {
+  return schedules.flatMap((row) => {
+    const recurrence = parseJsonArray<number>(row.recurrence).map(
+      mapSpecialistRecurrenceDayToJsDay,
+    );
+    const slotTemplate = parseJsonArray<{ start?: string; end?: string }>(
+      row.slot_template,
+    );
+
+    return recurrence.flatMap((dayOfWeek) =>
+      slotTemplate
+        .filter(
+          (slot): slot is { start: string; end: string } =>
+            Boolean(slot.start && slot.end),
+        )
+        .map((slot) => ({
+          id: `${row.id}:${dayOfWeek}:${slot.start}`,
+          doctorId: specialistId,
+          dayOfWeek,
+          startTime: slot.start,
+          endTime: slot.end,
+          slotMinutes:
+            Math.max(
+              15,
+              Math.round(
+                (new Date(`1970-01-01T${slot.end}`).getTime() -
+                  new Date(`1970-01-01T${slot.start}`).getTime()) /
+                  60000,
+              ),
+            ) || 30,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        })),
+    );
+  });
 }
 
 export async function listPatientsLiveOrDemo() {
@@ -1452,7 +1520,7 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
   if (!isSupabaseConfigured) {
     const database = getDatabase();
     return database.users
-      .filter((user) => user.role === "doctor")
+      .filter((user) => user.role === "doctor" || user.role === "specialist")
       .map((user) => ({
         id: user.id,
         profileId: user.id,
@@ -1510,7 +1578,7 @@ export async function getCurrentDoctor(userId: string) {
     const user = getDatabase().users.find(
       (item) => item.id === userId || item.authUserId === userId,
     );
-    if (!user || user.role !== "doctor") {
+    if (!user || (user.role !== "doctor" && user.role !== "specialist")) {
       return null;
     }
 
@@ -1549,7 +1617,12 @@ export async function ensureDoctorForUser(user: User) {
     (user.user_metadata as Record<string, string | undefined>).role,
   );
   const fallbackProfile = await getCurrentProfile(user.id);
-  if (metadataRole !== "doctor" && fallbackProfile?.role !== "doctor") {
+  if (
+    metadataRole !== "doctor"
+    && metadataRole !== "specialist"
+    && fallbackProfile?.role !== "doctor"
+    && fallbackProfile?.role !== "specialist"
+  ) {
     return null;
   }
 
@@ -1599,6 +1672,39 @@ export async function getDoctorAvailabilityByDoctorIdLiveOrDemo(
   return ((data ?? []) as DoctorAvailabilityRow[]).map(mapDoctorAvailability);
 }
 
+export async function getSpecialistAvailabilityByDoctorIdLiveOrDemo(
+  doctorId: string | null,
+) {
+  if (!doctorId) {
+    return [];
+  }
+
+  if (!isSupabaseConfigured) {
+    return listDoctorAvailabilityByDoctor(doctorId);
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("specialist_schedules")
+    .select("*")
+    .eq("specialist_id", doctorId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return mapSpecialistScheduleRowsToAvailability(
+    doctorId,
+    (data ?? []) as SpecialistScheduleRow[],
+  ).sort(
+    (left, right) =>
+      left.dayOfWeek - right.dayOfWeek ||
+      left.startTime.localeCompare(right.startTime),
+  );
+}
+
 export async function saveDoctorAvailabilityForProfileLiveOrDemo(
   profileId: string,
   availability: Array<
@@ -1610,8 +1716,13 @@ export async function saveDoctorAvailabilityForProfileLiveOrDemo(
     throw new Error("Doctor record not found for this profile.");
   }
 
+  const normalizedAvailability = availability.map((slot) => ({
+    ...slot,
+    doctorId: doctor.id,
+  }));
+
   if (!isSupabaseConfigured) {
-    return replaceDoctorAvailability(doctor.id, availability);
+    return replaceDoctorAvailability(doctor.id, normalizedAvailability);
   }
 
   const client = requireSupabase();
@@ -1627,7 +1738,7 @@ export async function saveDoctorAvailabilityForProfileLiveOrDemo(
     return [];
   }
 
-  const payload = availability.map((slot) => ({
+  const payload = normalizedAvailability.map((slot) => ({
     doctor_id: doctor.id,
     day_of_week: slot.dayOfWeek,
     start_time: slot.startTime,
@@ -1644,6 +1755,91 @@ export async function saveDoctorAvailabilityForProfileLiveOrDemo(
   }
 
   return ((data ?? []) as DoctorAvailabilityRow[]).map(mapDoctorAvailability);
+}
+
+export async function saveSpecialistAvailabilityForProfileLiveOrDemo(
+  profileId: string,
+  availability: Array<
+    Omit<DoctorAvailability, "id" | "createdAt" | "updatedAt">
+  >,
+) {
+  const doctor = await getCurrentDoctor(profileId);
+  if (!doctor) {
+    throw new Error("Specialist record not found for this profile.");
+  }
+
+  const normalizedAvailability = availability.map((slot) => ({
+    ...slot,
+    doctorId: doctor.id,
+  }));
+
+  if (!isSupabaseConfigured) {
+    return replaceDoctorAvailability(doctor.id, normalizedAvailability);
+  }
+
+  const groupedByDay = new Map<
+    number,
+    Array<Omit<DoctorAvailability, "id" | "createdAt" | "updatedAt">>
+  >();
+
+  for (const slot of normalizedAvailability) {
+    const entries = groupedByDay.get(slot.dayOfWeek) ?? [];
+    entries.push(slot);
+    groupedByDay.set(slot.dayOfWeek, entries);
+  }
+
+  const client = requireSupabase();
+  const { error: deleteError } = await client
+    .from("specialist_schedules")
+    .delete()
+    .eq("specialist_id", doctor.id);
+
+  if (deleteError) {
+    throw deleteError;
+  }
+
+  if (normalizedAvailability.length === 0) {
+    return [];
+  }
+
+  const payload = Array.from(groupedByDay.entries()).map(([dayOfWeek, slots]) => ({
+    specialist_id: doctor.id,
+    recurrence: [mapJsDayToSpecialistRecurrenceDay(dayOfWeek)],
+    slot_template: slots
+      .sort((left, right) => left.startTime.localeCompare(right.startTime))
+      .map((slot) => ({
+        start: slot.startTime,
+        end: slot.endTime,
+      })),
+    is_active: true,
+    valid_from: new Date().toISOString().slice(0, 10),
+    practice_location: {},
+  }));
+
+  const { data, error } = await client
+    .from("specialist_schedules")
+    .insert(payload as never)
+    .select("*");
+
+  if (error) {
+    throw error;
+  }
+
+  const savedSchedules = (data ?? []) as SpecialistScheduleRow[];
+  if (normalizedAvailability.length > 0 && savedSchedules.length === 0) {
+    throw new Error(
+      "Specialist availability save did not return any stored schedule rows.",
+    );
+  }
+
+  return mapSpecialistScheduleRowsToAvailability(
+    doctor.id,
+    savedSchedules,
+  ).sort(
+    (left, right) =>
+      left.dayOfWeek - right.dayOfWeek ||
+      left.startTime.localeCompare(right.startTime),
+  );
 }
 
 export async function saveDoctorFeeSettingsForProfileLiveOrDemo(
@@ -2491,8 +2687,8 @@ export async function createAdminUserLiveOrDemo(input: AdminCreateUserInput) {
       title: null,
       specialtyId: null,
       consultationFee:
-        input.role === "doctor" ? (input.consultationFee ?? 0) : null,
-      followUpFee: input.role === "doctor" ? (input.followUpFee ?? 0) : null,
+        input.role === "doctor" || input.role === "specialist" ? (input.consultationFee ?? 0) : null,
+      followUpFee: input.role === "doctor" || input.role === "specialist" ? (input.followUpFee ?? 0) : null,
     });
   }
 
@@ -2505,7 +2701,7 @@ export async function createAdminUserLiveOrDemo(input: AdminCreateUserInput) {
     role: input.role,
   };
 
-  if (input.role === "doctor") {
+  if (input.role === "doctor" || input.role === "specialist") {
     payload.prcLicenseNumber = input.prcLicenseNumber?.trim() ?? "";
     payload.prcLicenseExpiry = input.prcLicenseExpiry?.trim() ?? "";
     payload.birNumber = input.birNumber?.trim() ?? "";
@@ -2562,8 +2758,8 @@ export async function updateAdminUserLiveOrDemo(
       title: null,
       specialtyId: null,
       consultationFee:
-        input.role === "doctor" ? (input.consultationFee ?? 0) : null,
-      followUpFee: input.role === "doctor" ? (input.followUpFee ?? 0) : null,
+        input.role === "doctor" || input.role === "specialist" ? (input.consultationFee ?? 0) : null,
+      followUpFee: input.role === "doctor" || input.role === "specialist" ? (input.followUpFee ?? 0) : null,
     });
 
     if (!updatedUser) {
@@ -2597,7 +2793,7 @@ export async function updateAdminUserLiveOrDemo(
     throw profileError;
   }
 
-  if (input.role === "doctor") {
+  if (input.role === "doctor" || input.role === "specialist") {
     await saveDoctorFeeSettingsForProfileLiveOrDemo(userId, {
       consultationFee: input.consultationFee ?? 0,
       followUpFee: input.followUpFee ?? 0,
