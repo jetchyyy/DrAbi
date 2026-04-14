@@ -14,6 +14,8 @@ export const queryKeys = {
   patientActionLogs: ['patient-action-logs'] as const,
   patientDetail: (patientId: string | null) => ['patient-detail', patientId] as const,
   patientAppointments: (patientId: string | null) => ['patient-appointments', patientId] as const,
+  patientBookings: (patientId: string | null) => ['patient-bookings', patientId] as const,
+  patientLatestInvoice: (patientId: string | null) => ['patient-latest-invoice', patientId] as const,
   patientConsultations: (patientId: string | null) => ['patient-consultations', patientId] as const,
   patientPrescriptions: (patientId: string | null) => ['patient-prescriptions', patientId] as const,
   appointments: ['appointments'] as const,

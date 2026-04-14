@@ -474,9 +474,7 @@ export function PatientsPage() {
                             <Link className="inline-flex items-center text-orange-600 hover:underline" to={`/app/patients/${patient.id}`}>
                               Open Record
                             </Link>
-                            <Link className="inline-flex items-center text-sky-700 hover:underline" to={`/app/consultation/${patient.id}`}>
-                              Start Consultation
-                            </Link>
+                            
                           </div>
                         </td>
                       </tr>

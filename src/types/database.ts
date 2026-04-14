@@ -136,6 +136,7 @@ export interface Database {
           qr_code: string;
           intake_source: string;
           visit_status: string;
+          last_clinic_visit_at: string | null;
           first_name: string;
           last_name: string;
           sex: string;
@@ -157,6 +158,7 @@ export interface Database {
           qr_code?: string;
           intake_source?: string;
           visit_status?: string;
+          last_clinic_visit_at?: string | null;
           first_name: string;
           last_name: string;
           sex: string;
@@ -178,6 +180,7 @@ export interface Database {
           patient_id: string;
           service_id: string;
           doctor_id: string | null;
+          appointment_id: string | null;
           preferred_date: string;
           preferred_time: string;
           status: string;
@@ -194,6 +197,7 @@ export interface Database {
           patient_id: string;
           service_id: string;
           doctor_id?: string | null;
+          appointment_id?: string | null;
           preferred_date: string;
           preferred_time: string;
           status?: string;

@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { toast } from 'sonner';
 
@@ -10,15 +10,19 @@ import { FormField } from '../../components/forms/form-field';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardTitle } from '../../components/ui/card';
+import { FeedbackModal } from '../../components/ui/feedback-modal';
 import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
 import { useDoctorDirectory } from '../../hooks/use-clinic-data';
-import { formatDateLabel } from '../../lib/utils';
+import { formatDateLabel, formatDateTimeLabel } from '../../lib/utils';
+import type { Booking } from '../../types/domain';
 import { useAuth } from '../auth/auth-context';
 import { useCreateReferral } from '../referrals/hooks/use-referrals';
+import { validatePatientConsultationAccess } from './services/consultation-access-service';
 import { 
   useCreateConsultation, 
   usePatientAppointments, 
+  usePatientBookings,
   usePatientConsultations, 
   usePatientDetail 
 } from '../patients/hooks/use-patients';
@@ -118,6 +122,7 @@ const CONSULTATION_STEPS: Step[] = [
 
 export function ConsultationEntryPage() {
   const { patientId = '' } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { data: doctors = [] } = useDoctorDirectory();
@@ -125,6 +130,7 @@ export function ConsultationEntryPage() {
   const patientQuery = usePatientDetail(patientId || null);
   const { data: patient } = patientQuery;
   const { data: visits = [] } = usePatientAppointments(patientId || null);
+  const { data: bookings = [] } = usePatientBookings(patientId || null);
   const { data: consultations = [] } = usePatientConsultations(patientId || null);
   
   const createConsultation = useCreateConsultation();
@@ -133,10 +139,19 @@ export function ConsultationEntryPage() {
   const assignableDoctors = doctors.filter((doctor) => doctor.id !== currentDoctor?.id);
   
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [accessState, setAccessState] = useState<'checking' | 'allowed' | 'blocked' | 'error'>('checking');
+  const [accessError, setAccessError] = useState('');
+  const [retryToken, setRetryToken] = useState(0);
+  const [blockingAlert, setBlockingAlert] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+  }>({ open: false, title: '', message: '' });
   const currentStep = CONSULTATION_STEPS[currentStepIndex];
   
   const consultationAppointmentIds = new Set(consultations.map((consultation: any) => consultation.appointmentId));
   const pendingSoapVisits = visits.filter((visit: any) => !consultationAppointmentIds.has(visit.id));
+  const activeConsultationBookings = bookings.filter((booking: any) => booking.status !== 'cancelled');
   
   const form = useForm<ConsultationFormData>({
     resolver: zodResolver(consultationSchema),
@@ -175,6 +190,52 @@ export function ConsultationEntryPage() {
     }
   }, [patient, form]);
 
+  useEffect(() => {
+    if (!patientId) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    void (async () => {
+      setAccessState('checking');
+      setAccessError('');
+
+      const access = await validatePatientConsultationAccess(patientId);
+      if (isCancelled) {
+        return;
+      }
+
+      if (!access.allowed) {
+        if (access.reason === 'unpaid_balance' || access.reason === 'no_invoice') {
+          setBlockingAlert({
+            open: true,
+            title: 'Unpaid Balance',
+            message: access.message,
+          });
+          setAccessState('blocked');
+          return;
+        }
+
+        setAccessState('error');
+        setAccessError(access.message);
+        return;
+      }
+
+      const requestedAppointmentId = searchParams.get('appointmentId');
+      const nextAppointmentId = requestedAppointmentId || access.appointmentId;
+      if (nextAppointmentId && !form.getValues('appointmentId')) {
+        form.setValue('appointmentId', nextAppointmentId);
+      }
+
+      setAccessState('allowed');
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [patientId, retryToken, searchParams, form]);
+
   if (patientQuery.isLoading) {
     return (
       <Card>
@@ -191,10 +252,63 @@ export function ConsultationEntryPage() {
     );
   }
 
+  if (accessState === 'checking') {
+    return (
+      <Card>
+        <CardTitle>Validating latest payment status...</CardTitle>
+        <p className="mt-2 text-sm text-slate-500">
+          Please wait while we verify the latest invoice and prepare the appointment for consultation.
+        </p>
+      </Card>
+    );
+  }
+
+  if (accessState === 'error') {
+    return (
+      <Card>
+        <CardTitle>Payment validation unavailable</CardTitle>
+        <p className="mt-2 text-sm text-rose-600">{accessError}</p>
+        <div className="mt-4 flex gap-3">
+          <Button type="button" onClick={() => setRetryToken((value) => value + 1)}>
+            Retry validation
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => navigate('/app/appointments')}>
+            Back to appointment queue
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  if (accessState === 'blocked') {
+    return (
+      <>
+        <FeedbackModal
+          open={blockingAlert.open}
+          title={blockingAlert.title}
+          message={blockingAlert.message}
+          variant="error"
+          autoCloseMs={120000}
+          onClose={() => {
+            setBlockingAlert({ open: false, title: '', message: '' });
+            void navigate('/app/appointments');
+          }}
+        />
+        <Card>
+          <CardTitle>Consultation blocked</CardTitle>
+          <p className="mt-2 text-sm text-slate-500">
+            This consultation cannot proceed until the latest invoice is paid.
+          </p>
+        </Card>
+      </>
+    );
+  }
+
   const selectedAppointmentId = form.watch('appointmentId');
   const selectedAppointment = visits.find((visit: any) => visit.id === selectedAppointmentId) ?? null;
+  const latestBookingWithDoctor = activeConsultationBookings.find((booking: any) => Boolean(booking.doctorId));
   
-  const soapDoctorId = currentDoctor?.id ?? selectedAppointment?.doctorId ?? profile?.id ?? 'user_owner';
+  const soapDoctorId = currentDoctor?.id ?? selectedAppointment?.doctorId ?? latestBookingWithDoctor?.doctorId ?? profile?.id ?? 'user_owner';
 
   const canProceedToNext = async () => {
     const fieldsToValidate = currentStep.fields as string[];
@@ -473,12 +587,25 @@ export function ConsultationEntryPage() {
                   <option value="">No appointment linked</option>
                   {pendingSoapVisits.map((visit: any) => (
                     <option key={visit.id} value={visit.id}>
-                      {formatDateLabel(visit.appointmentDate)} at {visit.timeSlot} - {visit.type ?? 'Consultation'}
+                      {formatDateTimeLabel(visit.scheduledAt)} - {visit.reason}
                     </option>
                   ))}
                 </select>
                 <p className="mt-1 text-xs text-slate-500">You can save this consultation without linking it to an appointment.</p>
               </FormField>
+
+              {activeConsultationBookings.length > 0 && (
+                <div className="rounded-lg border border-sky-200 bg-sky-50 p-3">
+                  <p className="text-sm font-medium text-sky-900">Active booking requests</p>
+                  <ul className="mt-2 space-y-1">
+                    {activeConsultationBookings.map((booking: Booking) => (
+                      <li key={booking.id} className="text-xs text-sky-700">
+                        {booking.preferredDate} at {booking.preferredTime} — {booking.intakeNotes || 'General consultation'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <FormField
                 label={`${stepFields.consultationType.label} *`}

@@ -160,6 +160,7 @@ export interface Patient extends BaseRecord {
   qrCode: string;
   intakeSource: PatientIntakeSource;
   visitStatus: PatientVisitStatus;
+  lastClinicVisitAt?: string | null;
   firstName: string;
   lastName: string;
   sex: "male" | "female" | "other";
@@ -179,6 +180,7 @@ export interface Appointment extends BaseRecord {
   doctorId: string;
   specialtyId: string;
   serviceId: string;
+  bookingId?: string | null;
   scheduledAt: string;
   status: AppointmentStatus;
   source: "internal" | "portal";
@@ -238,6 +240,7 @@ export interface Booking extends BaseRecord {
   patientId: string;
   serviceId: string;
   doctorId: string;
+  appointmentId?: string | null;
   preferredDate: string;
   preferredTime: string;
   status: BookingStatus;

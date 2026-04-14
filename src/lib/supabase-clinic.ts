@@ -3,9 +3,7 @@
 import { defaultClinicSettings } from "../config/clinic";
 import { odcAccessConfig } from "../config/odc-access";
 import {
-  applyUserAccessRoleAssignment,
   applyUserPermissionOverride,
-  clearUserAccessRoleAssignment,
   clearUserPermissionOverride,
   getClinicSettings as getDemoClinicSettings,
   getDatabase,
@@ -19,22 +17,25 @@ import { isSupabaseConfigured, supabase } from "./supabase";
 import type {
   AdminCreateUserInput,
   Appointment,
+  Booking,
   ClinicSettings,
   Consultation,
   DoctorAvailability,
   DoctorFeeSettings,
+  InventoryItem,
   BookingFeeType,
   BookingPaymentStatus,
+  Invoice,
   Patient,
+  PaymentStatus,
   Prescription,
   Role,
   Service,
   ServiceDeliveryMode,
   ServiceType,
   Specialty,
-  UserProfile,
-  InventoryItem,
   Supplier,
+  UserProfile,
 } from "../types/domain";
 import type { Database } from "../types/database";
 import { generateBookingReceiptCode, generatePatientQrCode } from "./utils";
@@ -43,8 +44,6 @@ import {
   FunctionsHttpError,
   FunctionsRelayError,
 } from "@supabase/supabase-js";
-import type { InventoryFormValues } from "../features/inventory/inventory-page";
-import type { SupplierFormValues } from "../features/settings/settings-support-page";
 
 export interface DoctorDirectoryItem {
   id: string;
@@ -144,7 +143,6 @@ type AppointmentRow = Database["public"]["Tables"]["appointments"]["Row"];
 type ConsultationRow = Database["public"]["Tables"]["consultations"]["Row"];
 type PrescriptionRow = Database["public"]["Tables"]["prescriptions"]["Row"];
 
-
 export interface OdcCredentialInput {
   accessKey?: string;
   recoveryPassword?: string;
@@ -198,6 +196,108 @@ function normalizeOdcCredential(input: OdcCredentialInput) {
     accessKey: input.accessKey?.trim() || undefined,
     recoveryPassword: input.recoveryPassword?.trim() || undefined,
   };
+}
+
+function resolveBookingScheduledAtIso(input: {
+  preferredDate: string | null | undefined;
+  preferredTime: string | null | undefined;
+  fallbackIso?: string | null;
+}) {
+  const dateValue = input.preferredDate?.trim() ?? "";
+  const timeValue = input.preferredTime?.trim() ?? "";
+
+  if (dateValue && timeValue) {
+    const timeMatch = timeValue.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if (timeMatch) {
+      const hour = Number(timeMatch[1]);
+      const minute = Number(timeMatch[2]);
+      const second = Number(timeMatch[3] ?? "0");
+
+      if (
+        Number.isInteger(hour) &&
+        Number.isInteger(minute) &&
+        Number.isInteger(second) &&
+        hour >= 0 &&
+        hour <= 23 &&
+        minute >= 0 &&
+        minute <= 59 &&
+        second >= 0 &&
+        second <= 59
+      ) {
+        const normalizedTime = `${String(hour).padStart(2, "0")}:${String(
+          minute,
+        ).padStart(2, "0")}:${String(second).padStart(2, "0")}`;
+        const candidate = new Date(`${dateValue}T${normalizedTime}`);
+        if (!Number.isNaN(candidate.getTime())) {
+          return candidate.toISOString();
+        }
+      }
+    }
+
+    const rawCandidate = new Date(`${dateValue}T${timeValue}`);
+    if (!Number.isNaN(rawCandidate.getTime())) {
+      return rawCandidate.toISOString();
+    }
+  }
+
+  if (input.fallbackIso) {
+    const fallback = new Date(input.fallbackIso);
+    if (!Number.isNaN(fallback.getTime())) {
+      return fallback.toISOString();
+    }
+  }
+
+  return new Date().toISOString();
+}
+
+function isMissingBookingAppointmentIdColumn(error: unknown) {
+  const details = error as { code?: string; message?: string } | null;
+  if (!details) {
+    return false;
+  }
+
+  if (details.code !== "PGRST204") {
+    return false;
+  }
+
+  const message = details.message ?? "";
+  return message.includes("appointment_id") && message.includes("bookings");
+}
+
+async function updateBookingPaymentStatusWithOptionalAppointmentLink(
+  client: ReturnType<typeof requireSupabase>,
+  input: {
+    bookingId: string;
+    paymentStatus: string;
+    appointmentId: string | null;
+  },
+) {
+  const nextPayload = {
+    payment_status: input.paymentStatus,
+    appointment_id: input.appointmentId,
+  };
+
+  const nextResult = await client
+    .from("bookings")
+    .update(nextPayload as never)
+    .eq("id", input.bookingId);
+
+  if (!nextResult.error) {
+    return;
+  }
+
+  if (!isMissingBookingAppointmentIdColumn(nextResult.error)) {
+    throw nextResult.error;
+  }
+
+  const fallbackResult = await client
+    .from("bookings")
+    .update({ payment_status: input.paymentStatus } as never)
+    .eq("id", input.bookingId);
+
+  if (fallbackResult.error) {
+    throw fallbackResult.error;
+  }
 }
 
 async function invokeOdcFunction<T>(body: Record<string, unknown>) {
@@ -268,7 +368,7 @@ function readFileAsDataUrl(file: File) {
 }
 
 export function mapProfile(row: ProfileRow): UserProfile {
-  return applyUserPermissionOverride(applyUserAccessRoleAssignment({
+  return applyUserPermissionOverride({
     id: row.id,
     authUserId: row.id,
     email: row.email,
@@ -279,7 +379,7 @@ export function mapProfile(row: ProfileRow): UserProfile {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
-  }));
+  });
 }
 
 export function mapPatient(row: PatientRow): Patient {
@@ -295,6 +395,7 @@ export function mapPatient(row: PatientRow): Patient {
       row.visit_status === "visited_clinic"
         ? "visited_clinic"
         : "registered_no_visit",
+    lastClinicVisitAt: row.last_clinic_visit_at,
     firstName: row.first_name,
     lastName: row.last_name,
     sex:
@@ -323,6 +424,7 @@ function mapAppointment(row: AppointmentRow): Appointment {
     doctorId: row.doctor_id ?? "",
     specialtyId: row.specialty_id ?? "",
     serviceId: row.service_id ?? "",
+    bookingId: row.booking_id,
     scheduledAt: row.scheduled_at,
     status: mapAppointmentStatus(row.status),
     source: row.source === "portal" ? "portal" : "internal",
@@ -346,7 +448,6 @@ function mapAppointment(row: AppointmentRow): Appointment {
 function mapAppointmentStatus(value: string) {
   switch (value) {
     case "scheduled":
-    case "confirmed":
     case "in_progress":
     case "completed":
     case "cancelled":
@@ -355,6 +456,47 @@ function mapAppointmentStatus(value: string) {
     default:
       return "scheduled" as const;
   }
+}
+
+function mapBookingStatus(value: string) {
+  switch (value) {
+    case "pending":
+    case "confirmed":
+    case "rescheduled":
+    case "cancelled":
+      return value;
+    default:
+      return "pending" as const;
+  }
+}
+
+function mapBooking(row: BookingRow): Booking {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    serviceId: row.service_id,
+    doctorId: row.doctor_id ?? "",
+    appointmentId: row.appointment_id,
+    preferredDate: row.preferred_date,
+    preferredTime: row.preferred_time,
+    status: mapBookingStatus(row.status),
+    intakeNotes: row.intake_notes,
+    feeType: mapBookingFeeType(row.fee_type),
+    feeAmount: Number(row.fee_amount ?? 0),
+    receiptCode: row.receipt_code ?? "",
+    paymentStatus: mapBookingPaymentStatus(row.payment_status),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at,
+  };
+}
+
+function hasConsultationBooking(status: string | null | undefined) {
+  return status !== "cancelled";
+}
+
+function hasConsultationAppointment(status: string | null | undefined) {
+  return status !== "cancelled" && status !== "no_show";
 }
 
 function mapServiceType(value: string | null | undefined): ServiceType {
@@ -383,6 +525,20 @@ function mapBookingPaymentStatus(
   value: string | null | undefined,
 ): BookingPaymentStatus {
   return value === "paid" ? "paid" : "pending_cashier";
+}
+
+function mapInvoicePaymentStatus(
+  value: string | null | undefined,
+): PaymentStatus {
+  switch (value) {
+    case "unpaid":
+    case "partial":
+    case "paid":
+    case "void":
+      return value;
+    default:
+      return "unpaid";
+  }
 }
 
 function mapConsultation(row: ConsultationRow) {
@@ -454,20 +610,76 @@ function mapDoctorAvailability(row: DoctorAvailabilityRow): DoctorAvailability {
 
 export async function listPatientsLiveOrDemo() {
   if (!isSupabaseConfigured) {
-    return getDatabase().patients;
+    const database = getDatabase();
+    const patientIdsWithAppointment = new Set(
+      database.appointments
+        .filter((appointment) => hasConsultationAppointment(appointment.status))
+        .map((appointment) => appointment.patientId),
+    );
+    const patientIdsWithBooking = new Set(
+      database.bookings
+        .filter((booking) => hasConsultationBooking(booking.status))
+        .map((booking) => booking.patientId),
+    );
+
+    return database.patients.map((patient) => ({
+      ...patient,
+      visitStatus:
+        patient.visitStatus === "visited_clinic" ||
+        patientIdsWithAppointment.has(patient.id) ||
+        patientIdsWithBooking.has(patient.id)
+          ? ("visited_clinic" as const)
+          : ("registered_no_visit" as const),
+    }));
   }
 
   const client = requireSupabase();
-  const { data, error } = await client
-    .from("patients")
-    .select("*")
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false });
+  const [patientResult, appointmentResult, bookingResult] = await Promise.all([
+    client
+      .from("patients")
+      .select("*")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+    client.from("appointments").select("patient_id,status").is("deleted_at", null),
+    client.from("bookings").select("patient_id,status").is("deleted_at", null),
+  ]);
+
+  const { data, error } = patientResult;
   if (error) {
     throw error;
   }
 
-  return (data ?? []).map(mapPatient);
+  if (appointmentResult.error) {
+    throw appointmentResult.error;
+  }
+
+  if (bookingResult.error) {
+    throw bookingResult.error;
+  }
+
+  const patientIdsWithAppointment = new Set(
+    ((appointmentResult.data ?? []) as Array<{ patient_id: string | null; status: string | null }>)
+      .filter((appointment) => Boolean(appointment.patient_id) && hasConsultationAppointment(appointment.status))
+      .map((appointment) => appointment.patient_id as string),
+  );
+  const patientIdsWithBooking = new Set(
+    ((bookingResult.data ?? []) as Array<{ patient_id: string | null; status: string | null }>)
+      .filter((booking) => Boolean(booking.patient_id) && hasConsultationBooking(booking.status))
+      .map((booking) => booking.patient_id as string),
+  );
+
+  return (data ?? []).map((row) => {
+    const patient = mapPatient(row);
+    return {
+      ...patient,
+      visitStatus:
+        patient.visitStatus === "visited_clinic" ||
+        patientIdsWithAppointment.has(patient.id) ||
+        patientIdsWithBooking.has(patient.id)
+          ? ("visited_clinic" as const)
+          : ("registered_no_visit" as const),
+    };
+  });
 }
 
 export async function createPatientLiveOrDemo(
@@ -484,6 +696,7 @@ export async function createPatientLiveOrDemo(
     qr_code: input.qrCode || generatePatientQrCode(),
     intake_source: input.intakeSource,
     visit_status: input.visitStatus,
+    ...(input.lastClinicVisitAt !== undefined ? { last_clinic_visit_at: input.lastClinicVisitAt } : {}),
     first_name: input.firstName,
     last_name: input.lastName,
     sex: input.sex,
@@ -525,6 +738,7 @@ export async function updatePatientLiveOrDemo(
     qr_code: input.qrCode || generatePatientQrCode(),
     intake_source: input.intakeSource,
     visit_status: input.visitStatus,
+    ...(input.lastClinicVisitAt !== undefined ? { last_clinic_visit_at: input.lastClinicVisitAt } : {}),
     first_name: input.firstName,
     last_name: input.lastName,
     sex: input.sex,
@@ -609,6 +823,151 @@ export async function listAppointmentsByPatientIdLiveOrDemo(
   }
 
   return ((data ?? []) as AppointmentRow[]).map(mapAppointment);
+}
+
+export async function listBookingsByPatientIdLiveOrDemo(
+  patientId: string,
+): Promise<Booking[]> {
+  if (!isSupabaseConfigured) {
+    return getDatabase().bookings
+      .filter((booking) => booking.patientId === patientId)
+      .sort((left, right) => {
+        const leftDateTime = `${left.preferredDate}T${left.preferredTime}`;
+        const rightDateTime = `${right.preferredDate}T${right.preferredTime}`;
+        return rightDateTime.localeCompare(leftDateTime);
+      });
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("bookings")
+    .select("*")
+    .eq("patient_id", patientId)
+    .is("deleted_at", null)
+    .order("preferred_date", { ascending: false })
+    .order("preferred_time", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as BookingRow[]).map(mapBooking);
+}
+
+export async function getLatestInvoiceByPatientIdLiveOrDemo(
+  patientId: string,
+): Promise<Invoice | null> {
+  if (!patientId) {
+    return null;
+  }
+
+  if (!isSupabaseConfigured) {
+    const latest = getDatabase().invoices
+      .filter((invoice) => invoice.patientId === patientId)
+      .sort((left, right) => {
+        if (left.createdAt === right.createdAt) {
+          return right.invoiceNumber.localeCompare(left.invoiceNumber);
+        }
+        return right.createdAt.localeCompare(left.createdAt);
+      })[0];
+
+    return latest ?? null;
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("invoices")
+    .select("*")
+    .eq("patient_id", patientId)
+    .order("created_at", { ascending: false })
+    .order("invoice_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const row = data as {
+    id: string;
+    patient_id: string;
+    appointment_id: string | null;
+    invoice_number: string;
+    payment_status: string | null;
+    subtotal: number;
+    total: number;
+    created_at: string;
+    updated_at: string;
+    deleted_at: string | null;
+  };
+
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    appointmentId: row.appointment_id,
+    invoiceNumber: row.invoice_number,
+    paymentStatus: mapInvoicePaymentStatus(row.payment_status),
+    subtotal: Number(row.subtotal ?? 0),
+    total: Number(row.total ?? 0),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at,
+  };
+}
+
+export async function updateAppointmentStatusAndNotesLiveOrDemo(input: {
+  appointmentId: string;
+  status: Appointment["status"];
+  notes: string;
+}) {
+  if (!isSupabaseConfigured) {
+    const { updateAppointmentRecord } = await import("./local-db");
+    const existing = getDatabase().appointments.find(
+      (appointment) => appointment.id === input.appointmentId,
+    );
+    if (!existing) {
+      throw new Error("Appointment not found.");
+    }
+
+    return updateAppointmentRecord(input.appointmentId, {
+      patientId: existing.patientId,
+      doctorId: existing.doctorId,
+      specialtyId: existing.specialtyId,
+      serviceId: existing.serviceId,
+      scheduledAt: existing.scheduledAt,
+      status: input.status,
+      source: existing.source,
+      visitType: existing.visitType,
+      reason: existing.reason,
+      notes: input.notes,
+      teleconsultationPlatform: existing.teleconsultationPlatform ?? null,
+      teleconsultationUrl: existing.teleconsultationUrl ?? null,
+      teleconsultationAccessInstructions:
+        existing.teleconsultationAccessInstructions ?? null,
+      consultationId: existing.consultationId ?? null,
+      completedBy: existing.completedBy ?? null,
+      completedAt: existing.completedAt ?? null,
+      deletedAt: existing.deletedAt ?? null,
+    });
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("appointments")
+    .update({ status: input.status, notes: input.notes } as never)
+    .eq("id", input.appointmentId)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapAppointment(data as AppointmentRow);
 }
 
 export async function listConsultationsByPatientIdLiveOrDemo(
@@ -929,12 +1288,7 @@ export async function updateServiceLiveOrDemo(
     delivery_mode: input.deliveryMode,
   };
 
-  const { data, error } = await client
-    .from("services")
-    .update(payload as never)
-    .eq("id", id)
-    .select("*")
-    .single();
+  const { data, error } = await client.from("services").update(payload as never).eq("id", id).select("*").single();
   if (error) {
     throw error;
   }
@@ -950,10 +1304,7 @@ export async function deleteServiceLiveOrDemo(id: string) {
   }
 
   const client = requireSupabase();
-  const { error } = await client
-    .from("services")
-    .update({ deleted_at: new Date().toISOString() } as never)
-    .eq("id", id);
+  const { error } = await client.from("services").update({ deleted_at: new Date().toISOString() } as never).eq("id", id);
   if (error) {
     throw error;
   }
@@ -1014,15 +1365,10 @@ export async function updateSpecialtyLiveOrDemo(
   }
 
   const client = requireSupabase();
-  const { data, error } = await client
-    .from("specialties")
-    .update({
-      name: input.name,
-      description: input.description,
-    } as never)
-    .eq("id", id)
-    .select("*")
-    .single();
+  const { data, error } = await client.from("specialties").update({
+    name: input.name,
+    description: input.description,
+  } as never).eq("id", id).select("*").single();
   if (error) {
     throw error;
   }
@@ -1038,10 +1384,7 @@ export async function deleteSpecialtyLiveOrDemo(id: string) {
   }
 
   const client = requireSupabase();
-  const { error } = await client
-    .from("specialties")
-    .update({ deleted_at: new Date().toISOString() } as never)
-    .eq("id", id);
+  const { error } = await client.from("specialties").update({ deleted_at: new Date().toISOString() } as never).eq("id", id);
   if (error) {
     throw error;
   }
@@ -1075,7 +1418,6 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
       "id, profile_id, specialty_id, consultation_fee, follow_up_fee, profiles!inner(full_name), specialties(name)",
     )
     .is("deleted_at", null)
-    .eq("profiles.role", "doctor")
     .order("created_at");
 
   if (error) {
@@ -1709,64 +2051,132 @@ export async function markBookingPaidAndCreateInvoiceLiveOrDemo(
   const booking = bookingRow as BookingRow;
   let invoice: { id: string; invoice_number?: string; total?: number } | null =
     null;
+  const existingAppointmentId = booking.appointment_id ?? null;
 
   if (booking.payment_status !== "paid") {
-    const { error: updateError } = await client
-      .from("bookings")
-      .update({ payment_status: "paid" } as never)
-      .eq("id", booking.id);
+    let createdAppointmentId: string | null = null;
+    let createdInvoiceId: string | null = null;
+    try {
+      let appointmentId = existingAppointmentId;
+      if (!appointmentId) {
+        const scheduledAt = resolveBookingScheduledAtIso({
+          preferredDate: booking.preferred_date,
+          preferredTime: booking.preferred_time,
+          fallbackIso: booking.created_at,
+        });
+        const appointmentPayload: Database["public"]["Tables"]["appointments"]["Insert"] = {
+          patient_id: booking.patient_id,
+          doctor_id: booking.doctor_id ?? null,
+          specialty_id: null,
+          service_id: booking.service_id,
+          booking_id: booking.id,
+          scheduled_at: scheduledAt,
+          status: "scheduled",
+          source: "internal",
+          reason:
+            booking.fee_type === "follow_up"
+              ? "Follow-up Fee"
+              : booking.fee_type === "consultation"
+                ? "Consultation Fee"
+                : "Medical Service Fee",
+          notes: booking.intake_notes,
+        };
 
-    if (updateError) {
-      throw updateError;
+        const { data: createdAppointmentRow, error: appointmentError } = await client
+          .from("appointments")
+          .insert(appointmentPayload as never)
+          .select("*")
+          .single();
+        if (appointmentError) {
+          throw appointmentError;
+        }
+
+        const createdAppointment = createdAppointmentRow as AppointmentRow;
+        createdAppointmentId = createdAppointment.id;
+        appointmentId = createdAppointment.id;
+      }
+
+      await updateBookingPaymentStatusWithOptionalAppointmentLink(client, {
+        bookingId: booking.id,
+        paymentStatus: "paid",
+        appointmentId,
+      });
+
+      const invoicePayload = {
+        patient_id: booking.patient_id,
+        appointment_id: appointmentId,
+        invoice_number: `INV-${Date.now()}`,
+        payment_status: "paid",
+        subtotal: booking.fee_amount,
+        total: booking.fee_amount,
+      };
+
+      const { data: createdInvoiceRow, error: invoiceError } = await client
+        .from("invoices")
+        .insert(invoicePayload as never)
+        .select("*")
+        .single();
+      if (invoiceError) {
+        throw invoiceError;
+      }
+      const createdInvoice = createdInvoiceRow as {
+        id: string;
+        invoice_number?: string;
+        total?: number;
+      };
+      createdInvoiceId = createdInvoice.id;
+      invoice = createdInvoice;
+    } catch (error) {
+      if (createdAppointmentId) {
+        await updateBookingPaymentStatusWithOptionalAppointmentLink(client, {
+          bookingId: booking.id,
+          paymentStatus: booking.payment_status,
+          appointmentId: null,
+        });
+        await client.from("appointments").delete().eq("id", createdAppointmentId);
+      }
+
+      throw error;
     }
 
-    const invoicePayload = {
-      patient_id: booking.patient_id,
-      appointment_id: null,
-      invoice_number: `INV-${Date.now()}`,
-      payment_status: "paid",
-      subtotal: booking.fee_amount,
-      total: booking.fee_amount,
-    };
+    try {
+      const services = await getBookableServicesLiveOrDemo();
+      const serviceName =
+        services.find((service) => service.id === booking.service_id)?.name ??
+        "Medical Service";
+      const lineDescription =
+        booking.fee_type === "follow_up"
+          ? "Follow-up Fee"
+          : booking.fee_type === "consultation"
+            ? "Consultation Fee"
+            : serviceName;
+      const category =
+        booking.fee_type === "service_fee" ? "other" : "consultation";
 
-    const { data: createdInvoiceRow, error: invoiceError } = await client
-      .from("invoices")
-      .insert(invoicePayload as never)
-      .select("*")
-      .single();
-    if (invoiceError) {
-      throw invoiceError;
-    }
-    const createdInvoice = createdInvoiceRow as {
-      id: string;
-      invoice_number?: string;
-      total?: number;
-    };
-    invoice = createdInvoice;
+      const { error: itemError } = await client.from("invoice_items").insert({
+        invoice_id: createdInvoiceId ?? invoice?.id ?? '',
+        description: lineDescription,
+        quantity: 1,
+        unit_price: booking.fee_amount,
+        category,
+      } as never);
 
-    const services = await getBookableServicesLiveOrDemo();
-    const serviceName =
-      services.find((service) => service.id === booking.service_id)?.name ??
-      "Medical Service";
-    const lineDescription =
-      booking.fee_type === "follow_up"
-        ? "Follow-up Fee"
-        : booking.fee_type === "consultation"
-          ? "Consultation Fee"
-          : serviceName;
-    const category =
-      booking.fee_type === "service_fee" ? "other" : "consultation";
+      if (itemError) {
+        throw itemError;
+      }
+    } catch (error) {
+      if (createdInvoiceId) {
+        await client.from("invoice_items").delete().eq("invoice_id", createdInvoiceId);
+        await client.from("invoices").delete().eq("id", createdInvoiceId);
+        await updateBookingPaymentStatusWithOptionalAppointmentLink(client, {
+          bookingId: booking.id,
+          paymentStatus: booking.payment_status,
+          appointmentId: null,
+        });
+        await client.from("appointments").delete().eq("id", createdAppointmentId ?? '');
+      }
 
-    const { error: itemError } = await client.from("invoice_items").insert({
-      invoice_id: createdInvoice.id,
-      description: lineDescription,
-      quantity: 1,
-      unit_price: booking.fee_amount,
-      category,
-    } as never);
-
-    if (itemError) {
-      throw itemError;
+      throw error;
     }
   }
 
@@ -1934,7 +2344,6 @@ export async function deleteAdminUserLiveOrDemo(
 ) {
   if (!isSupabaseConfigured) {
     deleteUserProfileRecord(userId);
-    clearUserAccessRoleAssignment({ userId, email: options?.email });
     clearUserPermissionOverride({ userId, email: options?.email });
     return;
   }
@@ -1943,6 +2352,50 @@ export async function deleteAdminUserLiveOrDemo(
     "Deleting live user accounts is not available yet because the auth account also needs an admin-side delete flow.",
   );
 }
+
+  export async function updateCurrentStaffProfileLiveOrDemo(
+    userId: string,
+    input: { phone?: string; title?: string | null },
+  ) {
+    if (!isSupabaseConfigured) {
+      const currentUser = getDatabase().users.find((profile) => profile.id === userId || profile.authUserId === userId);
+      if (!currentUser) {
+        throw new Error("Updated user could not be loaded.");
+      }
+
+      const updatedUser = updateUserProfileRecord(userId, {
+        ...currentUser,
+        phone: input.phone?.trim() || '',
+        title: input.title?.trim() || null,
+      });
+
+      if (!updatedUser) {
+        throw new Error("Updated user could not be loaded.");
+      }
+
+      return updatedUser;
+    }
+
+    const client = requireSupabase();
+    const { error } = await client
+      .from("profiles")
+      .update({
+        phone: input.phone?.trim() || '',
+        title: input.title?.trim() || null,
+      } as never)
+      .eq("id", userId);
+
+    if (error) {
+      throw error;
+    }
+
+    const refreshedProfile = await getCurrentProfile(userId);
+    if (!refreshedProfile) {
+      throw new Error("Updated user profile could not be loaded.");
+    }
+
+    return refreshedProfile;
+  }
 
 export async function updatePatientAccountLiveOrDemo(
   userId: string,
@@ -2012,68 +2465,6 @@ export async function updateCurrentUserPasswordLiveOrDemo(newPassword: string) {
   }
 }
 
-export async function updateCurrentStaffProfileLiveOrDemo(
-  profileId: string,
-  input: {
-    phone: string;
-    title?: string | null;
-  },
-) {
-  if (!profileId) {
-    throw new Error("User profile not found.");
-  }
-
-  if (!isSupabaseConfigured) {
-    const existingProfile = getDatabase().users.find(
-      (user) => user.id === profileId || user.authUserId === profileId,
-    );
-    if (!existingProfile) {
-      throw new Error("User profile not found.");
-    }
-
-    const updatedProfile = updateUserProfileRecord(profileId, {
-      authUserId: existingProfile.authUserId,
-      email: existingProfile.email,
-      fullName: existingProfile.fullName,
-      role: existingProfile.role,
-      permissions: existingProfile.permissions,
-      accessRoleId: existingProfile.accessRoleId,
-      accessRoleName: existingProfile.accessRoleName,
-      phone: input.phone.trim(),
-      title: input.title?.trim() || null,
-      specialtyId: existingProfile.specialtyId ?? null,
-      consultationFee: existingProfile.consultationFee ?? null,
-      followUpFee: existingProfile.followUpFee ?? null,
-    });
-
-    if (!updatedProfile) {
-      throw new Error("Updated user profile could not be loaded.");
-    }
-
-    return updatedProfile;
-  }
-
-  const client = requireSupabase();
-  const { error } = await client
-    .from("profiles")
-    .update({
-      phone: input.phone.trim() || null,
-      title: input.title?.trim() || null,
-    } as never)
-    .eq("id", profileId);
-
-  if (error) {
-    throw error;
-  }
-
-  const refreshedProfile = await getCurrentProfile(profileId);
-  if (!refreshedProfile) {
-    throw new Error("Updated user profile could not be loaded.");
-  }
-
-  return refreshedProfile;
-}
-
 export async function verifyOdcCredentialLiveOrDemo(input: OdcCredentialInput) {
   const normalized = normalizeOdcCredential(input);
   if (!normalized.accessKey && !normalized.recoveryPassword) {
@@ -2126,128 +2517,278 @@ export async function updateSystemControlLiveOrDemo(
   return mapClinicSettings(data.clinicSettings);
 }
 
-/* Supplier Related*/
-export async function createSupplier(values:SupplierFormValues) {
-  const client = requireSupabase();
-
-  const payload = {
-    name: values.name,
-    contact_person: values.contact_person,
-    phone:values.phone,
-    email:values.email
-  };
-
-  const {error} = await client.from("suppliers").insert(payload as never).select().single();
-  if (error) throw error;
-}
-
-export async function updateSupplier(id:string, values:SupplierFormValues) {
-  const client = requireSupabase();
-
-  const payload = {
-    name: values.name,
-    contact_person:values.contact_person,
-    phone:values.phone,
-    email:values.email,
-  }
-  const {data,error} = await client.from("suppliers").update(payload as never).eq("id",id).select().single();
-
-  if(error)throw error;
-
-  return data;
-}
-
-
 export async function getSupplier(): Promise<Supplier[]> {
-  const client = requireSupabase();
+  if (!isSupabaseConfigured) {
+    const { listSuppliers } = await import("./local-db");
+    return listSuppliers();
+  }
 
+  const client = requireSupabase();
+  const { data, error } = await client.from("suppliers").select("*");
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<{
+    id: string;
+    name: string;
+    contact_person: string;
+    phone: string;
+    email: string;
+    created_at: string;
+    updated_at: string;
+  }>).map((row) => ({
+    id: row.id,
+    name: row.name,
+    contact_person: row.contact_person,
+    phone: row.phone,
+    email: row.email,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
+}
+
+export async function createSupplier(values: {
+  name: string;
+  contact_person: string;
+  phone: string;
+  email: string;
+}) {
+  if (!isSupabaseConfigured) {
+    const { createSupplier: createSupplierLocal } = await import("./local-db");
+    return createSupplierLocal(values);
+  }
+
+  const client = requireSupabase();
   const { data, error } = await client
     .from("suppliers")
-    .select("*");
+    .insert({
+      name: values.name,
+      contact_person: values.contact_person,
+      phone: values.phone,
+      email: values.email,
+    } as never)
+    .select("*")
+    .single();
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
+
   return data;
 }
 
-export async function deleteSupplier(id:string) {
+export async function updateSupplier(
+  id: string,
+  values: { name: string; contact_person: string; phone: string; email: string },
+) {
+  if (!isSupabaseConfigured) {
+    const { updateSupplierRecord } = await import("./local-db");
+    return updateSupplierRecord(id, values);
+  }
+
   const client = requireSupabase();
+  const { data, error } = await client
+    .from("suppliers")
+    .update({
+      name: values.name,
+      contact_person: values.contact_person,
+      phone: values.phone,
+      email: values.email,
+    } as never)
+    .eq("id", id)
+    .select("*")
+    .single();
 
-  const {error} = await client.from("suppliers").delete().eq("id",id).select().single();
+  if (error) {
+    throw error;
+  }
 
-  if(error) throw error;
+  return data;
 }
 
-
-/* Inventory Related */
-export async function createInventoryItem(values:InventoryFormValues){
-  const client = requireSupabase();
-  const payload = {
-    category_id: values.categoryId,
-    supplier_id: values.supplierId,
-    name: values.name,
-    sku: values.sku,
-    unit: values.unit,
-    stock_on_hand: values.stockOnHand,
-    reorder_level: values.reorderLevel,
+export async function deleteSupplier(id: string) {
+  if (!isSupabaseConfigured) {
+    const { deleteSupplierRecord } = await import("./local-db");
+    deleteSupplierRecord(id);
+    return;
   }
-  const {error} = await client.from('inventory_items').insert(payload as never);
-  if(error){
+
+  const client = requireSupabase();
+  const { error } = await client.from("suppliers").delete().eq("id", id);
+  if (error) {
     throw error;
   }
 }
-export async function updateInventoryItems(itemId:string,values:InventoryFormValues) {
+
+export async function getCategories(): Promise<Array<{ id: string; name: string }>> {
+  if (!isSupabaseConfigured) {
+    return getDatabase().inventoryCategories.map((category) => ({
+      id: category.id,
+      name: category.name,
+    }));
+  }
+
   const client = requireSupabase();
+  const { data, error } = await client
+    .from("inventory_categories")
+    .select("id,name");
 
-  const payload = {
-    category_id: values.categoryId,
-    supplier_id: values.supplierId,
-    name: values.name,
-    sku: values.sku,
-    unit: values.unit,
-    stock_on_hand: values.stockOnHand,
-    reorder_level: values.reorderLevel,
-  };
+  if (error) {
+    throw error;
+  }
 
-  const {data,error} = await client.from("inventory_items").update(payload as never).eq("id" ,itemId).select().single();
-
-   if (error) throw error;
-
-  return data;
-}
-
-export async function deleteInventoryItem(id:string) {
-  const client = requireSupabase();
-
-  const {error} = await client.from("inventory_items").delete().eq("id",id).select().single();
-
-  if(error) throw error;
+  return (data ?? []) as Array<{ id: string; name: string }>;
 }
 
 export async function getInventoryItems(page: number): Promise<InventoryItem[]> {
+  if (!isSupabaseConfigured) {
+    const { listInventoryItems } = await import("./local-db");
+    return listInventoryItems();
+  }
+
   const limit = 10;
-  const from = (page - 1) * limit;
+  const from = Math.max(0, (page - 1) * limit);
   const to = from + limit - 1;
   const client = requireSupabase();
-
   const { data, error } = await client
     .from("inventory_items")
     .select("*")
     .range(from, to);
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
 
-  return data ?? [];
+  return ((data ?? []) as Array<{
+    id: string;
+    category_id: string;
+    supplier_id: string | null;
+    qr_code: string;
+    name: string;
+    sku: string;
+    unit: string;
+    stock_on_hand: number;
+    reorder_level: number;
+    created_at: string;
+    updated_at: string;
+  }>).map((row) => ({
+    id: row.id,
+    category_id: row.category_id,
+    supplier_id: row.supplier_id,
+    qrCode: row.qr_code,
+    name: row.name,
+    sku: row.sku,
+    unit: row.unit,
+    stockOnHand: Number(row.stock_on_hand ?? 0),
+    reorderLevel: Number(row.reorder_level ?? 0),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
 }
 
-export async function getCategories() {
-  const client = requireSupabase();
-  
-  const { data, error } = await client
-    .from("inventory_categories")
-    .select("*");
+export async function createInventoryItem(values: {
+  categoryId: string;
+  supplierId: string;
+  name: string;
+  sku: string;
+  unit: string;
+  stockOnHand: number;
+  reorderLevel: number;
+}) {
+  if (!isSupabaseConfigured) {
+    const { createInventoryItem: createInventoryItemLocal } = await import("./local-db");
+    return createInventoryItemLocal({
+      category_id: values.categoryId,
+      supplier_id: values.supplierId || null,
+      name: values.name,
+      sku: values.sku,
+      unit: values.unit,
+      stockOnHand: values.stockOnHand,
+      reorderLevel: values.reorderLevel,
+    });
+  }
 
-  if (error) throw error;
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("inventory_items")
+    .insert({
+      category_id: values.categoryId,
+      supplier_id: values.supplierId || null,
+      name: values.name,
+      sku: values.sku,
+      unit: values.unit,
+      stock_on_hand: values.stockOnHand,
+      reorder_level: values.reorderLevel,
+    } as never)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
 
   return data;
 }
 
+export async function updateInventoryItems(
+  itemId: string,
+  values: {
+    categoryId: string;
+    supplierId: string;
+    name: string;
+    sku: string;
+    unit: string;
+    stockOnHand: number;
+    reorderLevel: number;
+  },
+) {
+  if (!isSupabaseConfigured) {
+    const { updateInventoryItemRecord } = await import("./local-db");
+    return updateInventoryItemRecord(itemId, {
+      category_id: values.categoryId,
+      supplier_id: values.supplierId || null,
+      name: values.name,
+      sku: values.sku,
+      unit: values.unit,
+      stockOnHand: values.stockOnHand,
+      reorderLevel: values.reorderLevel,
+    });
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("inventory_items")
+    .update({
+      category_id: values.categoryId,
+      supplier_id: values.supplierId || null,
+      name: values.name,
+      sku: values.sku,
+      unit: values.unit,
+      stock_on_hand: values.stockOnHand,
+      reorder_level: values.reorderLevel,
+    } as never)
+    .eq("id", itemId)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function deleteInventoryItem(id: string) {
+  if (!isSupabaseConfigured) {
+    const { deleteInventoryItemRecord } = await import("./local-db");
+    deleteInventoryItemRecord(id);
+    return;
+  }
+
+  const client = requireSupabase();
+  const { error } = await client.from("inventory_items").delete().eq("id", id);
+  if (error) {
+    throw error;
+  }
+}

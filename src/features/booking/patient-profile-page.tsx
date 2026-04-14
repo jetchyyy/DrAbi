@@ -1,8 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
-import { LockKeyhole, UserRound } from 'lucide-react';
-import { useEffect } from 'react';
+import { LockKeyhole, QrCode, UserRound } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import QRCode from 'qrcode';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -42,6 +43,7 @@ type PasswordFormValues = z.infer<typeof passwordSchema>;
 export function PatientProfilePage() {
   const { profile, session } = useAuth();
   const { data: currentPatient } = useCurrentPatient(session?.user.id ?? null, profile?.email);
+  const [patientQrSvg, setPatientQrSvg] = useState('');
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -77,6 +79,36 @@ export function PatientProfilePage() {
       emergencyContactPhone: currentPatient.emergencyContactPhone ?? '',
     });
   }, [currentPatient, profileForm]);
+
+  useEffect(() => {
+    const qrValue = currentPatient?.qrCode?.trim();
+    if (!qrValue) {
+      setPatientQrSvg('');
+      return;
+    }
+
+    let active = true;
+    void QRCode.toString(qrValue, {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      type: 'svg',
+      width: 200,
+    })
+      .then((svg: string) => {
+        if (active) {
+          setPatientQrSvg(svg);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setPatientQrSvg('');
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentPatient?.qrCode]);
 
   const profileMutation = useMutation({
     mutationFn: async (values: ProfileFormValues) => {
@@ -120,6 +152,30 @@ export function PatientProfilePage() {
         </div>
 
         <form className="mt-6 space-y-4" onSubmit={profileForm.handleSubmit(async (values) => profileMutation.mutateAsync(values))}>
+          <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4">
+            <div className="flex items-center gap-2 text-orange-700">
+              <QrCode className="size-4" />
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em]">Patient QR Code</p>
+            </div>
+            <p className="mt-2 text-sm text-slate-600">Show this QR at the clinic front desk when requested.</p>
+            <div className="mt-3 flex justify-center rounded-xl bg-white p-4">
+              {patientQrSvg ? (
+                <div
+                  aria-label="Patient QR code"
+                  className="size-[200px]"
+                  dangerouslySetInnerHTML={{ __html: patientQrSvg }}
+                />
+              ) : (
+                <div className="flex size-[200px] items-center justify-center rounded-lg border border-dashed border-slate-200 px-4 text-center text-sm text-slate-500">
+                  QR code is not available yet.
+                </div>
+              )}
+            </div>
+            {currentPatient?.qrCode ? (
+              <p className="mt-3 break-all text-center font-mono text-xs font-semibold text-slate-700">{currentPatient.qrCode}</p>
+            ) : null}
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <FormField hint="Full name is locked for patient records." label="Full name">
               <Input disabled value={profile?.fullName ?? ''} />

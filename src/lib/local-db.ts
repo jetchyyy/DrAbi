@@ -735,6 +735,7 @@ export function upsertPatient(input: Omit<Patient, 'id' | 'createdAt' | 'updated
       qrCode: input.qrCode || generatePatientQrCode(),
       intakeSource: input.intakeSource ?? 'staff_walk_in',
       visitStatus: input.visitStatus ?? 'visited_clinic',
+      lastClinicVisitAt: input.lastClinicVisitAt ?? null,
       id: generateId('pat'),
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -806,12 +807,23 @@ export function listAppointments() {
 export function createAppointment(input: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
-    draft.appointments.unshift({
+    const appointment = {
       ...input,
       id: generateId('appt'),
       createdAt: timestamp,
       updatedAt: timestamp,
-    });
+    };
+
+    draft.appointments.unshift(appointment);
+
+    if (appointment.bookingId) {
+      const booking = draft.bookings.find((item) => item.id === appointment.bookingId);
+      if (booking) {
+        booking.appointmentId = appointment.id;
+        booking.updatedAt = timestamp;
+      }
+    }
+
     draft.auditLogs.unshift(createAuditLog('user_owner', 'create', 'appointment'));
   }).appointments[0];
 }
@@ -937,6 +949,7 @@ export function createBooking(input: Omit<Booking, 'id' | 'createdAt' | 'updated
   return updateDatabase((draft) => {
     draft.bookings.unshift({
       ...input,
+      appointmentId: input.appointmentId ?? null,
       id: generateId('book'),
       status: 'pending',
       receiptCode: input.receiptCode || generateBookingReceiptCode(),
@@ -949,6 +962,56 @@ export function createBooking(input: Omit<Booking, 'id' | 'createdAt' | 'updated
 
 export function getBookingByReceiptCode(receiptCode: string) {
   return getDatabase().bookings.find((booking) => booking.receiptCode === receiptCode) ?? null;
+}
+
+function resolveBookingScheduledAtIso(input: {
+  preferredDate: string | null | undefined;
+  preferredTime: string | null | undefined;
+  fallbackIso?: string | null;
+}) {
+  const dateValue = input.preferredDate?.trim() ?? '';
+  const timeValue = input.preferredTime?.trim() ?? '';
+
+  if (dateValue && timeValue) {
+    const timeMatch = timeValue.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if (timeMatch) {
+      const hour = Number(timeMatch[1]);
+      const minute = Number(timeMatch[2]);
+      const second = Number(timeMatch[3] ?? '0');
+
+      if (
+        Number.isInteger(hour) &&
+        Number.isInteger(minute) &&
+        Number.isInteger(second) &&
+        hour >= 0 &&
+        hour <= 23 &&
+        minute >= 0 &&
+        minute <= 59 &&
+        second >= 0 &&
+        second <= 59
+      ) {
+        const normalizedTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
+        const candidate = new Date(`${dateValue}T${normalizedTime}`);
+        if (!Number.isNaN(candidate.getTime())) {
+          return candidate.toISOString();
+        }
+      }
+    }
+
+    const rawCandidate = new Date(`${dateValue}T${timeValue}`);
+    if (!Number.isNaN(rawCandidate.getTime())) {
+      return rawCandidate.toISOString();
+    }
+  }
+
+  if (input.fallbackIso) {
+    const fallback = new Date(input.fallbackIso);
+    if (!Number.isNaN(fallback.getTime())) {
+      return fallback.toISOString();
+    }
+  }
+
+  return new Date().toISOString();
 }
 
 export function markBookingPaidAndCreateInvoice(receiptCode: string) {
@@ -964,10 +1027,37 @@ export function markBookingPaidAndCreateInvoice(receiptCode: string) {
 
   const invoiceNumber = `INV-${Date.now()}`;
   const description = booking.feeType === 'follow_up' ? 'Follow-up Fee' : booking.feeType === 'consultation' ? 'Consultation Fee' : 'Medical Service Fee';
+  const existingAppointment = booking.appointmentId
+    ? database.appointments.find((item) => item.id === booking.appointmentId) ?? null
+    : null;
+  const appointment = existingAppointment ?? createAppointment({
+    patientId: booking.patientId,
+    doctorId: booking.doctorId || 'user_owner',
+    specialtyId: '',
+    serviceId: booking.serviceId,
+    bookingId: booking.id,
+    scheduledAt: resolveBookingScheduledAtIso({
+      preferredDate: booking.preferredDate,
+      preferredTime: booking.preferredTime,
+      fallbackIso: booking.createdAt,
+    }),
+    status: 'scheduled',
+    source: 'internal',
+    visitType: 'in_person',
+    reason: description,
+    notes: booking.intakeNotes,
+    teleconsultationPlatform: null,
+    teleconsultationUrl: null,
+    teleconsultationAccessInstructions: null,
+    consultationId: null,
+    completedBy: null,
+    completedAt: null,
+    deletedAt: null,
+  });
   const invoice = createInvoice(
     {
       patientId: booking.patientId,
-      appointmentId: null,
+      appointmentId: appointment.id,
       invoiceNumber,
       paymentStatus: 'paid',
       subtotal: booking.feeAmount,
@@ -989,6 +1079,7 @@ export function markBookingPaidAndCreateInvoice(receiptCode: string) {
       return;
     }
     target.paymentStatus = 'paid';
+    target.appointmentId = appointment.id;
     target.updatedAt = new Date().toISOString();
   }).bookings.find((item) => item.receiptCode === receiptCode) ?? null;
 
@@ -1366,6 +1457,7 @@ export function createPatientProfileAccount(
       qrCode: patient.qrCode || generatePatientQrCode(),
       intakeSource: patient.intakeSource ?? 'online_registration',
       visitStatus: patient.visitStatus ?? 'registered_no_visit',
+      lastClinicVisitAt: patient.lastClinicVisitAt ?? null,
       id: generateId('pat'),
       userId,
       createdAt: timestamp,
@@ -1431,6 +1523,7 @@ function normalizeDatabase(database: AppDatabase) {
       qrCode: patient.qrCode || generatePatientQrCode(),
       intakeSource: patient.intakeSource ?? (patient.userId ? 'online_registration' : 'staff_walk_in'),
       visitStatus: patient.visitStatus ?? (patient.userId ? 'registered_no_visit' : 'visited_clinic'),
+      lastClinicVisitAt: patient.lastClinicVisitAt ?? null,
     })),
     inventoryItems: database.inventoryItems.map((item) => ({
       ...item,
