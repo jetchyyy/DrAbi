@@ -1,5 +1,5 @@
 ﻿import type { Session, User } from '@supabase/supabase-js';
-import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 
 import { rolePermissions } from '../../config/permissions';
 import { applyUserAccessRoleAssignment, applyUserPermissionOverride, getDatabase, hasUserPin, saveUserPin, verifyUserPin } from '../../lib/local-db';
@@ -93,7 +93,8 @@ async function loadSecurityPinHash(profileId: string) {
     throw error;
   }
 
-  return data?.security_pin_hash ?? null;
+  const profileRow = (data ?? null) as { security_pin_hash: string | null } | null;
+  return profileRow?.security_pin_hash ?? null;
 }
 
 async function loadHasSecurityPin(profile: UserProfile | null) {
@@ -120,7 +121,7 @@ async function saveSecurityPin(profile: UserProfile, pin: string) {
     .update({
       security_pin_hash: securityPinHash,
       pin_updated_at: new Date().toISOString(),
-    })
+    } as never)
     .eq('id', profile.id);
 
   if (error) {
@@ -173,7 +174,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [loading, setLoading] = useState(isSupabaseConfigured);
   const [session, setSession] = useState<Session | null>(null);
   const [hasSecurityPin, setHasSecurityPin] = useState(false);
-  const [pinVerified, setPinVerified] = useState(false);
+  const [pinVerified, setPinVerified] = useState(true);
+  const requirePinOnNextAuthenticatedSessionRef = useRef(false);
   const [profile, setProfile] = useState<UserProfile | null>(() => {
     const storedEmail = getStoredDemoEmail();
     return storedEmail ? getDemoProfile(storedEmail) : null;
@@ -195,10 +197,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       try {
         const nextProfile = await resolveLiveProfile(nextSession.user);
+        if (!nextProfile) {
+          throw new Error('Authenticated user profile could not be loaded.');
+        }
         setProfile(nextProfile);
         const nextHasSecurityPin = await loadHasSecurityPin(nextProfile);
         setHasSecurityPin(nextHasSecurityPin);
-        setPinVerified(nextProfile.role === 'patient' || !nextHasSecurityPin);
+        const shouldRequirePinVerification =
+          requirePinOnNextAuthenticatedSessionRef.current && nextProfile.role !== 'patient' && nextHasSecurityPin;
+        setPinVerified(!shouldRequirePinVerification);
+        requirePinOnNextAuthenticatedSessionRef.current = false;
         await queryClient.invalidateQueries({ queryKey: queryKeys.currentProfile(nextSession.user.id) });
         await queryClient.invalidateQueries({ queryKey: queryKeys.currentPatient(nextSession.user.id) });
       } finally {
@@ -229,7 +237,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
     void loadHasSecurityPin(profile).then((value) => {
       if (!cancelled) {
         setHasSecurityPin(value);
-        setPinVerified(profile.role === 'patient' || !value);
+        setPinVerified((currentValue) => {
+          if (profile.role === 'patient' || !value) {
+            return true;
+          }
+
+          return currentValue;
+        });
       }
     });
 
@@ -254,8 +268,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       isAuthenticated: Boolean(profile ?? session),
       async signIn(email, password) {
         if (isSupabaseConfigured && supabase) {
+          requirePinOnNextAuthenticatedSessionRef.current = true;
           const { error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) {
+            requirePinOnNextAuthenticatedSessionRef.current = false;
             throw error;
           }
           return;

@@ -4,17 +4,25 @@ import { defaultClinicSettings } from "../config/clinic";
 import { odcAccessConfig } from "../config/odc-access";
 import {
   applyUserPermissionOverride,
+  applyUserAccessRoleAssignment,
+  clearUserAccessRoleAssignment,
   clearUserPermissionOverride,
+  createAccessRole as createDemoAccessRole,
+  deleteAccessRoleRecord as deleteDemoAccessRoleRecord,
   getClinicSettings as getDemoClinicSettings,
   getDatabase,
+  listAccessRoles as listDemoAccessRoles,
   listDoctorAvailabilityByDoctor,
   replaceDoctorAvailability,
+  saveUserAccessRoleAssignment,
   updateUserProfileRecord,
+  updateAccessRoleRecord as updateDemoAccessRoleRecord,
   deleteUserProfileRecord,
   updatePatientProfileAccount,
 } from "./local-db";
 import { isSupabaseConfigured, supabase } from "./supabase";
 import type {
+  AccessRoleTemplate,
   AdminCreateUserInput,
   Appointment,
   Booking,
@@ -29,6 +37,7 @@ import type {
   Patient,
   PaymentStatus,
   Prescription,
+  Permission,
   Role,
   Service,
   ServiceDeliveryMode,
@@ -131,6 +140,7 @@ interface AdminCreateUserResponse {
 }
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+type AccessRoleRow = Database["public"]["Tables"]["access_roles"]["Row"];
 type PatientRow = Database["public"]["Tables"]["patients"]["Row"];
 type SpecialtyRow = Database["public"]["Tables"]["specialties"]["Row"];
 type ServiceRow = Database["public"]["Tables"]["services"]["Row"];
@@ -264,6 +274,19 @@ function isMissingBookingAppointmentIdColumn(error: unknown) {
   return message.includes("appointment_id") && message.includes("bookings");
 }
 
+function isMissingAccessRoleTableError(error: unknown) {
+  const details = error as { code?: string; message?: string } | null;
+  if (!details) {
+    return false;
+  }
+
+  const message = (details.message ?? "").toLowerCase();
+  return (
+    details.code === "42P01" &&
+    (message.includes("access_roles") || message.includes("profile_access_roles"))
+  );
+}
+
 async function updateBookingPaymentStatusWithOptionalAppointmentLink(
   client: ReturnType<typeof requireSupabase>,
   input: {
@@ -367,8 +390,39 @@ function readFileAsDataUrl(file: File) {
   });
 }
 
-export function mapProfile(row: ProfileRow): UserProfile {
+function mapAccessRole(row: AccessRoleRow): AccessRoleTemplate {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    permissions: (row.permission_codes ?? []) as Permission[],
+    isSystem: row.is_system,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function applyAccessRoleToProfile(
+  profile: UserProfile,
+  accessRole: AccessRoleTemplate | null,
+) {
+  if (!accessRole) {
+    return applyUserPermissionOverride(profile);
+  }
+
   return applyUserPermissionOverride({
+    ...profile,
+    accessRoleId: accessRole.id,
+    accessRoleName: accessRole.name,
+    permissions: accessRole.permissions,
+  });
+}
+
+export function mapProfile(
+  row: ProfileRow,
+  options?: { accessRole?: AccessRoleTemplate | null },
+): UserProfile {
+  const baseProfile: UserProfile = {
     id: row.id,
     authUserId: row.id,
     email: row.email,
@@ -379,7 +433,9 @@ export function mapProfile(row: ProfileRow): UserProfile {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
-  });
+  };
+
+  return applyAccessRoleToProfile(baseProfile, options?.accessRole ?? null);
 }
 
 export function mapPatient(row: PatientRow): Patient {
@@ -1622,14 +1678,14 @@ export async function saveDoctorFeeSettingsForProfileLiveOrDemo(
 
 export async function getCurrentProfile(userId: string) {
   if (!isSupabaseConfigured) {
-    return (
+    const profile =
       getDatabase().users.find(
         (user) => user.authUserId === userId || user.id === userId,
-      ) ?? null
-    );
+      ) ?? null;
+    return profile ? applyUserAccessRoleAssignment(profile) : null;
   }
 
-  const client = requireSupabase();
+  const client = requireSupabase() as any;
   const { data, error } = await client
     .from("profiles")
     .select("*")
@@ -1638,7 +1694,14 @@ export async function getCurrentProfile(userId: string) {
   if (error) {
     throw error;
   }
-  return data ? mapProfile(data) : null;
+
+  const profileRow = (data ?? null) as ProfileRow | null;
+  if (!profileRow) {
+    return null;
+  }
+
+  const accessRoleMap = await getAccessRoleMapForProfiles([profileRow.id]);
+  return mapProfile(profileRow, { accessRole: accessRoleMap.get(profileRow.id) ?? null });
 }
 
 export async function ensureProfileForUser(user: User) {
@@ -2188,10 +2251,10 @@ export async function markBookingPaidAndCreateInvoiceLiveOrDemo(
 
 export async function listUsersLiveOrDemo() {
   if (!isSupabaseConfigured) {
-    return getDatabase().users;
+    return getDatabase().users.map(applyUserAccessRoleAssignment);
   }
 
-  const client = requireSupabase();
+  const client = requireSupabase() as any;
   const { data, error } = await client
     .from("profiles")
     .select("*")
@@ -2200,7 +2263,218 @@ export async function listUsersLiveOrDemo() {
     throw error;
   }
 
-  return (data ?? []).map(mapProfile);
+  const profiles = (data ?? []) as ProfileRow[];
+  const profileIds = profiles.map((profile) => profile.id);
+  const accessRoleMap = await getAccessRoleMapForProfiles(profileIds);
+
+  return profiles.map((profile) =>
+    mapProfile(profile, { accessRole: accessRoleMap.get(profile.id) ?? null }),
+  );
+}
+
+async function getAccessRoleMapForProfiles(profileIds: string[]) {
+  const nextMap = new Map<string, AccessRoleTemplate>();
+  if (!isSupabaseConfigured || profileIds.length === 0) {
+    return nextMap;
+  }
+
+  const client = requireSupabase() as any;
+  const { data: assignments, error: assignmentError } = await client
+    .from("profile_access_roles")
+    .select("profile_id, access_role_id")
+    .in("profile_id", profileIds);
+
+  if (assignmentError) {
+    if (isMissingAccessRoleTableError(assignmentError)) {
+      return nextMap;
+    }
+    throw assignmentError;
+  }
+
+  const typedAssignments = (assignments ?? []) as Array<Pick<Database["public"]["Tables"]["profile_access_roles"]["Row"], "profile_id" | "access_role_id">>;
+  const roleIds = Array.from(new Set(typedAssignments.map((assignment) => assignment.access_role_id)));
+
+  if (roleIds.length === 0) {
+    return nextMap;
+  }
+
+  const { data: roles, error: roleError } = await client
+    .from("access_roles")
+    .select("*")
+    .in("id", roleIds);
+
+  if (roleError) {
+    if (isMissingAccessRoleTableError(roleError)) {
+      return nextMap;
+    }
+    throw roleError;
+  }
+
+  const typedRoles = (roles ?? []) as AccessRoleRow[];
+  const rolesById = new Map(typedRoles.map((role) => [role.id, mapAccessRole(role)]));
+  for (const assignment of typedAssignments) {
+    const accessRole = rolesById.get(assignment.access_role_id);
+    if (accessRole) {
+      nextMap.set(assignment.profile_id, accessRole);
+    }
+  }
+
+  return nextMap;
+}
+
+export async function listAccessRolesLiveOrDemo() {
+  if (!isSupabaseConfigured) {
+    return listDemoAccessRoles();
+  }
+
+  const client = requireSupabase() as any;
+  const { data, error } = await client
+    .from("access_roles")
+    .select("*")
+    .order("is_system", { ascending: false })
+    .order("name", { ascending: true });
+
+  if (error) {
+    if (isMissingAccessRoleTableError(error)) {
+      return listDemoAccessRoles();
+    }
+    throw error;
+  }
+
+  return ((data ?? []) as AccessRoleRow[]).map(mapAccessRole);
+}
+
+export async function createAccessRoleLiveOrDemo(
+  input: Omit<AccessRoleTemplate, "id" | "createdAt" | "updatedAt" | "isSystem">,
+) {
+  if (!isSupabaseConfigured) {
+    return createDemoAccessRole(input);
+  }
+
+  const client = requireSupabase() as any;
+  const { data, error } = await client
+    .from("access_roles")
+    .insert({
+      name: input.name.trim(),
+      description: input.description.trim(),
+      permission_codes: input.permissions,
+      is_system: false,
+    } as Database["public"]["Tables"]["access_roles"]["Insert"])
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapAccessRole(data as AccessRoleRow);
+}
+
+export async function updateAccessRoleLiveOrDemo(
+  id: string,
+  input: Omit<AccessRoleTemplate, "id" | "createdAt" | "updatedAt" | "isSystem">,
+) {
+  if (!isSupabaseConfigured) {
+    return updateDemoAccessRoleRecord(id, input);
+  }
+
+  const client = requireSupabase() as any;
+  const { data: existingRole, error: existingRoleError } = await client
+    .from("access_roles")
+    .select("id, is_system")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (existingRoleError) {
+    throw existingRoleError;
+  }
+
+  const typedExistingRole = (existingRole ?? null) as Pick<AccessRoleRow, "id" | "is_system"> | null;
+  if (!typedExistingRole) {
+    throw new Error("Access role not found.");
+  }
+
+  if (typedExistingRole.is_system) {
+    throw new Error("System roles cannot be edited here.");
+  }
+
+  const { data, error } = await client
+    .from("access_roles")
+    .update({
+      name: input.name.trim(),
+      description: input.description.trim(),
+      permission_codes: input.permissions,
+    } as Database["public"]["Tables"]["access_roles"]["Update"])
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapAccessRole(data as AccessRoleRow);
+}
+
+export async function deleteAccessRoleLiveOrDemo(id: string) {
+  if (!isSupabaseConfigured) {
+    return deleteDemoAccessRoleRecord(id);
+  }
+
+  const client = requireSupabase() as any;
+  const { data: existingRole, error: existingRoleError } = await client
+    .from("access_roles")
+    .select("id, is_system")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (existingRoleError) {
+    throw existingRoleError;
+  }
+
+  const typedExistingRole = (existingRole ?? null) as Pick<AccessRoleRow, "id" | "is_system"> | null;
+  if (!typedExistingRole) {
+    return;
+  }
+
+  if (typedExistingRole.is_system) {
+    throw new Error("Built-in system roles cannot be deleted.");
+  }
+
+  const { error } = await client.from("access_roles").delete().eq("id", id);
+  if (error) {
+    throw error;
+  }
+}
+
+export async function assignAccessRoleToProfileLiveOrDemo(input: {
+  userId?: string;
+  email: string;
+  accessRoleId: string;
+}) {
+  if (!isSupabaseConfigured) {
+    saveUserAccessRoleAssignment(input);
+    return;
+  }
+
+  if (!input.userId) {
+    throw new Error("A live access role assignment requires a user id.");
+  }
+
+  const client = requireSupabase() as any;
+  const { error } = await client
+    .from("profile_access_roles")
+    .upsert(
+      {
+        profile_id: input.userId,
+        access_role_id: input.accessRoleId,
+      } as Database["public"]["Tables"]["profile_access_roles"]["Insert"],
+      { onConflict: "profile_id" },
+    );
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function createAdminUserLiveOrDemo(input: AdminCreateUserInput) {
@@ -2344,6 +2618,7 @@ export async function deleteAdminUserLiveOrDemo(
 ) {
   if (!isSupabaseConfigured) {
     deleteUserProfileRecord(userId);
+    clearUserAccessRoleAssignment({ userId, email: options?.email });
     clearUserPermissionOverride({ userId, email: options?.email });
     return;
   }

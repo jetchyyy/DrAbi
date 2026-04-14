@@ -9,19 +9,21 @@ import { FormField } from '../../components/forms/form-field';
 import { Button } from '../../components/ui/button';
 import { FeedbackModal } from '../../components/ui/feedback-modal';
 import { Input } from '../../components/ui/input';
-import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
-import { roleLabels, rolePermissions } from '../../config/permissions';
-import { createAccessRole, deleteAccessRoleRecord, listAccessRoles, updateAccessRoleRecord } from '../../lib/local-db';
-import type { AccessRoleTemplate, Permission, Role } from '../../types/domain';
+import { rolePermissions } from '../../config/permissions';
+import {
+  createAccessRoleLiveOrDemo,
+  deleteAccessRoleLiveOrDemo,
+  listAccessRolesLiveOrDemo,
+  updateAccessRoleLiveOrDemo,
+} from '../../lib/supabase-clinic';
+import type { AccessRoleTemplate, Permission } from '../../types/domain';
 
 const permissionOptions = Array.from(new Set(Object.values(rolePermissions).flat())) as Permission[];
-const baseRoleOptions = ['owner_admin', 'doctor', 'nurse_staff', 'front_desk_cashier', 'lab_staff', 'inventory_staff'] as const satisfies ReadonlyArray<Exclude<Role, 'patient'>>;
 
 const accessRoleSchema = z.object({
   name: z.string().trim().min(2, 'Role name must be at least 2 characters.'),
   description: z.string().trim().min(4, 'Description must be at least 4 characters.'),
-  baseRole: z.enum(baseRoleOptions),
   permissions: z.array(z.enum(permissionOptions as [Permission, ...Permission[]])).min(1, 'Select at least one permission.'),
 });
 
@@ -36,7 +38,7 @@ interface FeedbackModalState {
 
 export function SettingsRolesPage() {
   const queryClient = useQueryClient();
-  const { data: accessRoles = [] } = useQuery({ queryKey: ['access-roles'], queryFn: async () => listAccessRoles() });
+  const { data: accessRoles = [] } = useQuery({ queryKey: ['access-roles'], queryFn: listAccessRolesLiveOrDemo });
   const [search, setSearch] = useState('');
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<AccessRoleTemplate | null>(null);
@@ -49,14 +51,14 @@ export function SettingsRolesPage() {
   const deferredSearch = useDeferredValue(search);
 
   const createRoleMutation = useMutation({
-    mutationFn: async (values: AccessRoleFormValues) => createAccessRole(values),
+    mutationFn: async (values: AccessRoleFormValues) => createAccessRoleLiveOrDemo(values),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['access-roles'] });
     },
   });
 
   const updateRoleMutation = useMutation({
-    mutationFn: async ({ id, values }: { id: string; values: AccessRoleFormValues }) => updateAccessRoleRecord(id, values),
+    mutationFn: async ({ id, values }: { id: string; values: AccessRoleFormValues }) => updateAccessRoleLiveOrDemo(id, values),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['access-roles'] });
       await queryClient.invalidateQueries({ queryKey: ['settings-users'] });
@@ -64,7 +66,7 @@ export function SettingsRolesPage() {
   });
 
   const deleteRoleMutation = useMutation({
-    mutationFn: async (id: string) => deleteAccessRoleRecord(id),
+    mutationFn: async (id: string) => deleteAccessRoleLiveOrDemo(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['access-roles'] });
       await queryClient.invalidateQueries({ queryKey: ['settings-users'] });
@@ -76,18 +78,16 @@ export function SettingsRolesPage() {
     defaultValues: {
       name: '',
       description: '',
-      baseRole: 'nurse_staff',
       permissions: [...rolePermissions.nurse_staff],
     },
   });
 
   const selectedPermissions = useWatch({ control: form.control, name: 'permissions' });
-  const selectedBaseRole = useWatch({ control: form.control, name: 'baseRole' });
 
   const filteredRoles = useMemo(
     () =>
       accessRoles.filter((role) =>
-        `${role.name} ${role.description} ${roleLabels[role.baseRole]} ${role.permissions.join(' ')}`.toLowerCase().includes(deferredSearch.toLowerCase()),
+        `${role.name} ${role.description} ${role.permissions.join(' ')}`.toLowerCase().includes(deferredSearch.toLowerCase()),
       ),
     [accessRoles, deferredSearch],
   );
@@ -116,7 +116,6 @@ export function SettingsRolesPage() {
     form.reset({
       name: '',
       description: '',
-      baseRole: 'nurse_staff',
       permissions: [...rolePermissions.nurse_staff],
     });
     setEditingRole(null);
@@ -129,7 +128,6 @@ export function SettingsRolesPage() {
     form.reset({
       name: role.name,
       description: role.description,
-      baseRole: role.baseRole,
       permissions: role.permissions,
     });
     setEditingRole(role);
@@ -222,7 +220,7 @@ export function SettingsRolesPage() {
                 <input
                   className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search role, base role, or permission"
+                  placeholder="Search role or permission"
                   value={search}
                 />
               </div>
@@ -236,7 +234,6 @@ export function SettingsRolesPage() {
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Role</th>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Base Staff Role</th>
                   <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Permissions</th>
                   <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Actions</th>
                 </tr>
@@ -249,7 +246,6 @@ export function SettingsRolesPage() {
                       <p className="mt-1 text-sm text-slate-500">{role.description}</p>
                       {role.isSystem ? <p className="mt-2 text-xs font-bold uppercase tracking-widest text-orange-600">System role</p> : null}
                     </td>
-                    <td className="px-6 py-4 align-top text-sm text-slate-700">{roleLabels[role.baseRole]}</td>
                     <td className="px-6 py-4 align-top text-sm text-slate-600">{role.permissions.join(', ')}</td>
                     <td className="px-6 py-4 align-top">
                       <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
@@ -271,7 +267,7 @@ export function SettingsRolesPage() {
                 ))}
                 {filteredRoles.length === 0 ? (
                   <tr>
-                    <td className="px-6 py-10 text-center text-sm text-slate-500" colSpan={4}>
+                    <td className="px-6 py-10 text-center text-sm text-slate-500" colSpan={3}>
                       No roles matched your search.
                     </td>
                   </tr>
@@ -302,22 +298,6 @@ export function SettingsRolesPage() {
                 </FormField>
                 <FormField error={form.formState.errors.description?.message} label="Description">
                   <Textarea {...form.register('description')} />
-                </FormField>
-                <FormField error={form.formState.errors.baseRole?.message} label="Base staff role">
-                  <Select
-                    onChange={(event) => {
-                      const nextBaseRole = event.target.value as Exclude<Role, 'patient'>;
-                      form.setValue('baseRole', nextBaseRole, { shouldDirty: true, shouldValidate: true });
-                      form.setValue('permissions', [...rolePermissions[nextBaseRole]], { shouldDirty: true, shouldValidate: true });
-                    }}
-                    value={selectedBaseRole}
-                  >
-                    {baseRoleOptions.map((role) => (
-                      <option key={role} value={role}>
-                        {roleLabels[role]}
-                      </option>
-                    ))}
-                  </Select>
                 </FormField>
                 <FormField error={form.formState.errors.permissions?.message} hint="Check the pages and actions this role can access." label="Permissions">
                   <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">

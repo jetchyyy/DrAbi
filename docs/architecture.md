@@ -81,6 +81,8 @@ docs/
 
 The frontend uses a static permission matrix for clarity and speed, while the Supabase schema includes `roles`, `permissions`, and `role_permissions` tables so the model can move server-side later without reshaping the app.
 
+Custom access roles used by Settings are stored separately from `profiles.role`. The assigned access role controls permissions, while `profiles.role` remains the canonical staff type for route guards and doctor-specific workflows.
+
 ## Data design notes
 
 - Single-clinic runtime behavior only.

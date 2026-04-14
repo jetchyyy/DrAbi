@@ -63,6 +63,48 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
       };
+      access_roles: {
+        Row: {
+          id: string;
+          system_key: string | null;
+          name: string;
+          description: string;
+          permission_codes: string[];
+          is_system: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          system_key?: string | null;
+          name: string;
+          description?: string;
+          permission_codes: string[];
+          is_system?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["access_roles"]["Insert"]>;
+      };
+      profile_access_roles: {
+        Row: {
+          id: string;
+          profile_id: string;
+          access_role_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          access_role_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["profile_access_roles"]["Insert"]
+        >;
+      };
       specialties: {
         Row: {
           id: string;

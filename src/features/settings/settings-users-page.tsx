@@ -13,17 +13,19 @@ import { Select } from '../../components/ui/select';
 import { roleLabels } from '../../config/permissions';
 import {
   clearUserPermissionOverride,
-  listAccessRoles,
-  saveUserAccessRoleAssignment,
 } from '../../lib/local-db';
 import {
+  assignAccessRoleToProfileLiveOrDemo,
   createAdminUserLiveOrDemo,
   deleteAdminUserLiveOrDemo,
+  listAccessRolesLiveOrDemo,
   listUsersLiveOrDemo,
   updateAdminUserLiveOrDemo,
 } from '../../lib/supabase-clinic';
 import { isSupabaseConfigured } from '../../lib/supabase';
-import type { AccessRoleTemplate, AdminCreateUserInput, UserProfile } from '../../types/domain';
+import type { AccessRoleTemplate, AdminCreateUserInput, Role, UserProfile } from '../../types/domain';
+
+const staffRoleOptions = ['owner_admin', 'doctor', 'nurse_staff', 'front_desk_cashier', 'lab_staff', 'inventory_staff'] as const satisfies ReadonlyArray<Exclude<Role, 'patient'>>;
 
 const PASSWORD_RULES_HINT = 'At least 6 characters, with uppercase, lowercase, and a number.';
 
@@ -37,10 +39,13 @@ const userSchema = z
     password: z.string().optional(),
     confirmPassword: z.string().optional(),
     accessRoleId: z.string().min(1, 'Select an access role.'),
-    baseRole: z.enum(['owner_admin', 'doctor', 'nurse_staff', 'front_desk_cashier', 'lab_staff', 'inventory_staff']),
+    staffRole: z.enum(staffRoleOptions),
     prcLicenseNumber: z.string().optional(),
     prcLicenseExpiry: z.string().optional(),
     birNumber: z.string().optional(),
+    prcIdFile: z.custom<File | null>((value) => value === null || value instanceof File, {
+      message: 'Upload a PRC ID file.',
+    }).optional(),
     consultationFee: z.number().min(0, 'Consultation fee must be 0 or higher.').optional(),
     followUpFee: z.number().min(0, 'Follow-up fee must be 0 or higher.').optional(),
   })
@@ -58,20 +63,24 @@ const userSchema = z
       }
     }
 
-    if (value.baseRole !== 'doctor' || value.mode === 'edit') {
+    if (value.staffRole !== 'doctor' || value.mode === 'edit') {
       return;
     }
 
     if (!value.prcLicenseNumber?.trim()) {
-      ctx.addIssue({ code: 'custom', path: ['prcLicenseNumber'], message: 'PRC license number is required for doctor access roles.' });
+      ctx.addIssue({ code: 'custom', path: ['prcLicenseNumber'], message: 'PRC license number is required for doctor accounts.' });
     }
 
     if (!value.prcLicenseExpiry?.trim()) {
-      ctx.addIssue({ code: 'custom', path: ['prcLicenseExpiry'], message: 'PRC license expiry is required for doctor access roles.' });
+      ctx.addIssue({ code: 'custom', path: ['prcLicenseExpiry'], message: 'PRC license expiry is required for doctor accounts.' });
     }
 
     if (!value.birNumber?.trim()) {
-      ctx.addIssue({ code: 'custom', path: ['birNumber'], message: 'BIR number is required for doctor access roles.' });
+      ctx.addIssue({ code: 'custom', path: ['birNumber'], message: 'BIR number is required for doctor accounts.' });
+    }
+
+    if (!value.prcIdFile) {
+      ctx.addIssue({ code: 'custom', path: ['prcIdFile'], message: 'PRC ID upload is required for doctor accounts.' });
     }
   });
 
@@ -108,21 +117,21 @@ function buildCreateUserInput(values: UserFormValues, accessRole: AccessRoleTemp
     contactNumber: values.contactNumber.trim(),
     email: values.email.trim().toLowerCase(),
     password: values.password ?? '',
-    role: accessRole.baseRole,
+    role: values.staffRole,
     permissions: accessRole.permissions,
-    prcLicenseNumber: accessRole.baseRole === 'doctor' ? values.prcLicenseNumber?.trim() ?? '' : undefined,
-    prcLicenseExpiry: accessRole.baseRole === 'doctor' ? values.prcLicenseExpiry?.trim() ?? '' : undefined,
-    birNumber: accessRole.baseRole === 'doctor' ? values.birNumber?.trim() ?? '' : undefined,
-    consultationFee: accessRole.baseRole === 'doctor' ? values.consultationFee ?? 0 : undefined,
-    followUpFee: accessRole.baseRole === 'doctor' ? values.followUpFee ?? 0 : undefined,
-    prcIdFile: null,
+    prcLicenseNumber: values.staffRole === 'doctor' ? values.prcLicenseNumber?.trim() ?? '' : undefined,
+    prcLicenseExpiry: values.staffRole === 'doctor' ? values.prcLicenseExpiry?.trim() ?? '' : undefined,
+    birNumber: values.staffRole === 'doctor' ? values.birNumber?.trim() ?? '' : undefined,
+    consultationFee: values.staffRole === 'doctor' ? values.consultationFee ?? 0 : undefined,
+    followUpFee: values.staffRole === 'doctor' ? values.followUpFee ?? 0 : undefined,
+    prcIdFile: values.staffRole === 'doctor' ? values.prcIdFile ?? null : null,
   };
 }
 
 export function SettingsUsersPage() {
   const queryClient = useQueryClient();
   const { data: users = [] } = useQuery({ queryKey: ['settings-users'], queryFn: listUsersLiveOrDemo });
-  const { data: accessRoles = [] } = useQuery({ queryKey: ['access-roles'], queryFn: async () => listAccessRoles() });
+  const { data: accessRoles = [] } = useQuery({ queryKey: ['access-roles'], queryFn: listAccessRolesLiveOrDemo });
   const [search, setSearch] = useState('');
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -148,17 +157,17 @@ export function SettingsUsersPage() {
         lastName: values.lastName.trim(),
         contactNumber: values.contactNumber.trim(),
         email: values.email.trim().toLowerCase(),
-        role: accessRole.baseRole,
+        role: values.staffRole,
         permissions: accessRole.permissions,
         prcLicenseNumber: values.prcLicenseNumber?.trim(),
         prcLicenseExpiry: values.prcLicenseExpiry?.trim(),
         birNumber: values.birNumber?.trim(),
         consultationFee: values.consultationFee ?? 0,
         followUpFee: values.followUpFee ?? 0,
-      }),
+    }),
     onSuccess: async (_updatedUser, variables) => {
       clearUserPermissionOverride({ userId: variables.id, email: variables.values.email.trim().toLowerCase() });
-      saveUserAccessRoleAssignment({
+      await assignAccessRoleToProfileLiveOrDemo({
         userId: variables.id,
         email: variables.values.email.trim().toLowerCase(),
         accessRoleId: variables.accessRole.id,
@@ -186,10 +195,11 @@ export function SettingsUsersPage() {
       password: '',
       confirmPassword: '',
       accessRoleId: '',
-      baseRole: 'nurse_staff',
+      staffRole: 'nurse_staff',
       prcLicenseNumber: '',
       prcLicenseExpiry: '',
       birNumber: '',
+      prcIdFile: null,
       consultationFee: 0,
       followUpFee: 0,
     },
@@ -197,9 +207,9 @@ export function SettingsUsersPage() {
 
   const formMode = useWatch({ control: form.control, name: 'mode' });
   const selectedAccessRoleId = useWatch({ control: form.control, name: 'accessRoleId' });
-  const selectedBaseRole = useWatch({ control: form.control, name: 'baseRole' });
+  const selectedStaffRole = useWatch({ control: form.control, name: 'staffRole' });
   const selectedAccessRole = accessRoles.find((role) => role.id === selectedAccessRoleId) ?? null;
-  const isDoctorRole = selectedBaseRole === 'doctor';
+  const isDoctorRole = selectedStaffRole === 'doctor';
   const isEditing = formMode === 'edit';
   const isLiveEdit = isEditing && isSupabaseConfigured;
 
@@ -241,10 +251,11 @@ export function SettingsUsersPage() {
       password: '',
       confirmPassword: '',
       accessRoleId: accessRoles[0]?.id ?? '',
-      baseRole: accessRoles[0]?.baseRole ?? 'nurse_staff',
+      staffRole: 'nurse_staff',
       prcLicenseNumber: '',
       prcLicenseExpiry: '',
       birNumber: '',
+      prcIdFile: null,
       consultationFee: 0,
       followUpFee: 0,
     });
@@ -254,7 +265,7 @@ export function SettingsUsersPage() {
 
   const openEditModal = (user: UserProfile) => {
     const { firstName, lastName } = splitFullName(user.fullName);
-    const matchingAccessRole = accessRoles.find((role) => role.id === user.accessRoleId) ?? accessRoles.find((role) => role.baseRole === user.role) ?? null;
+    const matchingAccessRole = accessRoles.find((role) => role.id === user.accessRoleId) ?? null;
 
     form.reset({
       mode: 'edit',
@@ -265,10 +276,11 @@ export function SettingsUsersPage() {
       password: '',
       confirmPassword: '',
       accessRoleId: matchingAccessRole?.id ?? '',
-      baseRole: matchingAccessRole?.baseRole ?? user.role,
+      staffRole: user.role === 'patient' ? 'nurse_staff' : user.role,
       prcLicenseNumber: '',
       prcLicenseExpiry: '',
       birNumber: '',
+      prcIdFile: null,
       consultationFee: user.consultationFee ?? 0,
       followUpFee: user.followUpFee ?? 0,
     });
@@ -288,11 +300,11 @@ export function SettingsUsersPage() {
       return;
     }
 
-    if (editingUser && isSupabaseConfigured && accessRole.baseRole !== editingUser.role) {
+    if (editingUser && isSupabaseConfigured && values.staffRole !== editingUser.role) {
       setFeedbackModal({
         open: true,
-        title: 'Base role locked',
-        message: 'Live accounts can only switch between access roles that share the same base staff role.',
+        title: 'Staff role locked',
+        message: 'Changing the underlying staff role of a live account is not supported from this screen yet.',
         variant: 'error',
       });
       return;
@@ -310,7 +322,7 @@ export function SettingsUsersPage() {
       } else {
         const createdUser = await createUserMutation.mutateAsync(buildCreateUserInput(values, accessRole));
         clearUserPermissionOverride({ userId: createdUser.id, email: createdUser.email });
-        saveUserAccessRoleAssignment({
+        await assignAccessRoleToProfileLiveOrDemo({
           userId: createdUser.id,
           email: createdUser.email,
           accessRoleId: accessRole.id,
@@ -392,13 +404,13 @@ export function SettingsUsersPage() {
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200">
                 <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">User</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Access Role</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Base Staff Role</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Contact</th>
-                    <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Actions</th>
-                  </tr>
+                <tr>
+                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">User</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Access Role</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Staff Role</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Contact</th>
+                  <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Actions</th>
+                </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredUsers.map((user) => (
@@ -443,7 +455,6 @@ export function SettingsUsersPage() {
                 {accessRoles.map((role) => (
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4" key={role.id}>
                     <p className="font-semibold text-slate-950">{role.name}</p>
-                    <p className="mt-1 text-xs font-bold uppercase tracking-widest text-slate-400">{roleLabels[role.baseRole]}</p>
                     <p className="mt-2 text-sm text-slate-500">{role.description}</p>
                   </div>
                 ))}
@@ -454,7 +465,7 @@ export function SettingsUsersPage() {
               <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-950">Live account note</h2>
               <div className="mt-4 space-y-3 text-sm text-slate-600">
                 <p>Access roles control what pages and actions a user can use.</p>
-                <p>The base staff role stays underneath for compatibility with current route guards and doctor-specific workflows.</p>
+                <p>Staff role stays on the user account itself for route guards and doctor-specific workflows.</p>
                 <p>Deleting live accounts still needs an admin auth-delete backend, so the delete button will show a clear error until that flow is added.</p>
               </div>
             </div>
@@ -513,14 +524,7 @@ export function SettingsUsersPage() {
                 ) : null}
 
                 <FormField error={form.formState.errors.accessRoleId?.message} label="Access role">
-                  <Select
-                    onChange={(event) => {
-                      const role = accessRoles.find((item) => item.id === event.target.value) ?? null;
-                      form.setValue('accessRoleId', event.target.value, { shouldDirty: true, shouldValidate: true });
-                      form.setValue('baseRole', role?.baseRole ?? 'nurse_staff', { shouldDirty: true, shouldValidate: true });
-                    }}
-                    value={selectedAccessRoleId}
-                  >
+                  <Select onChange={(event) => form.setValue('accessRoleId', event.target.value, { shouldDirty: true, shouldValidate: true })} value={selectedAccessRoleId}>
                     <option value="">Select access role</option>
                     {accessRoles.map((role) => (
                       <option key={role.id} value={role.id}>
@@ -530,10 +534,19 @@ export function SettingsUsersPage() {
                   </Select>
                 </FormField>
 
+                <FormField error={form.formState.errors.staffRole?.message} hint="This controls the underlying staff type for routing and doctor workflows." label="Staff role">
+                  <Select onChange={(event) => form.setValue('staffRole', event.target.value as UserFormValues['staffRole'], { shouldDirty: true, shouldValidate: true })} value={selectedStaffRole}>
+                    {staffRoleOptions.map((role) => (
+                      <option key={role} value={role}>
+                        {roleLabels[role]}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+
                 {selectedAccessRole ? (
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                     <p className="font-semibold text-slate-950">{selectedAccessRole.name}</p>
-                    <p className="mt-1 text-xs font-bold uppercase tracking-widest text-slate-400">{roleLabels[selectedAccessRole.baseRole]}</p>
                     <p className="mt-2">{selectedAccessRole.description}</p>
                     <p className="mt-3 text-xs text-slate-500">{selectedAccessRole.permissions.join(', ')}</p>
                   </div>
@@ -545,15 +558,29 @@ export function SettingsUsersPage() {
                     {!isEditing ? (
                       <>
                         <div className="grid gap-4 md:grid-cols-2">
-                          <FormField label="PRC license number">
+                          <FormField error={form.formState.errors.prcLicenseNumber?.message} label="PRC license number">
                             <Input {...form.register('prcLicenseNumber')} />
                           </FormField>
-                          <FormField label="PRC license expiry">
+                          <FormField error={form.formState.errors.prcLicenseExpiry?.message} label="PRC license expiry">
                             <Input type="date" {...form.register('prcLicenseExpiry')} />
                           </FormField>
                         </div>
-                        <FormField label="BIR number">
+                        <FormField error={form.formState.errors.birNumber?.message} label="BIR number">
                           <Input {...form.register('birNumber')} />
+                        </FormField>
+                        <FormField
+                          error={form.formState.errors.prcIdFile?.message}
+                          hint="Upload a JPG, PNG, or PDF copy of the PRC ID."
+                          label="PRC ID upload"
+                        >
+                          <Input
+                            accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0] ?? null;
+                              form.setValue('prcIdFile', file, { shouldDirty: true, shouldValidate: true });
+                            }}
+                            type="file"
+                          />
                         </FormField>
                       </>
                     ) : (

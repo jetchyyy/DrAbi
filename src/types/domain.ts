@@ -113,7 +113,6 @@ export interface UserProfile extends BaseRecord {
 export interface AccessRoleTemplate extends BaseRecord {
   name: string;
   description: string;
-  baseRole: Exclude<Role, 'patient'>;
   permissions: Permission[];
   isSystem?: boolean;
 }
