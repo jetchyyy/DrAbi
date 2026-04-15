@@ -13,6 +13,7 @@ export interface CreateLabRequestInput {
   clinicId?: string | null;
   patientId: string;
   requestedBy: string;
+  appointmentId?: string | null;
   serviceId: string;
   serviceCategory: string;
   patientNotes?: string | null;
@@ -24,6 +25,14 @@ export interface CompleteLabRequestInput {
   requestId: string;
   resultData?: string | null;
   resultNotes?: string | null;
+  attachments?: File[];
+}
+
+export interface UpdateLabRequestInput {
+  requestId: string;
+  status?: LabRequestStatus;
+  patientNotes?: string | null;
+  urgentFlag?: boolean;
 }
 
 export interface CancelLabRequestInput {
@@ -35,6 +44,7 @@ export interface LabRequestRecord {
   id: string;
   clinicId: string;
   clinicName: string | null;
+  appointmentId: string | null;
   patientId: string;
   patientName: string | null;
   requestedBy: string;
@@ -54,8 +64,20 @@ export interface LabRequestRecord {
   completedBy: string | null;
   completedByName: string | null;
   completedAt: string | null;
+  media: LabRequestMediaRecord[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LabRequestMediaRecord {
+  id: string;
+  serviceRequestId: string;
+  filePath: string;
+  fileUrl: string;
+  fileName: string;
+  mimeType: string | null;
+  uploadedBy: string;
+  createdAt: string;
 }
 
 export interface PatientMedicalTimelineEntry {

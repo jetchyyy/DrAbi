@@ -21,6 +21,7 @@ import { useAuth } from '../auth/auth-context';
 import { useCreateReferral } from '../referrals/hooks/use-referrals';
 import { validatePatientConsultationAccess } from './services/consultation-access-service';
 import { serializeLabResultsContent, type LabResultImageRecord } from './lab-results-media';
+import { AppointmentLabRequestsCard } from '../lab-requests/components/appointment-lab-requests-card';
 import { 
   useCreateConsultation, 
   usePatientAppointments, 
@@ -1213,6 +1214,14 @@ export function ConsultationEntryPage() {
           </div>
         </form>
       </Card>
+
+      <AppointmentLabRequestsCard
+        appointmentId={selectedAppointmentId || null}
+        canCreate={Boolean(selectedAppointmentId && (profile?.role === 'doctor' || profile?.role === 'owner_admin'))}
+        patientId={patient.id}
+        requestedBy={profile?.id ?? soapDoctorId}
+        title="Appointment lab requests"
+      />
     </div>
   );
 }

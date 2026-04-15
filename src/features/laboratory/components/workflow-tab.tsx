@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertTriangle, FlaskConical, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Camera, FileUp, FlaskConical, Paperclip, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
@@ -18,6 +18,7 @@ import {
   useCreateLabRequest,
   useDoctorLabRequests,
   useStartLabProcessing,
+  useUpdateLabRequestDetails,
 } from '../../lab-requests/hooks/use-lab-requests';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase';
 import { LabStatusPill } from './lab-status-pill';
@@ -89,12 +90,17 @@ export function WorkflowTab() {
   const [search, setSearch] = useState('');
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [resultAttachments, setResultAttachments] = useState<File[]>([]);
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [feedbackModal, setFeedbackModal] = useState<FeedbackModalState>({
     open: false,
     title: '',
     message: '',
     variant: 'success',
   });
+  const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
   const deferredSearch = useDeferredValue(search);
   const { data: availableClinics = [], error: clinicsError } = useQuery({
     queryKey: ['lab-form-clinics'],
@@ -130,6 +136,7 @@ export function WorkflowTab() {
 
   const createMutation = useCreateLabRequest();
   const startMutation = useStartLabProcessing();
+  const updateDetailsMutation = useUpdateLabRequestDetails();
   const completeMutation = useCompleteLabRequest();
   const cancelMutation = useCancelLabRequest();
 
@@ -290,6 +297,29 @@ export function WorkflowTab() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOrderModalOpen]);
 
+  useEffect(() => {
+    const videoElement = videoPreviewRef.current;
+    if (!videoElement || !cameraStreamRef.current) {
+      return;
+    }
+
+    videoElement.srcObject = cameraStreamRef.current;
+    void videoElement.play().catch(() => {
+      setCameraError('Unable to start camera preview.');
+    });
+  }, [isCameraModalOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (!cameraStreamRef.current) {
+        return;
+      }
+
+      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+    };
+  }, []);
+
   const openCreateModal = () => {
     const firstService = serviceOptions[0];
     form.reset({
@@ -303,6 +333,7 @@ export function WorkflowTab() {
       urgentFlag: false,
     });
     setEditingOrderId(null);
+    setResultAttachments([]);
     setIsOrderModalOpen(true);
   };
 
@@ -323,11 +354,18 @@ export function WorkflowTab() {
       urgentFlag: order.urgentFlag,
     });
     setEditingOrderId(orderId);
+    setResultAttachments([]);
     setIsOrderModalOpen(true);
   };
 
   const closeOrderModal = () => {
     setEditingOrderId(null);
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+    }
+    setCameraError(null);
+    setIsCameraModalOpen(false);
     setIsOrderModalOpen(false);
   };
 
@@ -347,7 +385,13 @@ export function WorkflowTab() {
       ? 'Create Lab Request'
       : 'Review Lab Request';
   const submitLabel = (() => {
-    if (createMutation.isPending || startMutation.isPending || completeMutation.isPending || cancelMutation.isPending) {
+    if (
+      createMutation.isPending ||
+      startMutation.isPending ||
+      updateDetailsMutation.isPending ||
+      completeMutation.isPending ||
+      cancelMutation.isPending
+    ) {
       return 'Saving...';
     }
 
@@ -367,11 +411,25 @@ export function WorkflowTab() {
       if (isProcessingExistingOrder && editingOrderId) {
         if (values.status === 'in_progress') {
           await startMutation.mutateAsync(editingOrderId);
+          await updateDetailsMutation.mutateAsync({
+            requestId: editingOrderId,
+            status: 'in_progress',
+            patientNotes: values.notes ?? '',
+            urgentFlag: values.urgentFlag,
+          });
+        } else if (values.status === 'pending') {
+          await updateDetailsMutation.mutateAsync({
+            requestId: editingOrderId,
+            status: 'pending',
+            patientNotes: values.notes ?? '',
+            urgentFlag: values.urgentFlag,
+          });
         } else if (values.status === 'completed') {
           await completeMutation.mutateAsync({
             requestId: editingOrderId,
             resultData: values.resultSummary ?? '',
             resultNotes: values.notes ?? '',
+            attachments: resultAttachments,
           });
         } else if (values.status === 'cancelled') {
           await cancelMutation.mutateAsync({
@@ -413,6 +471,7 @@ export function WorkflowTab() {
       }
 
       closeOrderModal();
+      setResultAttachments([]);
     } catch (error) {
       setFeedbackModal({
         open: true,
@@ -445,6 +504,96 @@ export function WorkflowTab() {
         variant: 'error',
       });
     }
+  };
+
+  const appendResultAttachments = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) {
+      return;
+    }
+
+    setResultAttachments((currentFiles) => [...currentFiles, ...files]);
+    event.target.value = '';
+  };
+
+  const closeCameraModal = () => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+    }
+
+    if (videoPreviewRef.current) {
+      videoPreviewRef.current.srcObject = null;
+    }
+
+    setCameraError(null);
+    setIsCameraModalOpen(false);
+  };
+
+  const openCameraModal = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setFeedbackModal({
+        open: true,
+        title: 'Camera unavailable',
+        message: 'This browser or device does not support direct camera capture.',
+        variant: 'error',
+      });
+      return;
+    }
+
+    try {
+      setCameraError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: 'environment' },
+        },
+      });
+
+      cameraStreamRef.current = stream;
+      setIsCameraModalOpen(true);
+    } catch {
+      setFeedbackModal({
+        open: true,
+        title: 'Camera unavailable',
+        message: 'Camera access was denied or no camera was detected on this device.',
+        variant: 'error',
+      });
+    }
+  };
+
+  const capturePhoto = async () => {
+    const videoElement = videoPreviewRef.current;
+    if (!videoElement || videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
+      setCameraError('Camera preview is not ready yet.');
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = videoElement.videoWidth;
+    canvas.height = videoElement.videoHeight;
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      setCameraError('Unable to capture image from camera.');
+      return;
+    }
+
+    context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((createdBlob) => resolve(createdBlob), 'image/jpeg', 0.92);
+    });
+
+    if (!blob) {
+      setCameraError('Unable to encode captured image.');
+      return;
+    }
+
+    const filename = `lab-result-${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`;
+    const file = new File([blob], filename, { type: 'image/jpeg' });
+    setResultAttachments((currentFiles) => [...currentFiles, file]);
+    closeCameraModal();
   };
 
   return (
@@ -655,6 +804,52 @@ export function WorkflowTab() {
                   <FormField error={form.formState.errors.resultSummary?.message} label="Result summary">
                     <Textarea {...form.register('resultSummary')} />
                   </FormField>
+                  {isProcessingExistingOrder ? (
+                    <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-full bg-white p-2 text-violet-700 shadow-sm">
+                          <Paperclip className="size-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-900">Result attachments</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Upload result images or documents before completing the request.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <label className="flex cursor-pointer items-center gap-2 border border-dashed border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-violet-300 hover:bg-violet-50/40">
+                          <FileUp className="size-4 text-violet-600" />
+                          <span>Choose files</span>
+                          <input
+                            accept="image/*,application/pdf,.doc,.docx"
+                            className="hidden"
+                            multiple
+                            onChange={appendResultAttachments}
+                            type="file"
+                          />
+                        </label>
+                        <button
+                          className="flex items-center gap-2 border border-dashed border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-emerald-300 hover:bg-emerald-50/40"
+                          onClick={() => void openCameraModal()}
+                          type="button"
+                        >
+                          <Camera className="size-4 text-emerald-600" />
+                          <span>Camera</span>
+                        </button>
+                      </div>
+                      {resultAttachments.length > 0 ? (
+                        <div className="space-y-2">
+                          {resultAttachments.map((file) => (
+                            <div key={`${file.name}-${file.lastModified}`} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                              <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                              <span className="text-xs uppercase tracking-widest text-slate-400">{Math.round(file.size / 1024)} KB</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" className="accent-rose-500" {...form.register('urgentFlag')} />
                     <span className="text-sm font-medium text-slate-700">Mark as urgent</span>
@@ -671,6 +866,7 @@ export function WorkflowTab() {
                     disabled={
                       createMutation.isPending ||
                       startMutation.isPending ||
+                      updateDetailsMutation.isPending ||
                       completeMutation.isPending ||
                       cancelMutation.isPending
                     }
@@ -681,6 +877,51 @@ export function WorkflowTab() {
                 ) : null}
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {isCameraModalOpen ? (
+        <div
+          aria-modal="true"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4"
+          onClick={closeCameraModal}
+          role="dialog"
+        >
+          <div
+            className="w-full max-w-2xl overflow-hidden border border-slate-200 bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between bg-emerald-700 px-6 py-4">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-200">Capture Result</p>
+                <p className="mt-0.5 text-sm font-bold text-white">Use Device Camera</p>
+              </div>
+              <button
+                aria-label="Close camera capture"
+                className="inline-flex items-center justify-center border border-emerald-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                onClick={closeCameraModal}
+                type="button"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="space-y-4 p-6">
+              <div className="overflow-hidden border border-slate-200 bg-black">
+                <video className="h-auto w-full" muted playsInline ref={videoPreviewRef} />
+              </div>
+              {cameraError ? (
+                <p className="text-sm font-medium text-rose-600">{cameraError}</p>
+              ) : null}
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <Button className="w-full rounded-none sm:w-auto" onClick={closeCameraModal} type="button" variant="secondary">
+                  Cancel
+                </Button>
+                <Button className="w-full rounded-none bg-emerald-700 text-sm font-extrabold uppercase tracking-widest hover:bg-emerald-800 sm:w-auto" onClick={() => void capturePhoto()} type="button">
+                  Capture photo
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       ) : null}

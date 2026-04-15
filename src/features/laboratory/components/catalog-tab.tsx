@@ -3,7 +3,7 @@ import { Pencil, Plus, Search, TestTube2, Trash2, X } from 'lucide-react';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { FormField } from '../../../components/forms/form-field';
 import { Button } from '../../../components/ui/button';
@@ -11,7 +11,7 @@ import { FeedbackModal } from '../../../components/ui/feedback-modal';
 import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
-import { createLabService, deleteLabService, getDatabase, updateLabService } from '../../../lib/local-db';
+import { isSupabaseConfigured, supabase } from '../../../lib/supabase';
 import { formatCurrency } from '../../../lib/utils';
 import type { LabServiceCategory } from '../../../types/domain';
 
@@ -36,10 +36,27 @@ const CATEGORY_LABELS: Record<LabServiceCategory, string> = {
   imagingTests: 'Imaging / Radiology',
 };
 
+interface CatalogServiceRow {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  category: LabServiceCategory;
+  created_at: string;
+  updated_at: string;
+}
+
+function toMedicalServiceCategory(category: LabServiceCategory) {
+  return category === 'imagingTests' ? 'Imaging' : 'Laboratory Test';
+}
+
+function fromMedicalServiceCategory(category: string | null | undefined): LabServiceCategory {
+  const normalized = (category ?? '').toLowerCase();
+  return normalized.includes('imag') ? 'imagingTests' : 'laboratoryTests';
+}
+
 export function CatalogTab() {
-  const database = getDatabase();
   const qc = useQueryClient();
-  const labServices = database.labServices;
   const [search, setSearch] = useState('');
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -51,10 +68,50 @@ export function CatalogTab() {
   });
   const deferredSearch = useDeferredValue(search);
 
+  const { data: labServices = [], isLoading, error: catalogError } = useQuery({
+    queryKey: ['lab-services-catalog'],
+    queryFn: async () => {
+      if (!isSupabaseConfigured || !supabase) {
+        return [] as CatalogServiceRow[];
+      }
+
+      const [{ data, error }, { data: medicalData, error: medicalError }] = await Promise.all([
+        (supabase as any)
+        .from('lab_services')
+        .select('id, name, description, price, created_at, updated_at')
+        .order('created_at', { ascending: false }),
+        supabase
+          .from('medical_services')
+          .select('id, category')
+          .eq('department', 'Laboratory'),
+      ]);
+
+      if (error) {
+        throw error;
+      }
+
+      if (medicalError) {
+        throw medicalError;
+      }
+
+      const categoryMap = new Map(
+        ((medicalData ?? []) as Array<{ id: string; category: string | null }>).map((entry) => [
+          entry.id,
+          fromMedicalServiceCategory(entry.category),
+        ]),
+      );
+      return ((data ?? []) as Array<Omit<CatalogServiceRow, 'category'>>).map((row) => ({
+        ...row,
+        category: categoryMap.get(row.id) ?? 'laboratoryTests',
+      }));
+    },
+    enabled: Boolean(isSupabaseConfigured),
+  });
+
   const filteredServices = useMemo(
     () =>
       labServices.filter((service) =>
-        `${service.name} ${service.description} ${service.category}`.toLowerCase().includes(deferredSearch.toLowerCase()),
+        `${service.name} ${service.description ?? ''}`.toLowerCase().includes(deferredSearch.toLowerCase()),
       ),
     [deferredSearch, labServices],
   );
@@ -65,23 +122,111 @@ export function CatalogTab() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (values: CatalogForm) =>
-      createLabService({ name: values.name, description: values.description, price: values.price, category: values.category }),
+    mutationFn: async (values: CatalogForm) => {
+      if (!supabase) {
+        throw new Error('Supabase is not configured.');
+      }
+
+      const { data: insertedLab, error: labError } = await (supabase as any)
+        .from('lab_services')
+        .insert({
+          name: values.name.trim(),
+          description: values.description.trim(),
+          price: values.price,
+        })
+        .select('id, name, description, price, created_at, updated_at')
+        .single();
+
+      if (labError) {
+        throw labError;
+      }
+
+      const { error: medicalError } = await supabase
+        .from('medical_services')
+        .upsert({
+          id: insertedLab.id,
+          clinic_id: null,
+          department: 'Laboratory',
+          category: toMedicalServiceCategory(values.category),
+          name: values.name.trim(),
+          description: values.description.trim(),
+          service_fee: values.price,
+          is_active: true,
+        } as never);
+
+      if (medicalError) {
+        throw medicalError;
+      }
+
+      return insertedLab as CatalogServiceRow;
+    },
     onSuccess: () => {
-      void qc.invalidateQueries();
+      void qc.invalidateQueries({ queryKey: ['lab-services-catalog'] });
+      void qc.invalidateQueries({ queryKey: ['lab-request-services'] });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, values }: { id: string; values: CatalogForm }) => updateLabService(id, values),
+    mutationFn: async ({ id, values }: { id: string; values: CatalogForm }) => {
+      if (!supabase) {
+        throw new Error('Supabase is not configured.');
+      }
+
+      const { error: labError } = await (supabase as any)
+        .from('lab_services')
+        .update({
+          name: values.name.trim(),
+          description: values.description.trim(),
+          price: values.price,
+        })
+        .eq('id', id);
+
+      if (labError) {
+        throw labError;
+      }
+
+      const { error: medicalError } = await supabase
+        .from('medical_services')
+        .update({
+          name: values.name.trim(),
+          description: values.description.trim(),
+          category: toMedicalServiceCategory(values.category),
+          service_fee: values.price,
+          department: 'Laboratory',
+          is_active: true,
+        } as never)
+        .eq('id', id);
+
+      if (medicalError) {
+        throw medicalError;
+      }
+    },
     onSuccess: () => {
-      void qc.invalidateQueries();
+      void qc.invalidateQueries({ queryKey: ['lab-services-catalog'] });
+      void qc.invalidateQueries({ queryKey: ['lab-request-services'] });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => deleteLabService(id),
-    onSuccess: () => void qc.invalidateQueries(),
+    mutationFn: async (id: string) => {
+      if (!supabase) {
+        throw new Error('Supabase is not configured.');
+      }
+
+      const { error: labError } = await (supabase as any).from('lab_services').delete().eq('id', id);
+      if (labError) {
+        throw labError;
+      }
+
+      const { error: medicalError } = await supabase.from('medical_services').delete().eq('id', id);
+      if (medicalError) {
+        throw medicalError;
+      }
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['lab-services-catalog'] });
+      void qc.invalidateQueries({ queryKey: ['lab-request-services'] });
+    },
   });
 
   const openCreateModal = () => {
@@ -98,7 +243,7 @@ export function CatalogTab() {
 
     form.reset({
       name: service.name,
-      description: service.description,
+      description: service.description ?? '',
       price: service.price,
       category: service.category,
     });
@@ -207,6 +352,16 @@ export function CatalogTab() {
           <div className="border-t border-slate-100 bg-slate-50 px-6 py-2">
             <span className="text-xs font-bold text-slate-500">{filteredServices.length} service{filteredServices.length !== 1 ? 's' : ''} found</span>
           </div>
+          {!isSupabaseConfigured ? (
+            <div className="border-t border-amber-200 bg-amber-50 px-6 py-3 text-xs font-semibold text-amber-700">
+              Supabase is not configured. Catalog entries cannot be saved to lab_services.
+            </div>
+          ) : null}
+          {catalogError ? (
+            <div className="border-t border-rose-200 bg-rose-50 px-6 py-3 text-xs font-semibold text-rose-700">
+              Unable to load lab_services: {catalogError instanceof Error ? catalogError.message : 'Unknown error.'}
+            </div>
+          ) : null}
         </div>
 
         <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
@@ -225,16 +380,16 @@ export function CatalogTab() {
                 {filteredServices.length === 0 ? (
                   <tr>
                     <td className="px-6 py-12 text-center text-sm text-slate-400" colSpan={5}>
-                      No lab services defined yet.
+                      {isLoading ? 'Loading lab services...' : 'No lab services defined yet.'}
                     </td>
                   </tr>
                 ) : (
                   filteredServices.map((service) => (
                     <tr className="transition-colors hover:bg-slate-50" key={service.id}>
                       <td className="px-6 py-4 align-top font-bold text-sm text-slate-950">{service.name}</td>
-                      <td className="px-6 py-4 align-top text-sm text-slate-600">{service.description}</td>
+                      <td className="px-6 py-4 align-top text-sm text-slate-600">{service.description ?? 'No description'}</td>
                       <td className="px-6 py-4 align-top text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
-                        {CATEGORY_LABELS[service.category] ?? service.category}
+                        {CATEGORY_LABELS[service.category]}
                       </td>
                       <td className="px-6 py-4 align-top text-sm font-bold text-violet-700">{formatCurrency(service.price)}</td>
                       <td className="px-6 py-4 align-top">
@@ -305,7 +460,7 @@ export function CatalogTab() {
                 <Button className="w-full rounded-none sm:w-auto" onClick={closeServiceModal} type="button" variant="secondary">
                   Cancel
                 </Button>
-                <Button className="w-full rounded-none bg-violet-700 hover:bg-violet-800 font-extrabold uppercase tracking-widest text-sm py-3 sm:w-auto" disabled={createMutation.isPending || updateMutation.isPending} type="submit">
+                <Button className="w-full rounded-none bg-violet-700 hover:bg-violet-800 font-extrabold uppercase tracking-widest text-sm py-3 sm:w-auto" disabled={!isSupabaseConfigured || createMutation.isPending || updateMutation.isPending} type="submit">
                   {createMutation.isPending || updateMutation.isPending ? 'Saving...' : editingId ? 'Save Service' : 'Add Service'}
                 </Button>
               </div>

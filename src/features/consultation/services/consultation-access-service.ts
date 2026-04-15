@@ -39,6 +39,34 @@ function getLatestOpenAppointment(
   return openAppointments[0] ?? null;
 }
 
+/**
+ * Get today's soonest appointment for invoice validation.
+ * Returns the next upcoming appointment scheduled for today (by time).
+ * This ensures we validate against the correct appointment when a patient has
+ * multiple appointments on the same day.
+ */
+function getTodaysSoonestAppointment(
+  appointments: Appointment[],
+): Appointment | null {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const todayAppointments = appointments
+    .filter((appointment) => {
+      const scheduledDate = new Date(appointment.scheduledAt);
+      return (
+        scheduledDate >= today &&
+        scheduledDate < tomorrow &&
+        !['cancelled', 'completed', 'no_show'].includes(appointment.status)
+      );
+    })
+    .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt));
+
+  return todayAppointments[0] ?? null;
+}
+
 function getLatestLinkedBookingAppointmentId(bookings: Booking[]): string | null {
   const latestLinkedBooking = bookings
     .filter((booking) => booking.status !== 'cancelled' && booking.paymentStatus === 'paid' && Boolean(booking.appointmentId))
@@ -152,7 +180,16 @@ export async function validatePatientConsultationAccess(
   patientId: string,
 ): Promise<ConsultationAccessResult> {
   try {
-    const latestInvoice = await getLatestInvoiceByPatientIdLiveOrDemo(patientId);
+    // Get today's appointments to identify the current active appointment
+    const appointments = await listAppointmentsByPatientIdLiveOrDemo(patientId);
+    const currentAppointment = getTodaysSoonestAppointment(appointments);
+    
+    // Get the invoice for this specific appointment, or fall back to latest if no current appointment
+    // This prevents old paid invoices from masking new pending ones for returning patients
+    const latestInvoice = await getLatestInvoiceByPatientIdLiveOrDemo(
+      patientId,
+      currentAppointment?.id,
+    );
 
     if (!latestInvoice) {
       return {

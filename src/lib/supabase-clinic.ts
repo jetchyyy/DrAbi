@@ -980,14 +980,22 @@ export async function listBookingsByPatientIdLiveOrDemo(
 
 export async function getLatestInvoiceByPatientIdLiveOrDemo(
   patientId: string,
+  appointmentId?: string,
 ): Promise<Invoice | null> {
   if (!patientId) {
     return null;
   }
 
   if (!isSupabaseConfigured) {
-    const latest = getDatabase().invoices
-      .filter((invoice) => invoice.patientId === patientId)
+    let invoices = getDatabase().invoices
+      .filter((invoice) => invoice.patientId === patientId);
+    
+    // If appointmentId is provided, filter to that specific appointment
+    if (appointmentId) {
+      invoices = invoices.filter((invoice) => invoice.appointmentId === appointmentId);
+    }
+    
+    const latest = invoices
       .sort((left, right) => {
         if (left.createdAt === right.createdAt) {
           return right.invoiceNumber.localeCompare(left.invoiceNumber);
@@ -999,10 +1007,17 @@ export async function getLatestInvoiceByPatientIdLiveOrDemo(
   }
 
   const client = requireSupabase();
-  const { data, error } = await client
+  let query = client
     .from("invoices")
     .select("*")
-    .eq("patient_id", patientId)
+    .eq("patient_id", patientId);
+  
+  // If appointmentId is provided, filter to that specific appointment
+  if (appointmentId) {
+    query = query.eq("appointment_id", appointmentId);
+  }
+  
+  const { data, error } = await query
     .order("created_at", { ascending: false })
     .order("invoice_number", { ascending: false })
     .limit(1)

@@ -14,6 +14,7 @@ import { useDoctorDirectory, useServicesCatalog } from '../../hooks/use-clinic-d
 import { formatDateLabel, formatDateTimeLabel } from '../../lib/utils';
 import { useAuth } from '../auth/auth-context';
 import { LabResultsDisplay } from '../consultation/components/lab-results-display';
+import { AppointmentLabRequestsCard } from '../lab-requests/components/appointment-lab-requests-card';
 import { useCurrentPatient } from './hooks/use-bookings';
 import {
   usePatientAppointments,
@@ -330,6 +331,17 @@ export function PatientMedicalHistoryPage() {
                         </p>
                       </div>
                     ) : null}
+
+                    <div className="mt-4">
+                      <AppointmentLabRequestsCard
+                        appointmentId={appointment.id}
+                        canCreate={false}
+                        patientId={currentPatient.id}
+                        requestedBy={doctor?.id ?? ''}
+                        title="Lab requests for this appointment"
+                        compact
+                      />
+                    </div>
                   </div>
                 );
               })}

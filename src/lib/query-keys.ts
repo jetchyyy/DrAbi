@@ -37,6 +37,11 @@ export const queryKeys = {
     filters: Partial<Record<'status' | 'sampleStatus' | 'resultStatus' | 'urgentOnly', unknown>> = {},
   ) =>
     ['lab-queue', clinicId, filters] as const,
+  appointmentLabRequests: (
+    appointmentId: string | null,
+    filters: Partial<Record<'status' | 'sampleStatus' | 'resultStatus' | 'urgentOnly', unknown>> = {},
+  ) =>
+    ['appointment-lab-requests', appointmentId, filters] as const,
   labRequest: (requestId: string | null) => ['lab-request', requestId] as const,
   patientLabResults: (
     patientId: string | null,
