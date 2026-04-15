@@ -96,8 +96,9 @@ async function resolvePatientProfileId(candidateId: string) {
     throw profileError;
   }
 
-  if (profileHit?.id) {
-    return profileHit.id;
+  const matchedProfile = profileHit as Pick<ProfileRow, 'id'> | null;
+  if (matchedProfile?.id) {
+    return matchedProfile.id;
   }
 
   const { data: patientHit, error: patientError } = await client

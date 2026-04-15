@@ -190,10 +190,6 @@ export function AppointmentLabRequestsCard({
 
   const selectedServiceId = form.watch('serviceId');
 
-  const openRequestForm = () => {
-    setIsFormOpen(true);
-  };
-
   const submitRequest = form.handleSubmit(async (values) => {
     const selectedService = servicesState.find((service) => service.id === values.serviceId);
     if (!selectedService) {
