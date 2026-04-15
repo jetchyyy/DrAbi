@@ -34,11 +34,8 @@ import {
   useCurrentPatient,
   useMyBookings,
 } from "./hooks/use-bookings";
-<<<<<<< HEAD
 import { listBookingsByPatientIdLiveOrDemo } from "../../lib/supabase-clinic";
-=======
 import type { BookingPaymentStatus } from "../../types/domain";
->>>>>>> main
 
 const bookingSchema = z.object({
   serviceId: z.string().min(1),
@@ -50,7 +47,6 @@ const bookingSchema = z.object({
 
 type BookingFormValues = z.infer<typeof bookingSchema>;
 
-<<<<<<< HEAD
 async function checkPatientHasPendingBookingForDate(
   patientId: string,
   date: string, // "YYYY-MM-DD"
@@ -68,7 +64,7 @@ async function checkPatientHasPendingBookingForDate(
   }
 
   return false;
-=======
+}
 type TimeSession = "morning" | "afternoon" | "evening";
 
 function isBookingPaymentStatus(value: string): value is BookingPaymentStatus {
@@ -90,7 +86,6 @@ function getTimeSessionLabel(session: TimeSession) {
   if (session === "morning") return "Morning";
   if (session === "afternoon") return "Afternoon";
   return "Evening";
->>>>>>> main
 }
 
 export function PortalBookPage() {
@@ -158,9 +153,8 @@ export function PortalBookPage() {
   });
   const unfinishedBooking = useMemo(
     () =>
-      existingBookings.find(
-        (booking) => booking.status !== "cancelled",
-      ) ?? null,
+      existingBookings.find((booking) => booking.status !== "cancelled") ??
+      null,
     [existingBookings],
   );
 
