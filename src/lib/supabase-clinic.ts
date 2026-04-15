@@ -4,17 +4,25 @@ import { defaultClinicSettings } from "../config/clinic";
 import { odcAccessConfig } from "../config/odc-access";
 import {
   applyUserPermissionOverride,
+  applyUserAccessRoleAssignment,
+  clearUserAccessRoleAssignment,
   clearUserPermissionOverride,
+  createAccessRole as createDemoAccessRole,
+  deleteAccessRoleRecord as deleteDemoAccessRoleRecord,
   getClinicSettings as getDemoClinicSettings,
   getDatabase,
+  listAccessRoles as listDemoAccessRoles,
   listDoctorAvailabilityByDoctor,
   replaceDoctorAvailability,
+  saveUserAccessRoleAssignment,
   updateUserProfileRecord,
+  updateAccessRoleRecord as updateDemoAccessRoleRecord,
   deleteUserProfileRecord,
   updatePatientProfileAccount,
 } from "./local-db";
 import { isSupabaseConfigured, supabase } from "./supabase";
 import type {
+  AccessRoleTemplate,
   AdminCreateUserInput,
   Appointment,
   Booking,
@@ -29,6 +37,7 @@ import type {
   Patient,
   PaymentStatus,
   Prescription,
+  Permission,
   Role,
   Service,
   ServiceDeliveryMode,
@@ -131,6 +140,7 @@ interface AdminCreateUserResponse {
 }
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+type AccessRoleRow = Database["public"]["Tables"]["access_roles"]["Row"];
 type PatientRow = Database["public"]["Tables"]["patients"]["Row"];
 type SpecialtyRow = Database["public"]["Tables"]["specialties"]["Row"];
 type ServiceRow = Database["public"]["Tables"]["services"]["Row"];
@@ -139,6 +149,8 @@ type BookingRow = Database["public"]["Tables"]["bookings"]["Row"];
 type DoctorRow = Database["public"]["Tables"]["doctors"]["Row"];
 type DoctorAvailabilityRow =
   Database["public"]["Tables"]["doctor_availability"]["Row"];
+type SpecialistScheduleRow =
+  Database["public"]["Tables"]["specialist_schedules"]["Row"];
 type AppointmentRow = Database["public"]["Tables"]["appointments"]["Row"];
 type ConsultationRow = Database["public"]["Tables"]["consultations"]["Row"];
 type PrescriptionRow = Database["public"]["Tables"]["prescriptions"]["Row"];
@@ -166,6 +178,7 @@ function splitFullName(fullName: string) {
 function mapRole(value: string | null | undefined): Role {
   switch (value) {
     case "doctor":
+    case "specialist":
     case "nurse_staff":
     case "front_desk_cashier":
     case "lab_staff":
@@ -262,6 +275,19 @@ function isMissingBookingAppointmentIdColumn(error: unknown) {
 
   const message = details.message ?? "";
   return message.includes("appointment_id") && message.includes("bookings");
+}
+
+function isMissingAccessRoleTableError(error: unknown) {
+  const details = error as { code?: string; message?: string } | null;
+  if (!details) {
+    return false;
+  }
+
+  const message = (details.message ?? "").toLowerCase();
+  return (
+    details.code === "42P01" &&
+    (message.includes("access_roles") || message.includes("profile_access_roles"))
+  );
 }
 
 async function updateBookingPaymentStatusWithOptionalAppointmentLink(
@@ -367,8 +393,39 @@ function readFileAsDataUrl(file: File) {
   });
 }
 
-export function mapProfile(row: ProfileRow): UserProfile {
+function mapAccessRole(row: AccessRoleRow): AccessRoleTemplate {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    permissions: (row.permission_codes ?? []) as Permission[],
+    isSystem: row.is_system,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function applyAccessRoleToProfile(
+  profile: UserProfile,
+  accessRole: AccessRoleTemplate | null,
+) {
+  if (!accessRole) {
+    return applyUserPermissionOverride(profile);
+  }
+
   return applyUserPermissionOverride({
+    ...profile,
+    accessRoleId: accessRole.id,
+    accessRoleName: accessRole.name,
+    permissions: accessRole.permissions,
+  });
+}
+
+export function mapProfile(
+  row: ProfileRow,
+  options?: { accessRole?: AccessRoleTemplate | null },
+): UserProfile {
+  const baseProfile: UserProfile = {
     id: row.id,
     authUserId: row.id,
     email: row.email,
@@ -379,7 +436,9 @@ export function mapProfile(row: ProfileRow): UserProfile {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
-  });
+  };
+
+  return applyAccessRoleToProfile(baseProfile, options?.accessRole ?? null);
 }
 
 export function mapPatient(row: PatientRow): Patient {
@@ -606,6 +665,71 @@ function mapDoctorAvailability(row: DoctorAvailabilityRow): DoctorAvailability {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function parseJsonArray<T>(value: unknown): T[] {
+  if (Array.isArray(value)) {
+    return value as T[];
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+function mapSpecialistRecurrenceDayToJsDay(day: number) {
+  return (day + 1) % 7;
+}
+
+function mapJsDayToSpecialistRecurrenceDay(day: number) {
+  return (day + 6) % 7;
+}
+
+function mapSpecialistScheduleRowsToAvailability(
+  specialistId: string,
+  schedules: SpecialistScheduleRow[],
+): DoctorAvailability[] {
+  return schedules.flatMap((row) => {
+    const recurrence = parseJsonArray<number>(row.recurrence).map(
+      mapSpecialistRecurrenceDayToJsDay,
+    );
+    const slotTemplate = parseJsonArray<{ start?: string; end?: string }>(
+      row.slot_template,
+    );
+
+    return recurrence.flatMap((dayOfWeek) =>
+      slotTemplate
+        .filter(
+          (slot): slot is { start: string; end: string } =>
+            Boolean(slot.start && slot.end),
+        )
+        .map((slot) => ({
+          id: `${row.id}:${dayOfWeek}:${slot.start}`,
+          doctorId: specialistId,
+          dayOfWeek,
+          startTime: slot.start,
+          endTime: slot.end,
+          slotMinutes:
+            Math.max(
+              15,
+              Math.round(
+                (new Date(`1970-01-01T${slot.end}`).getTime() -
+                  new Date(`1970-01-01T${slot.start}`).getTime()) /
+                  60000,
+              ),
+            ) || 30,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        })),
+    );
+  });
 }
 
 export async function listPatientsLiveOrDemo() {
@@ -1396,7 +1520,7 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
   if (!isSupabaseConfigured) {
     const database = getDatabase();
     return database.users
-      .filter((user) => user.role === "doctor")
+      .filter((user) => user.role === "doctor" || user.role === "specialist")
       .map((user) => ({
         id: user.id,
         profileId: user.id,
@@ -1454,7 +1578,7 @@ export async function getCurrentDoctor(userId: string) {
     const user = getDatabase().users.find(
       (item) => item.id === userId || item.authUserId === userId,
     );
-    if (!user || user.role !== "doctor") {
+    if (!user || (user.role !== "doctor" && user.role !== "specialist")) {
       return null;
     }
 
@@ -1493,7 +1617,12 @@ export async function ensureDoctorForUser(user: User) {
     (user.user_metadata as Record<string, string | undefined>).role,
   );
   const fallbackProfile = await getCurrentProfile(user.id);
-  if (metadataRole !== "doctor" && fallbackProfile?.role !== "doctor") {
+  if (
+    metadataRole !== "doctor"
+    && metadataRole !== "specialist"
+    && fallbackProfile?.role !== "doctor"
+    && fallbackProfile?.role !== "specialist"
+  ) {
     return null;
   }
 
@@ -1543,6 +1672,39 @@ export async function getDoctorAvailabilityByDoctorIdLiveOrDemo(
   return ((data ?? []) as DoctorAvailabilityRow[]).map(mapDoctorAvailability);
 }
 
+export async function getSpecialistAvailabilityByDoctorIdLiveOrDemo(
+  doctorId: string | null,
+) {
+  if (!doctorId) {
+    return [];
+  }
+
+  if (!isSupabaseConfigured) {
+    return listDoctorAvailabilityByDoctor(doctorId);
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("specialist_schedules")
+    .select("*")
+    .eq("specialist_id", doctorId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return mapSpecialistScheduleRowsToAvailability(
+    doctorId,
+    (data ?? []) as SpecialistScheduleRow[],
+  ).sort(
+    (left, right) =>
+      left.dayOfWeek - right.dayOfWeek ||
+      left.startTime.localeCompare(right.startTime),
+  );
+}
+
 export async function saveDoctorAvailabilityForProfileLiveOrDemo(
   profileId: string,
   availability: Array<
@@ -1554,8 +1716,13 @@ export async function saveDoctorAvailabilityForProfileLiveOrDemo(
     throw new Error("Doctor record not found for this profile.");
   }
 
+  const normalizedAvailability = availability.map((slot) => ({
+    ...slot,
+    doctorId: doctor.id,
+  }));
+
   if (!isSupabaseConfigured) {
-    return replaceDoctorAvailability(doctor.id, availability);
+    return replaceDoctorAvailability(doctor.id, normalizedAvailability);
   }
 
   const client = requireSupabase();
@@ -1571,7 +1738,7 @@ export async function saveDoctorAvailabilityForProfileLiveOrDemo(
     return [];
   }
 
-  const payload = availability.map((slot) => ({
+  const payload = normalizedAvailability.map((slot) => ({
     doctor_id: doctor.id,
     day_of_week: slot.dayOfWeek,
     start_time: slot.startTime,
@@ -1588,6 +1755,91 @@ export async function saveDoctorAvailabilityForProfileLiveOrDemo(
   }
 
   return ((data ?? []) as DoctorAvailabilityRow[]).map(mapDoctorAvailability);
+}
+
+export async function saveSpecialistAvailabilityForProfileLiveOrDemo(
+  profileId: string,
+  availability: Array<
+    Omit<DoctorAvailability, "id" | "createdAt" | "updatedAt">
+  >,
+) {
+  const doctor = await getCurrentDoctor(profileId);
+  if (!doctor) {
+    throw new Error("Specialist record not found for this profile.");
+  }
+
+  const normalizedAvailability = availability.map((slot) => ({
+    ...slot,
+    doctorId: doctor.id,
+  }));
+
+  if (!isSupabaseConfigured) {
+    return replaceDoctorAvailability(doctor.id, normalizedAvailability);
+  }
+
+  const groupedByDay = new Map<
+    number,
+    Array<Omit<DoctorAvailability, "id" | "createdAt" | "updatedAt">>
+  >();
+
+  for (const slot of normalizedAvailability) {
+    const entries = groupedByDay.get(slot.dayOfWeek) ?? [];
+    entries.push(slot);
+    groupedByDay.set(slot.dayOfWeek, entries);
+  }
+
+  const client = requireSupabase();
+  const { error: deleteError } = await client
+    .from("specialist_schedules")
+    .delete()
+    .eq("specialist_id", doctor.id);
+
+  if (deleteError) {
+    throw deleteError;
+  }
+
+  if (normalizedAvailability.length === 0) {
+    return [];
+  }
+
+  const payload = Array.from(groupedByDay.entries()).map(([dayOfWeek, slots]) => ({
+    specialist_id: doctor.id,
+    recurrence: [mapJsDayToSpecialistRecurrenceDay(dayOfWeek)],
+    slot_template: slots
+      .sort((left, right) => left.startTime.localeCompare(right.startTime))
+      .map((slot) => ({
+        start: slot.startTime,
+        end: slot.endTime,
+      })),
+    is_active: true,
+    valid_from: new Date().toISOString().slice(0, 10),
+    practice_location: {},
+  }));
+
+  const { data, error } = await client
+    .from("specialist_schedules")
+    .insert(payload as never)
+    .select("*");
+
+  if (error) {
+    throw error;
+  }
+
+  const savedSchedules = (data ?? []) as SpecialistScheduleRow[];
+  if (normalizedAvailability.length > 0 && savedSchedules.length === 0) {
+    throw new Error(
+      "Specialist availability save did not return any stored schedule rows.",
+    );
+  }
+
+  return mapSpecialistScheduleRowsToAvailability(
+    doctor.id,
+    savedSchedules,
+  ).sort(
+    (left, right) =>
+      left.dayOfWeek - right.dayOfWeek ||
+      left.startTime.localeCompare(right.startTime),
+  );
 }
 
 export async function saveDoctorFeeSettingsForProfileLiveOrDemo(
@@ -1622,14 +1874,14 @@ export async function saveDoctorFeeSettingsForProfileLiveOrDemo(
 
 export async function getCurrentProfile(userId: string) {
   if (!isSupabaseConfigured) {
-    return (
+    const profile =
       getDatabase().users.find(
         (user) => user.authUserId === userId || user.id === userId,
-      ) ?? null
-    );
+      ) ?? null;
+    return profile ? applyUserAccessRoleAssignment(profile) : null;
   }
 
-  const client = requireSupabase();
+  const client = requireSupabase() as any;
   const { data, error } = await client
     .from("profiles")
     .select("*")
@@ -1638,7 +1890,14 @@ export async function getCurrentProfile(userId: string) {
   if (error) {
     throw error;
   }
-  return data ? mapProfile(data) : null;
+
+  const profileRow = (data ?? null) as ProfileRow | null;
+  if (!profileRow) {
+    return null;
+  }
+
+  const accessRoleMap = await getAccessRoleMapForProfiles([profileRow.id]);
+  return mapProfile(profileRow, { accessRole: accessRoleMap.get(profileRow.id) ?? null });
 }
 
 export async function ensureProfileForUser(user: User) {
@@ -2188,10 +2447,10 @@ export async function markBookingPaidAndCreateInvoiceLiveOrDemo(
 
 export async function listUsersLiveOrDemo() {
   if (!isSupabaseConfigured) {
-    return getDatabase().users;
+    return getDatabase().users.map(applyUserAccessRoleAssignment);
   }
 
-  const client = requireSupabase();
+  const client = requireSupabase() as any;
   const { data, error } = await client
     .from("profiles")
     .select("*")
@@ -2200,7 +2459,218 @@ export async function listUsersLiveOrDemo() {
     throw error;
   }
 
-  return (data ?? []).map(mapProfile);
+  const profiles = (data ?? []) as ProfileRow[];
+  const profileIds = profiles.map((profile) => profile.id);
+  const accessRoleMap = await getAccessRoleMapForProfiles(profileIds);
+
+  return profiles.map((profile) =>
+    mapProfile(profile, { accessRole: accessRoleMap.get(profile.id) ?? null }),
+  );
+}
+
+async function getAccessRoleMapForProfiles(profileIds: string[]) {
+  const nextMap = new Map<string, AccessRoleTemplate>();
+  if (!isSupabaseConfigured || profileIds.length === 0) {
+    return nextMap;
+  }
+
+  const client = requireSupabase() as any;
+  const { data: assignments, error: assignmentError } = await client
+    .from("profile_access_roles")
+    .select("profile_id, access_role_id")
+    .in("profile_id", profileIds);
+
+  if (assignmentError) {
+    if (isMissingAccessRoleTableError(assignmentError)) {
+      return nextMap;
+    }
+    throw assignmentError;
+  }
+
+  const typedAssignments = (assignments ?? []) as Array<Pick<Database["public"]["Tables"]["profile_access_roles"]["Row"], "profile_id" | "access_role_id">>;
+  const roleIds = Array.from(new Set(typedAssignments.map((assignment) => assignment.access_role_id)));
+
+  if (roleIds.length === 0) {
+    return nextMap;
+  }
+
+  const { data: roles, error: roleError } = await client
+    .from("access_roles")
+    .select("*")
+    .in("id", roleIds);
+
+  if (roleError) {
+    if (isMissingAccessRoleTableError(roleError)) {
+      return nextMap;
+    }
+    throw roleError;
+  }
+
+  const typedRoles = (roles ?? []) as AccessRoleRow[];
+  const rolesById = new Map(typedRoles.map((role) => [role.id, mapAccessRole(role)]));
+  for (const assignment of typedAssignments) {
+    const accessRole = rolesById.get(assignment.access_role_id);
+    if (accessRole) {
+      nextMap.set(assignment.profile_id, accessRole);
+    }
+  }
+
+  return nextMap;
+}
+
+export async function listAccessRolesLiveOrDemo() {
+  if (!isSupabaseConfigured) {
+    return listDemoAccessRoles();
+  }
+
+  const client = requireSupabase() as any;
+  const { data, error } = await client
+    .from("access_roles")
+    .select("*")
+    .order("is_system", { ascending: false })
+    .order("name", { ascending: true });
+
+  if (error) {
+    if (isMissingAccessRoleTableError(error)) {
+      return listDemoAccessRoles();
+    }
+    throw error;
+  }
+
+  return ((data ?? []) as AccessRoleRow[]).map(mapAccessRole);
+}
+
+export async function createAccessRoleLiveOrDemo(
+  input: Omit<AccessRoleTemplate, "id" | "createdAt" | "updatedAt" | "isSystem">,
+) {
+  if (!isSupabaseConfigured) {
+    return createDemoAccessRole(input);
+  }
+
+  const client = requireSupabase() as any;
+  const { data, error } = await client
+    .from("access_roles")
+    .insert({
+      name: input.name.trim(),
+      description: input.description.trim(),
+      permission_codes: input.permissions,
+      is_system: false,
+    } as Database["public"]["Tables"]["access_roles"]["Insert"])
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapAccessRole(data as AccessRoleRow);
+}
+
+export async function updateAccessRoleLiveOrDemo(
+  id: string,
+  input: Omit<AccessRoleTemplate, "id" | "createdAt" | "updatedAt" | "isSystem">,
+) {
+  if (!isSupabaseConfigured) {
+    return updateDemoAccessRoleRecord(id, input);
+  }
+
+  const client = requireSupabase() as any;
+  const { data: existingRole, error: existingRoleError } = await client
+    .from("access_roles")
+    .select("id, is_system")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (existingRoleError) {
+    throw existingRoleError;
+  }
+
+  const typedExistingRole = (existingRole ?? null) as Pick<AccessRoleRow, "id" | "is_system"> | null;
+  if (!typedExistingRole) {
+    throw new Error("Access role not found.");
+  }
+
+  if (typedExistingRole.is_system) {
+    throw new Error("System roles cannot be edited here.");
+  }
+
+  const { data, error } = await client
+    .from("access_roles")
+    .update({
+      name: input.name.trim(),
+      description: input.description.trim(),
+      permission_codes: input.permissions,
+    } as Database["public"]["Tables"]["access_roles"]["Update"])
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapAccessRole(data as AccessRoleRow);
+}
+
+export async function deleteAccessRoleLiveOrDemo(id: string) {
+  if (!isSupabaseConfigured) {
+    return deleteDemoAccessRoleRecord(id);
+  }
+
+  const client = requireSupabase() as any;
+  const { data: existingRole, error: existingRoleError } = await client
+    .from("access_roles")
+    .select("id, is_system")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (existingRoleError) {
+    throw existingRoleError;
+  }
+
+  const typedExistingRole = (existingRole ?? null) as Pick<AccessRoleRow, "id" | "is_system"> | null;
+  if (!typedExistingRole) {
+    return;
+  }
+
+  if (typedExistingRole.is_system) {
+    throw new Error("Built-in system roles cannot be deleted.");
+  }
+
+  const { error } = await client.from("access_roles").delete().eq("id", id);
+  if (error) {
+    throw error;
+  }
+}
+
+export async function assignAccessRoleToProfileLiveOrDemo(input: {
+  userId?: string;
+  email: string;
+  accessRoleId: string;
+}) {
+  if (!isSupabaseConfigured) {
+    saveUserAccessRoleAssignment(input);
+    return;
+  }
+
+  if (!input.userId) {
+    throw new Error("A live access role assignment requires a user id.");
+  }
+
+  const client = requireSupabase() as any;
+  const { error } = await client
+    .from("profile_access_roles")
+    .upsert(
+      {
+        profile_id: input.userId,
+        access_role_id: input.accessRoleId,
+      } as Database["public"]["Tables"]["profile_access_roles"]["Insert"],
+      { onConflict: "profile_id" },
+    );
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function createAdminUserLiveOrDemo(input: AdminCreateUserInput) {
@@ -2217,8 +2687,8 @@ export async function createAdminUserLiveOrDemo(input: AdminCreateUserInput) {
       title: null,
       specialtyId: null,
       consultationFee:
-        input.role === "doctor" ? (input.consultationFee ?? 0) : null,
-      followUpFee: input.role === "doctor" ? (input.followUpFee ?? 0) : null,
+        input.role === "doctor" || input.role === "specialist" ? (input.consultationFee ?? 0) : null,
+      followUpFee: input.role === "doctor" || input.role === "specialist" ? (input.followUpFee ?? 0) : null,
     });
   }
 
@@ -2231,7 +2701,7 @@ export async function createAdminUserLiveOrDemo(input: AdminCreateUserInput) {
     role: input.role,
   };
 
-  if (input.role === "doctor") {
+  if (input.role === "doctor" || input.role === "specialist") {
     payload.prcLicenseNumber = input.prcLicenseNumber?.trim() ?? "";
     payload.prcLicenseExpiry = input.prcLicenseExpiry?.trim() ?? "";
     payload.birNumber = input.birNumber?.trim() ?? "";
@@ -2288,8 +2758,8 @@ export async function updateAdminUserLiveOrDemo(
       title: null,
       specialtyId: null,
       consultationFee:
-        input.role === "doctor" ? (input.consultationFee ?? 0) : null,
-      followUpFee: input.role === "doctor" ? (input.followUpFee ?? 0) : null,
+        input.role === "doctor" || input.role === "specialist" ? (input.consultationFee ?? 0) : null,
+      followUpFee: input.role === "doctor" || input.role === "specialist" ? (input.followUpFee ?? 0) : null,
     });
 
     if (!updatedUser) {
@@ -2323,7 +2793,7 @@ export async function updateAdminUserLiveOrDemo(
     throw profileError;
   }
 
-  if (input.role === "doctor") {
+  if (input.role === "doctor" || input.role === "specialist") {
     await saveDoctorFeeSettingsForProfileLiveOrDemo(userId, {
       consultationFee: input.consultationFee ?? 0,
       followUpFee: input.followUpFee ?? 0,
@@ -2344,6 +2814,7 @@ export async function deleteAdminUserLiveOrDemo(
 ) {
   if (!isSupabaseConfigured) {
     deleteUserProfileRecord(userId);
+    clearUserAccessRoleAssignment({ userId, email: options?.email });
     clearUserPermissionOverride({ userId, email: options?.email });
     return;
   }

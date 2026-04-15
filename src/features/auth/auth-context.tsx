@@ -1,5 +1,5 @@
 ﻿import type { Session, User } from '@supabase/supabase-js';
-import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 
 import { rolePermissions } from '../../config/permissions';
 import { applyUserAccessRoleAssignment, applyUserPermissionOverride, getDatabase, hasUserPin, saveUserPin, verifyUserPin } from '../../lib/local-db';
@@ -19,7 +19,7 @@ interface AuthContextValue {
   pinSetupRequired: boolean;
   pinVerificationRequired: boolean;
   isAuthenticated: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<Role>;
   signOut: () => Promise<void>;
   setSecurityPin: (pin: string) => Promise<void>;
   verifySecurityPin: (pin: string) => Promise<void>;
@@ -45,6 +45,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function roleFromEmail(email: string): Role {
   if (email.startsWith('doctor')) return 'doctor';
+  if (email.startsWith('specialist')) return 'specialist';
   if (email.startsWith('frontdesk')) return 'front_desk_cashier';
   if (email.startsWith('lab')) return 'lab_staff';
   if (email.startsWith('inventory')) return 'inventory_staff';
@@ -93,7 +94,8 @@ async function loadSecurityPinHash(profileId: string) {
     throw error;
   }
 
-  return data?.security_pin_hash ?? null;
+  const profileRow = (data ?? null) as { security_pin_hash: string | null } | null;
+  return profileRow?.security_pin_hash ?? null;
 }
 
 async function loadHasSecurityPin(profile: UserProfile | null) {
@@ -120,7 +122,7 @@ async function saveSecurityPin(profile: UserProfile, pin: string) {
     .update({
       security_pin_hash: securityPinHash,
       pin_updated_at: new Date().toISOString(),
-    })
+    } as never)
     .eq('id', profile.id);
 
   if (error) {
@@ -159,7 +161,7 @@ async function resolveLiveProfile(user: User) {
   }
 
   const userRole = (user.user_metadata.role as string | undefined) ?? profile?.role ?? 'patient';
-  if (userRole === 'doctor') {
+  if (userRole === 'doctor' || userRole === 'specialist') {
     await ensureDoctorForUser(user);
   }
   if (userRole === 'patient') {
@@ -173,7 +175,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [loading, setLoading] = useState(isSupabaseConfigured);
   const [session, setSession] = useState<Session | null>(null);
   const [hasSecurityPin, setHasSecurityPin] = useState(false);
-  const [pinVerified, setPinVerified] = useState(false);
+  const [pinVerified, setPinVerified] = useState(true);
+  const requirePinOnNextAuthenticatedSessionRef = useRef(false);
   const [profile, setProfile] = useState<UserProfile | null>(() => {
     const storedEmail = getStoredDemoEmail();
     return storedEmail ? getDemoProfile(storedEmail) : null;
@@ -195,10 +198,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       try {
         const nextProfile = await resolveLiveProfile(nextSession.user);
+        if (!nextProfile) {
+          throw new Error('Authenticated user profile could not be loaded.');
+        }
         setProfile(nextProfile);
         const nextHasSecurityPin = await loadHasSecurityPin(nextProfile);
         setHasSecurityPin(nextHasSecurityPin);
-        setPinVerified(nextProfile.role === 'patient' || !nextHasSecurityPin);
+        const shouldRequirePinVerification =
+          requirePinOnNextAuthenticatedSessionRef.current && nextProfile.role !== 'patient' && nextHasSecurityPin;
+        setPinVerified(!shouldRequirePinVerification);
+        requirePinOnNextAuthenticatedSessionRef.current = false;
         await queryClient.invalidateQueries({ queryKey: queryKeys.currentProfile(nextSession.user.id) });
         await queryClient.invalidateQueries({ queryKey: queryKeys.currentPatient(nextSession.user.id) });
       } finally {
@@ -229,7 +238,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
     void loadHasSecurityPin(profile).then((value) => {
       if (!cancelled) {
         setHasSecurityPin(value);
-        setPinVerified(profile.role === 'patient' || !value);
+        setPinVerified((currentValue) => {
+          if (profile.role === 'patient' || !value) {
+            return true;
+          }
+
+          return currentValue;
+        });
       }
     });
 
@@ -254,11 +269,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
       isAuthenticated: Boolean(profile ?? session),
       async signIn(email, password) {
         if (isSupabaseConfigured && supabase) {
-          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          requirePinOnNextAuthenticatedSessionRef.current = true;
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) {
+            requirePinOnNextAuthenticatedSessionRef.current = false;
             throw error;
           }
-          return;
+
+          const sessionUser = data.user;
+          if (!sessionUser) {
+            return 'patient';
+          }
+
+          const nextProfile = await resolveLiveProfile(sessionUser);
+          return nextProfile?.role ?? ((sessionUser.user_metadata.role as Role | undefined) ?? 'patient');
         }
 
         if (!password) {
@@ -270,6 +294,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setProfile(nextProfile);
         setHasSecurityPin(await hasUserPin(nextProfile));
         setPinVerified(nextProfile.role === 'patient' || !(await hasUserPin(nextProfile)));
+        return nextProfile.role;
       },
       async signOut() {
         if (isSupabaseConfigured && supabase) {

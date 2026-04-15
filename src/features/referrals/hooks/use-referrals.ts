@@ -1,7 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { queryClient } from '../../../app/query-client';
-import { createReferral, listReferralsByPatient, listReferralsByTargetDoctor, updateReferralOutcome } from '../../../lib/local-db';
 import { queryKeys } from '../../../lib/query-keys';
 import type { Referral, ReferralStatus } from '../../../types/domain';
 import { referralService } from '../services/referral-service';
@@ -50,7 +49,7 @@ export function useSpecialistReferrals(doctorId: string | null) {
     queryKey: queryKeys.specialistReferrals(doctorId),
     queryFn: async () => {
       if (!doctorId) return [];
-      return listReferralsByTargetDoctor(doctorId);
+      return referralService.listByTargetDoctor(doctorId);
     },
     enabled: Boolean(doctorId),
   });
@@ -67,6 +66,7 @@ export function useUpdateReferralOutcome(patientId: string | null) {
     }) => referralService.updateOutcome(payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.referrals(patientId) });
+      void queryClient.invalidateQueries({ queryKey: ['specialist-referrals'] });
     },
   });
 }

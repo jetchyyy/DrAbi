@@ -133,11 +133,11 @@ export function SpecialistReferralsPage() {
     }
   });
 
-  if (profile?.role !== 'doctor') {
+  if (profile?.role !== 'doctor' && profile?.role !== 'specialist') {
     return (
       <Card>
         <CardTitle>Specialist referrals</CardTitle>
-        <p className="mt-3 text-sm text-slate-500">Only doctor accounts can use the specialist referral portal.</p>
+        <p className="mt-3 text-sm text-slate-500">Only doctor and specialist accounts can use the specialist referral portal.</p>
       </Card>
     );
   }
@@ -255,9 +255,15 @@ export function SpecialistReferralsPage() {
                     </Badge>
                     <Link
                       className="inline-flex items-center rounded-sm border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-orange-200 hover:text-orange-700"
-                      to={`/app/patients/${selectedReferral.patientId}`}
+                      to={`/specialist/patients/${selectedReferral.patientId}`}
                     >
                       Open patient chart
+                    </Link>
+                    <Link
+                      className="inline-flex items-center rounded-sm border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-800 transition hover:border-sky-300 hover:bg-sky-100"
+                      to={`/specialist/consultation/${selectedReferral.patientId}`}
+                    >
+                      Document SOAP
                     </Link>
                   </div>
                 </div>

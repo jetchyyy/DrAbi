@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarCheck2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -16,7 +16,14 @@ import {
   formatTimeLabel,
   toAvailabilityRowInput,
 } from '../../lib/doctor-availability';
-import { getCurrentDoctor, saveDoctorAvailabilityForProfileLiveOrDemo, saveDoctorFeeSettingsForProfileLiveOrDemo } from '../../lib/supabase-clinic';
+import {
+  getCurrentDoctor,
+  getSpecialistAvailabilityByDoctorIdLiveOrDemo,
+  saveDoctorAvailabilityForProfileLiveOrDemo,
+  saveDoctorFeeSettingsForProfileLiveOrDemo,
+  saveSpecialistAvailabilityForProfileLiveOrDemo,
+} from '../../lib/supabase-clinic';
+import { queryKeys } from '../../lib/query-keys';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../auth/auth-context';
 
@@ -58,8 +65,24 @@ function buildAvailabilityState(
   return next;
 }
 
+function isSpecialistProfile(profile: {
+  role?: string | null;
+  accessRoleName?: string | null;
+} | null) {
+  if (!profile) {
+    return false;
+  }
+
+  return (
+    profile.role === 'specialist' ||
+    profile.accessRoleName?.trim().toLowerCase() === 'specialist'
+  );
+}
+
 export function DoctorAvailabilityPage() {
   const { profile } = useAuth();
+  const queryClient = useQueryClient();
+  const specialistMode = isSpecialistProfile(profile);
   const [days, setDays] = useState<Record<number, DayAvailabilityState>>(createEmptyAvailabilityState);
   const [consultationFee, setConsultationFee] = useState('0');
   const [followUpFee, setFollowUpFee] = useState('0');
@@ -67,10 +90,19 @@ export function DoctorAvailabilityPage() {
   const doctorQuery = useQuery({
     queryKey: ['current-doctor', profile?.id],
     queryFn: () => getCurrentDoctor(profile?.id ?? ''),
-    enabled: Boolean(profile?.id && profile.role === 'doctor'),
+    enabled: Boolean(profile?.id && (profile.role === 'doctor' || profile.role === 'specialist')),
   });
 
-  const availabilityQuery = useDoctorAvailability(doctorQuery.data?.id ?? null);
+  const doctorAvailabilityQuery = useDoctorAvailability(
+    !specialistMode ? (doctorQuery.data?.id ?? null) : null,
+  );
+  const specialistAvailabilityQuery = useQuery({
+    queryKey: queryKeys.specialistAvailability(doctorQuery.data?.id ?? null),
+    queryFn: () => getSpecialistAvailabilityByDoctorIdLiveOrDemo(doctorQuery.data?.id ?? null),
+    enabled: Boolean(specialistMode && doctorQuery.data?.id),
+  });
+  const availabilityQuery =
+    specialistMode ? specialistAvailabilityQuery : doctorAvailabilityQuery;
 
   useEffect(() => {
     if (!availabilityQuery.data) {
@@ -101,17 +133,38 @@ export function DoctorAvailabilityPage() {
         }
 
         return day.selectedTimes.map((startTime) =>
-          toAvailabilityRowInput(profile.id, Number(dayOfWeek), startTime, day.slotMinutes),
+          toAvailabilityRowInput(
+            doctorQuery.data?.id ?? profile.id,
+            Number(dayOfWeek),
+            startTime,
+            day.slotMinutes,
+          ),
         );
       });
 
-      await saveDoctorAvailabilityForProfileLiveOrDemo(profile.id, payload);
+      const savedAvailability =
+        specialistMode
+          ? await saveSpecialistAvailabilityForProfileLiveOrDemo(profile.id, payload)
+          : await saveDoctorAvailabilityForProfileLiveOrDemo(profile.id, payload);
       await saveDoctorFeeSettingsForProfileLiveOrDemo(profile.id, {
         consultationFee: Number(consultationFee || 0),
         followUpFee: Number(followUpFee || 0),
       });
+
+      return savedAvailability;
     },
-    onSuccess: () => {
+    onSuccess: async (savedAvailability) => {
+      setDays(buildAvailabilityState(savedAvailability));
+      if (specialistMode) {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.specialistAvailability(doctorQuery.data?.id ?? null),
+        });
+      } else {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.doctorAvailability(doctorQuery.data?.id ?? null),
+        });
+      }
+      await queryClient.invalidateQueries({ queryKey: queryKeys.doctors });
       toast.success('Availability saved.');
     },
     onError: (error) => {
@@ -124,11 +177,11 @@ export function DoctorAvailabilityPage() {
     [days],
   );
 
-  if (profile?.role !== 'doctor') {
+  if (profile?.role !== 'doctor' && profile?.role !== 'specialist') {
     return (
       <Card>
-        <CardTitle>Doctor availability</CardTitle>
-        <p className="mt-3 text-sm text-slate-500">Only doctor accounts can manage their schedule here.</p>
+        <CardTitle>Provider availability</CardTitle>
+        <p className="mt-3 text-sm text-slate-500">Only doctor and specialist accounts can manage their schedule here.</p>
       </Card>
     );
   }
@@ -138,10 +191,10 @@ export function DoctorAvailabilityPage() {
       <Card className="border-orange-200 bg-gradient-to-r from-orange-50 via-white to-white">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <Badge intent="info">Doctor portal</Badge>
+            <Badge intent="info">{specialistMode ? 'Specialist portal' : 'Doctor portal'}</Badge>
             <CardTitle className="mt-4 text-2xl">Set your weekly availability</CardTitle>
             <p className="mt-3 max-w-3xl text-sm text-slate-600">
-              Choose which days you accept bookings, then tick the exact time slots you want patients to see. Unchecked days stay unavailable.
+              Choose which days you accept bookings or referred visits, then tick the exact time slots you want visible to the clinic team. Unchecked days stay unavailable.
             </p>
           </div>
           <div className="flex items-center gap-3 rounded-sm border border-orange-200 bg-white px-4 py-3">

@@ -175,7 +175,7 @@ export function PatientRegisterPage() {
           <div className="mt-6 pt-6 border-t border-slate-100 space-y-3 text-center">
             <p className="text-xs text-slate-400">
               Already have an account?{' '}
-              <Link to="/portal/login" className="font-bold text-[#2563eb] hover:underline">
+              <Link to="/login" className="font-bold text-[#2563eb] hover:underline">
                 Sign in here
               </Link>
             </p>

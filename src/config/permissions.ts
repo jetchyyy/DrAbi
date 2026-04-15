@@ -3,6 +3,7 @@
 export const roleLabels: Record<Role, string> = {
   owner_admin: 'Owner / Admin',
   doctor: 'Doctor',
+  specialist: 'Specialist',
   nurse_staff: 'Nurse / Staff',
   front_desk_cashier: 'Front Desk / Cashier',
   lab_staff: 'Lab Staff',
@@ -36,6 +37,12 @@ export const rolePermissions: Record<Role, Permission[]> = {
     'appointments.view',
     'consultations.manage',
     'laboratory.view',
+    'booking.view',
+  ],
+  specialist: [
+    'patients.view',
+    'appointments.view',
+    'consultations.manage',
     'booking.view',
   ],
   nurse_staff: [

@@ -4,6 +4,7 @@ export const queryKeys = {
   specialties: ['specialties'] as const,
   doctors: ['doctors'] as const,
   doctorAvailability: (doctorId: string | null) => ['doctor-availability', doctorId] as const,
+  specialistAvailability: (doctorId: string | null) => ['specialist-availability', doctorId] as const,
   blockedBookingSlots: (date: string | null, doctorId: string | null, serviceId: string | null) =>
     ['blocked-booking-slots', date, doctorId, serviceId] as const,
   currentProfile: (userId: string | null) => ['current-profile', userId] as const,
@@ -24,11 +25,30 @@ export const queryKeys = {
   bookingReceipt: (receiptCode: string | null) => ['booking-receipt', receiptCode] as const,
   referrals: (patientId: string | null) => ['referrals', patientId] as const,
   specialistReferrals: (doctorId: string | null) => ['specialist-referrals', doctorId] as const,
+  chatContacts: (userId: string | null) => ['chat-contacts', userId] as const,
+  chatThreads: (userId: string | null) => ['chat-threads', userId] as const,
   invoices: ['invoices'] as const,
   inventory: ['inventory'] as const,
   laboratory: ['laboratory'] as const,
   labServices: ['lab-services'] as const,
   labBookingRequests: ['lab-booking-requests'] as const,
+  labQueue: (
+    clinicId: string | null,
+    filters: Partial<Record<'status' | 'sampleStatus' | 'resultStatus' | 'urgentOnly', unknown>> = {},
+  ) =>
+    ['lab-queue', clinicId, filters] as const,
+  labRequest: (requestId: string | null) => ['lab-request', requestId] as const,
+  patientLabResults: (
+    patientId: string | null,
+    filters: Partial<Record<'status' | 'sampleStatus' | 'resultStatus' | 'urgentOnly', unknown>> = {},
+  ) =>
+    ['patient-lab-results', patientId, filters] as const,
+  doctorLabRequests: (
+    doctorId: string | null,
+    filters: Partial<Record<'status' | 'sampleStatus' | 'resultStatus' | 'urgentOnly', unknown>> = {},
+  ) =>
+    ['doctor-lab-requests', doctorId, filters] as const,
+  patientMedicalTimeline: (patientId: string | null) => ['patient-medical-timeline', patientId] as const,
   dashboard: ['dashboard'] as const,
 };
 

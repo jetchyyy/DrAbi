@@ -114,6 +114,49 @@ export const referralService = {
     }>).map(mapReferralRowToDomain);
   },
 
+  async listByTargetDoctor(doctorId: string) {
+    if (!doctorId) {
+      return [];
+    }
+
+    if (!isSupabaseConfigured) {
+      return getDatabase().referrals
+        .filter((item) => item.targetDoctorId === doctorId)
+        .sort((left, right) => right.referredAt.localeCompare(left.referredAt));
+    }
+
+    const client = requireSupabaseClient();
+    const { data, error } = await client
+      .from('referrals')
+      .select('*')
+      .or(`target_doctor_id.eq.${doctorId},assigned_specialist_id.eq.${doctorId}`)
+      .order('referred_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return ((data ?? []) as Array<{
+      id: string;
+      patient_id: string;
+      appointment_id: string | null;
+      referring_doctor_id: string;
+      target_doctor_id: string | null;
+      target_specialty_id: string | null;
+      reason: string;
+      clinical_summary: string;
+      referral_notes: string;
+      status: string;
+      specialist_findings: string;
+      specialist_recommendations: string;
+      referred_at: string;
+      specialist_visited_at: string | null;
+      completed_at: string | null;
+      created_at: string;
+      updated_at: string;
+    }>).map(mapReferralRowToDomain);
+  },
+
   async create(input: CreateReferralInput) {
     if (!isSupabaseConfigured) {
       return createReferral({

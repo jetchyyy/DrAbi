@@ -39,6 +39,12 @@ docs/
 - `/portal/book`
 - `/portal/my-bookings`
 
+### Specialist portal
+- `/specialist/referrals`
+- `/specialist/availability`
+- `/specialist/patients/:patientId`
+- `/specialist/consultation/:patientId`
+
 ### Auth
 - `/login`
 - `/forgot-password`
@@ -63,6 +69,7 @@ docs/
 ### Roles
 - `owner_admin`
 - `doctor`
+- `specialist`
 - `nurse_staff`
 - `front_desk_cashier`
 - `lab_staff`
@@ -80,6 +87,8 @@ docs/
 - Booking portal: `booking.view`, `booking.manage`
 
 The frontend uses a static permission matrix for clarity and speed, while the Supabase schema includes `roles`, `permissions`, and `role_permissions` tables so the model can move server-side later without reshaping the app.
+
+Custom access roles used by Settings are stored separately from `profiles.role`. The assigned access role controls permissions, while `profiles.role` remains the canonical staff type for route guards and doctor-specific workflows.
 
 ## Data design notes
 

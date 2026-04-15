@@ -151,6 +151,12 @@ export const appNavigation: NavItem[] = [
   },
 ];
 
+export const specialistNavigation = [
+  { label: "Referral Inbox", to: "/specialist/referrals" },
+  { label: "Availability", to: "/specialist/availability" },
+  { label: "My Profile", to: "/specialist/profile" },
+];
+
 export const portalNavigation = [
   { label: "Portal Home", to: "/portal" },
   { label: "Book Appointment", to: "/portal/book" },

@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff, LogIn, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -8,6 +8,7 @@ import { z } from 'zod';
 
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
+import { getHomePathForRole } from '../../../lib/role-routing';
 import { isSupabaseConfigured } from '../../../lib/supabase';
 import { useAuth } from '../auth-context';
 
@@ -18,8 +19,12 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export function LoginForm() {
-  const { signIn } = useAuth();
+interface LoginFormProps {
+  defaultRedirectTo?: string;
+}
+
+export function LoginForm({ defaultRedirectTo }: LoginFormProps) {
+  const { signIn, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [submitting, setSubmitting] = useState(false);
@@ -33,14 +38,12 @@ export function LoginForm() {
     },
   });
 
-  const redirectTo = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/app/dashboard';
-
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       setSubmitting(true);
-      await signIn(values.email, values.password);
+      const role = await signIn(values.email, values.password);
       toast.success('Welcome back.');
-      navigate(redirectTo, { replace: true });
+      navigate((location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? defaultRedirectTo ?? getHomePathForRole(role ?? profile?.role), { replace: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to sign in.');
     } finally {
@@ -96,7 +99,11 @@ export function LoginForm() {
         disabled={submitting}
         type="submit"
       >
-        <LogIn className="size-4" />
+        {submitting ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <LogIn className="size-4" />
+        )}
         {submitting ? 'Signing in...' : 'Sign In'}
       </Button>
 
@@ -108,6 +115,10 @@ export function LoginForm() {
           Create account
         </Link>
       </div>
+
+      <p className="text-center text-xs text-slate-400">
+        One sign-in works for patients, specialists, and clinic staff. You&apos;ll be sent to the right portal after login.
+      </p>
     </form>
   );
 }

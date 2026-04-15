@@ -1,6 +1,7 @@
 ﻿export type Role =
   | "owner_admin"
   | "doctor"
+  | "specialist"
   | "nurse_staff"
   | "front_desk_cashier"
   | "lab_staff"
@@ -113,7 +114,6 @@ export interface UserProfile extends BaseRecord {
 export interface AccessRoleTemplate extends BaseRecord {
   name: string;
   description: string;
-  baseRole: Exclude<Role, 'patient'>;
   permissions: Permission[];
   isSystem?: boolean;
 }

@@ -1,6 +1,7 @@
 ﻿import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
 import { useAuth } from '../features/auth/auth-context';
+import { getHomePathForRole, getLoginPathForPathname } from '../lib/role-routing';
 import type { Permission, Role } from '../types/domain';
 
 export function ProtectedRoute({ allowedRoles }: { allowedRoles?: Role[] }) {
@@ -12,12 +13,12 @@ export function ProtectedRoute({ allowedRoles }: { allowedRoles?: Role[] }) {
   }
 
   if (!isAuthenticated) {
-    const loginPath = location.pathname.startsWith('/portal') ? '/portal/login' : '/login';
+    const loginPath = getLoginPathForPathname(location.pathname);
     return <Navigate replace state={{ from: location }} to={loginPath} />;
   }
 
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
-    return <Navigate replace to="/app/dashboard" />;
+    return <Navigate replace to={getHomePathForRole(profile.role)} />;
   }
 
   return <Outlet />;
