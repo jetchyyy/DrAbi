@@ -169,7 +169,8 @@ export const router = createBrowserRouter([
                   },
                   {
                     path: "consultation/:patientId",
-                    element: <ConsultationEntryPage />,
+                    element: <ProtectedRoute allowedRoles={["owner_admin", "doctor", "nurse_staff"]} />,
+                    children: [{ index: true, element: <ConsultationEntryPage /> }],
                   },
                 ],
               },

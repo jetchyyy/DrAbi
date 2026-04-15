@@ -42,6 +42,11 @@ export interface Database {
           role: string;
           phone: string | null;
           title: string | null;
+          clinic_id: string | null;
+          department: string | null;
+          first_name: string | null;
+          last_name: string | null;
+          is_active: boolean;
           security_pin_hash: string | null;
           pin_updated_at: string | null;
           created_at: string;
@@ -55,6 +60,11 @@ export interface Database {
           role?: string;
           phone?: string | null;
           title?: string | null;
+          clinic_id?: string | null;
+          department?: string | null;
+          first_name?: string | null;
+          last_name?: string | null;
+          is_active?: boolean;
           security_pin_hash?: string | null;
           pin_updated_at?: string | null;
           created_at?: string;
@@ -116,6 +126,71 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["specialties"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["specialties"]["Row"]>;
+      };
+      clinics: {
+        Row: {
+          id: string;
+          name: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['clinics']['Row']>;
+        Update: Partial<Database['public']['Tables']['clinics']['Row']>;
+      };
+      medical_services: {
+        Row: {
+          id: string;
+          clinic_id: string | null;
+          department: string;
+          category: string;
+          name: string;
+          description: string | null;
+          service_fee: number;
+          estimated_duration_minutes: number | null;
+          priority: string;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['medical_services']['Row']>;
+        Update: Partial<Database['public']['Tables']['medical_services']['Row']>;
+      };
+      service_requests: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          patient_id: string;
+          requested_by: string;
+          department: string;
+          service_id: string;
+          service_category: string;
+          transaction_type: string;
+          status: string;
+          sample_status: string;
+          result_status: string;
+          patient_notes: string | null;
+          result_data: string | null;
+          result_notes: string | null;
+          urgent_flag: boolean;
+          completed_by: string | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['service_requests']['Row']>;
+        Update: Partial<Database['public']['Tables']['service_requests']['Row']>;
+      };
+      service_request_media: {
+        Row: {
+          id: string;
+          service_request_id: string;
+          file_path: string;
+          mime_type: string | null;
+          uploaded_by: string;
+          created_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['service_request_media']['Row']>;
+        Update: Partial<Database['public']['Tables']['service_request_media']['Row']>;
       };
       services: {
         Row: {

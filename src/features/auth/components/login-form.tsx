@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff, LogIn, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -99,7 +99,11 @@ export function LoginForm({ defaultRedirectTo }: LoginFormProps) {
         disabled={submitting}
         type="submit"
       >
-        <LogIn className="size-4" />
+        {submitting ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <LogIn className="size-4" />
+        )}
         {submitting ? 'Signing in...' : 'Sign In'}
       </Button>
 

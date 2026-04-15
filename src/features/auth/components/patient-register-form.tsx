@@ -1,8 +1,10 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { z } from "zod";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { z } from 'zod';
 
 import { FormField } from "../../../components/forms/form-field";
 import { Button } from "../../../components/ui/button";
@@ -33,6 +35,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export function PatientRegisterForm() {
   const { signUpPatient } = useAuth();
   const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -52,6 +55,7 @@ export function PatientRegisterForm() {
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
+      setSubmitting(true);
       const result = await signUpPatient(values);
       if (result.requiresEmailConfirmation) {
         toast.success(
@@ -69,6 +73,8 @@ export function PatientRegisterForm() {
           ? error.message
           : "Unable to create your account.",
       );
+    } finally {
+      setSubmitting(false);
     }
   });
 
@@ -157,8 +163,11 @@ export function PatientRegisterForm() {
             <Textarea rows={3} {...form.register("medicalHistory")} />
           </FormField>
         </div>
-        <Button className="w-full" type="submit">
-          Create patient account
+        <Button className="w-full gap-2" disabled={submitting} type="submit">
+          {submitting ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : null}
+          {submitting ? 'Creating account...' : 'Create patient account'}
         </Button>
       </form>
     </Card>

@@ -157,3 +157,124 @@ textarea {
 .chatbot-messages::-webkit-scrollbar-track { background: transparent; }
 .chatbot-messages::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
 .chatbot-messages::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+/* ── App Splash Screen ──────────────────────────────────── */
+
+@keyframes splashPulse {
+  0%,
+  100% { transform: scale(1); opacity: 0.45; }
+  50% { transform: scale(1.08); opacity: 0.72; }
+}
+
+@keyframes splashLoader {
+  0%,
+  100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-8px); opacity: 1; }
+}
+
+.splash-screen {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(249, 115, 22, 0.22) 0%, transparent 40%),
+    radial-gradient(circle at 80% 0%, rgba(7, 89, 133, 0.18) 0%, transparent 35%),
+    linear-gradient(140deg, #fffaf3 0%, #fff 42%, #f8fbff 100%);
+}
+
+.splash-screen__glow {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(12px);
+  animation: splashPulse 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.splash-screen__glow--one {
+  width: min(42vw, 420px);
+  height: min(42vw, 420px);
+  left: -10%;
+  bottom: -18%;
+  background: rgba(249, 115, 22, 0.18);
+}
+
+.splash-screen__glow--two {
+  width: min(48vw, 500px);
+  height: min(48vw, 500px);
+  right: -16%;
+  top: -24%;
+  background: rgba(37, 99, 235, 0.16);
+  animation-delay: 1.2s;
+}
+
+.splash-screen__card {
+  width: min(100%, 760px);
+  border-radius: 28px;
+  padding: clamp(28px, 6vw, 48px);
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.75));
+  box-shadow:
+    0 26px 80px rgba(20, 40, 70, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.splash-screen__eyebrow {
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #0c4a6e;
+}
+
+.splash-screen__title {
+  margin-top: 10px;
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  line-height: 1.1;
+  color: #102a43;
+}
+
+.splash-screen__subtitle {
+  margin-top: 14px;
+  font-size: clamp(0.95rem, 2.2vw, 1.08rem);
+  color: #486581;
+}
+
+.splash-screen__loader {
+  margin-top: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.splash-screen__loader span {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #f97316 0%, #ea580c 100%);
+  animation: splashLoader 1s ease-in-out infinite;
+}
+
+.splash-screen__loader span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.splash-screen__loader span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@media (max-width: 640px) {
+  .splash-screen {
+    padding: 16px;
+  }
+
+  .splash-screen__card {
+    border-radius: 22px;
+  }
+}

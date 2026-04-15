@@ -49,6 +49,11 @@ Use any email and a password with at least 6 characters in local mode.
 4. Create storage buckets such as `patient-files` if you plan to use file uploads immediately.
 5. Create auth users for staff and patients, then populate `public.profiles` with matching `auth.users.id` values.
 
+Alternative seeding options (Supabase Cloud):
+
+1. SQL Editor: copy/paste the contents of `supabase/seed.sql` and run it.
+2. CLI against linked cloud project: `supabase db execute --linked --file supabase/seed.sql`
+
 ## Route overview
 
 - Public portal: `/portal`, `/portal/book`, `/portal/my-bookings`
