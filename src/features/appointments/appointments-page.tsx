@@ -12,16 +12,17 @@ import { FeedbackModal } from '../../components/ui/feedback-modal';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
-import { getDatabase } from '../../lib/local-db';
+import { useDoctorDirectory, useServicesCatalog, useSpecialtiesCatalog } from '../../hooks/use-clinic-data';
 import { formatDateTimeLabel } from '../../lib/utils';
 import type { Appointment } from '../../types/domain';
+import { usePatients } from '../patients/hooks/use-patients';
 import { isTeleconsultJoinableStatus } from '../teleconsult/teleconsult-data';
 import { useAppointments, useCreateAppointment, useDeleteAppointment, useUpdateAppointment } from './hooks/use-appointments';
 
 const appointmentSchema = z.object({
   patientId: z.string().min(1, 'Patient is required.'),
   doctorId: z.string().min(1, 'Doctor is required.'),
-  specialtyId: z.string().min(1, 'Specialty is required.'),
+  specialtyId: z.string().optional(),
   serviceId: z.string().min(1, 'Service is required.'),
   scheduledAt: z.string().min(1, 'Scheduled time is required.'),
   status: z.enum(['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show']),
@@ -65,8 +66,11 @@ function toDateTimeLocalValue(value: string) {
 }
 
 export function AppointmentsPage() {
-  const database = getDatabase();
   const { data: appointments = [] } = useAppointments();
+  const { data: patients = [] } = usePatients();
+  const { data: doctors = [] } = useDoctorDirectory();
+  const { data: services = [] } = useServicesCatalog();
+  const { data: specialties = [] } = useSpecialtiesCatalog();
   const createAppointmentMutation = useCreateAppointment();
   const updateAppointmentMutation = useUpdateAppointment();
   const deleteAppointmentMutation = useDeleteAppointment();
@@ -83,10 +87,10 @@ export function AppointmentsPage() {
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
     defaultValues: {
-      patientId: database.patients[0]?.id ?? '',
-      doctorId: database.users.find((user) => user.role === 'doctor')?.id ?? '',
-      specialtyId: database.specialties[0]?.id ?? '',
-      serviceId: database.services[0]?.id ?? '',
+      patientId: '',
+      doctorId: '',
+      specialtyId: '',
+      serviceId: '',
       scheduledAt: '2026-03-26T09:00',
       status: 'scheduled',
       source: 'internal',
@@ -100,20 +104,49 @@ export function AppointmentsPage() {
   });
 
   const visitType = useWatch({ control: form.control, name: 'visitType' });
+  const selectedDoctorId = useWatch({ control: form.control, name: 'doctorId' });
+  const selectedServiceId = useWatch({ control: form.control, name: 'serviceId' });
+
+  const patientMap = useMemo(() => new Map(patients.map((patient) => [patient.id, patient])), [patients]);
+  const doctorMap = useMemo(() => new Map(doctors.map((doctor) => [doctor.id, doctor])), [doctors]);
+  const serviceMap = useMemo(() => new Map(services.map((service) => [service.id, service])), [services]);
+  const specialtyMap = useMemo(() => new Map(specialties.map((specialty) => [specialty.id, specialty])), [specialties]);
+
+  const defaultSpecialtyId = useMemo(() => {
+    return doctors[0]?.specialtyId ?? specialties[0]?.id ?? '';
+  }, [doctors, specialties]);
 
   const filteredAppointments = useMemo(
     () =>
       appointments.filter((appointment) => {
-        const patient = database.patients.find((item) => item.id === appointment.patientId);
-        const doctor = database.users.find((item) => item.id === appointment.doctorId);
-        const service = database.services.find((item) => item.id === appointment.serviceId);
+        const patient = patientMap.get(appointment.patientId);
+        const doctor = doctorMap.get(appointment.doctorId);
+        const service = serviceMap.get(appointment.serviceId);
+        const specialty = specialtyMap.get(appointment.specialtyId);
 
-        return `${patient?.firstName ?? ''} ${patient?.lastName ?? ''} ${doctor?.fullName ?? ''} ${service?.name ?? ''} ${appointment.status} ${appointment.visitType} ${appointment.reason}`
+        return `${patient?.firstName ?? ''} ${patient?.lastName ?? ''} ${doctor?.fullName ?? ''} ${service?.name ?? ''} ${specialty?.name ?? ''} ${appointment.status} ${appointment.visitType} ${appointment.reason}`
           .toLowerCase()
           .includes(deferredSearch.toLowerCase());
       }),
-    [appointments, database.patients, database.services, database.users, deferredSearch],
+    [appointments, deferredSearch, doctorMap, patientMap, serviceMap, specialtyMap],
   );
+
+  useEffect(() => {
+    const selectedDoctor = doctors.find((doctor) => doctor.id === selectedDoctorId);
+    const selectedService = services.find((service) => service.id === selectedServiceId);
+    const nextSpecialtyId = selectedService?.specialtyId ?? selectedDoctor?.specialtyId ?? '';
+    const currentSpecialtyId = form.getValues('specialtyId') ?? '';
+
+    if (!nextSpecialtyId || currentSpecialtyId === nextSpecialtyId) {
+      return;
+    }
+
+    form.setValue('specialtyId', nextSpecialtyId, {
+      shouldDirty: false,
+      shouldTouch: false,
+      shouldValidate: false,
+    });
+  }, [doctors, form, selectedDoctorId, selectedServiceId, services]);
 
   useEffect(() => {
     if (!isAppointmentModalOpen) {
@@ -132,10 +165,10 @@ export function AppointmentsPage() {
 
   const openCreateModal = () => {
     form.reset({
-      patientId: database.patients[0]?.id ?? '',
-      doctorId: database.users.find((user) => user.role === 'doctor')?.id ?? '',
-      specialtyId: database.specialties[0]?.id ?? '',
-      serviceId: database.services[0]?.id ?? '',
+      patientId: patients[0]?.id ?? '',
+      doctorId: doctors[0]?.id ?? '',
+      specialtyId: defaultSpecialtyId,
+      serviceId: services[0]?.id ?? '',
       scheduledAt: '2026-03-26T09:00',
       status: 'scheduled',
       source: 'internal',
@@ -186,7 +219,7 @@ export function AppointmentsPage() {
     const payload = {
       patientId: values.patientId,
       doctorId: values.doctorId,
-      specialtyId: values.specialtyId,
+      specialtyId: values.specialtyId ?? '',
       serviceId: values.serviceId,
       scheduledAt: new Date(values.scheduledAt).toISOString(),
       status: values.status,
@@ -234,7 +267,7 @@ export function AppointmentsPage() {
   });
 
   const handleDeleteAppointment = async (appointment: Appointment) => {
-    const patient = database.patients.find((item) => item.id === appointment.patientId);
+    const patient = patientMap.get(appointment.patientId);
     const patientName = patient ? `${patient.firstName} ${patient.lastName}` : 'this patient';
     const isConfirmed = window.confirm(`Delete the appointment for ${patientName}?`);
     if (!isConfirmed) {
@@ -318,9 +351,9 @@ export function AppointmentsPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredAppointments.map((appointment) => {
-                  const patient = database.patients.find((item) => item.id === appointment.patientId);
-                  const doctor = database.users.find((item) => item.id === appointment.doctorId);
-                  const service = database.services.find((item) => item.id === appointment.serviceId);
+                  const patient = patientMap.get(appointment.patientId);
+                  const doctor = doctorMap.get(appointment.doctorId);
+                  const service = serviceMap.get(appointment.serviceId);
 
                   return (
                     <tr className="transition-colors hover:bg-slate-50" key={appointment.id}>
@@ -415,7 +448,8 @@ export function AppointmentsPage() {
                   <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Patient and Provider</p>
                   <FormField error={form.formState.errors.patientId?.message} label="Patient">
                     <Select {...form.register('patientId')}>
-                      {database.patients.map((patient) => (
+                      <option value="">Select patient</option>
+                      {patients.map((patient) => (
                         <option key={patient.id} value={patient.id}>
                           {patient.firstName} {patient.lastName}
                         </option>
@@ -425,18 +459,18 @@ export function AppointmentsPage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <FormField error={form.formState.errors.doctorId?.message} label="Doctor">
                       <Select {...form.register('doctorId')}>
-                        {database.users
-                          .filter((user) => user.role === 'doctor')
-                          .map((doctor) => (
-                            <option key={doctor.id} value={doctor.id}>
-                              {doctor.fullName}
-                            </option>
-                          ))}
+                        <option value="">Select doctor</option>
+                        {doctors.map((doctor) => (
+                          <option key={doctor.id} value={doctor.id}>
+                            {doctor.fullName}
+                          </option>
+                        ))}
                       </Select>
                     </FormField>
                     <FormField error={form.formState.errors.specialtyId?.message} label="Specialty">
                       <Select {...form.register('specialtyId')}>
-                        {database.specialties.map((specialty) => (
+                        <option value="">Unassigned</option>
+                        {specialties.map((specialty) => (
                           <option key={specialty.id} value={specialty.id}>
                             {specialty.name}
                           </option>
@@ -451,7 +485,8 @@ export function AppointmentsPage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <FormField error={form.formState.errors.serviceId?.message} label="Service">
                       <Select {...form.register('serviceId')}>
-                        {database.services.map((service) => (
+                        <option value="">Select service</option>
+                        {services.map((service) => (
                           <option key={service.id} value={service.id}>
                             {service.name}
                           </option>
