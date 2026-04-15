@@ -23,6 +23,7 @@ import { DoctorAvailabilityPage } from "../features/doctor/doctor-availability-p
 import { SpecialistReferralsPage } from "../features/referrals/specialist-referrals-page";
 import { InventoryPage } from "../features/inventory/inventory-page";
 import { LaboratoryPage } from "../features/laboratory/laboratory-page";
+import { LabServiceReceiptScanPage } from "../features/laboratory/lab-service-receipt-scan-page";
 import { PatientDetailPage } from "../features/patients/patient-detail-page";
 import { PatientActionLogsPage } from "../features/patients/patient-action-logs-page";
 import { PatientQrLookupPage } from "../features/patients/patient-qr-lookup-page";
@@ -216,6 +217,10 @@ export const router = createBrowserRouter([
                   {
                     path: "bookings/scan",
                     element: <BookingReceiptScanPage />,
+                  },
+                  {
+                    path: "laboratory/scan",
+                    element: <LabServiceReceiptScanPage />,
                   },
                 ],
               },

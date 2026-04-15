@@ -398,6 +398,15 @@ export const labRequestService = {
     });
   },
 
+  async getPatientRequests(patientId: string, filters?: LabRequestFilters) {
+    if (!isSupabaseConfigured) {
+      return [];
+    }
+
+    const resolvedPatientId = await resolvePatientProfileId(patientId);
+    return listRequestsByColumn('patient_id', resolvedPatientId, filters);
+  },
+
   async getDoctorRequestedLabs(doctorId: string, filters?: LabRequestFilters) {
     if (!isSupabaseConfigured) {
       return [];

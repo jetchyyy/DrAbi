@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertTriangle, Camera, FileUp, FlaskConical, Paperclip, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
+import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 
@@ -83,6 +84,7 @@ function buildName(profile: {
 
 export function WorkflowTab() {
   const { profile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const role = profile?.role ?? 'patient';
   const canCreateRequests = role === 'doctor' || role === 'owner_admin';
   const canProcessRequests = role === 'lab_staff' || role === 'owner_admin';
@@ -90,6 +92,7 @@ export function WorkflowTab() {
   const [search, setSearch] = useState('');
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [autoOpenedRequestId, setAutoOpenedRequestId] = useState<string | null>(null);
   const [resultAttachments, setResultAttachments] = useState<File[]>([]);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -147,7 +150,7 @@ export function WorkflowTab() {
         return [] as OptionItem[];
       }
 
-      let query = supabase
+      const query = supabase
         .from('profiles')
         .select('id, full_name, first_name, last_name')
         .eq('role', 'patient')
@@ -173,7 +176,7 @@ export function WorkflowTab() {
         return [] as OptionItem[];
       }
 
-      let query = supabase
+      const query = supabase
         .from('profiles')
         .select('id, full_name, first_name, last_name')
         .eq('role', 'doctor')
@@ -368,6 +371,43 @@ export function WorkflowTab() {
     setIsCameraModalOpen(false);
     setIsOrderModalOpen(false);
   };
+
+  useEffect(() => {
+    const requestedOrderId = searchParams.get('request');
+    if (!requestedOrderId || !canProcessRequests || autoOpenedRequestId === requestedOrderId) {
+      return;
+    }
+
+    const matchedOrder = orders.find((order) => order.id === requestedOrderId);
+    if (!matchedOrder) {
+      return;
+    }
+
+    form.reset({
+      patientId: matchedOrder.patientId,
+      serviceId: matchedOrder.serviceId,
+      serviceCategory: matchedOrder.serviceCategory,
+      requestedBy: matchedOrder.requestedBy,
+      status: matchedOrder.status === 'pending' || matchedOrder.status === 'in_progress' || matchedOrder.status === 'completed' || matchedOrder.status === 'cancelled' ? matchedOrder.status : 'pending',
+      notes: matchedOrder.patientNotes ?? '',
+      resultSummary: matchedOrder.resultData ?? '',
+      urgentFlag: matchedOrder.urgentFlag,
+    });
+    setEditingOrderId(matchedOrder.id);
+    setResultAttachments([]);
+    setIsOrderModalOpen(true);
+    setAutoOpenedRequestId(requestedOrderId);
+  }, [autoOpenedRequestId, canProcessRequests, form, orders, searchParams]);
+
+  useEffect(() => {
+    if (!autoOpenedRequestId) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('request');
+    setSearchParams(nextParams, { replace: true });
+  }, [autoOpenedRequestId, searchParams, setSearchParams]);
 
   const closeFeedbackModal = () => {
     setFeedbackModal((currentState) => ({

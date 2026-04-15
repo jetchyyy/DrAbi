@@ -34,6 +34,7 @@ import type {
   BookingFeeType,
   BookingPaymentStatus,
   Invoice,
+  InvoiceItem,
   Patient,
   PaymentStatus,
   Prescription,
@@ -600,6 +601,68 @@ function mapInvoicePaymentStatus(
   }
 }
 
+function mapInvoiceRow(row: {
+  id: string;
+  patient_id: string;
+  appointment_id: string | null;
+  invoice_number: string;
+  payment_status: string | null;
+  subtotal: number;
+  total: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}): Invoice {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    appointmentId: row.appointment_id,
+    invoiceNumber: row.invoice_number,
+    paymentStatus: mapInvoicePaymentStatus(row.payment_status),
+    subtotal: Number(row.subtotal ?? 0),
+    total: Number(row.total ?? 0),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at,
+  };
+}
+
+function mapInvoiceItemCategory(
+  value: string | null | undefined,
+): InvoiceItem["category"] {
+  switch (value) {
+    case "consultation":
+    case "laboratory":
+    case "medicine":
+    case "other":
+      return value;
+    default:
+      return "other";
+  }
+}
+
+function mapInvoiceItemRow(row: {
+  id: string;
+  invoice_id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  category: string | null;
+  created_at: string;
+  updated_at: string;
+}): InvoiceItem {
+  return {
+    id: row.id,
+    invoiceId: row.invoice_id,
+    description: row.description,
+    quantity: Number(row.quantity ?? 0),
+    unitPrice: Number(row.unit_price ?? 0),
+    category: mapInvoiceItemCategory(row.category),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 function mapConsultation(row: ConsultationRow) {
   return {
     id: row.id,
@@ -978,6 +1041,276 @@ export async function listBookingsByPatientIdLiveOrDemo(
   return ((data ?? []) as BookingRow[]).map(mapBooking);
 }
 
+export async function listBookingsLiveOrDemo(): Promise<Booking[]> {
+  if (!isSupabaseConfigured) {
+    return getDatabase().bookings
+      .slice()
+      .sort((left, right) => {
+        const leftDateTime = `${left.preferredDate}T${left.preferredTime}`;
+        const rightDateTime = `${right.preferredDate}T${right.preferredTime}`;
+        return rightDateTime.localeCompare(leftDateTime);
+      });
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("bookings")
+    .select("*")
+    .is("deleted_at", null)
+    .order("preferred_date", { ascending: false })
+    .order("preferred_time", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as BookingRow[]).map(mapBooking);
+}
+
+export async function listInvoicesLiveOrDemo(): Promise<Invoice[]> {
+  if (!isSupabaseConfigured) {
+    return getDatabase().invoices
+      .slice()
+      .sort((left, right) => {
+        if (left.createdAt === right.createdAt) {
+          return right.invoiceNumber.localeCompare(left.invoiceNumber);
+        }
+        return right.createdAt.localeCompare(left.createdAt);
+      });
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("invoices")
+    .select("*")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .order("invoice_number", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<{
+    id: string;
+    patient_id: string;
+    appointment_id: string | null;
+    invoice_number: string;
+    payment_status: string | null;
+    subtotal: number;
+    total: number;
+    created_at: string;
+    updated_at: string;
+    deleted_at: string | null;
+  }>).map(mapInvoiceRow);
+}
+
+export async function listInvoiceItemsLiveOrDemo(): Promise<InvoiceItem[]> {
+  if (!isSupabaseConfigured) {
+    return getDatabase().invoiceItems
+      .slice()
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("invoice_items")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<{
+    id: string;
+    invoice_id: string;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    category: string | null;
+    created_at: string;
+    updated_at: string;
+  }>).map(mapInvoiceItemRow);
+}
+
+export async function createInvoiceLiveOrDemo(
+  invoice: Omit<Invoice, "id" | "createdAt" | "updatedAt">,
+  items: Array<Omit<InvoiceItem, "id" | "createdAt" | "updatedAt" | "invoiceId">>,
+) {
+  if (!isSupabaseConfigured) {
+    const { createInvoice } = await import("./local-db");
+    return createInvoice(invoice, items);
+  }
+
+  const client = requireSupabase();
+  const invoicePayload = {
+    patient_id: invoice.patientId,
+    appointment_id: invoice.appointmentId ?? null,
+    invoice_number: invoice.invoiceNumber,
+    payment_status: invoice.paymentStatus,
+    subtotal: invoice.subtotal,
+    total: invoice.total,
+  };
+
+  const { data, error } = await client
+    .from("invoices")
+    .insert(invoicePayload as never)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  const createdInvoice = mapInvoiceRow(data as {
+    id: string;
+    patient_id: string;
+    appointment_id: string | null;
+    invoice_number: string;
+    payment_status: string | null;
+    subtotal: number;
+    total: number;
+    created_at: string;
+    updated_at: string;
+    deleted_at: string | null;
+  });
+
+  if (items.length > 0) {
+    const { error: itemError } = await client.from("invoice_items").insert(
+      items.map((item) => ({
+        invoice_id: createdInvoice.id,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        category: item.category,
+      })) as never,
+    );
+
+    if (itemError) {
+      await client.from("invoices").delete().eq("id", createdInvoice.id);
+      throw itemError;
+    }
+  }
+
+  return createdInvoice;
+}
+
+export async function updateInvoiceLiveOrDemo(
+  invoiceId: string,
+  invoice: Omit<Invoice, "id" | "createdAt" | "updatedAt">,
+  item: Omit<InvoiceItem, "id" | "createdAt" | "updatedAt" | "invoiceId">,
+) {
+  if (!isSupabaseConfigured) {
+    const { updateInvoiceRecord } = await import("./local-db");
+    return updateInvoiceRecord(invoiceId, invoice, item);
+  }
+
+  const client = requireSupabase();
+  const invoicePayload = {
+    patient_id: invoice.patientId,
+    appointment_id: invoice.appointmentId ?? null,
+    invoice_number: invoice.invoiceNumber,
+    payment_status: invoice.paymentStatus,
+    subtotal: invoice.subtotal,
+    total: invoice.total,
+  };
+
+  const { data, error } = await client
+    .from("invoices")
+    .update(invoicePayload as never)
+    .eq("id", invoiceId)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  const { data: existingItems, error: existingItemsError } = await client
+    .from("invoice_items")
+    .select("id")
+    .eq("invoice_id", invoiceId)
+    .order("created_at", { ascending: true });
+
+  if (existingItemsError) {
+    throw existingItemsError;
+  }
+
+  const primaryItemId =
+    ((existingItems ?? []) as Array<{ id: string }>)[0]?.id ?? null;
+
+  if (primaryItemId) {
+    const { error: itemError } = await client
+      .from("invoice_items")
+      .update({
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        category: item.category,
+      } as never)
+      .eq("id", primaryItemId);
+
+    if (itemError) {
+      throw itemError;
+    }
+
+    const extraItemIds = ((existingItems ?? []) as Array<{ id: string }>)
+      .slice(1)
+      .map((existingItem) => existingItem.id);
+
+    if (extraItemIds.length > 0) {
+      const { error: deleteExtraItemsError } = await client
+        .from("invoice_items")
+        .delete()
+        .in("id", extraItemIds);
+
+      if (deleteExtraItemsError) {
+        throw deleteExtraItemsError;
+      }
+    }
+  } else {
+    const { error: itemError } = await client.from("invoice_items").insert({
+      invoice_id: invoiceId,
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      category: item.category,
+    } as never);
+
+    if (itemError) {
+      throw itemError;
+    }
+  }
+
+  return mapInvoiceRow(data as {
+    id: string;
+    patient_id: string;
+    appointment_id: string | null;
+    invoice_number: string;
+    payment_status: string | null;
+    subtotal: number;
+    total: number;
+    created_at: string;
+    updated_at: string;
+    deleted_at: string | null;
+  });
+}
+
+export async function deleteInvoiceLiveOrDemo(invoiceId: string) {
+  if (!isSupabaseConfigured) {
+    const { deleteInvoiceRecord } = await import("./local-db");
+    return deleteInvoiceRecord(invoiceId);
+  }
+
+  const client = requireSupabase();
+  const { error } = await client.from("invoices").delete().eq("id", invoiceId);
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function getLatestInvoiceByPatientIdLiveOrDemo(
   patientId: string,
   appointmentId?: string,
@@ -1044,18 +1377,7 @@ export async function getLatestInvoiceByPatientIdLiveOrDemo(
     deleted_at: string | null;
   };
 
-  return {
-    id: row.id,
-    patientId: row.patient_id,
-    appointmentId: row.appointment_id,
-    invoiceNumber: row.invoice_number,
-    paymentStatus: mapInvoicePaymentStatus(row.payment_status),
-    subtotal: Number(row.subtotal ?? 0),
-    total: Number(row.total ?? 0),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    deletedAt: row.deleted_at,
-  };
+  return mapInvoiceRow(row);
 }
 
 export async function updateAppointmentStatusAndNotesLiveOrDemo(input: {
@@ -2731,10 +3053,26 @@ export async function createAdminUserLiveOrDemo(input: AdminCreateUserInput) {
     }
   }
 
-  const data = await invokeSupabaseFunction<AdminCreateUserResponse>(
-    "admin-create-user",
-    payload,
-  );
+  let data: AdminCreateUserResponse;
+  try {
+    data = await invokeSupabaseFunction<AdminCreateUserResponse>(
+      "admin-create-user",
+      payload,
+    );
+  } catch (error) {
+    if (
+      input.role === "specialist" &&
+      error instanceof Error &&
+      error.message === "Unsupported role."
+    ) {
+      throw new Error(
+        "The live admin-create-user Edge Function is outdated and does not support the specialist role yet. Redeploy the function, then try creating the specialist account again.",
+      );
+    }
+
+    throw error;
+  }
+
   if (!data.user) {
     throw new Error("Account creation did not return the created user.");
   }
