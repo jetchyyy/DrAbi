@@ -88,6 +88,24 @@ export function PublicLayout() {
                       <p className="text-xs text-slate-500">{profile?.email}</p>
                     </div>
                     <div className="p-2">
+                      <div className="border-b border-slate-100 pb-2 md:hidden">
+                        {portalNavigation.map((item) => (
+                          <NavLink
+                            key={item.to}
+                            className={({ isActive }) =>
+                              `flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold transition ${
+                                isActive
+                                  ? 'bg-orange-50 text-orange-700'
+                                  : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
+                              }`
+                            }
+                            onClick={() => setMenuOpen(false)}
+                            to={item.to}
+                          >
+                            {item.label}
+                          </NavLink>
+                        ))}
+                      </div>
                       <Link
                         className="flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950"
                         onClick={() => setMenuOpen(false)}
