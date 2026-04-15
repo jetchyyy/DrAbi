@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { AlertCircle, Camera, ChevronLeft, ChevronRight, CheckCircle2, ImagePlus, StopCircle, Trash2, Upload } from 'lucide-react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -20,6 +20,7 @@ import type { Booking } from '../../types/domain';
 import { useAuth } from '../auth/auth-context';
 import { useCreateReferral } from '../referrals/hooks/use-referrals';
 import { validatePatientConsultationAccess } from './services/consultation-access-service';
+import { serializeLabResultsContent, type LabResultImageRecord } from './lab-results-media';
 import { 
   useCreateConsultation, 
   usePatientAppointments, 
@@ -143,11 +144,18 @@ export function ConsultationEntryPage() {
   const [accessState, setAccessState] = useState<'checking' | 'allowed' | 'blocked' | 'error'>('checking');
   const [accessError, setAccessError] = useState('');
   const [retryToken, setRetryToken] = useState(0);
+  const [labResultImages, setLabResultImages] = useState<LabResultImageRecord[]>([]);
+  const [cameraState, setCameraState] = useState<'idle' | 'requesting' | 'active' | 'unsupported' | 'denied'>('idle');
+  const [cameraMessage, setCameraMessage] = useState('');
   const [blockingAlert, setBlockingAlert] = useState<{
     open: boolean;
     title: string;
     message: string;
   }>({ open: false, title: '', message: '' });
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const currentStep = CONSULTATION_STEPS[currentStepIndex];
   
   const consultationAppointmentIds = new Set(consultations.map((consultation: any) => consultation.appointmentId));
@@ -190,6 +198,36 @@ export function ConsultationEntryPage() {
       form.setValue('allergies', patient.allergies);
     }
   }, [patient, form]);
+
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.srcObject = null;
+    }
+    setCameraState((current) => (current === 'unsupported' ? current : 'idle'));
+    setCameraMessage('');
+  };
+
+  useEffect(() => () => stopCamera(), []);
+
+  useEffect(() => {
+    if (cameraState !== 'requesting' && cameraState !== 'active') {
+      return;
+    }
+
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!video || !stream) {
+      return;
+    }
+
+    video.srcObject = stream;
+    void video.play().catch(() => {
+      setCameraMessage('Camera is ready. Tap Start camera again if preview does not appear.');
+    });
+  }, [cameraState]);
 
   useEffect(() => {
     if (!patientId) {
@@ -357,7 +395,10 @@ export function ConsultationEntryPage() {
         vitals: values.vitals,
         treatmentPlan: values.treatmentPlan,
         medications: values.medications,
-        labResults: values.labResults,
+        labResults: serializeLabResultsContent({
+          summary: values.labResults ?? '',
+          images: labResultImages,
+        }),
         differentialDiagnosis: values.differentialDiagnosis,
         subjective: values.subjective,
         objective: values.objective,
@@ -522,6 +563,124 @@ export function ConsultationEntryPage() {
 
   const isLastStep = currentStepIndex === CONSULTATION_STEPS.length - 1;
   const isFirstStep = currentStepIndex === 0;
+
+  const addImageAttachment = (image: Omit<LabResultImageRecord, 'id'>) => {
+    setLabResultImages((current) => [
+      ...current,
+      {
+        ...image,
+        id: `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
+      },
+    ]);
+  };
+
+  const startCamera = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraState('unsupported');
+      setCameraMessage('This device or browser does not support camera access.');
+      return;
+    }
+
+    stopCamera();
+    setCameraState('requesting');
+    setCameraMessage('Requesting camera permission...');
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      });
+
+      streamRef.current = stream;
+      setCameraState('active');
+      setCameraMessage('Camera ready. Position the lab result document inside the frame.');
+    } catch {
+      setCameraState('denied');
+      setCameraMessage('Camera permission was denied. You can still upload an image file instead.');
+    }
+  };
+
+  const captureCameraImage = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || video.videoWidth === 0 || video.videoHeight === 0) {
+      toast.error('Camera preview is not ready yet.');
+      return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      toast.error('Unable to capture the camera image.');
+      return;
+    }
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    addImageAttachment({
+      name: `Lab result capture ${labResultImages.length + 1}.jpg`,
+      dataUrl,
+      mimeType: 'image/jpeg',
+    });
+    toast.success('Lab result image captured.');
+  };
+
+  const handleLabImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) {
+      return;
+    }
+
+    try {
+      const images = await Promise.all(
+        files
+          .filter((file) => file.type.startsWith('image/'))
+          .map(
+            (file) =>
+              new Promise<Omit<LabResultImageRecord, 'id'>>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  if (typeof reader.result !== 'string') {
+                    reject(new Error('Unable to read the selected file.'));
+                    return;
+                  }
+
+                  resolve({
+                    name: file.name,
+                    dataUrl: reader.result,
+                    mimeType: file.type || 'image/*',
+                  });
+                };
+                reader.onerror = () => reject(new Error('Unable to read the selected file.'));
+                reader.readAsDataURL(file);
+              }),
+          ),
+      );
+
+      if (images.length === 0) {
+        toast.error('Please choose an image file.');
+        return;
+      }
+
+      setLabResultImages((current) => [
+        ...current,
+        ...images.map((image, index) => ({
+          ...image,
+          id: `${Date.now()}-${index}-${crypto.randomUUID().slice(0, 8)}`,
+        })),
+      ]);
+      toast.success(`${images.length} lab result image${images.length > 1 ? 's' : ''} added.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to upload the selected image.');
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const removeLabImage = (imageId: string) => {
+    setLabResultImages((current) => current.filter((image) => image.id !== imageId));
+  };
 
   return (
     <div className="space-y-6">
@@ -742,12 +901,88 @@ export function ConsultationEntryPage() {
                 label={stepFields.labResults.label}
                 error={form.formState.errors.labResults?.message}
               >
-                <Textarea
-                  {...form.register('labResults')}
-                  placeholder={stepFields.labResults.placeholder}
-                  rows={4}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
-                />
+                <div className="space-y-4">
+                  <Textarea
+                    {...form.register('labResults')}
+                    placeholder={stepFields.labResults.placeholder}
+                    rows={4}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  />
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Attach lab result image</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Capture from camera or upload an image file. Saved images will also be visible in the patient history.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button className="gap-2" onClick={() => void startCamera()} type="button" variant="secondary">
+                          <Camera className="size-4" />
+                          {cameraState === 'active' ? 'Restart camera' : 'Start camera'}
+                        </Button>
+                        {cameraState === 'active' ? (
+                          <>
+                            <Button className="gap-2" onClick={captureCameraImage} type="button">
+                              <ImagePlus className="size-4" />
+                              Capture image
+                            </Button>
+                            <Button className="gap-2" onClick={stopCamera} type="button" variant="secondary">
+                              <StopCircle className="size-4" />
+                              Stop camera
+                            </Button>
+                          </>
+                        ) : null}
+                        <Button className="gap-2" onClick={() => fileInputRef.current?.click()} type="button" variant="secondary">
+                          <Upload className="size-4" />
+                          Upload file
+                        </Button>
+                      </div>
+                    </div>
+
+                    <input
+                      accept="image/*"
+                      className="hidden"
+                      multiple
+                      onChange={handleLabImageUpload}
+                      ref={fileInputRef}
+                      type="file"
+                    />
+
+                    {cameraMessage ? (
+                      <p className="mt-3 text-sm text-slate-600">{cameraMessage}</p>
+                    ) : null}
+
+                    {cameraState === 'requesting' || cameraState === 'active' ? (
+                      <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-black">
+                        <video className="aspect-video w-full object-cover" muted playsInline ref={videoRef} />
+                        <canvas className="hidden" ref={canvasRef} />
+                      </div>
+                    ) : null}
+
+                    {labResultImages.length > 0 ? (
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        {labResultImages.map((image) => (
+                          <div key={image.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                            <img alt={image.name} className="aspect-[4/3] w-full object-cover" src={image.dataUrl} />
+                            <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-3 py-2">
+                              <p className="min-w-0 flex-1 truncate text-xs font-medium text-slate-600">{image.name}</p>
+                              <button
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 transition hover:text-rose-700"
+                                onClick={() => removeLabImage(image.id)}
+                                type="button"
+                              >
+                                <Trash2 className="size-3.5" />
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
               </FormField>
             </div>
           )}

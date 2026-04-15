@@ -32,6 +32,7 @@ import {
   useBlockedBookingSlots,
   useCreateBooking,
   useCurrentPatient,
+  useMyBookings,
 } from "./hooks/use-bookings";
 import type { BookingPaymentStatus } from "../../types/domain";
 
@@ -81,6 +82,9 @@ export function PortalBookPage() {
     session?.user.id ?? null,
     profile?.email,
   );
+  const { data: existingBookings = [] } = useMyBookings(
+    session?.user.id ?? profile?.email ?? null,
+  );
   const createBooking = useCreateBooking(session?.user.id ?? null);
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
@@ -125,6 +129,13 @@ export function PortalBookPage() {
     doctorId: requiresDoctor ? selectedDoctorId || null : null,
     serviceId: !requiresDoctor ? selectedServiceId || null : null,
   });
+  const unfinishedBooking = useMemo(
+    () =>
+      existingBookings.find(
+        (booking) => booking.status !== "cancelled",
+      ) ?? null,
+    [existingBookings],
+  );
 
   const allTimeSlots = useMemo(() => {
     if (!selectedDate || !selectedService) {
@@ -253,6 +264,13 @@ export function PortalBookPage() {
       return;
     }
 
+    if (unfinishedBooking) {
+      toast.error(
+        `You already have an unfinished booking for ${unfinishedBooking.serviceName} on ${formatDateLabel(unfinishedBooking.preferredDate)} at ${unfinishedBooking.preferredTime}. Please complete or cancel that booking first.`,
+      );
+      return;
+    }
+
     if (requiresDoctor && !values.doctorId) {
       toast.error(
         "Please select a doctor for consultation or follow-up booking.",
@@ -352,6 +370,20 @@ export function PortalBookPage() {
           Consultation and follow-up fees follow the doctor&apos;s professional
           fees, while other services use the catalog service fee.
         </p>
+
+        {unfinishedBooking ? (
+          <div className="mt-5 rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-semibold">
+              You already have an unfinished booking.
+            </p>
+            <p className="mt-1">
+              Current booking: {unfinishedBooking.serviceName} on{" "}
+              {formatDateLabel(unfinishedBooking.preferredDate)} at{" "}
+              {unfinishedBooking.preferredTime}. You cannot submit another
+              booking until this one is completed or cancelled.
+            </p>
+          </div>
+        ) : null}
 
         <form className="mt-6 space-y-4" onSubmit={onSubmit}>
           <div className="grid gap-4 md:grid-cols-2">
@@ -557,6 +589,7 @@ export function PortalBookPage() {
             disabled={
               createBooking.isPending ||
               !currentPatient ||
+              Boolean(unfinishedBooking) ||
               availableTimeSlots.length === 0 ||
               !selectedPreferredTime ||
               (requiresDoctor && !selectedDoctorId)

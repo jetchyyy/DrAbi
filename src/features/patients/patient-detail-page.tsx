@@ -17,6 +17,7 @@ import { useDoctorDirectory } from '../../hooks/use-clinic-data';
 import { getDatabase } from '../../lib/local-db';
 import { formatDateLabel, formatDateTimeLabel } from '../../lib/utils';
 import { useAuth } from '../auth/auth-context';
+import { LabResultsDisplay } from '../consultation/components/lab-results-display';
 import { extractInventoryItemQrCode } from '../inventory/inventory-qr';
 import { PatientQrCard } from './components/patient-qr-card';
 import {
@@ -448,7 +449,12 @@ export function PatientDetailPage() {
                     <p><span className="font-semibold text-slate-950">Vitals:</span> {consultation.vitals}</p>
                     <p><span className="font-semibold text-slate-950">Treatment Plan:</span> {consultation.treatmentPlan}</p>
                     <p><span className="font-semibold text-slate-950">Medications:</span> {consultation.medications}</p>
-                    <p><span className="font-semibold text-slate-950">Lab Results:</span> {consultation.labResults}</p>
+                    <div>
+                      <p className="font-semibold text-slate-950">Lab Results:</p>
+                      <div className="mt-2">
+                        <LabResultsDisplay value={consultation.labResults} />
+                      </div>
+                    </div>
                     <p><span className="font-semibold text-slate-950">Differential Diagnosis:</span> {consultation.differentialDiagnosis}</p>
                     <p><span className="font-semibold text-slate-950">Subjective:</span> {consultation.subjective}</p>
                     <p><span className="font-semibold text-slate-950">Objective:</span> {consultation.objective}</p>

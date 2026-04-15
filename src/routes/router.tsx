@@ -11,6 +11,7 @@ import { PatientRegisterPage } from "../features/auth/patient-register-page";
 import { ResetPasswordPage } from "../features/auth/reset-password-page";
 import { BillingPage } from "../features/billing/billing-page";
 import { BookingReceiptScanPage } from "../features/booking/booking-receipt-scan-page";
+import { PatientMedicalHistoryPage } from "../features/booking/patient-medical-history-page";
 import { MyBookingsPage } from "../features/booking/my-bookings-page";
 import { ReferralPage } from "../features/referrals/referral-frontdesk-page";
 import { PatientProfilePage } from "../features/booking/patient-profile-page";
@@ -84,6 +85,7 @@ export const router = createBrowserRouter([
             children: [
               { path: "book", element: <PortalBookPage /> },
               { path: "my-bookings", element: <MyBookingsPage /> },
+              { path: "medical-history", element: <PatientMedicalHistoryPage /> },
               { path: "profile", element: <PatientProfilePage /> },
               {
                 path: "teleconsult/:appointmentId",

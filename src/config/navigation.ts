@@ -161,6 +161,7 @@ export const portalNavigation = [
   { label: "Portal Home", to: "/portal" },
   { label: "Book Appointment", to: "/portal/book" },
   { label: "My Bookings", to: "/portal/my-bookings" },
+  { label: "My Medical History", to: "/portal/medical-history" },
   { label: "My Profile", to: "/portal/profile" },
 ];
 
