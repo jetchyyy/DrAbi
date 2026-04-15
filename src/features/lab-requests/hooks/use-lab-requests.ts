@@ -3,7 +3,13 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { queryClient } from '../../../app/query-client';
 import { queryKeys } from '../../../lib/query-keys';
 import { labRequestService } from '../api/lab-request-service';
-import type { CancelLabRequestInput, CompleteLabRequestInput, CreateLabRequestInput, LabRequestFilters } from '../types';
+import type {
+  CancelLabRequestInput,
+  CompleteLabRequestInput,
+  CreateLabRequestInput,
+  LabRequestFilters,
+  UpdateLabRequestInput,
+} from '../types';
 
 function getLabRequestQueryFilters(filters?: LabRequestFilters): Record<string, unknown> {
   return (filters ?? {}) as Record<string, unknown>;
@@ -20,6 +26,22 @@ export function useClinicLabQueue(clinicId: string | null, filters?: LabRequestF
       return labRequestService.listClinicQueue(clinicId, filters);
     },
     enabled: Boolean(clinicId),
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useAppointmentLabRequests(appointmentId: string | null, filters?: LabRequestFilters) {
+  return useQuery({
+    queryKey: queryKeys.appointmentLabRequests(appointmentId, getLabRequestQueryFilters(filters)),
+    queryFn: async () => {
+      if (!appointmentId) {
+        return [];
+      }
+
+      return labRequestService.getAppointmentLabRequests(appointmentId, filters);
+    },
+    enabled: Boolean(appointmentId),
   });
 }
 
@@ -76,6 +98,7 @@ export function useCreateLabRequest() {
       void queryClient.invalidateQueries({ queryKey: ['lab-queue', record.clinicId] });
       void queryClient.invalidateQueries({ queryKey: ['patient-lab-results', record.patientId] });
       void queryClient.invalidateQueries({ queryKey: ['doctor-lab-requests', record.requestedBy] });
+      void queryClient.invalidateQueries({ queryKey: ['appointment-lab-requests', record.appointmentId] });
       void queryClient.invalidateQueries({ queryKey: ['lab-request', record.id] });
       void queryClient.invalidateQueries({ queryKey: ['patient-medical-timeline', record.patientId] });
     },
@@ -91,6 +114,7 @@ export function useStartLabProcessing() {
       }
 
       void queryClient.invalidateQueries({ queryKey: ['lab-queue', record.clinicId] });
+      void queryClient.invalidateQueries({ queryKey: ['appointment-lab-requests', record.appointmentId] });
       void queryClient.invalidateQueries({ queryKey: ['lab-request', record.id] });
       void queryClient.invalidateQueries({ queryKey: ['patient-lab-results', record.patientId] });
       void queryClient.invalidateQueries({ queryKey: ['patient-medical-timeline', record.patientId] });
@@ -107,6 +131,7 @@ export function useCompleteLabRequest() {
       }
 
       void queryClient.invalidateQueries({ queryKey: ['lab-queue', record.clinicId] });
+      void queryClient.invalidateQueries({ queryKey: ['appointment-lab-requests', record.appointmentId] });
       void queryClient.invalidateQueries({ queryKey: ['lab-request', record.id] });
       void queryClient.invalidateQueries({ queryKey: ['patient-lab-results', record.patientId] });
       void queryClient.invalidateQueries({ queryKey: ['patient-medical-timeline', record.patientId] });
@@ -123,6 +148,24 @@ export function useCancelLabRequest() {
       }
 
       void queryClient.invalidateQueries({ queryKey: ['lab-queue', record.clinicId] });
+      void queryClient.invalidateQueries({ queryKey: ['appointment-lab-requests', record.appointmentId] });
+      void queryClient.invalidateQueries({ queryKey: ['lab-request', record.id] });
+      void queryClient.invalidateQueries({ queryKey: ['patient-lab-results', record.patientId] });
+      void queryClient.invalidateQueries({ queryKey: ['patient-medical-timeline', record.patientId] });
+    },
+  });
+}
+
+export function useUpdateLabRequestDetails() {
+  return useMutation({
+    mutationFn: async (payload: UpdateLabRequestInput) => labRequestService.updateRequestDetails(payload),
+    onSuccess: (record) => {
+      if (!record) {
+        return;
+      }
+
+      void queryClient.invalidateQueries({ queryKey: ['lab-queue', record.clinicId] });
+      void queryClient.invalidateQueries({ queryKey: ['appointment-lab-requests', record.appointmentId] });
       void queryClient.invalidateQueries({ queryKey: ['lab-request', record.id] });
       void queryClient.invalidateQueries({ queryKey: ['patient-lab-results', record.patientId] });
       void queryClient.invalidateQueries({ queryKey: ['patient-medical-timeline', record.patientId] });

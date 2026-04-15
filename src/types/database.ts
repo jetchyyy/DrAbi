@@ -163,6 +163,7 @@ export interface Database {
         Row: {
           id: string;
           clinic_id: string;
+          appointment_id: string | null;
           patient_id: string;
           requested_by: string;
           department: string;
