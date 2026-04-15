@@ -930,8 +930,6 @@ export function BillingPage() {
               transactionType: 'cashier_paid_service',
               status: order.status === 'released' ? 'completed' : 'pending',
               sampleStatus: order.status === 'processing' || order.status === 'ready' || order.status === 'released' ? 'processing' : 'pending',
-              status: order.status === 'completed' || order.status === 'released' ? 'completed' : 'pending',
-              sampleStatus: order.status === 'in-progress' ? 'processing' : 'pending',
               resultStatus: order.status === 'released' ? 'completed' : 'pending',
               patientNotes: order.notes || null,
               resultData: null,
