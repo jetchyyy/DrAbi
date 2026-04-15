@@ -72,8 +72,6 @@ export function PortalBookPage() {
   );
   const createBooking = useCreateBooking(session?.user.id ?? null);
 
-  // Derived once per render so the same string is used for both the
-  // date-input `min` attribute and the pending-booking guard.
   const today = new Date().toISOString().slice(0, 10);
 
   const form = useForm<BookingFormValues>({

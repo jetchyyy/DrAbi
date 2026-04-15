@@ -5,6 +5,7 @@ import { PublicLayout } from "../components/layout/public-layout";
 import { SpecialistShell } from "../components/layout/specialist-shell";
 import { SettingsLayout } from "../components/layout/settings-layout";
 import { AppointmentsPage } from "../features/appointments/appointments-page";
+import { PatientBookingPageList } from "../features/appointments/patient-booking-list";
 import { ForgotPasswordPage } from "../features/auth/forgot-password-page";
 import { LoginPage } from "../features/auth/login-page";
 import { PatientRegisterPage } from "../features/auth/patient-register-page";
@@ -94,9 +95,7 @@ export const router = createBrowserRouter([
         ],
       },
       {
-        element: (
-          <ProtectedRoute allowedRoles={["specialist"]} />
-        ),
+        element: <ProtectedRoute allowedRoles={["specialist"]} />,
         children: [
           {
             path: "/specialist",
@@ -169,8 +168,14 @@ export const router = createBrowserRouter([
                   },
                   {
                     path: "consultation/:patientId",
-                    element: <ProtectedRoute allowedRoles={["owner_admin", "doctor", "nurse_staff"]} />,
-                    children: [{ index: true, element: <ConsultationEntryPage /> }],
+                    element: (
+                      <ProtectedRoute
+                        allowedRoles={["owner_admin", "doctor", "nurse_staff"]}
+                      />
+                    ),
+                    children: [
+                      { index: true, element: <ConsultationEntryPage /> },
+                    ],
                   },
                 ],
               },
@@ -178,6 +183,10 @@ export const router = createBrowserRouter([
                 element: <PermissionGate permission="appointments.view" />,
                 children: [
                   { path: "appointments", element: <AppointmentsPage /> },
+                  {
+                    path: "patient-bookings",
+                    element: <PatientBookingPageList />,
+                  },
                   { path: "referrals", element: <ReferralPage /> },
                   { path: "consultations", element: <AppointmentsPage /> },
                   {
