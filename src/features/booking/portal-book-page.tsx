@@ -30,6 +30,7 @@ import {
   useCreateBooking,
   useCurrentPatient,
 } from "./hooks/use-bookings";
+import { listBookingsByPatientIdLiveOrDemo } from "../../lib/supabase-clinic";
 
 const bookingSchema = z.object({
   serviceId: z.string().min(1),
@@ -41,6 +42,25 @@ const bookingSchema = z.object({
 
 type BookingFormValues = z.infer<typeof bookingSchema>;
 
+async function checkPatientHasPendingBookingForDate(
+  patientId: string,
+  date: string, // "YYYY-MM-DD"
+): Promise<boolean> {
+  const bookings = await listBookingsByPatientIdLiveOrDemo(patientId);
+
+  for (const booking of bookings.filter((b) => b.preferredDate === date)) {
+    const isPending =
+      booking.status === "pending" || booking.status === "rescheduled";
+    const hasAppointment = Boolean(booking.appointmentId);
+
+    if (isPending && !hasAppointment) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export function PortalBookPage() {
   const { profile, session } = useAuth();
   const { data: clinicSettings } = useClinicSettingsData();
@@ -51,6 +71,11 @@ export function PortalBookPage() {
     profile?.email,
   );
   const createBooking = useCreateBooking(session?.user.id ?? null);
+
+  // Derived once per render so the same string is used for both the
+  // date-input `min` attribute and the pending-booking guard.
+  const today = new Date().toISOString().slice(0, 10);
+
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
@@ -172,6 +197,26 @@ export function PortalBookPage() {
       return;
     }
 
+    // Guard: disallow selecting a past date (belt-and-suspenders on top of
+    // the input `min` attribute, which can be bypassed via DevTools).
+    if (values.preferredDate < today) {
+      toast.error("Please select today or a future date for your booking.");
+      return;
+    }
+
+    // Guard: block patients who already have a pending booking on the chosen
+    // date with no linked appointment_id.
+    const hasPendingBookingForDate = await checkPatientHasPendingBookingForDate(
+      currentPatient.id,
+      values.preferredDate,
+    );
+    if (hasPendingBookingForDate) {
+      toast.error(
+        "You have a pending or rescheduled booking for this date. Please finalize your existing checkout before creating a new booking.",
+      );
+      return;
+    }
+
     const createdBooking = await createBooking.mutateAsync({
       patientId: currentPatient.id,
       serviceId: values.serviceId,
@@ -267,7 +312,13 @@ export function PortalBookPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <FormField label="Preferred date">
-              <Input type="date" {...form.register("preferredDate")} />
+              {/* min locks the calendar to today and onwards in the browser UI.
+                  The onSubmit guard below catches any bypass attempt. */}
+              <Input
+                type="date"
+                min={today}
+                {...form.register("preferredDate")}
+              />
             </FormField>
             <FormField label="Preferred time">
               <Select
