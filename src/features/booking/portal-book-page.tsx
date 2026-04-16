@@ -72,13 +72,9 @@ function isBookingPaymentStatus(value: string): value is BookingPaymentStatus {
 }
 
 function getTimeSession(time: string): TimeSession {
-  const minutes = timeToMinutes(time);
-  if (minutes < 12 * 60) {
-    return "morning";
-  }
-  if (minutes < 17 * 60) {
-    return "afternoon";
-  }
+  const hour = parseInt(time.split(":")[0], 10);
+  if (hour < 12) return "morning";
+  if (hour < 17) return "afternoon";
   return "evening";
 }
 
@@ -153,8 +149,10 @@ export function PortalBookPage() {
   });
   const unfinishedBooking = useMemo(
     () =>
-      existingBookings.find((booking) => booking.status !== "cancelled") ??
-      null,
+      existingBookings.find(
+        (booking) =>
+          booking.status !== "cancelled" && booking.status !== "confirmed",
+      ) ?? null,
     [existingBookings],
   );
 
@@ -264,18 +262,7 @@ export function PortalBookPage() {
     }
 
     setSelectedTimeSession(timeSessionOptions[0]);
-  }, [selectedTimeSession, timeSessionOptions]);
-
-  useEffect(() => {
-    if (!selectedPreferredTime) {
-      return;
-    }
-
-    const currentSession = getTimeSession(selectedPreferredTime);
-    if (selectedTimeSession !== currentSession) {
-      setSelectedTimeSession(currentSession);
-    }
-  }, [selectedPreferredTime, selectedTimeSession]);
+  }, [timeSessionOptions]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (!currentPatient) {
@@ -444,9 +431,7 @@ export function PortalBookPage() {
                 value={
                   selectedService?.serviceType === "consultation"
                     ? "Consultation"
-                    : selectedService?.serviceType === "follow_up"
-                      ? "Follow-up"
-                      : "Medical Service"
+                    : ""
                 }
               />
             </FormField>
@@ -584,12 +569,15 @@ export function PortalBookPage() {
                               : "cursor-not-allowed border-rose-200 bg-rose-50 text-rose-500 opacity-80",
                         )}
                         disabled={isBooked}
-                        onClick={() =>
+                        // INSTEAD, sync the session inside the slot button's onClick
+                        onClick={() => {
                           form.setValue("preferredTime", time, {
                             shouldDirty: true,
                             shouldValidate: true,
-                          })
-                        }
+                          });
+                          // Sync session tab to match the chosen slot
+                          setSelectedTimeSession(getTimeSession(time));
+                        }}
                         type="button"
                       >
                         {formatTimeLabel(time)}
@@ -621,7 +609,9 @@ export function PortalBookPage() {
             />
           </FormField>
 
-          {selectedDate && availableTimeSlots.length === 0 ? (
+          {selectedDate &&
+          allTimeSlots.length > 0 &&
+          availableTimeSlots.length === 0 ? (
             <p className="text-sm font-medium text-rose-600">
               This time slot set is already full or unavailable for the selected
               date.
@@ -637,8 +627,8 @@ export function PortalBookPage() {
               createBooking.isPending ||
               !currentPatient ||
               Boolean(unfinishedBooking) ||
-              availableTimeSlots.length === 0 ||
               !selectedPreferredTime ||
+              blockedSlots.includes(selectedPreferredTime) ||
               (requiresDoctor && !selectedDoctorId)
             }
             type="submit"

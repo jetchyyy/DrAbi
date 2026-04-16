@@ -67,6 +67,7 @@ export function toAvailabilityRowInput(
   };
 }
 
+// AFTER — expands each availability window into individual time slots
 export function getAvailableTimeSlotsForDate(
   availability: DoctorAvailability[],
   date: string,
@@ -76,12 +77,24 @@ export function getAvailableTimeSlotsForDate(
   }
 
   const dayOfWeek = new Date(`${date}T00:00:00`).getDay();
+  const slots: string[] = [];
 
-  return availability
-    .filter((slot) => slot.dayOfWeek === dayOfWeek)
+  const windows = availability
+    .filter((window) => window.dayOfWeek === dayOfWeek)
     .sort(
       (left, right) =>
         timeToMinutes(left.startTime) - timeToMinutes(right.startTime),
-    )
-    .map((slot) => slot.startTime.slice(0, 5)); // ✅ normalize to HH:MM
+    );
+
+  for (const window of windows) {
+    const start = timeToMinutes(window.startTime);
+    const end = timeToMinutes(window.endTime);
+    const step = window.slotMinutes ?? 30;
+
+    for (let cursor = start; cursor < end; cursor += step) {
+      slots.push(minutesToTime(cursor));
+    }
+  }
+
+  return slots;
 }
