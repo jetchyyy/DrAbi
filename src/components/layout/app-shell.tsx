@@ -6,6 +6,7 @@ import { useAuth } from '../../features/auth/auth-context';
 import { useClinicSettingsData } from '../../hooks/use-clinic-data';
 import { appNavigation } from '../../config/navigation';
 import { defaultClinicSettings } from '../../config/clinic';
+import { isModuleEnabled } from '../../config/modules';
 import { roleLabels } from '../../config/permissions';
 import { Button } from '../ui/button';
 import { cn, getInitials } from '../../lib/utils';
@@ -36,7 +37,10 @@ export function AppShell() {
   }, [location.pathname]);
 
   const navigationItems = appNavigation
-    .filter((item) => can(item.permission) && (!item.roles || (profile ? item.roles.includes(profile.role) : false)))
+    .filter((item) =>
+      can(item.permission)
+      && (!item.roles || (profile ? item.roles.includes(profile.role) : false))
+      && (!item.moduleKey || isModuleEnabled(item.moduleKey, clinic.enabledModules)))
     .map((item) => (
       <NavLink
         key={item.to}

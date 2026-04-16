@@ -1,10 +1,7 @@
-﻿import { LockKeyhole } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { LockKeyhole } from 'lucide-react';
 
-import { odcAccessConfig } from '../../config/odc-access';
 import { defaultClinicSettings } from '../../config/clinic';
 import { useClinicSettingsData } from '../../hooks/use-clinic-data';
-import { Button } from '../../components/ui/button';
 import { Card, CardTitle } from '../../components/ui/card';
 
 interface SystemDisabledPageProps {
@@ -23,11 +20,6 @@ export function SystemDisabledPage({ message }: SystemDisabledPageProps) {
         <p className="mt-5 text-sm uppercase tracking-[0.2em] text-slate-400">System Disabled</p>
         <CardTitle className="mt-3 text-4xl">{clinic.clinicName} is temporarily unavailable</CardTitle>
         <p className="mt-5 text-base text-slate-600">{message}</p>
-        <div className="mt-8 flex justify-center gap-3">
-          <Link to={odcAccessConfig.route}>
-            <Button>Open Superadmin Console</Button>
-          </Link>
-        </div>
       </Card>
     </div>
   );

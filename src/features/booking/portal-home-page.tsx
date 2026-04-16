@@ -13,6 +13,7 @@ import {
 import { Link } from 'react-router-dom';
 
 import { defaultClinicSettings } from '../../config/clinic';
+import { isModuleEnabled } from '../../config/modules';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { useBookableServices, useClinicSettingsData, useDoctorDirectory } from '../../hooks/use-clinic-data';
@@ -40,6 +41,7 @@ export function PortalHomePage() {
   const { data: services = [] } = useBookableServices();
   const { data: doctors = [] } = useDoctorDirectory();
   const { isAuthenticated } = useAuth();
+  const bookingEnabled = isModuleEnabled('booking_appointments', clinic.enabledModules);
 
   return (
     <div className="space-y-0 pb-0">
@@ -105,31 +107,39 @@ export function PortalHomePage() {
               Book appointments, browse our services, and meet our specialists - all in one place. Fast, simple, and always available.
             </p>
             <div className="mt-10 flex flex-wrap gap-3 animate-fade-up delay-300">
-              {isAuthenticated ? (
-                <Link to="/portal/book">
-                  <Button className="flex items-center gap-2 rounded-none bg-orange-500 px-8 py-6 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-orange-900/30 transition-colors hover:bg-orange-400">
-                    Book an appointment <ArrowRight className="size-4" />
-                  </Button>
-                </Link>
-              ) : (
+              {bookingEnabled ? (
                 <>
-                  <Link to="/portal/register">
-                    <Button className="flex items-center gap-2 rounded-none bg-orange-500 px-8 py-6 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-orange-900/30 transition-colors hover:bg-orange-400">
-                      Create account <ArrowRight className="size-4" />
-                    </Button>
-                  </Link>
-                  <Link to="/login">
+                  {isAuthenticated ? (
+                    <Link to="/portal/book">
+                      <Button className="flex items-center gap-2 rounded-none bg-orange-500 px-8 py-6 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-orange-900/30 transition-colors hover:bg-orange-400">
+                        Book an appointment <ArrowRight className="size-4" />
+                      </Button>
+                    </Link>
+                  ) : (
+                    <>
+                      <Link to="/portal/register">
+                        <Button className="flex items-center gap-2 rounded-none bg-orange-500 px-8 py-6 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-orange-900/30 transition-colors hover:bg-orange-400">
+                          Create account <ArrowRight className="size-4" />
+                        </Button>
+                      </Link>
+                      <Link to="/login">
+                        <Button className="rounded-none border border-white/20 bg-white/10 px-8 py-6 text-sm font-bold uppercase tracking-wider text-white transition-colors hover:bg-white/20" variant="secondary">
+                          Sign in to book
+                        </Button>
+                      </Link>
+                    </>
+                  )}
+                  <Link to="/portal/my-bookings">
                     <Button className="rounded-none border border-white/20 bg-white/10 px-8 py-6 text-sm font-bold uppercase tracking-wider text-white transition-colors hover:bg-white/20" variant="secondary">
-                      Sign in to book
+                      View my bookings
                     </Button>
                   </Link>
                 </>
+              ) : (
+                <div className="border border-white/20 bg-white/10 px-6 py-4 text-sm font-semibold text-orange-100">
+                  Online booking is not included in this client plan right now.
+                </div>
               )}
-              <Link to="/portal/my-bookings">
-                <Button className="rounded-none border border-white/20 bg-white/10 px-8 py-6 text-sm font-bold uppercase tracking-wider text-white transition-colors hover:bg-white/20" variant="secondary">
-                  View my bookings
-                </Button>
-              </Link>
             </div>
           </div>
 
@@ -221,9 +231,9 @@ export function PortalHomePage() {
                         {formatCurrency(service.price)}
                       </span>
                     </div>
-                    <Link to="/portal/book">
+                    <Link to={bookingEnabled ? "/portal/book" : "/portal"}>
                       <button className={`flex items-center gap-1.5 border px-4 py-2 text-xs font-extrabold uppercase tracking-widest transition-opacity hover:opacity-80 ${palette.border} ${palette.light} ${palette.text}`}>
-                        Book <ArrowRight className="size-3" />
+                        {bookingEnabled ? 'Book' : 'View'} <ArrowRight className="size-3" />
                       </button>
                     </Link>
                   </div>
@@ -238,9 +248,9 @@ export function PortalHomePage() {
             <p className="mb-1 text-xs font-extrabold uppercase tracking-widest text-orange-400">Ready to get started?</p>
             <p className="text-lg font-bold leading-tight text-white">Book your appointment in under 2 minutes.</p>
           </div>
-          <Link to={isAuthenticated ? '/portal/book' : '/portal/register'}>
+          <Link to={bookingEnabled ? (isAuthenticated ? '/portal/book' : '/portal/register') : '/portal'}>
             <Button className="flex items-center gap-2 rounded-none bg-orange-600 px-8 py-4 text-sm font-extrabold uppercase tracking-widest transition-colors hover:bg-orange-500">
-              {isAuthenticated ? 'Book an Appointment' : 'Create Account'} <ArrowRight className="size-4" />
+              {bookingEnabled ? (isAuthenticated ? 'Book an Appointment' : 'Create Account') : 'View Portal'} <ArrowRight className="size-4" />
             </Button>
           </Link>
         </div>

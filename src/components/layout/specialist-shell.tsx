@@ -2,6 +2,7 @@ import { CalendarDays, FileText, LogOut, Stethoscope, UserRound, type LucideIcon
 import { NavLink, Outlet } from 'react-router-dom';
 
 import { specialistNavigation } from '../../config/navigation';
+import { isModuleEnabled } from '../../config/modules';
 import { useAuth } from '../../features/auth/auth-context';
 import { useClinicSettingsData } from '../../hooks/use-clinic-data';
 import { defaultClinicSettings } from '../../config/clinic';
@@ -18,6 +19,9 @@ export function SpecialistShell() {
   const { profile, signOut } = useAuth();
   const { data: clinic = defaultClinicSettings } = useClinicSettingsData();
   const profileRoleLabel = profile?.accessRoleName ?? (profile ? roleLabels[profile.role] : 'Specialist');
+  const visibleSpecialistNavigation = specialistNavigation.filter(
+    (item) => !item.moduleKey || isModuleEnabled(item.moduleKey, clinic.enabledModules),
+  );
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
@@ -36,7 +40,7 @@ export function SpecialistShell() {
         </div>
 
         <nav className="flex-1 space-y-2 px-4 py-6">
-          {specialistNavigation.map((item) => {
+          {visibleSpecialistNavigation.map((item) => {
             const Icon = navigationIcons[item.to];
             return (
               <NavLink

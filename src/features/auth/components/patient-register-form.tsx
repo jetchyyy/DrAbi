@@ -66,7 +66,7 @@ export function PatientRegisterForm() {
       }
 
       toast.success("Account created. You can now book your appointment.");
-      navigate("/portal/book", { replace: true });
+      navigate("/portal", { replace: true });
     } catch (error) {
       toast.error(
         error instanceof Error

@@ -1,8 +1,11 @@
-﻿import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
+import { isModuleEnabled } from '../config/modules';
 import { useAuth } from '../features/auth/auth-context';
+import { ModuleUnavailablePage } from '../features/shared/module-unavailable-page';
+import { useClinicSettingsData } from '../hooks/use-clinic-data';
 import { getHomePathForRole, getLoginPathForPathname } from '../lib/role-routing';
-import type { Permission, Role } from '../types/domain';
+import type { ModuleKey, Permission, Role } from '../types/domain';
 
 export function ProtectedRoute({ allowedRoles }: { allowedRoles?: Role[] }) {
   const { isAuthenticated, loading, profile } = useAuth();
@@ -37,3 +40,16 @@ export function PermissionGate({ permission }: { permission: Permission }) {
   return <Outlet />;
 }
 
+export function ModuleGate({ moduleKey }: { moduleKey: ModuleKey }) {
+  const { data: clinicSettings } = useClinicSettingsData();
+
+  if (!clinicSettings) {
+    return <div className="p-8 text-sm text-slate-500">Loading feature access...</div>;
+  }
+
+  if (!isModuleEnabled(moduleKey, clinicSettings.enabledModules)) {
+    return <ModuleUnavailablePage moduleKey={moduleKey} />;
+  }
+
+  return <Outlet />;
+}

@@ -1,6 +1,7 @@
 ﻿import type { User } from "@supabase/supabase-js";
 
 import { defaultClinicSettings } from "../config/clinic";
+import { normalizeEnabledModules } from "../config/modules";
 import { odcAccessConfig } from "../config/odc-access";
 import {
   applyUserPermissionOverride,
@@ -127,6 +128,7 @@ async function buildBookingListItemFromRow(
 
 interface OdcVerifyResponse {
   valid?: boolean;
+  clinicSettings?: ClinicSettingsRow;
 }
 
 interface OdcUpdateResponse {
@@ -1736,6 +1738,7 @@ function mapClinicSettings(row: ClinicSettingsRow): ClinicSettings {
     appointmentSlotMinutes: row.appointment_slot_minutes,
     systemEnabled: row.system_enabled,
     systemMessage: row.system_message,
+    enabledModules: normalizeEnabledModules(row.enabled_modules),
     operatingHours: Array.isArray(row.operating_hours)
       ? (row.operating_hours as ClinicSettings["operatingHours"])
       : [],
@@ -3565,6 +3568,7 @@ export async function updateSystemControlLiveOrDemo(
   input: OdcCredentialInput & {
     systemEnabled: boolean;
     systemMessage: string;
+    enabledModules: ClinicSettings["enabledModules"];
   },
 ) {
   const normalized = normalizeOdcCredential(input);
@@ -3578,6 +3582,7 @@ export async function updateSystemControlLiveOrDemo(
     return updateClinicSettings({
       systemEnabled: input.systemEnabled,
       systemMessage: input.systemMessage,
+      enabledModules: input.enabledModules,
     });
   }
 
@@ -3586,6 +3591,7 @@ export async function updateSystemControlLiveOrDemo(
     ...normalized,
     systemEnabled: input.systemEnabled,
     systemMessage: input.systemMessage,
+    enabledModules: input.enabledModules,
   });
 
   if (!data.clinicSettings) {

@@ -1,4 +1,5 @@
-﻿import type { ClinicSettings } from '../types/domain';
+import type { ClinicSettings } from '../types/domain';
+import { defaultEnabledModules } from './modules';
 
 export const clinicTheme = {
   primary: 'var(--color-primary)',
@@ -26,6 +27,7 @@ export const defaultClinicSettings: ClinicSettings = {
   appointmentSlotMinutes: 30,
   systemEnabled: true,
   systemMessage: 'Contact your System Administrator to continue using the System',
+  enabledModules: defaultEnabledModules,
   operatingHours: [
     { day: 'Monday', open: '08:00', close: '18:00', enabled: true },
     { day: 'Tuesday', open: '08:00', close: '18:00', enabled: true },

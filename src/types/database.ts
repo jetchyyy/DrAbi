@@ -28,6 +28,7 @@ export interface Database {
           operating_hours: Json;
           system_enabled: boolean;
           system_message: string;
+          enabled_modules: Json;
           created_at: string;
           updated_at: string;
         };

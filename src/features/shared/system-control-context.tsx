@@ -2,6 +2,7 @@
 import { createContext, useContext, useMemo, useState, type PropsWithChildren } from 'react';
 
 import { queryClient } from '../../app/query-client';
+import { defaultEnabledModules } from '../../config/modules';
 import { odcAccessConfig } from '../../config/odc-access';
 import { useClinicSettingsData } from '../../hooks/use-clinic-data';
 import { queryKeys } from '../../lib/query-keys';
@@ -12,9 +13,10 @@ interface SystemControlContextValue {
   clinicReady: boolean;
   systemEnabled: boolean;
   systemMessage: string;
+  enabledModules: typeof defaultEnabledModules;
   unlock: (credential: OdcCredentialInput) => Promise<boolean>;
   lock: () => void;
-  setSystemState: (input: { systemEnabled: boolean; systemMessage: string }) => Promise<void>;
+  setSystemState: (input: { systemEnabled: boolean; systemMessage: string; enabledModules: typeof defaultEnabledModules }) => Promise<void>;
   updating: boolean;
 }
 
@@ -66,6 +68,7 @@ export function SystemControlProvider({ children }: PropsWithChildren) {
     systemEnabled: clinicSettings?.systemEnabled ?? true,
     systemMessage:
       clinicSettings?.systemMessage ?? 'Contact your System Administrator to continue using the System',
+    enabledModules: clinicSettings?.enabledModules ?? defaultEnabledModules,
     async unlock(nextCredential) {
       const isValid = await verifyOdcCredentialLiveOrDemo(nextCredential);
       if (isValid) {
@@ -87,10 +90,11 @@ export function SystemControlProvider({ children }: PropsWithChildren) {
         ...credential,
         systemEnabled: input.systemEnabled,
         systemMessage: input.systemMessage,
+        enabledModules: input.enabledModules,
       });
     },
     updating: mutation.isPending,
-  }), [clinicSettings?.systemEnabled, clinicSettings?.systemMessage, credential, isLoading, mutation]);
+  }), [clinicSettings?.enabledModules, clinicSettings?.systemEnabled, clinicSettings?.systemMessage, credential, isLoading, mutation]);
 
   return <SystemControlContext.Provider value={value}>{children}</SystemControlContext.Provider>;
 }

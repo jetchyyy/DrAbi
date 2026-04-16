@@ -39,7 +39,7 @@ import { SettingsUsersPage } from "../features/settings/settings-users-page";
 import { NotFoundPage } from "../features/shared/not-found-page";
 import { OdcPage } from "../features/shared/odc-page";
 import { TeleconsultRoomPage } from "../features/teleconsult/teleconsult-room-page";
-import { PermissionGate, ProtectedRoute } from "./guards";
+import { ModuleGate, PermissionGate, ProtectedRoute } from "./guards";
 import { SystemAvailabilityGate } from "./system-availability-gate";
 
 export const router = createBrowserRouter([
@@ -86,13 +86,23 @@ export const router = createBrowserRouter([
           {
             element: <ProtectedRoute allowedRoles={["patient"]} />,
             children: [
-              { path: "book", element: <PortalBookPage /> },
-              { path: "my-bookings", element: <MyBookingsPage /> },
-              { path: "medical-history", element: <PatientMedicalHistoryPage /> },
+              {
+                element: <ModuleGate moduleKey="booking_appointments" />,
+                children: [
+                  { path: "book", element: <PortalBookPage /> },
+                  { path: "my-bookings", element: <MyBookingsPage /> },
+                  { path: "medical-history", element: <PatientMedicalHistoryPage /> },
+                ],
+              },
               { path: "profile", element: <PatientProfilePage /> },
               {
-                path: "teleconsult/:appointmentId",
-                element: <TeleconsultRoomPage />,
+                element: <ModuleGate moduleKey="teleconsult" />,
+                children: [
+                  {
+                    path: "teleconsult/:appointmentId",
+                    element: <TeleconsultRoomPage />,
+                  },
+                ],
               },
             ],
           },
@@ -107,28 +117,38 @@ export const router = createBrowserRouter([
             children: [
               {
                 index: true,
-                element: <Navigate replace to="/specialist/referrals" />,
+                element: <Navigate replace to="/specialist/profile" />,
               },
               {
-                element: <PermissionGate permission="patients.view" />,
+                element: <ModuleGate moduleKey="patient_management" />,
                 children: [
-                  { path: "referrals", element: <SpecialistReferralsPage /> },
                   {
-                    path: "patients/:patientId",
-                    element: <PatientDetailPage />,
-                  },
-                  {
-                    path: "consultation/:patientId",
-                    element: <ConsultationEntryPage />,
+                    element: <PermissionGate permission="patients.view" />,
+                    children: [
+                      { path: "referrals", element: <SpecialistReferralsPage /> },
+                      {
+                        path: "patients/:patientId",
+                        element: <PatientDetailPage />,
+                      },
+                      {
+                        path: "consultation/:patientId",
+                        element: <ConsultationEntryPage />,
+                      },
+                    ],
                   },
                 ],
               },
               {
-                element: <PermissionGate permission="appointments.view" />,
+                element: <ModuleGate moduleKey="booking_appointments" />,
                 children: [
                   {
-                    path: "availability",
-                    element: <DoctorAvailabilityPage />,
+                    element: <PermissionGate permission="appointments.view" />,
+                    children: [
+                      {
+                        path: "availability",
+                        element: <DoctorAvailabilityPage />,
+                      },
+                    ],
                   },
                 ],
               },
@@ -157,42 +177,62 @@ export const router = createBrowserRouter([
             children: [
               {
                 index: true,
-                element: <Navigate replace to="/app/dashboard" />,
+                element: <Navigate replace to="/app/profile" />,
               },
-              { path: "dashboard", element: <DashboardPage /> },
               {
-                element: <PermissionGate permission="patients.view" />,
+                element: <ModuleGate moduleKey="dashboard" />,
                 children: [
-                  { path: "patients", element: <PatientsPage /> },
-                  { path: "patients/logs", element: <PatientActionLogsPage /> },
-                  { path: "patients/scan", element: <PatientQrLookupPage /> },
+                  { path: "dashboard", element: <DashboardPage /> },
+                ],
+              },
+              {
+                element: <ModuleGate moduleKey="patient_management" />,
+                children: [
                   {
-                    path: "patients/:patientId",
-                    element: <PatientDetailPage />,
-                  },
-                  {
-                    path: "consultation/:patientId",
-                    element: (
+                    element: <PermissionGate permission="patients.view" />,
+                    children: [
+                      { path: "patients", element: <PatientsPage /> },
+                      { path: "patients/logs", element: <PatientActionLogsPage /> },
+                      { path: "patients/scan", element: <PatientQrLookupPage /> },
+                      {
+                        path: "patients/:patientId",
+                        element: <PatientDetailPage />,
+                      },
+                      {
+                        path: "consultation/:patientId",
+                        element: (
                       <ProtectedRoute
                         allowedRoles={["owner_admin", "doctor", "nurse_staff"]}
                       />
                     ),
-                    children: [
+                        children: [
                       { index: true, element: <ConsultationEntryPage /> },
+                    ],
+                      },
                     ],
                   },
                 ],
               },
               {
-                element: <PermissionGate permission="appointments.view" />,
+                element: <ModuleGate moduleKey="booking_appointments" />,
                 children: [
-                  { path: "appointments", element: <AppointmentsPage /> },
+                  {
+                    element: <PermissionGate permission="appointments.view" />,
+                    children: [
+                      { path: "appointments", element: <AppointmentsPage /> },
                   {
                     path: "patient-bookings",
                     element: <PatientBookingPageList />,
                   },
-                  { path: "referrals", element: <ReferralPage /> },
-                  { path: "consultations", element: <AppointmentsPage /> },
+                      { path: "referrals", element: <ReferralPage /> },
+                      { path: "consultations", element: <AppointmentsPage /> },
+                    ],
+                  },
+                ],
+              },
+              {
+                element: <ModuleGate moduleKey="teleconsult" />,
+                children: [
                   {
                     path: "teleconsult/:appointmentId",
                     element: <TeleconsultRoomPage />,
@@ -203,12 +243,22 @@ export const router = createBrowserRouter([
                 element: <ProtectedRoute allowedRoles={["doctor"]} />,
                 children: [
                   {
-                    path: "doctor-availability",
-                    element: <DoctorAvailabilityPage />,
+                    element: <ModuleGate moduleKey="booking_appointments" />,
+                    children: [
+                      {
+                        path: "doctor-availability",
+                        element: <DoctorAvailabilityPage />,
+                      },
+                    ],
                   },
                   {
-                    path: "specialist-referrals",
-                    element: <SpecialistReferralsPage />,
+                    element: <ModuleGate moduleKey="patient_management" />,
+                    children: [
+                      {
+                        path: "specialist-referrals",
+                        element: <SpecialistReferralsPage />,
+                      },
+                    ],
                   },
                 ],
               },
@@ -225,30 +275,60 @@ export const router = createBrowserRouter([
                 ),
                 children: [
                   {
-                    path: "bookings/scan",
-                    element: <BookingReceiptScanPage />,
+                    element: <ModuleGate moduleKey="booking_appointments" />,
+                    children: [
+                      {
+                        path: "bookings/scan",
+                        element: <BookingReceiptScanPage />,
+                      },
+                    ],
                   },
                   {
-                    path: "laboratory/scan",
-                    element: <LabServiceReceiptScanPage />,
+                    element: <ModuleGate moduleKey="laboratory" />,
+                    children: [
+                      {
+                        path: "laboratory/scan",
+                        element: <LabServiceReceiptScanPage />,
+                      },
+                    ],
                   },
                 ],
               },
               {
-                element: <PermissionGate permission="billing.view" />,
-                children: [{ path: "billing", element: <BillingPage /> }],
+                element: <ModuleGate moduleKey="billing" />,
+                children: [
+                  {
+                    element: <PermissionGate permission="billing.view" />,
+                    children: [{ path: "billing", element: <BillingPage /> }],
+                  },
+                ],
               },
               {
-                element: <PermissionGate permission="pos.view" />,
-                children: [{ path: "pos", element: <PosPage /> }],
+                element: <ModuleGate moduleKey="pos" />,
+                children: [
+                  {
+                    element: <PermissionGate permission="pos.view" />,
+                    children: [{ path: "pos", element: <PosPage /> }],
+                  },
+                ],
               },
               {
-                element: <PermissionGate permission="inventory.view" />,
-                children: [{ path: "inventory", element: <InventoryPage /> }],
+                element: <ModuleGate moduleKey="inventory" />,
+                children: [
+                  {
+                    element: <PermissionGate permission="inventory.view" />,
+                    children: [{ path: "inventory", element: <InventoryPage /> }],
+                  },
+                ],
               },
               {
-                element: <PermissionGate permission="laboratory.view" />,
-                children: [{ path: "laboratory", element: <LaboratoryPage /> }],
+                element: <ModuleGate moduleKey="laboratory" />,
+                children: [
+                  {
+                    element: <PermissionGate permission="laboratory.view" />,
+                    children: [{ path: "laboratory", element: <LaboratoryPage /> }],
+                  },
+                ],
               },
               { path: "profile", element: <StaffProfilePage /> },
               {

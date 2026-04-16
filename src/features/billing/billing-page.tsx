@@ -15,7 +15,9 @@ import { FeedbackModal } from '../../components/ui/feedback-modal';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
+import { isModuleEnabled } from '../../config/modules';
 import { useAuth } from '../auth/auth-context';
+import { useClinicSettingsData } from '../../hooks/use-clinic-data';
 import { LabServiceReceiptCard } from '../laboratory/components/lab-service-receipt-card';
 import { buildLabServiceReceiptLookupUrl } from '../laboratory/lab-service-receipt';
 import { labRequestService } from '../lab-requests/api/lab-request-service';
@@ -378,7 +380,10 @@ function buildInvoicePrintDocument(input: {
 
 export function BillingPage() {
   const queryClient = useQueryClient();
+  const { data: clinicSettings } = useClinicSettingsData();
   const { profile } = useAuth();
+  const bookingEnabled = isModuleEnabled('booking_appointments', clinicSettings?.enabledModules);
+  const laboratoryEnabled = isModuleEnabled('laboratory', clinicSettings?.enabledModules);
   const [search, setSearch] = useState('');
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isPayServiceModalOpen, setIsPayServiceModalOpen] = useState(false);
@@ -1026,14 +1031,18 @@ export function BillingPage() {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Link className="inline-flex items-center justify-center border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" to="/app/bookings/scan">
-                <Receipt className="mr-2 size-4" />
-                Scan booking receipt
-              </Link>
-              <Link className="inline-flex items-center justify-center border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" to="/app/laboratory/scan">
-                <ScanLine className="mr-2 size-4" />
-                Scan lab receipt
-              </Link>
+              {bookingEnabled ? (
+                <Link className="inline-flex items-center justify-center border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" to="/app/bookings/scan">
+                  <Receipt className="mr-2 size-4" />
+                  Scan booking receipt
+                </Link>
+              ) : null}
+              {laboratoryEnabled ? (
+                <Link className="inline-flex items-center justify-center border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" to="/app/laboratory/scan">
+                  <ScanLine className="mr-2 size-4" />
+                  Scan lab receipt
+                </Link>
+              ) : null}
               <Button className="rounded-none border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-extrabold uppercase tracking-widest text-violet-800 hover:bg-violet-100" onClick={openPayForServiceModal}>
                 <TestTube2 className="mr-2 size-4" />
                 Pay for service

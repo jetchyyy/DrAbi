@@ -3,11 +3,11 @@ import type { Role } from '../types/domain';
 export function getHomePathForRole(role?: Role | null) {
   switch (role) {
     case 'patient':
-      return '/portal/book';
+      return '/portal';
     case 'specialist':
-      return '/specialist/referrals';
+      return '/specialist/profile';
     default:
-      return '/app/dashboard';
+      return '/app/profile';
   }
 }
 

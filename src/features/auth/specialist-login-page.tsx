@@ -79,7 +79,7 @@ export function SpecialistLoginPage() {
           </p>
 
           <div className="mt-8">
-            <LoginForm defaultRedirectTo="/specialist/referrals" />
+            <LoginForm defaultRedirectTo="/specialist/profile" />
           </div>
         </div>
       </div>

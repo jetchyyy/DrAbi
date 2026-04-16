@@ -19,7 +19,7 @@ import {
   ShoppingCart,
 } from "lucide-react";
 
-import type { Permission, Role } from "../types/domain";
+import type { ModuleKey, Permission, Role } from "../types/domain";
 
 export interface NavItem {
   label: string;
@@ -27,6 +27,13 @@ export interface NavItem {
   icon: typeof LayoutDashboard;
   permission: Permission;
   roles?: Role[];
+  moduleKey?: ModuleKey;
+}
+
+export interface SimpleNavItem {
+  label: string;
+  to: string;
+  moduleKey?: ModuleKey;
 }
 
 export const appNavigation: NavItem[] = [
@@ -35,12 +42,14 @@ export const appNavigation: NavItem[] = [
     to: "/app/dashboard",
     icon: LayoutDashboard,
     permission: "dashboard.view",
+    moduleKey: "dashboard",
   },
   {
     label: "Patients",
     to: "/app/patients",
     icon: Users,
     permission: "patients.view",
+    moduleKey: "patient_management",
   },
   {
     label: "Patient Logs",
@@ -48,12 +57,14 @@ export const appNavigation: NavItem[] = [
     icon: ClipboardList,
     permission: "patients.view",
     roles: ["owner_admin", "nurse_staff", "front_desk_cashier"],
+    moduleKey: "patient_management",
   },
   {
     label: "Appointments",
     to: "/app/appointments",
     icon: CalendarDays,
     permission: "appointments.view",
+    moduleKey: "booking_appointments",
   },
   {
     label: "Patient Bookings List",
@@ -66,12 +77,14 @@ export const appNavigation: NavItem[] = [
     to: "/app/referrals",
     icon: CalendarDays,
     permission: "appointments.view",
+    moduleKey: "booking_appointments",
   },
   {
     label: "Consultations",
     to: "/app/consultations",
     icon: Stethoscope,
     permission: "consultations.manage",
+    moduleKey: "booking_appointments",
   },
   {
     label: "My Availability",
@@ -79,6 +92,7 @@ export const appNavigation: NavItem[] = [
     icon: Clock3,
     permission: "appointments.view",
     roles: ["doctor"],
+    moduleKey: "booking_appointments",
   },
   {
     label: "Specialist Referrals",
@@ -86,6 +100,7 @@ export const appNavigation: NavItem[] = [
     icon: ClipboardPlus,
     permission: "patients.view",
     roles: ["doctor"],
+    moduleKey: "patient_management",
   },
   {
     label: "Scan Patient",
@@ -93,6 +108,7 @@ export const appNavigation: NavItem[] = [
     icon: ScanLine,
     permission: "patients.view",
     roles: ["doctor"],
+    moduleKey: "patient_management",
   },
   {
     label: "Scan Receipt",
@@ -100,12 +116,14 @@ export const appNavigation: NavItem[] = [
     icon: ScanLine,
     permission: "booking.view",
     roles: ["owner_admin", "front_desk_cashier", "lab_staff", "nurse_staff"],
+    moduleKey: "booking_appointments",
   },
   {
     label: "Billing",
     to: "/app/billing",
     icon: ReceiptText,
     permission: "billing.view",
+    moduleKey: "billing",
   },
   {
     label: "POS",
@@ -113,18 +131,21 @@ export const appNavigation: NavItem[] = [
     icon: ShoppingCart,
     permission: "pos.view",
     roles: ["owner_admin", "front_desk_cashier"],
+    moduleKey: "pos",
   },
   {
     label: "Inventory",
     to: "/app/inventory",
     icon: Package2,
     permission: "inventory.view",
+    moduleKey: "inventory",
   },
   {
     label: "Laboratory",
     to: "/app/laboratory",
     icon: FlaskConical,
     permission: "laboratory.view",
+    moduleKey: "laboratory",
   },
   {
     label: "Service Catalog",
@@ -172,17 +193,17 @@ export const appNavigation: NavItem[] = [
   },
 ];
 
-export const specialistNavigation = [
-  { label: "Referral Inbox", to: "/specialist/referrals" },
-  { label: "Availability", to: "/specialist/availability" },
+export const specialistNavigation: SimpleNavItem[] = [
+  { label: "Referral Inbox", to: "/specialist/referrals", moduleKey: "patient_management" },
+  { label: "Availability", to: "/specialist/availability", moduleKey: "booking_appointments" },
   { label: "My Profile", to: "/specialist/profile" },
 ];
 
-export const portalNavigation = [
+export const portalNavigation: SimpleNavItem[] = [
   { label: "Portal Home", to: "/portal" },
-  { label: "Book Appointment", to: "/portal/book" },
-  { label: "My Bookings", to: "/portal/my-bookings" },
-  { label: "My Medical History", to: "/portal/medical-history" },
+  { label: "Book Appointment", to: "/portal/book", moduleKey: "booking_appointments" },
+  { label: "My Bookings", to: "/portal/my-bookings", moduleKey: "booking_appointments" },
+  { label: "My Medical History", to: "/portal/medical-history", moduleKey: "booking_appointments" },
   { label: "My Profile", to: "/portal/profile" },
 ];
 

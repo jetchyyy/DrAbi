@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom';
 
 import { portalNavigation } from '../../config/navigation';
 import { defaultClinicSettings } from '../../config/clinic';
+import { isModuleEnabled } from '../../config/modules';
 import { useClinicSettingsData } from '../../hooks/use-clinic-data';
 import { useAuth } from '../../features/auth/auth-context';
 import { PortalChatbot } from '../ui/portal-chatbot';
@@ -28,6 +29,10 @@ export function PublicLayout() {
     return () => window.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
+  const visiblePortalNavigation = portalNavigation.filter(
+    (item) => !item.moduleKey || isModuleEnabled(item.moduleKey, clinic.enabledModules),
+  );
+
   return (
     <div
       className="min-h-screen flex flex-col font-sans"
@@ -50,7 +55,7 @@ export function PublicLayout() {
           </Link>
 
           <nav className="hidden items-center gap-6 md:flex">
-            {portalNavigation.map((item) => (
+            {visiblePortalNavigation.map((item) => (
               <NavLink
                 key={item.to}
                 className={({ isActive }) =>
@@ -89,7 +94,7 @@ export function PublicLayout() {
                     </div>
                     <div className="p-2">
                       <div className="border-b border-slate-100 pb-2 md:hidden">
-                        {portalNavigation.map((item) => (
+                        {visiblePortalNavigation.map((item) => (
                           <NavLink
                             key={item.to}
                             className={({ isActive }) =>

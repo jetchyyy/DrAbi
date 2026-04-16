@@ -67,6 +67,16 @@ export type ServiceDeliveryMode = "in_person" | "teleconsultation" | "hybrid";
 export type PatientIntakeSource = "online_registration" | "staff_walk_in";
 export type PatientVisitStatus = "registered_no_visit" | "visited_clinic";
 export type PosPaymentMethod = "cash" | "gcash" | "card";
+export type ModuleKey =
+  | "dashboard"
+  | "patient_management"
+  | "booking_appointments"
+  | "billing"
+  | "pos"
+  | "inventory"
+  | "laboratory"
+  | "teleconsult";
+export type EnabledModules = Record<ModuleKey, boolean>;
 
 export interface BaseRecord {
   id: string;
@@ -91,6 +101,7 @@ export interface ClinicSettings extends BaseRecord {
   appointmentSlotMinutes: number;
   systemEnabled: boolean;
   systemMessage: string;
+  enabledModules: EnabledModules;
   operatingHours: Array<{
     day: string;
     open: string;

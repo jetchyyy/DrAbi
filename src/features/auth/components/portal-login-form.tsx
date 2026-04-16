@@ -26,7 +26,7 @@ export function PortalLoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
-  const redirectTo = from?.startsWith('/portal') ? from : '/portal/book';
+  const redirectTo = from?.startsWith('/portal') ? from : '/portal';
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
