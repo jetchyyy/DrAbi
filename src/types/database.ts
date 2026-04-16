@@ -602,6 +602,97 @@ export interface Database {
         Insert: Partial<Database["public"]["Tables"]["prescriptions"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["prescriptions"]["Row"]>;
       };
+      inventory_categories: {
+        Row: {
+          id: string;
+          name: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["inventory_categories"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["inventory_categories"]["Row"]>;
+      };
+      suppliers: {
+        Row: {
+          id: string;
+          name: string;
+          contact_person: string | null;
+          phone: string | null;
+          email: string | null;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["suppliers"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["suppliers"]["Row"]>;
+      };
+      inventory_items: {
+        Row: {
+          id: string;
+          category_id: string;
+          supplier_id: string | null;
+          qr_code: string;
+          name: string;
+          sku: string;
+          unit: string;
+          stock_on_hand: number;
+          reorder_level: number;
+          cost_price: number;
+          selling_price: number;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["inventory_items"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["inventory_items"]["Row"]>;
+      };
+      stock_transactions: {
+        Row: {
+          id: string;
+          item_id: string;
+          type: string;
+          quantity: number;
+          remarks: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["stock_transactions"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["stock_transactions"]["Row"]>;
+      };
+      pos_sales: {
+        Row: {
+          id: string;
+          sale_number: string;
+          patient_id: string | null;
+          cashier_id: string;
+          payment_method: string;
+          payment_reference: string | null;
+          payment_notes: string | null;
+          subtotal: number;
+          total: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["pos_sales"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["pos_sales"]["Row"]>;
+      };
+      pos_sale_items: {
+        Row: {
+          id: string;
+          sale_id: string;
+          inventory_item_id: string;
+          item_name: string;
+          item_sku: string;
+          item_unit: string;
+          quantity: number;
+          unit_price: number;
+          line_total: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["pos_sale_items"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["pos_sale_items"]["Row"]>;
+      };
     };
   };
 }

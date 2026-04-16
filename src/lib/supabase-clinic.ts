@@ -37,6 +37,9 @@ import type {
   InvoiceItem,
   Patient,
   PaymentStatus,
+  PosPaymentMethod,
+  PosSale,
+  PosSaleItem,
   Prescription,
   Permission,
   Role,
@@ -658,6 +661,75 @@ function mapInvoiceItemRow(row: {
     quantity: Number(row.quantity ?? 0),
     unitPrice: Number(row.unit_price ?? 0),
     category: mapInvoiceItemCategory(row.category),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapPosPaymentMethod(
+  value: string | null | undefined,
+): PosPaymentMethod {
+  switch (value) {
+    case "cash":
+    case "gcash":
+    case "card":
+      return value;
+    default:
+      return "cash";
+  }
+}
+
+function mapPosSaleRow(row: {
+  id: string;
+  sale_number: string;
+  patient_id: string | null;
+  cashier_id: string;
+  payment_method: string | null;
+  payment_reference: string | null;
+  payment_notes: string | null;
+  subtotal: number;
+  total: number;
+  created_at: string;
+  updated_at: string;
+}): PosSale {
+  return {
+    id: row.id,
+    saleNumber: row.sale_number,
+    patientId: row.patient_id,
+    cashierId: row.cashier_id,
+    paymentMethod: mapPosPaymentMethod(row.payment_method),
+    paymentReference: row.payment_reference,
+    paymentNotes: row.payment_notes,
+    subtotal: Number(row.subtotal ?? 0),
+    total: Number(row.total ?? 0),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapPosSaleItemRow(row: {
+  id: string;
+  sale_id: string;
+  inventory_item_id: string;
+  item_name: string;
+  item_sku: string;
+  item_unit: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+  created_at: string;
+  updated_at: string;
+}): PosSaleItem {
+  return {
+    id: row.id,
+    saleId: row.sale_id,
+    inventoryItemId: row.inventory_item_id,
+    itemName: row.item_name,
+    itemSku: row.item_sku,
+    itemUnit: row.item_unit,
+    quantity: Number(row.quantity ?? 0),
+    unitPrice: Number(row.unit_price ?? 0),
+    lineTotal: Number(row.line_total ?? 0),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -3494,6 +3566,8 @@ export async function getInventoryItems(page: number): Promise<InventoryItem[]> 
     unit: string;
     stock_on_hand: number;
     reorder_level: number;
+    cost_price: number | null;
+    selling_price: number | null;
     created_at: string;
     updated_at: string;
   }>).map((row) => ({
@@ -3506,6 +3580,55 @@ export async function getInventoryItems(page: number): Promise<InventoryItem[]> 
     unit: row.unit,
     stockOnHand: Number(row.stock_on_hand ?? 0),
     reorderLevel: Number(row.reorder_level ?? 0),
+    costPrice: Number(row.cost_price ?? 0),
+    sellingPrice: Number(row.selling_price ?? 0),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
+}
+
+export async function listInventoryItemsLiveOrDemo(): Promise<InventoryItem[]> {
+  if (!isSupabaseConfigured) {
+    const { listInventoryItems } = await import("./local-db");
+    return listInventoryItems();
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("inventory_items")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<{
+    id: string;
+    category_id: string;
+    supplier_id: string | null;
+    qr_code: string;
+    name: string;
+    sku: string;
+    unit: string;
+    stock_on_hand: number;
+    reorder_level: number;
+    cost_price: number | null;
+    selling_price: number | null;
+    created_at: string;
+    updated_at: string;
+  }>).map((row) => ({
+    id: row.id,
+    category_id: row.category_id,
+    supplier_id: row.supplier_id,
+    qrCode: row.qr_code,
+    name: row.name,
+    sku: row.sku,
+    unit: row.unit,
+    stockOnHand: Number(row.stock_on_hand ?? 0),
+    reorderLevel: Number(row.reorder_level ?? 0),
+    costPrice: Number(row.cost_price ?? 0),
+    sellingPrice: Number(row.selling_price ?? 0),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
@@ -3519,6 +3642,8 @@ export async function createInventoryItem(values: {
   unit: string;
   stockOnHand: number;
   reorderLevel: number;
+  costPrice: number;
+  sellingPrice: number;
 }) {
   if (!isSupabaseConfigured) {
     const { createInventoryItem: createInventoryItemLocal } = await import("./local-db");
@@ -3530,6 +3655,8 @@ export async function createInventoryItem(values: {
       unit: values.unit,
       stockOnHand: values.stockOnHand,
       reorderLevel: values.reorderLevel,
+      costPrice: values.costPrice,
+      sellingPrice: values.sellingPrice,
     });
   }
 
@@ -3544,6 +3671,8 @@ export async function createInventoryItem(values: {
       unit: values.unit,
       stock_on_hand: values.stockOnHand,
       reorder_level: values.reorderLevel,
+      cost_price: values.costPrice,
+      selling_price: values.sellingPrice,
     } as never)
     .select("*")
     .single();
@@ -3565,6 +3694,8 @@ export async function updateInventoryItems(
     unit: string;
     stockOnHand: number;
     reorderLevel: number;
+    costPrice: number;
+    sellingPrice: number;
   },
 ) {
   if (!isSupabaseConfigured) {
@@ -3577,6 +3708,8 @@ export async function updateInventoryItems(
       unit: values.unit,
       stockOnHand: values.stockOnHand,
       reorderLevel: values.reorderLevel,
+      costPrice: values.costPrice,
+      sellingPrice: values.sellingPrice,
     });
   }
 
@@ -3591,6 +3724,8 @@ export async function updateInventoryItems(
       unit: values.unit,
       stock_on_hand: values.stockOnHand,
       reorder_level: values.reorderLevel,
+      cost_price: values.costPrice,
+      selling_price: values.sellingPrice,
     } as never)
     .eq("id", itemId)
     .select("*")
@@ -3615,4 +3750,136 @@ export async function deleteInventoryItem(id: string) {
   if (error) {
     throw error;
   }
+}
+
+export async function listPosSalesLiveOrDemo(): Promise<PosSale[]> {
+  if (!isSupabaseConfigured) {
+    const { listPosSales } = await import("./local-db");
+    return listPosSales();
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("pos_sales")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<{
+    id: string;
+    sale_number: string;
+    patient_id: string | null;
+    cashier_id: string;
+    payment_method: string | null;
+    payment_reference: string | null;
+    payment_notes: string | null;
+    subtotal: number;
+    total: number;
+    created_at: string;
+    updated_at: string;
+  }>).map(mapPosSaleRow);
+}
+
+export async function listPosSaleItemsLiveOrDemo(): Promise<PosSaleItem[]> {
+  if (!isSupabaseConfigured) {
+    const { listPosSaleItems } = await import("./local-db");
+    return listPosSaleItems();
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("pos_sale_items")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<{
+    id: string;
+    sale_id: string;
+    inventory_item_id: string;
+    item_name: string;
+    item_sku: string;
+    item_unit: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+    created_at: string;
+    updated_at: string;
+  }>).map(mapPosSaleItemRow);
+}
+
+export async function checkoutPosSaleLiveOrDemo(input: {
+  patientId?: string | null;
+  cashierId: string;
+  paymentMethod: PosPaymentMethod;
+  paymentReference?: string | null;
+  paymentNotes?: string | null;
+  items: Array<{
+    inventoryItemId: string;
+    quantity: number;
+    unitPrice?: number;
+  }>;
+}): Promise<{ sale: PosSale | null; items: PosSaleItem[] }> {
+  if (!isSupabaseConfigured) {
+    const { checkoutPosSale } = await import("./local-db");
+    return checkoutPosSale(input);
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await (client as any).rpc("checkout_pos_sale", {
+    p_patient_id: input.patientId ?? null,
+    p_cashier_id: input.cashierId,
+    p_payment_method: input.paymentMethod,
+    p_payment_reference: input.paymentReference ?? null,
+    p_payment_notes: input.paymentNotes ?? null,
+    p_items: input.items.map((item) => ({
+      inventory_item_id: item.inventoryItemId,
+      quantity: item.quantity,
+      unit_price: item.unitPrice ?? null,
+    })),
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const payload = data as {
+    sale?: {
+      id: string;
+      sale_number: string;
+      patient_id: string | null;
+      cashier_id: string;
+      payment_method: string | null;
+      payment_reference: string | null;
+      payment_notes: string | null;
+      subtotal: number;
+      total: number;
+      created_at: string;
+      updated_at: string;
+    } | null;
+    items?: Array<{
+      id: string;
+      sale_id: string;
+      inventory_item_id: string;
+      item_name: string;
+      item_sku: string;
+      item_unit: string;
+      quantity: number;
+      unit_price: number;
+      line_total: number;
+      created_at: string;
+      updated_at: string;
+    }>;
+  } | null;
+
+  return {
+    sale: payload?.sale ? mapPosSaleRow(payload.sale) : null,
+    items: (payload?.items ?? []).map(mapPosSaleItemRow),
+  };
 }

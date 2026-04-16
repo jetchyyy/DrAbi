@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   KeyRound,
   UserRound,
+  ShoppingCart,
 } from "lucide-react";
 
 import type { Permission, Role } from "../types/domain";
@@ -99,6 +100,13 @@ export const appNavigation: NavItem[] = [
     to: "/app/billing",
     icon: ReceiptText,
     permission: "billing.view",
+  },
+  {
+    label: "POS",
+    to: "/app/pos",
+    icon: ShoppingCart,
+    permission: "pos.view",
+    roles: ["owner_admin", "front_desk_cashier"],
   },
   {
     label: "Inventory",

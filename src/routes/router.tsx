@@ -24,6 +24,7 @@ import { SpecialistReferralsPage } from "../features/referrals/specialist-referr
 import { InventoryPage } from "../features/inventory/inventory-page";
 import { LaboratoryPage } from "../features/laboratory/laboratory-page";
 import { LabServiceReceiptScanPage } from "../features/laboratory/lab-service-receipt-scan-page";
+import { PosPage } from "../features/pos/pos-page";
 import { PatientDetailPage } from "../features/patients/patient-detail-page";
 import { PatientActionLogsPage } from "../features/patients/patient-action-logs-page";
 import { PatientQrLookupPage } from "../features/patients/patient-qr-lookup-page";
@@ -227,6 +228,10 @@ export const router = createBrowserRouter([
               {
                 element: <PermissionGate permission="billing.view" />,
                 children: [{ path: "billing", element: <BillingPage /> }],
+              },
+              {
+                element: <PermissionGate permission="pos.view" />,
+                children: [{ path: "pos", element: <PosPage /> }],
               },
               {
                 element: <PermissionGate permission="inventory.view" />,

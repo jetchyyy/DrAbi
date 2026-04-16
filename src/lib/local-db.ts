@@ -23,6 +23,9 @@ import type {
   LabServiceCategory,
   PatientActionLog,
   Patient,
+  PosPaymentMethod,
+  PosSale,
+  PosSaleItem,
   Permission,
   Prescription,
   Referral,
@@ -169,6 +172,8 @@ function buildSystemAccessRoles(): AccessRoleTemplate[] {
         'consultations.manage',
         'billing.view',
         'billing.manage',
+        'pos.view',
+        'pos.manage',
         'inventory.view',
         'inventory.manage',
         'laboratory.view',
@@ -214,7 +219,7 @@ function buildSystemAccessRoles(): AccessRoleTemplate[] {
       updatedAt: timestamp,
       name: 'Front Desk / Cashier',
       description: 'Reception and payment access for scheduling, billing, and bookings.',
-      permissions: ['dashboard.view', 'patients.view', 'patients.manage', 'appointments.view', 'appointments.manage', 'billing.view', 'billing.manage', 'laboratory.view', 'booking.view', 'booking.manage'],
+      permissions: ['dashboard.view', 'patients.view', 'patients.manage', 'appointments.view', 'appointments.manage', 'billing.view', 'billing.manage', 'pos.view', 'pos.manage', 'laboratory.view', 'booking.view', 'booking.manage'],
       isSystem: true,
     },
     {
@@ -1207,7 +1212,143 @@ export function deleteInventoryItemRecord(itemId: string) {
 }
 
 export function getInventoryItemByQrCode(qrCode: string) {
-  return getDatabase().inventoryItems.find((item) => item.qrCode === qrCode) ?? null;
+  const normalizedCode = qrCode.trim().toUpperCase();
+  return getDatabase().inventoryItems.find((item) => item.qrCode === normalizedCode || item.sku.trim().toUpperCase() === normalizedCode) ?? null;
+}
+
+export function listPosSales() {
+  return getDatabase().posSales;
+}
+
+export function listPosSaleItems() {
+  return getDatabase().posSaleItems;
+}
+
+export function createPosSaleRecord(input: Omit<PosSale, 'id' | 'createdAt' | 'updatedAt'>) {
+  const timestamp = new Date().toISOString();
+  return updateDatabase((draft) => {
+    draft.posSales.unshift({
+      ...input,
+      id: generateId('possale'),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }).posSales[0];
+}
+
+export function createPosSaleItemRecord(input: Omit<PosSaleItem, 'id' | 'createdAt' | 'updatedAt'>) {
+  const timestamp = new Date().toISOString();
+  return updateDatabase((draft) => {
+    draft.posSaleItems.unshift({
+      ...input,
+      id: generateId('positem'),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }).posSaleItems[0];
+}
+
+export function checkoutPosSale(input: {
+  patientId?: string | null;
+  cashierId: string;
+  paymentMethod: PosPaymentMethod;
+  paymentReference?: string | null;
+  paymentNotes?: string | null;
+  items: Array<{
+    inventoryItemId: string;
+    quantity: number;
+    unitPrice?: number;
+  }>;
+}) {
+  if (input.items.length === 0) {
+    throw new Error('Add at least one inventory item before checkout.');
+  }
+
+  const timestamp = new Date().toISOString();
+  const saleNumber = `POS-${Date.now()}`;
+
+  const nextDatabase = updateDatabase((draft) => {
+    const saleItems = input.items.map((entry) => {
+      const item = draft.inventoryItems.find((inventoryItem) => inventoryItem.id === entry.inventoryItemId);
+      if (!item) {
+        throw new Error('Inventory item not found.');
+      }
+
+      if (entry.quantity <= 0) {
+        throw new Error(`Quantity for ${item.name} must be at least 1.`);
+      }
+
+      if (item.stockOnHand < entry.quantity) {
+        throw new Error(`Only ${item.stockOnHand} ${item.unit} remaining for ${item.name}.`);
+      }
+
+      const unitPrice = Number(entry.unitPrice ?? item.sellingPrice ?? 0);
+      const lineTotal = unitPrice * entry.quantity;
+
+      return {
+        item,
+        quantity: entry.quantity,
+        unitPrice,
+        lineTotal,
+      };
+    });
+
+    const subtotal = saleItems.reduce((sum, entry) => sum + entry.lineTotal, 0);
+    const saleId = generateId('possale');
+
+    draft.posSales.unshift({
+      id: saleId,
+      saleNumber,
+      patientId: input.patientId ?? null,
+      cashierId: input.cashierId,
+      paymentMethod: input.paymentMethod,
+      paymentReference: input.paymentReference ?? null,
+      paymentNotes: input.paymentNotes ?? null,
+      subtotal,
+      total: subtotal,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    for (const entry of saleItems) {
+      entry.item.stockOnHand -= entry.quantity;
+      entry.item.updatedAt = timestamp;
+
+      draft.posSaleItems.unshift({
+        id: generateId('positem'),
+        saleId,
+        inventoryItemId: entry.item.id,
+        itemName: entry.item.name,
+        itemSku: entry.item.sku,
+        itemUnit: entry.item.unit,
+        quantity: entry.quantity,
+        unitPrice: entry.unitPrice,
+        lineTotal: entry.lineTotal,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+
+      draft.stockTransactions.unshift({
+        id: generateId('stock'),
+        itemId: entry.item.id,
+        type: 'sale',
+        quantity: entry.quantity,
+        remarks: `POS sale ${saleNumber}`,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+
+    draft.auditLogs.unshift(createAuditLog(input.cashierId, 'create', 'pos_sale'));
+  });
+
+  const sale = nextDatabase.posSales.find((entry) => entry.saleNumber === saleNumber) ?? null;
+  const items = sale ? nextDatabase.posSaleItems.filter((entry) => entry.saleId === sale.id) : [];
+
+  return {
+    sale,
+    items,
+  };
 }
 
 export function listInventoryUsageLogsByPatient(patientId: string) {
@@ -1531,8 +1672,12 @@ function normalizeDatabase(database: AppDatabase) {
     inventoryItems: database.inventoryItems.map((item) => ({
       ...item,
       qrCode: item.qrCode || generateInventoryQrCode(),
+      costPrice: item.costPrice ?? 0,
+      sellingPrice: item.sellingPrice ?? 0,
     })),
     inventoryUsageLogs: database.inventoryUsageLogs ?? [],
+    posSales: database.posSales ?? [],
+    posSaleItems: database.posSaleItems ?? [],
   };
 }
 
