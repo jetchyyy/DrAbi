@@ -1,43 +1,99 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { FormField } from '../../../components/forms/form-field';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import {
-  createLabBookingRequest,
   deleteLabBookingRequest,
   listLabBookingRequests,
   updateLabBookingRequestStatus,
 } from '../../../lib/local-db';
 import { queryKeys } from '../../../lib/query-keys';
+import { isSupabaseConfigured, supabase } from '../../../lib/supabase';
 import { cn } from '../../../lib/utils';
 import type { LabBookingRequest, LabBookingStatus } from '../../../types/domain';
+import { useCancelLabRequest, useClinicLabQueue, useUpdateLabRequestDetails } from '../../lab-requests/hooks/use-lab-requests';
 import { LabStatusPill } from './lab-status-pill';
 
-const labReqSchema = z.object({
-  patientName: z.string().min(2),
-  email: z.string().email(),
-  labTestName: z.string().min(2),
-  slotNumber: z.string().optional(),
-});
-type LabReqForm = z.infer<typeof labReqSchema>;
+interface ClinicListRow {
+  id: string;
+  name: string;
+}
+
+type RequestListItem = LabBookingRequest & {
+  source: 'local' | 'supabase';
+};
+
+function toBookingStatus(status: string): LabBookingStatus {
+  if (status === 'completed') return 'Completed';
+  if (status === 'cancelled') return 'Cancelled';
+  if (status === 'in_progress') return 'Confirmed';
+  return 'Pending';
+}
+
+function toLiveStatus(status: LabBookingStatus): 'pending' | 'in_progress' | 'completed' | 'cancelled' {
+  if (status === 'Completed') return 'completed';
+  if (status === 'Cancelled') return 'cancelled';
+  if (status === 'Confirmed') return 'in_progress';
+  return 'pending';
+}
 
 export function RequestsTab() {
   const qc = useQueryClient();
-  const { data: requests = [] } = useQuery({
+  const { data: localRequests = [] } = useQuery({
     queryKey: queryKeys.labBookingRequests,
     queryFn: async () => listLabBookingRequests(),
   });
 
+  const { data: availableClinics = [] } = useQuery({
+    queryKey: ['lab-form-clinics'],
+    queryFn: async () => {
+      if (!supabase) {
+        return [] as ClinicListRow[];
+      }
+
+      const { data, error } = await supabase.from('clinics').select('id, name').order('name', { ascending: true });
+      if (error) {
+        throw error;
+      }
+
+      return (data ?? []) as ClinicListRow[];
+    },
+    enabled: Boolean(isSupabaseConfigured),
+  });
+
+  const resolvedClinicId = availableClinics[0]?.id ?? null;
+  const { data: liveRequests = [] } = useClinicLabQueue(isSupabaseConfigured ? resolvedClinicId : null);
+  const updateLiveMutation = useUpdateLabRequestDetails();
+  const cancelLiveMutation = useCancelLabRequest();
+
   const [statusFilter, setStatusFilter] = useState<'All' | LabBookingStatus>('All');
   const [search, setSearch] = useState('');
-  const [viewModal, setViewModal] = useState<LabBookingRequest | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [viewModal, setViewModal] = useState<RequestListItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<RequestListItem | null>(null);
+
+  const requests = useMemo<RequestListItem[]>(() => {
+    const mappedLive: RequestListItem[] = liveRequests.map((request) => ({
+      id: request.id,
+      patientName: request.patientName ?? 'Unknown patient',
+      email: 'N/A',
+      labTestName: request.serviceName ?? request.serviceCategory,
+      slotNumber: null,
+      status: toBookingStatus(request.status),
+      confirmedAt: request.status === 'in_progress' ? request.updatedAt : null,
+      createdAt: request.createdAt,
+      updatedAt: request.updatedAt,
+      source: 'supabase',
+    }));
+
+    const mappedLocal = localRequests.map((request) => ({
+      ...request,
+      source: 'local' as const,
+    }));
+
+    return [...mappedLive, ...mappedLocal];
+  }, [liveRequests, localRequests]);
 
   const counts = useMemo(() => ({
     total: requests.length,
@@ -61,36 +117,42 @@ export function RequestsTab() {
   }, [requests, statusFilter, search]);
 
   const statusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: LabBookingStatus }) =>
-      updateLabBookingRequestStatus(id, status),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.labBookingRequests }),
-  });
+    mutationFn: async ({ request, status }: { request: RequestListItem; status: LabBookingStatus }) => {
+      if (request.source === 'supabase') {
+        return updateLiveMutation.mutateAsync({
+          requestId: request.id,
+          status: toLiveStatus(status),
+        });
+      }
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => deleteLabBookingRequest(id),
+      return updateLabBookingRequestStatus(request.id, status);
+    },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.labBookingRequests });
-      setDeleteId(null);
-      setViewModal(null);
+      if (resolvedClinicId) {
+        void qc.invalidateQueries({ queryKey: queryKeys.labQueue(resolvedClinicId) });
+      }
     },
   });
 
-  const form = useForm<LabReqForm>({
-    resolver: zodResolver(labReqSchema),
-    defaultValues: { patientName: '', email: '', labTestName: '', slotNumber: '' },
-  });
+  const deleteMutation = useMutation({
+    mutationFn: async (request: RequestListItem) => {
+      if (request.source === 'supabase') {
+        return cancelLiveMutation.mutateAsync({
+          requestId: request.id,
+          reason: 'Cancelled from laboratory requests tab.',
+        });
+      }
 
-  const createMutation = useMutation({
-    mutationFn: async (values: LabReqForm) =>
-      createLabBookingRequest({
-        patientName: values.patientName,
-        email: values.email,
-        labTestName: values.labTestName,
-        slotNumber: values.slotNumber || null,
-      }),
+      return deleteLabBookingRequest(request.id);
+    },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.labBookingRequests });
-      form.reset({ patientName: '', email: '', labTestName: '', slotNumber: '' });
+      if (resolvedClinicId) {
+        void qc.invalidateQueries({ queryKey: queryKeys.labQueue(resolvedClinicId) });
+      }
+      setDeleteTarget(null);
+      setViewModal(null);
     },
   });
 
@@ -103,123 +165,86 @@ export function RequestsTab() {
   ];
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_0.75fr]">
-      <div className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              className={cn(
-                'px-4 py-2 border text-xs font-extrabold uppercase tracking-widest transition-colors',
-                statusFilter === f.value ? f.activeColor : f.color,
-              )}
-              onClick={() => setStatusFilter(f.value)}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        <Input placeholder="Search patient, email, or test…" value={search} onChange={(e) => setSearch(e.target.value)} />
-
-        <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-          <div className="divide-y divide-slate-100">
-            {filtered.length === 0 ? (
-              <div className="px-6 py-12 text-center text-sm text-slate-400">No requests match the current filter.</div>
-            ) : (
-              filtered.map((req) => (
-                <div key={req.id} className="px-6 py-4 hover:bg-slate-50 transition-colors">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-bold text-sm text-slate-950 truncate">{req.patientName}</p>
-                      <p className="text-xs text-slate-500">{req.email}</p>
-                      <p className="text-xs font-medium text-violet-700 mt-0.5">{req.labTestName}</p>
-                      {req.slotNumber && <p className="text-[11px] text-slate-400 mt-0.5">Slot: {req.slotNumber}</p>}
-                      {req.confirmedAt && (
-                        <p className="text-[11px] text-slate-400 mt-0.5">
-                          Confirmed: {new Date(req.confirmedAt).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      <LabStatusPill status={req.status} />
-                      <div className="flex gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setViewModal(req)}
-                          className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
-                        >
-                          View
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteId(req.id)}
-                          className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors border border-transparent hover:border-rose-200"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {(['Pending', 'Confirmed', 'Completed', 'Cancelled'] as LabBookingStatus[]).map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        disabled={req.status === s || statusMutation.isPending}
-                        className={cn(
-                          'text-[10px] font-bold uppercase tracking-widest px-2 py-1 border transition-colors',
-                          req.status === s
-                            ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
-                            : 'border-slate-200 text-slate-600 hover:bg-slate-100',
-                        )}
-                        onClick={() => void statusMutation.mutate({ id: req.id, status: s })}
-                      >
-                        {String.fromCharCode(8594)} {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        {STATUS_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            className={cn(
+              'px-4 py-2 border text-xs font-extrabold uppercase tracking-widest transition-colors',
+              statusFilter === f.value ? f.activeColor : f.color,
             )}
-          </div>
-        </div>
+            onClick={() => setStatusFilter(f.value)}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
-      <div className="border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="bg-violet-700 px-6 py-4">
-          <p className="text-xs font-extrabold uppercase tracking-widest text-violet-200">New Request</p>
-          <p className="text-sm font-bold text-white mt-0.5">Submit Lab Booking</p>
+      <Input placeholder="Search patient, email, or test…" value={search} onChange={(e) => setSearch(e.target.value)} />
+
+      <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
+        <div className="divide-y divide-slate-100">
+          {filtered.length === 0 ? (
+            <div className="px-6 py-12 text-center text-sm text-slate-400">No requests match the current filter.</div>
+          ) : (
+            filtered.map((req) => (
+              <div key={req.id} className="px-6 py-4 hover:bg-slate-50 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm text-slate-950 truncate">{req.patientName}</p>
+                    <p className="text-xs text-slate-500">{req.email}</p>
+                    <p className="text-xs font-medium text-violet-700 mt-0.5">{req.labTestName}</p>
+                    {req.slotNumber && <p className="text-[11px] text-slate-400 mt-0.5">Slot: {req.slotNumber}</p>}
+                    {req.confirmedAt && (
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Confirmed: {new Date(req.confirmedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <LabStatusPill status={req.status} />
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setViewModal(req)}
+                        className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(req)}
+                        className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors border border-transparent hover:border-rose-200"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {(['Pending', 'Confirmed', 'Completed', 'Cancelled'] as LabBookingStatus[]).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      disabled={req.status === s || statusMutation.isPending}
+                      className={cn(
+                        'text-[10px] font-bold uppercase tracking-widest px-2 py-1 border transition-colors',
+                        req.status === s
+                          ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                          : 'border-slate-200 text-slate-600 hover:bg-slate-100',
+                      )}
+                      onClick={() => void statusMutation.mutate({ request: req, status: s })}
+                    >
+                      {String.fromCharCode(8594)} {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
         </div>
-        <form
-          className="divide-y divide-slate-100"
-          onSubmit={form.handleSubmit(async (v) => void createMutation.mutate(v))}
-        >
-          <div className="px-6 py-5 space-y-4">
-            <FormField label="Patient name" error={form.formState.errors.patientName?.message}>
-              <Input {...form.register('patientName')} />
-            </FormField>
-            <FormField label="Email" error={form.formState.errors.email?.message}>
-              <Input type="email" {...form.register('email')} />
-            </FormField>
-            <FormField label="Lab test name" error={form.formState.errors.labTestName?.message}>
-              <Input {...form.register('labTestName')} />
-            </FormField>
-            <FormField label="Slot number (optional)">
-              <Input {...form.register('slotNumber')} />
-            </FormField>
-          </div>
-          <div className="px-6 py-4 bg-slate-50">
-            <Button
-              className="w-full rounded-none bg-violet-700 hover:bg-violet-800 font-extrabold uppercase tracking-widest text-sm py-5"
-              disabled={createMutation.isPending}
-              type="submit"
-            >
-              {createMutation.isPending ? 'Submitting…' : 'Submit Request'}
-            </Button>
-          </div>
-        </form>
       </div>
 
       {viewModal && (
@@ -254,7 +279,7 @@ export function RequestsTab() {
                           : 'border-slate-200 text-slate-600 hover:bg-slate-100',
                       )}
                       onClick={() => {
-                        void statusMutation.mutateAsync({ id: viewModal.id, status: s }).then(() => {
+                        void statusMutation.mutateAsync({ request: viewModal, status: s }).then(() => {
                           setViewModal((prev) =>
                             prev
                               ? { ...prev, status: s, confirmedAt: s === 'Confirmed' ? new Date().toISOString() : prev.confirmedAt }
@@ -272,7 +297,7 @@ export function RequestsTab() {
             <div className="px-6 py-4 bg-slate-50 flex justify-between">
               <button
                 type="button"
-                onClick={() => setDeleteId(viewModal.id)}
+                onClick={() => setDeleteTarget(viewModal)}
                 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-rose-500 hover:text-rose-700"
               >
                 <Trash2 className="size-3.5" /> Delete
@@ -283,23 +308,27 @@ export function RequestsTab() {
         </div>
       )}
 
-      {deleteId && (
+      {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm bg-white shadow-xl overflow-hidden">
             <div className="px-6 py-4 bg-rose-600">
               <p className="text-sm font-bold text-white">Confirm Deletion</p>
             </div>
             <div className="px-6 py-5">
-              <p className="text-sm text-slate-700">This lab booking request will be permanently deleted. This action cannot be undone.</p>
+              <p className="text-sm text-slate-700">
+                {deleteTarget.source === 'supabase'
+                  ? 'This request will be marked as cancelled.'
+                  : 'This lab booking request will be permanently deleted. This action cannot be undone.'}
+              </p>
             </div>
             <div className="px-6 py-4 bg-slate-50 flex gap-3 justify-end">
-              <button type="button" onClick={() => setDeleteId(null)} className="px-4 py-2 border border-slate-200 text-xs font-bold uppercase tracking-widest text-slate-600 hover:bg-slate-100 transition-colors">
+              <button type="button" onClick={() => setDeleteTarget(null)} className="px-4 py-2 border border-slate-200 text-xs font-bold uppercase tracking-widest text-slate-600 hover:bg-slate-100 transition-colors">
                 Cancel
               </button>
               <button
                 type="button"
                 disabled={deleteMutation.isPending}
-                onClick={() => void deleteMutation.mutate(deleteId)}
+                onClick={() => void deleteMutation.mutate(deleteTarget)}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold uppercase tracking-widest transition-colors disabled:opacity-60"
               >
                 {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
