@@ -56,6 +56,12 @@ export const appNavigation: NavItem[] = [
     permission: "appointments.view",
   },
   {
+    label: "Patient Bookings List",
+    to: "/app/patient-bookings",
+    icon: CalendarDays,
+    permission: "appointments.view",
+  },
+  {
     label: "Referrals",
     to: "/app/referrals",
     icon: CalendarDays,
@@ -155,7 +161,14 @@ export const appNavigation: NavItem[] = [
     to: "/app/profile",
     icon: UserRound,
     permission: "dashboard.view",
-    roles: ["owner_admin", "doctor", "nurse_staff", "front_desk_cashier", "lab_staff", "inventory_staff"],
+    roles: [
+      "owner_admin",
+      "doctor",
+      "nurse_staff",
+      "front_desk_cashier",
+      "lab_staff",
+      "inventory_staff",
+    ],
   },
 ];
 

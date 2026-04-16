@@ -134,8 +134,8 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Partial<Database['public']['Tables']['clinics']['Row']>;
-        Update: Partial<Database['public']['Tables']['clinics']['Row']>;
+        Insert: Partial<Database["public"]["Tables"]["clinics"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["clinics"]["Row"]>;
       };
       medical_services: {
         Row: {
@@ -152,8 +152,12 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Partial<Database['public']['Tables']['medical_services']['Row']>;
-        Update: Partial<Database['public']['Tables']['medical_services']['Row']>;
+        Insert: Partial<
+          Database["public"]["Tables"]["medical_services"]["Row"]
+        >;
+        Update: Partial<
+          Database["public"]["Tables"]["medical_services"]["Row"]
+        >;
       };
       service_requests: {
         Row: {
@@ -178,8 +182,12 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Partial<Database['public']['Tables']['service_requests']['Row']>;
-        Update: Partial<Database['public']['Tables']['service_requests']['Row']>;
+        Insert: Partial<
+          Database["public"]["Tables"]["service_requests"]["Row"]
+        >;
+        Update: Partial<
+          Database["public"]["Tables"]["service_requests"]["Row"]
+        >;
       };
       service_request_media: {
         Row: {
@@ -190,8 +198,12 @@ export interface Database {
           uploaded_by: string;
           created_at: string;
         };
-        Insert: Partial<Database['public']['Tables']['service_request_media']['Row']>;
-        Update: Partial<Database['public']['Tables']['service_request_media']['Row']>;
+        Insert: Partial<
+          Database["public"]["Tables"]["service_request_media"]["Row"]
+        >;
+        Update: Partial<
+          Database["public"]["Tables"]["service_request_media"]["Row"]
+        >;
       };
       services: {
         Row: {
@@ -307,6 +319,8 @@ export interface Database {
           fee_amount: number;
           receipt_code: string | null;
           payment_status: string;
+          cancelled_reason: string | null;
+          rescheduled_reason: string | null;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;

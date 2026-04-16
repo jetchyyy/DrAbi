@@ -1,14 +1,15 @@
-﻿import { useQuery } from '@tanstack/react-query';
+﻿import { useQuery } from "@tanstack/react-query";
 
 import {
   getBookableServicesLiveOrDemo,
   getClinicSettingsLiveOrDemo,
   getDoctorAvailabilityByDoctorIdLiveOrDemo,
   getDoctorDirectoryLiveOrDemo,
+  getGeneralistDirectoryLiveOrDemo,
   listServicesLiveOrDemo,
   listSpecialtiesLiveOrDemo,
-} from '../lib/supabase-clinic';
-import { queryKeys } from '../lib/query-keys';
+} from "../lib/supabase-clinic";
+import { queryKeys } from "../lib/query-keys";
 
 export function useClinicSettingsData() {
   return useQuery({
@@ -41,7 +42,7 @@ export function useSpecialtiesCatalog() {
 export function useDoctorDirectory() {
   return useQuery({
     queryKey: queryKeys.doctors,
-    queryFn: getDoctorDirectoryLiveOrDemo,
+    queryFn: getGeneralistDirectoryLiveOrDemo,
   });
 }
 

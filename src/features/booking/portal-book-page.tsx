@@ -34,6 +34,7 @@ import {
   useCurrentPatient,
   useMyBookings,
 } from "./hooks/use-bookings";
+import { listBookingsByPatientIdLiveOrDemo } from "../../lib/supabase-clinic";
 import type { BookingPaymentStatus } from "../../types/domain";
 
 const bookingSchema = z.object({
@@ -46,6 +47,24 @@ const bookingSchema = z.object({
 
 type BookingFormValues = z.infer<typeof bookingSchema>;
 
+async function checkPatientHasPendingBookingForDate(
+  patientId: string,
+  date: string, // "YYYY-MM-DD"
+): Promise<boolean> {
+  const bookings = await listBookingsByPatientIdLiveOrDemo(patientId);
+
+  for (const booking of bookings.filter((b) => b.preferredDate === date)) {
+    const isPending =
+      booking.status === "pending" || booking.status === "rescheduled";
+    const hasAppointment = Boolean(booking.appointmentId);
+
+    if (isPending && !hasAppointment) {
+      return true;
+    }
+  }
+
+  return false;
+}
 type TimeSession = "morning" | "afternoon" | "evening";
 
 function isBookingPaymentStatus(value: string): value is BookingPaymentStatus {
@@ -53,13 +72,9 @@ function isBookingPaymentStatus(value: string): value is BookingPaymentStatus {
 }
 
 function getTimeSession(time: string): TimeSession {
-  const minutes = timeToMinutes(time);
-  if (minutes < 12 * 60) {
-    return "morning";
-  }
-  if (minutes < 17 * 60) {
-    return "afternoon";
-  }
+  const hour = parseInt(time.split(":")[0], 10);
+  if (hour < 12) return "morning";
+  if (hour < 17) return "afternoon";
   return "evening";
 }
 
@@ -86,6 +101,9 @@ export function PortalBookPage() {
     session?.user.id ?? profile?.email ?? null,
   );
   const createBooking = useCreateBooking(session?.user.id ?? null);
+
+  const today = new Date().toISOString().slice(0, 10);
+
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
@@ -132,7 +150,8 @@ export function PortalBookPage() {
   const unfinishedBooking = useMemo(
     () =>
       existingBookings.find(
-        (booking) => booking.status !== "cancelled",
+        (booking) =>
+          booking.status !== "cancelled" && booking.status !== "confirmed",
       ) ?? null,
     [existingBookings],
   );
@@ -243,18 +262,7 @@ export function PortalBookPage() {
     }
 
     setSelectedTimeSession(timeSessionOptions[0]);
-  }, [selectedTimeSession, timeSessionOptions]);
-
-  useEffect(() => {
-    if (!selectedPreferredTime) {
-      return;
-    }
-
-    const currentSession = getTimeSession(selectedPreferredTime);
-    if (selectedTimeSession !== currentSession) {
-      setSelectedTimeSession(currentSession);
-    }
-  }, [selectedPreferredTime, selectedTimeSession]);
+  }, [timeSessionOptions]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (!currentPatient) {
@@ -281,6 +289,26 @@ export function PortalBookPage() {
     if (requiresDoctor && selectedFeeAmount <= 0) {
       toast.error(
         "The selected doctor has no professional fee set yet. Please choose another doctor or contact the clinic.",
+      );
+      return;
+    }
+
+    // Guard: disallow selecting a past date (belt-and-suspenders on top of
+    // the input `min` attribute, which can be bypassed via DevTools).
+    if (values.preferredDate < today) {
+      toast.error("Please select today or a future date for your booking.");
+      return;
+    }
+
+    // Guard: block patients who already have a pending booking on the chosen
+    // date with no linked appointment_id.
+    const hasPendingBookingForDate = await checkPatientHasPendingBookingForDate(
+      currentPatient.id,
+      values.preferredDate,
+    );
+    if (hasPendingBookingForDate) {
+      toast.error(
+        "You have a pending or rescheduled booking for this date. Please finalize your existing checkout before creating a new booking.",
       );
       return;
     }
@@ -403,9 +431,7 @@ export function PortalBookPage() {
                 value={
                   selectedService?.serviceType === "consultation"
                     ? "Consultation"
-                    : selectedService?.serviceType === "follow_up"
-                      ? "Follow-up"
-                      : "Medical Service"
+                    : ""
                 }
               />
             </FormField>
@@ -440,7 +466,13 @@ export function PortalBookPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <FormField label="Preferred date">
-              <Input type="date" {...form.register("preferredDate")} />
+              {/* min locks the calendar to today and onwards in the browser UI.
+                  The onSubmit guard below catches any bypass attempt. */}
+              <Input
+                type="date"
+                min={today}
+                {...form.register("preferredDate")}
+              />
             </FormField>
             <FormField
               label="Time of day"
@@ -537,12 +569,15 @@ export function PortalBookPage() {
                               : "cursor-not-allowed border-rose-200 bg-rose-50 text-rose-500 opacity-80",
                         )}
                         disabled={isBooked}
-                        onClick={() =>
+                        // INSTEAD, sync the session inside the slot button's onClick
+                        onClick={() => {
                           form.setValue("preferredTime", time, {
                             shouldDirty: true,
                             shouldValidate: true,
-                          })
-                        }
+                          });
+                          // Sync session tab to match the chosen slot
+                          setSelectedTimeSession(getTimeSession(time));
+                        }}
                         type="button"
                       >
                         {formatTimeLabel(time)}
@@ -574,7 +609,9 @@ export function PortalBookPage() {
             />
           </FormField>
 
-          {selectedDate && availableTimeSlots.length === 0 ? (
+          {selectedDate &&
+          allTimeSlots.length > 0 &&
+          availableTimeSlots.length === 0 ? (
             <p className="text-sm font-medium text-rose-600">
               This time slot set is already full or unavailable for the selected
               date.
@@ -590,8 +627,8 @@ export function PortalBookPage() {
               createBooking.isPending ||
               !currentPatient ||
               Boolean(unfinishedBooking) ||
-              availableTimeSlots.length === 0 ||
               !selectedPreferredTime ||
+              blockedSlots.includes(selectedPreferredTime) ||
               (requiresDoctor && !selectedDoctorId)
             }
             type="submit"
