@@ -17,6 +17,8 @@ export type Permission =
   | "consultations.manage"
   | "billing.view"
   | "billing.manage"
+  | "pos.view"
+  | "pos.manage"
   | "inventory.view"
   | "inventory.manage"
   | "laboratory.view"
@@ -59,11 +61,12 @@ export type LabOrderStatus =
   | "processing"
   | "ready"
   | "released";
-export type StockTransactionType = "stock_in" | "stock_out" | "adjustment";
+export type StockTransactionType = "stock_in" | "stock_out" | "adjustment" | "sale";
 export type VisitType = "in_person" | "teleconsultation";
 export type ServiceDeliveryMode = "in_person" | "teleconsultation" | "hybrid";
 export type PatientIntakeSource = "online_registration" | "staff_walk_in";
 export type PatientVisitStatus = "registered_no_visit" | "visited_clinic";
+export type PosPaymentMethod = "cash" | "gcash" | "card";
 
 export interface BaseRecord {
   id: string;
@@ -314,6 +317,8 @@ export interface InventoryItem extends BaseRecord {
   unit: string;
   stockOnHand: number;
   reorderLevel: number;
+  costPrice: number;
+  sellingPrice: number;
 }
 
 export interface StockTransaction extends BaseRecord {
@@ -331,6 +336,28 @@ export interface InventoryUsageLog extends BaseRecord {
   notes: string;
   scannedCode: string;
   recordedBy: string;
+}
+
+export interface PosSaleItem extends BaseRecord {
+  saleId: string;
+  inventoryItemId: string;
+  itemName: string;
+  itemSku: string;
+  itemUnit: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface PosSale extends BaseRecord {
+  saleNumber: string;
+  patientId?: string | null;
+  cashierId: string;
+  paymentMethod: PosPaymentMethod;
+  paymentReference?: string | null;
+  paymentNotes?: string | null;
+  subtotal: number;
+  total: number;
 }
 
 export type LabServiceCategory = "laboratoryTests" | "imagingTests";
@@ -421,6 +448,8 @@ export interface AppDatabase {
   inventoryItems: InventoryItem[];
   stockTransactions: StockTransaction[];
   inventoryUsageLogs: InventoryUsageLog[];
+  posSales: PosSale[];
+  posSaleItems: PosSaleItem[];
   labServices: LabService[];
   labOrders: LabOrder[];
   labResults: LabResult[];

@@ -22,6 +22,8 @@ export function createSeedDatabase(): AppDatabase {
     inventoryItems: [],
     stockTransactions: [],
     inventoryUsageLogs: [],
+    posSales: [],
+    posSaleItems: [],
     labServices: [],
     labOrders: [],
     labResults: [],

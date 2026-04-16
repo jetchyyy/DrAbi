@@ -26,6 +26,8 @@ const inventorySchema = z.object({
   unit: z.string().min(1, 'Unit is required.'),
   stockOnHand: z.number().min(0, 'Stock on hand cannot be negative.'),
   reorderLevel: z.number().min(0, 'Reorder level cannot be negative.'),
+  costPrice: z.number().min(0, 'Cost price cannot be negative.'),
+  sellingPrice: z.number().min(0, 'Selling price cannot be negative.'),
 });
 
 export type InventoryFormValues = z.infer<typeof inventorySchema>;
@@ -86,7 +88,7 @@ export function InventoryPage() {
   const createItemMutation = useMutation({
     mutationFn: async (values: InventoryFormValues) => createInventoryItem(values),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: [queryKeys.inventory] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
     },
   });
 
@@ -95,14 +97,14 @@ export function InventoryPage() {
       return updateInventoryItems(itemId, values)
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: [queryKeys.inventory] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
     },
   });
 
   const deleteItemMutation = useMutation({
     mutationFn: async (itemId: string) => deleteInventoryItem(itemId),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: [queryKeys.inventory] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
     },
   });
 
@@ -116,6 +118,8 @@ export function InventoryPage() {
       unit: 'box',
       stockOnHand: 0,
       reorderLevel: 10,
+      costPrice: 0,
+      sellingPrice: 0,
     },
   });
 
@@ -156,6 +160,8 @@ export function InventoryPage() {
       unit: 'box',
       stockOnHand: 0,
       reorderLevel: 10,
+      costPrice: 0,
+      sellingPrice: 0,
     });
     setEditingItemId(null);
     setIsItemModalOpen(true);
@@ -175,6 +181,8 @@ export function InventoryPage() {
       unit: item.unit,
       stockOnHand: item.stockOnHand,
       reorderLevel: item.reorderLevel,
+      costPrice: item.costPrice,
+      sellingPrice: item.sellingPrice,
     });
     setEditingItemId(itemId);
     setIsItemModalOpen(true);
@@ -306,7 +314,7 @@ export function InventoryPage() {
               <div>
                 <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">Inventory Control</p>
                 <h1 className="text-xl font-extrabold tracking-tight text-slate-950">Inventory Items</h1>
-                <p className="mt-1 text-sm text-slate-500">Track stock, QR-ready labels, and low-stock items from one table.</p>
+                <p className="mt-1 text-sm text-slate-500">Track stock, pricing, QR-ready labels, and low-stock items from one table.</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -339,6 +347,7 @@ export function InventoryPage() {
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Item</th>
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Category / Supplier</th>
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Stock</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Pricing</th>
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">QR Code</th>
                     <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Actions</th>
                   </tr>
@@ -346,7 +355,7 @@ export function InventoryPage() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredItems.length === 0 ? (
                     <tr>
-                      <td className="px-6 py-12 text-center text-sm text-slate-400" colSpan={5}>
+                      <td className="px-6 py-12 text-center text-sm text-slate-400" colSpan={6}>
                         No inventory items yet.
                       </td>
                     </tr>
@@ -385,6 +394,10 @@ export function InventoryPage() {
                                 Reorder {item.reorderLevel}
                               </span>
                             </div>
+                          </td>
+                          <td className="px-6 py-4 align-top text-sm text-slate-600">
+                            <p>Cost: PHP {item.costPrice.toFixed(2)}</p>
+                            <p className="mt-1 text-xs font-semibold text-slate-800">Sell: PHP {item.sellingPrice.toFixed(2)}</p>
                           </td>
                           <td className="px-6 py-4 align-top">
                             <span className="inline-flex items-center gap-1 break-all bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-600">
@@ -493,6 +506,14 @@ export function InventoryPage() {
                     </FormField>
                     <FormField error={form.formState.errors.reorderLevel?.message} label="Reorder level">
                       <Input type="number" {...form.register('reorderLevel', { valueAsNumber: true })} />
+                    </FormField>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField error={form.formState.errors.costPrice?.message} label="Cost price">
+                      <Input min="0" step="0.01" type="number" {...form.register('costPrice', { valueAsNumber: true })} />
+                    </FormField>
+                    <FormField error={form.formState.errors.sellingPrice?.message} label="Selling price">
+                      <Input min="0" step="0.01" type="number" {...form.register('sellingPrice', { valueAsNumber: true })} />
                     </FormField>
                   </div>
                   <div className="rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3 text-sm text-orange-950">
