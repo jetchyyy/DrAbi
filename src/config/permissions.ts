@@ -62,6 +62,7 @@ export const rolePermissions: Record<Role, Permission[]> = {
     'appointments.manage',
     'billing.view',
     'billing.manage',
+    'laboratory.view',
     'booking.view',
     'booking.manage',
   ],

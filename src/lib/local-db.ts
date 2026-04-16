@@ -214,7 +214,7 @@ function buildSystemAccessRoles(): AccessRoleTemplate[] {
       updatedAt: timestamp,
       name: 'Front Desk / Cashier',
       description: 'Reception and payment access for scheduling, billing, and bookings.',
-      permissions: ['dashboard.view', 'patients.view', 'patients.manage', 'appointments.view', 'appointments.manage', 'billing.view', 'billing.manage', 'booking.view', 'booking.manage'],
+      permissions: ['dashboard.view', 'patients.view', 'patients.manage', 'appointments.view', 'appointments.manage', 'billing.view', 'billing.manage', 'laboratory.view', 'booking.view', 'booking.manage'],
       isSystem: true,
     },
     {

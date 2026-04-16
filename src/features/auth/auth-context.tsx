@@ -254,7 +254,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [profile]);
 
   const value = useMemo<AuthContextValue>(() => {
-    const permissions = profile ? (profile.permissions ?? rolePermissions[profile.role]) : [];
+    const permissions = profile
+      ? Array.from(new Set([...(rolePermissions[profile.role] ?? []), ...(profile.permissions ?? [])]))
+      : [];
     const pinSetupRequired = Boolean(profile && hasSecurityPin === false && profile.role !== 'patient');
     const pinVerificationRequired = Boolean(profile && hasSecurityPin && !pinVerified && profile.role !== 'patient');
 

@@ -6,8 +6,58 @@ import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { getDatabase, listLabOrders, updateLabOrderSchedule } from '../../../lib/local-db';
 import { queryKeys } from '../../../lib/query-keys';
+import { isSupabaseConfigured, supabase } from '../../../lib/supabase';
 import { cn } from '../../../lib/utils';
+import { useClinicLabQueue } from '../../lab-requests/hooks/use-lab-requests';
 import { LabStatusPill } from './lab-status-pill';
+
+const LAB_REQUEST_SCHEDULES_KEY = 'odc.lab-request-schedules.v1';
+
+interface ClinicListRow {
+  id: string;
+  name: string;
+}
+
+interface ScheduleEntry {
+  date: string;
+  time: string;
+}
+
+interface ScheduleOrderItem {
+  id: string;
+  patientLabel: string;
+  serviceLabel: string;
+  status: string;
+  urgentFlag: boolean;
+  schedDate: string | null;
+  schedTime: string | null;
+}
+
+function loadSupabaseSchedules(): Record<string, ScheduleEntry> {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  const raw = window.localStorage.getItem(LAB_REQUEST_SCHEDULES_KEY);
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, ScheduleEntry>;
+    return parsed ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function saveSupabaseSchedules(entries: Record<string, ScheduleEntry>) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(LAB_REQUEST_SCHEDULES_KEY, JSON.stringify(entries));
+}
 
 function generateCalendarDays(): Date[] {
   const today = new Date();
@@ -40,7 +90,64 @@ const TIME_SLOTS = generateTimeSlots();
 export function ScheduleTab() {
   const database = getDatabase();
   const qc = useQueryClient();
-  const { data: orders = [] } = useQuery({ queryKey: queryKeys.laboratory, queryFn: async () => listLabOrders() });
+
+  const { data: localOrders = [] } = useQuery({
+    queryKey: queryKeys.laboratory,
+    queryFn: async () => listLabOrders(),
+    enabled: !isSupabaseConfigured,
+  });
+
+  const { data: availableClinics = [] } = useQuery({
+    queryKey: ['lab-form-clinics'],
+    queryFn: async () => {
+      if (!supabase) {
+        return [] as ClinicListRow[];
+      }
+
+      const { data, error } = await supabase.from('clinics').select('id, name').order('name', { ascending: true });
+      if (error) {
+        throw error;
+      }
+
+      return (data ?? []) as ClinicListRow[];
+    },
+    enabled: Boolean(isSupabaseConfigured),
+  });
+
+  const resolvedClinicId = availableClinics[0]?.id ?? null;
+  const { data: liveOrders = [] } = useClinicLabQueue(isSupabaseConfigured ? resolvedClinicId : null);
+  const [supabaseSchedules, setSupabaseSchedules] = useState<Record<string, ScheduleEntry>>(() => loadSupabaseSchedules());
+
+  const orders = useMemo<ScheduleOrderItem[]>(() => {
+    if (isSupabaseConfigured) {
+      return liveOrders.map((order) => {
+        const persisted = supabaseSchedules[order.id];
+        return {
+          id: order.id,
+          patientLabel: order.patientName ?? 'Unknown patient',
+          serviceLabel: order.serviceName ?? order.serviceCategory,
+          status: order.status,
+          urgentFlag: order.urgentFlag,
+          schedDate: persisted?.date ?? null,
+          schedTime: persisted?.time ?? null,
+        };
+      });
+    }
+
+    return localOrders.map((order) => {
+      const patient = database.patients.find((item) => item.id === order.patientId);
+      const service = database.labServices.find((item) => item.id === order.labServiceId);
+      return {
+        id: order.id,
+        patientLabel: [patient?.firstName, patient?.lastName].filter(Boolean).join(' ') || order.patientId,
+        serviceLabel: service?.name ?? order.labServiceId,
+        status: order.status,
+        urgentFlag: Boolean(order.urgentFlag),
+        schedDate: order.schedDate ?? null,
+        schedTime: order.schedTime ?? null,
+      };
+    });
+  }, [database.labServices, database.patients, liveOrders, localOrders, supabaseSchedules]);
 
   const unscheduled = useMemo(() => orders.filter((o) => !o.schedDate), [orders]);
 
@@ -90,25 +197,40 @@ export function ScheduleTab() {
   const filteredOrders = useMemo(() => {
     const q = search.toLowerCase();
     return unscheduled.filter((o) => {
-      const patient = database.patients.find((p) => p.id === o.patientId);
-      const svc = database.labServices.find((s) => s.id === o.labServiceId);
       return (
         !q ||
-        patient?.firstName?.toLowerCase().includes(q) ||
-        patient?.lastName?.toLowerCase().includes(q) ||
-        svc?.name?.toLowerCase().includes(q)
+        o.patientLabel.toLowerCase().includes(q) ||
+        o.serviceLabel.toLowerCase().includes(q)
       );
     });
-  }, [unscheduled, search, database]);
+  }, [search, unscheduled]);
 
   const scheduleMutation = useMutation({
     mutationFn: async () => {
       if (!selectedOrderId || !selectedDate || !selectedTime) throw new Error('All fields required');
       if (isSlotConflicted(selectedTime)) throw new Error('This slot is already taken. Choose another time.');
-      return updateLabOrderSchedule(selectedOrderId, selectedDate, selectedTime);
+
+      if (isSupabaseConfigured) {
+        return { mode: 'supabase' as const, id: selectedOrderId, date: selectedDate, time: selectedTime };
+      }
+
+      await updateLabOrderSchedule(selectedOrderId, selectedDate, selectedTime);
+      return { mode: 'local' as const, id: selectedOrderId, date: selectedDate, time: selectedTime };
     },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: queryKeys.laboratory });
+    onSuccess: (result) => {
+      if (result.mode === 'supabase') {
+        setSupabaseSchedules((current) => {
+          const next = {
+            ...current,
+            [result.id]: { date: result.date, time: result.time },
+          };
+          saveSupabaseSchedules(next);
+          return next;
+        });
+      } else {
+        void qc.invalidateQueries({ queryKey: queryKeys.laboratory });
+      }
+
       setSelectedOrderId('');
       setSelectedDate('');
       setSelectedTime('');
@@ -143,8 +265,6 @@ export function ScheduleTab() {
             </div>
           ) : (
             filteredOrders.map((order) => {
-              const patient = database.patients.find((p) => p.id === order.patientId);
-              const svc = database.labServices.find((s) => s.id === order.labServiceId);
               return (
                 <button
                   key={order.id}
@@ -158,10 +278,10 @@ export function ScheduleTab() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="font-bold text-sm text-slate-950">{svc?.name}</p>
+                        <p className="font-bold text-sm text-slate-950">{order.serviceLabel}</p>
                         {order.urgentFlag && <AlertTriangle className="size-3.5 text-rose-500" />}
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">{patient?.firstName} {patient?.lastName}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{order.patientLabel}</p>
                     </div>
                     <LabStatusPill status={order.status} />
                   </div>

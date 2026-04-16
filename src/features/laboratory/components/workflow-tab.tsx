@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertTriangle, Camera, FileUp, FlaskConical, Paperclip, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
+import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 
@@ -83,6 +84,7 @@ function buildName(profile: {
 
 export function WorkflowTab() {
   const { profile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const role = profile?.role ?? 'patient';
   const canCreateRequests = role === 'doctor' || role === 'owner_admin';
   const canProcessRequests = role === 'lab_staff' || role === 'owner_admin';
@@ -90,6 +92,7 @@ export function WorkflowTab() {
   const [search, setSearch] = useState('');
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [autoOpenedRequestId, setAutoOpenedRequestId] = useState<string | null>(null);
   const [resultAttachments, setResultAttachments] = useState<File[]>([]);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -147,7 +150,7 @@ export function WorkflowTab() {
         return [] as OptionItem[];
       }
 
-      let query = supabase
+      const query = supabase
         .from('profiles')
         .select('id, full_name, first_name, last_name')
         .eq('role', 'patient')
@@ -173,7 +176,7 @@ export function WorkflowTab() {
         return [] as OptionItem[];
       }
 
-      let query = supabase
+      const query = supabase
         .from('profiles')
         .select('id, full_name, first_name, last_name')
         .eq('role', 'doctor')
@@ -369,6 +372,43 @@ export function WorkflowTab() {
     setIsOrderModalOpen(false);
   };
 
+  useEffect(() => {
+    const requestedOrderId = searchParams.get('request');
+    if (!requestedOrderId || !canProcessRequests || autoOpenedRequestId === requestedOrderId) {
+      return;
+    }
+
+    const matchedOrder = orders.find((order) => order.id === requestedOrderId);
+    if (!matchedOrder) {
+      return;
+    }
+
+    form.reset({
+      patientId: matchedOrder.patientId,
+      serviceId: matchedOrder.serviceId,
+      serviceCategory: matchedOrder.serviceCategory,
+      requestedBy: matchedOrder.requestedBy,
+      status: matchedOrder.status === 'pending' || matchedOrder.status === 'in_progress' || matchedOrder.status === 'completed' || matchedOrder.status === 'cancelled' ? matchedOrder.status : 'pending',
+      notes: matchedOrder.patientNotes ?? '',
+      resultSummary: matchedOrder.resultData ?? '',
+      urgentFlag: matchedOrder.urgentFlag,
+    });
+    setEditingOrderId(matchedOrder.id);
+    setResultAttachments([]);
+    setIsOrderModalOpen(true);
+    setAutoOpenedRequestId(requestedOrderId);
+  }, [autoOpenedRequestId, canProcessRequests, form, orders, searchParams]);
+
+  useEffect(() => {
+    if (!autoOpenedRequestId) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('request');
+    setSearchParams(nextParams, { replace: true });
+  }, [autoOpenedRequestId, searchParams, setSearchParams]);
+
   const closeFeedbackModal = () => {
     setFeedbackModal((currentState) => ({
       ...currentState,
@@ -377,6 +417,8 @@ export function WorkflowTab() {
   };
 
   const isProcessingExistingOrder = Boolean(editingOrderId && canProcessRequests);
+  const isLabStaffProcessingExistingOrder = role === 'lab_staff' && isProcessingExistingOrder;
+  const processingOrder = editingOrderId ? orders.find((entry) => entry.id === editingOrderId) : null;
   const showCreationFields = canCreateRequests && !isProcessingExistingOrder;
   const workflowModeLabel = hasDualAccess ? 'Administrator mode' : canProcessRequests ? 'Lab staff mode' : canCreateRequests ? 'Doctor mode' : 'Read-only mode';
   const modalTitle = isProcessingExistingOrder
@@ -409,32 +451,39 @@ export function WorkflowTab() {
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       if (isProcessingExistingOrder && editingOrderId) {
+        const requestNotes = isLabStaffProcessingExistingOrder
+          ? processingOrder?.patientNotes ?? values.notes ?? ''
+          : values.notes ?? '';
+        const urgentFlag = isLabStaffProcessingExistingOrder
+          ? Boolean(processingOrder?.urgentFlag)
+          : values.urgentFlag;
+
         if (values.status === 'in_progress') {
           await startMutation.mutateAsync(editingOrderId);
           await updateDetailsMutation.mutateAsync({
             requestId: editingOrderId,
             status: 'in_progress',
-            patientNotes: values.notes ?? '',
-            urgentFlag: values.urgentFlag,
+            patientNotes: requestNotes,
+            urgentFlag,
           });
         } else if (values.status === 'pending') {
           await updateDetailsMutation.mutateAsync({
             requestId: editingOrderId,
             status: 'pending',
-            patientNotes: values.notes ?? '',
-            urgentFlag: values.urgentFlag,
+            patientNotes: requestNotes,
+            urgentFlag,
           });
         } else if (values.status === 'completed') {
           await completeMutation.mutateAsync({
             requestId: editingOrderId,
             resultData: values.resultSummary ?? '',
-            resultNotes: values.notes ?? '',
+            resultNotes: requestNotes,
             attachments: resultAttachments,
           });
         } else if (values.status === 'cancelled') {
           await cancelMutation.mutateAsync({
             requestId: editingOrderId,
-            reason: values.notes ?? '',
+            reason: requestNotes,
           });
         }
 
@@ -731,6 +780,19 @@ export function WorkflowTab() {
               <div>
                 <p className="text-xs font-extrabold uppercase tracking-widest text-violet-200">Lab Order</p>
                 <p className="text-sm font-bold text-white mt-0.5">{modalTitle}</p>
+                {isLabStaffProcessingExistingOrder ? (
+                  <div className="mt-2">
+                    <span
+                      className={
+                        form.getValues('urgentFlag')
+                          ? 'inline-flex items-center border border-rose-300 bg-rose-500/20 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-rose-100'
+                          : 'inline-flex items-center border border-slate-300/70 bg-slate-600/30 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-100'
+                      }
+                    >
+                      {form.getValues('urgentFlag') ? 'Urgent Flag' : 'Routine Flag'}
+                    </span>
+                  </div>
+                ) : null}
               </div>
               <button
                 aria-label="Close lab order modal"
@@ -799,7 +861,13 @@ export function WorkflowTab() {
                     </Select>
                   </FormField>
                   <FormField error={form.formState.errors.notes?.message} label="Request notes">
-                    <Textarea {...form.register('notes')} />
+                    {isLabStaffProcessingExistingOrder ? (
+                      <div className="min-h-24 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 whitespace-pre-wrap">
+                        {form.getValues('notes')?.trim() ? form.getValues('notes') : 'No request notes provided.'}
+                      </div>
+                    ) : (
+                      <Textarea {...form.register('notes')} />
+                    )}
                   </FormField>
                   <FormField error={form.formState.errors.resultSummary?.message} label="Result summary">
                     <Textarea {...form.register('resultSummary')} />
@@ -850,10 +918,12 @@ export function WorkflowTab() {
                       ) : null}
                     </div>
                   ) : null}
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="accent-rose-500" {...form.register('urgentFlag')} />
-                    <span className="text-sm font-medium text-slate-700">Mark as urgent</span>
-                  </label>
+                  {!isLabStaffProcessingExistingOrder ? (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" className="accent-rose-500" {...form.register('urgentFlag')} />
+                      <span className="text-sm font-medium text-slate-700">Mark as urgent</span>
+                    </label>
+                  ) : null}
                 </div>
               </div>
               <div className="px-6 py-4 bg-slate-50 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

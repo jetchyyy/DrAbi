@@ -96,8 +96,9 @@ async function resolvePatientProfileId(candidateId: string) {
     throw profileError;
   }
 
-  if (profileHit?.id) {
-    return profileHit.id;
+  const matchedProfile = profileHit as Pick<ProfileRow, 'id'> | null;
+  if (matchedProfile?.id) {
+    return matchedProfile.id;
   }
 
   const { data: patientHit, error: patientError } = await client
@@ -396,6 +397,15 @@ export const labRequestService = {
       ...filters,
       resultStatus: filters?.resultStatus ?? 'completed',
     });
+  },
+
+  async getPatientRequests(patientId: string, filters?: LabRequestFilters) {
+    if (!isSupabaseConfigured) {
+      return [];
+    }
+
+    const resolvedPatientId = await resolvePatientProfileId(patientId);
+    return listRequestsByColumn('patient_id', resolvedPatientId, filters);
   },
 
   async getDoctorRequestedLabs(doctorId: string, filters?: LabRequestFilters) {

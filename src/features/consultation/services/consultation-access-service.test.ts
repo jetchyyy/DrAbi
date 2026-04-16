@@ -7,15 +7,11 @@
  * 3. Backward compatibility of refactored invoice query
  */
 
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { getLatestInvoiceByPatientIdLiveOrDemo } from '../../../lib/supabase-clinic';
 import {
   getDatabase,
   setDatabase,
-  createPatient,
-  createAppointment,
-  createInvoice,
-  createBooking,
 } from '../../../lib/local-db';
 
 /**
@@ -66,9 +62,9 @@ describe('getLatestInvoiceByPatientIdLiveOrDemo', () => {
       const oldAppt = {
         id: appointmentAId,
         patientId,
-        doctorId: null,
-        specialtyId: null,
-        serviceId: null,
+        doctorId: '',
+        specialtyId: '',
+        serviceId: '',
         bookingId: null,
         consultationId: null,
         completedBy: null,
@@ -91,9 +87,9 @@ describe('getLatestInvoiceByPatientIdLiveOrDemo', () => {
       const newAppt = {
         id: appointmentBId,
         patientId,
-        doctorId: null,
-        specialtyId: null,
-        serviceId: null,
+        doctorId: '',
+        specialtyId: '',
+        serviceId: '',
         bookingId: null,
         consultationId: null,
         completedBy: null,
@@ -165,9 +161,9 @@ describe('getLatestInvoiceByPatientIdLiveOrDemo', () => {
       const appt = {
         id: appointmentId,
         patientId,
-        doctorId: null,
-        specialtyId: null,
-        serviceId: null,
+        doctorId: '',
+        specialtyId: '',
+        serviceId: '',
         bookingId: null,
         consultationId: null,
         completedBy: null,
@@ -208,9 +204,9 @@ describe('getLatestInvoiceByPatientIdLiveOrDemo', () => {
       const appt1 = {
         id: appt1Id,
         patientId,
-        doctorId: null,
-        specialtyId: null,
-        serviceId: null,
+        doctorId: '',
+        specialtyId: '',
+        serviceId: '',
         bookingId: null,
         consultationId: null,
         completedBy: null,
@@ -232,9 +228,9 @@ describe('getLatestInvoiceByPatientIdLiveOrDemo', () => {
       const appt2 = {
         id: appt2Id,
         patientId,
-        doctorId: null,
-        specialtyId: null,
-        serviceId: null,
+        doctorId: '',
+        specialtyId: '',
+        serviceId: '',
         bookingId: null,
         consultationId: null,
         completedBy: null,
@@ -318,9 +314,9 @@ describe('getLatestInvoiceByPatientIdLiveOrDemo', () => {
       const oldAppt = {
         id: oldAppointmentId,
         patientId,
-        doctorId: null,
-        specialtyId: null,
-        serviceId: null,
+        doctorId: '',
+        specialtyId: '',
+        serviceId: '',
         bookingId: null,
         consultationId: null,
         completedBy: null,
@@ -342,9 +338,9 @@ describe('getLatestInvoiceByPatientIdLiveOrDemo', () => {
       const newAppt = {
         id: newAppointmentId,
         patientId,
-        doctorId: null,
-        specialtyId: null,
-        serviceId: null,
+        doctorId: '',
+        specialtyId: '',
+        serviceId: '',
         bookingId: null,
         consultationId: null,
         completedBy: null,
