@@ -54,6 +54,8 @@ export interface LabRequestRecord {
   serviceCategory: string;
   department: string;
   transactionType: string;
+  paymentStatus: 'pending_cashier' | 'paid' | string;
+  receiptCode: string | null;
   status: LabRequestStatus | string;
   sampleStatus: LabSampleStatus | string;
   resultStatus: LabResultStatus | string;

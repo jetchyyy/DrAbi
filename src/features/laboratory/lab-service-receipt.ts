@@ -16,11 +16,13 @@ export function extractLabServiceReceiptRequestId(value: string) {
 
   try {
     const parsedUrl = new URL(normalizedValue);
-    return (parsedUrl.searchParams.get(LAB_RECEIPT_QUERY_KEY) ?? '').trim();
+    const queryValue = (parsedUrl.searchParams.get(LAB_RECEIPT_QUERY_KEY) ?? '').trim();
+    return queryValue || normalizedValue;
   } catch {
     try {
       const parsedRelativeUrl = new URL(normalizedValue, 'https://odyssey-clinic.local');
-      return (parsedRelativeUrl.searchParams.get(LAB_RECEIPT_QUERY_KEY) ?? '').trim();
+      const queryValue = (parsedRelativeUrl.searchParams.get(LAB_RECEIPT_QUERY_KEY) ?? '').trim();
+      return queryValue || normalizedValue;
     } catch {
       return normalizedValue;
     }

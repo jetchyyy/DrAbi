@@ -172,3 +172,20 @@ export function useUpdateLabRequestDetails() {
     },
   });
 }
+
+export function useConfirmLabRequestByFrontDesk() {
+  return useMutation({
+    mutationFn: async (requestId: string) => labRequestService.confirmRequestByFrontDesk(requestId),
+    onSuccess: (record) => {
+      if (!record) {
+        return;
+      }
+
+      void queryClient.invalidateQueries({ queryKey: ['lab-queue', record.clinicId] });
+      void queryClient.invalidateQueries({ queryKey: ['appointment-lab-requests', record.appointmentId] });
+      void queryClient.invalidateQueries({ queryKey: ['lab-request', record.id] });
+      void queryClient.invalidateQueries({ queryKey: ['patient-lab-results', record.patientId] });
+      void queryClient.invalidateQueries({ queryKey: ['patient-medical-timeline', record.patientId] });
+    },
+  });
+}

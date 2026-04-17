@@ -59,6 +59,19 @@ function isMissingAppointmentColumnError(error: unknown) {
   return text.includes('appointment_id') && (details.code === '42703' || details.code === 'PGRST204' || details.code === 'PGRST100');
 }
 
+function isMissingMarkPaidRpcError(error: unknown) {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const message = String((error as { message?: unknown }).message ?? '').toLowerCase();
+  return message.includes('mark_lab_request_paid_by_cashier') && message.includes('schema cache');
+}
+
+function isUuidLike(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.trim());
+}
+
 function isMissingCreateLabServiceRequestSignature(error: unknown) {
   if (!error || typeof error !== 'object') {
     return false;
@@ -181,6 +194,8 @@ async function hydrateRequests(rows: ServiceRequestRow[]): Promise<LabRequestRec
     serviceCategory: row.service_category,
     department: row.department,
     transactionType: row.transaction_type,
+    paymentStatus: row.payment_status,
+    receiptCode: row.receipt_code,
     status: row.status,
     sampleStatus: row.sample_status,
     resultStatus: row.result_status,
@@ -318,6 +333,19 @@ export const labRequestService = {
     return hydrateRequests([data as ServiceRequestRow]).then((rows) => rows[0] ?? null);
   },
 
+  async confirmRequestByFrontDesk(requestId: string) {
+    const client = requireSupabaseClient();
+    const { data, error } = await (client as any).rpc('confirm_lab_request_by_frontdesk', {
+      p_request_id: requestId,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return hydrateRequests([data as ServiceRequestRow]).then((rows) => rows[0] ?? null);
+  },
+
   async updateRequestDetails(input: UpdateLabRequestInput) {
     const client = requireSupabaseClient();
 
@@ -335,13 +363,62 @@ export const labRequestService = {
       .update(payload as never)
       .eq('id', input.requestId)
       .select('*')
-      .single();
+      .maybeSingle();
 
     if (error) {
       throw error;
     }
 
+    if (!data) {
+      return labRequestService.getRequestById(input.requestId);
+    }
+
     return hydrateRequests([data as ServiceRequestRow]).then((rows) => rows[0] ?? null);
+  },
+
+  async markRequestAsPaid(requestId: string, receiptCode: string | null) {
+    const client = requireSupabaseClient();
+
+    let data: ServiceRequestRow | null = null;
+
+    const { data: rpcData, error: rpcError } = await (client as any).rpc('mark_lab_request_paid_by_cashier', {
+      p_request_id: requestId,
+      p_receipt_code: receiptCode,
+    });
+
+    if (rpcError) {
+      if (!isMissingMarkPaidRpcError(rpcError)) {
+        throw rpcError;
+      }
+
+      // Fallback for environments where the RPC has not been applied/reloaded yet.
+      const payload: Record<string, unknown> = {
+        payment_status: 'paid',
+      };
+
+      if (receiptCode) {
+        payload.receipt_code = receiptCode;
+      }
+
+      const { data: directData, error: directError } = await client
+        .from('service_requests')
+        .update(payload as never)
+        .eq('id', requestId)
+        .select('*')
+        .single();
+
+      if (directError) {
+        throw new Error(
+          'mark_lab_request_paid_by_cashier RPC is missing and direct update was blocked. Run SQL to create the RPC and reload schema cache.',
+        );
+      }
+
+      data = directData as ServiceRequestRow;
+    } else {
+      data = rpcData as ServiceRequestRow;
+    }
+
+    return hydrateRequests([data]).then((rows) => rows[0] ?? null);
   },
 
   async completeRequest(input: CompleteLabRequestInput) {
@@ -422,17 +499,38 @@ export const labRequestService = {
     }
 
     const client = requireSupabaseClient();
-    const { data, error } = await client.from('service_requests').select('*').eq('id', requestId).maybeSingle();
+    const token = requestId.trim();
+    let data: ServiceRequestRow | null = null;
 
-    if (error) {
-      throw error;
+    if (isUuidLike(token)) {
+      const { data: byId, error: byIdError } = await client.from('service_requests').select('*').eq('id', token).maybeSingle();
+      if (byIdError) {
+        throw byIdError;
+      }
+      data = (byId as ServiceRequestRow | null) ?? null;
+    }
+
+    if (!data) {
+      const { data: byReceiptCode, error: byReceiptCodeError } = await client
+        .from('service_requests')
+        .select('*')
+        .eq('receipt_code', token)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (byReceiptCodeError) {
+        throw byReceiptCodeError;
+      }
+
+      data = (byReceiptCode as ServiceRequestRow | null) ?? null;
     }
 
     if (!data) {
       return null;
     }
 
-    const hydrated = await hydrateRequests([data as ServiceRequestRow]);
+    const hydrated = await hydrateRequests([data]);
     return hydrated[0] ?? null;
   },
 

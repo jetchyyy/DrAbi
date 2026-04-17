@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Pencil, Plus, Search, TestTube2, Trash2, X } from 'lucide-react';
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -58,6 +58,7 @@ function fromMedicalServiceCategory(category: string | null | undefined): LabSer
 export function CatalogTab() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [feedbackModal, setFeedbackModal] = useState<FeedbackModalState>({
@@ -115,6 +116,33 @@ export function CatalogTab() {
       ),
     [deferredSearch, labServices],
   );
+
+  const PAGE_SIZE = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredServices.length / PAGE_SIZE));
+  const paginatedServices = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredServices.slice(start, start + PAGE_SIZE);
+  }, [currentPage, filteredServices]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [deferredSearch]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const catalogMetrics = useMemo(() => {
+    const laboratoryCount = filteredServices.filter((service) => service.category === 'laboratoryTests').length;
+    const imagingCount = filteredServices.filter((service) => service.category === 'imagingTests').length;
+    return {
+      total: filteredServices.length,
+      laboratoryCount,
+      imagingCount,
+    };
+  }, [filteredServices]);
 
   const form = useForm<CatalogForm>({
     resolver: zodResolver(catalogSchema),
@@ -364,6 +392,21 @@ export function CatalogTab() {
           ) : null}
         </div>
 
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Visible</p>
+            <p className="mt-2 text-2xl font-extrabold text-slate-950">{catalogMetrics.total}</p>
+          </div>
+          <div className="border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Laboratory Tests</p>
+            <p className="mt-2 text-2xl font-extrabold text-slate-950">{catalogMetrics.laboratoryCount}</p>
+          </div>
+          <div className="border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Imaging Services</p>
+            <p className="mt-2 text-2xl font-extrabold text-slate-950">{catalogMetrics.imagingCount}</p>
+          </div>
+        </div>
+
         <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200">
@@ -384,7 +427,7 @@ export function CatalogTab() {
                     </td>
                   </tr>
                 ) : (
-                  filteredServices.map((service) => (
+                  paginatedServices.map((service) => (
                     <tr className="transition-colors hover:bg-slate-50" key={service.id}>
                       <td className="px-6 py-4 align-top font-bold text-sm text-slate-950">{service.name}</td>
                       <td className="px-6 py-4 align-top text-sm text-slate-600">{service.description ?? 'No description'}</td>
@@ -410,6 +453,32 @@ export function CatalogTab() {
               </tbody>
             </table>
           </div>
+          {filteredServices.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
+              <p className="text-xs text-slate-500">
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredServices.length)} of {filteredServices.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <span className="text-xs font-semibold text-slate-600">Page {currentPage} of {totalPages}</span>
+                <button
+                  type="button"
+                  className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 

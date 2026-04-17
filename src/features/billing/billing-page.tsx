@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import QRCode from 'qrcode';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -380,6 +380,7 @@ function buildInvoicePrintDocument(input: {
 
 export function BillingPage() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: clinicSettings } = useClinicSettingsData();
   const { profile } = useAuth();
   const bookingEnabled = isModuleEnabled('booking_appointments', clinicSettings?.enabledModules);
@@ -593,6 +594,8 @@ export function BillingPage() {
             serviceCategory: selectedService.category,
             department: 'Laboratory',
             transactionType: 'cashier_paid_service',
+            paymentStatus: 'paid',
+            receiptCode: createdInvoice.invoiceNumber,
             status: 'pending',
             sampleStatus: 'pending',
             resultStatus: 'pending',
@@ -624,7 +627,9 @@ export function BillingPage() {
             throw new Error('The lab request was not returned after payment.');
           }
 
-          request = createdRequest;
+          request =
+            (await labRequestService.markRequestAsPaid(createdRequest.id, createdInvoice.invoiceNumber)) ??
+            createdRequest;
         }
 
         return {
@@ -693,6 +698,27 @@ export function BillingPage() {
   const viewedInvoice = invoices.find((invoice) => invoice.id === invoiceViewState.invoiceId) ?? null;
   const viewedInvoiceItem = invoiceItems.find((item) => item.invoiceId === invoiceViewState.invoiceId) ?? null;
   const viewedInvoicePatient = patients.find((patient) => patient.id === viewedInvoice?.patientId) ?? null;
+
+  useEffect(() => {
+    const invoiceIdFromQuery = (searchParams.get('invoiceId') ?? '').trim();
+    if (!invoiceIdFromQuery || invoices.length === 0) {
+      return;
+    }
+
+    const matchedInvoice = invoices.find((invoice) => invoice.id === invoiceIdFromQuery);
+    if (!matchedInvoice) {
+      return;
+    }
+
+    setInvoiceViewState({
+      open: true,
+      invoiceId: matchedInvoice.id,
+    });
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('invoiceId');
+    setSearchParams(nextParams, { replace: true });
+  }, [invoices, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (form.getValues('patientId') || patients.length === 0) {

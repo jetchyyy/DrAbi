@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertTriangle, Camera, FileUp, FlaskConical, Paperclip, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import jsQR from 'jsqr';
+import { AlertTriangle, Camera, FileUp, FlaskConical, Paperclip, Pencil, Plus, QrCode, Search, Trash2, X } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { FormField } from '../../../components/forms/form-field';
 import { Button } from '../../../components/ui/button';
@@ -21,8 +22,12 @@ import {
   useStartLabProcessing,
   useUpdateLabRequestDetails,
 } from '../../lab-requests/hooks/use-lab-requests';
+import { labRequestService } from '../../lab-requests/api/lab-request-service';
+import type { LabRequestRecord } from '../../lab-requests/types';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase';
+import { toLabRequestDisplayStatus } from './lab-request-status';
 import { LabStatusPill } from './lab-status-pill';
+import { extractLabServiceReceiptRequestId } from '../lab-service-receipt';
 
 const labOrderSchema = z.object({
   patientId: z.string().min(1, 'Patient is required.'),
@@ -82,6 +87,27 @@ function buildName(profile: {
   return parts.join(' ') || 'Unnamed';
 }
 
+function readQrFromVideoFrame(video: HTMLVideoElement, canvas: HTMLCanvasElement) {
+  if (video.videoWidth === 0 || video.videoHeight === 0) {
+    return '';
+  }
+
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) {
+    return '';
+  }
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const decoded = jsQR(imageData.data, imageData.width, imageData.height, {
+    inversionAttempts: 'attemptBoth',
+  });
+
+  return decoded?.data?.trim() ?? '';
+}
+
 export function WorkflowTab() {
   const { profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -93,6 +119,7 @@ export function WorkflowTab() {
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [autoOpenedRequestId, setAutoOpenedRequestId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [resultAttachments, setResultAttachments] = useState<File[]>([]);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -102,6 +129,14 @@ export function WorkflowTab() {
     message: '',
     variant: 'success',
   });
+  const [requestLookupValue, setRequestLookupValue] = useState('');
+  const [lookupResolvedRequest, setLookupResolvedRequest] = useState<LabRequestRecord | null>(null);
+  const [isIntakeCameraOpen, setIsIntakeCameraOpen] = useState(false);
+  const [intakeCameraMessage, setIntakeCameraMessage] = useState('');
+  const [intakeCameraError, setIntakeCameraError] = useState('');
+  const intakeVideoRef = useRef<HTMLVideoElement | null>(null);
+  const intakeCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const intakeStreamRef = useRef<MediaStream | null>(null);
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const deferredSearch = useDeferredValue(search);
@@ -142,6 +177,107 @@ export function WorkflowTab() {
   const updateDetailsMutation = useUpdateLabRequestDetails();
   const completeMutation = useCompleteLabRequest();
   const cancelMutation = useCancelLabRequest();
+
+  const openProcessModalForRequest = (targetRequest: LabRequestRecord) => {
+    if (targetRequest.paymentStatus !== 'paid') {
+      setFeedbackModal({
+        open: true,
+        title: 'Payment required',
+        message: 'This laboratory request is not paid yet. Ask billing/front desk to complete payment before laboratory processing.',
+        variant: 'error',
+      });
+      return;
+    }
+
+    form.reset({
+      patientId: targetRequest.patientId,
+      serviceId: targetRequest.serviceId,
+      serviceCategory: targetRequest.serviceCategory,
+      requestedBy: targetRequest.requestedBy,
+      status:
+        targetRequest.status === 'pending' ||
+        targetRequest.status === 'in_progress' ||
+        targetRequest.status === 'completed' ||
+        targetRequest.status === 'cancelled'
+          ? targetRequest.status
+          : 'pending',
+      notes: targetRequest.patientNotes ?? '',
+      resultSummary: targetRequest.resultData ?? '',
+      urgentFlag: targetRequest.urgentFlag,
+    });
+    setLookupResolvedRequest(targetRequest);
+    setEditingOrderId(targetRequest.id);
+    setResultAttachments([]);
+    setIsOrderModalOpen(true);
+  };
+
+  const lookupRequestMutation = useMutation({
+    mutationFn: async (rawInput: string) => {
+      const token = extractLabServiceReceiptRequestId(rawInput);
+      if (!token) {
+        throw new Error('Scan QR or enter a Request ID, INV-LAB, or ODC-LAB code.');
+      }
+
+      const foundRequest = await labRequestService.getRequestById(token);
+      if (!foundRequest) {
+        throw new Error('No laboratory request found for this QR or ID.');
+      }
+
+      return foundRequest;
+    },
+    onSuccess: (record) => {
+      stopIntakeCamera();
+      openProcessModalForRequest(record);
+      setSearch(record.id);
+      setRequestLookupValue(record.id);
+      setAutoOpenedRequestId(record.id);
+    },
+    onError: (error) => {
+      setFeedbackModal({
+        open: true,
+        title: 'Request lookup failed',
+        message: error instanceof Error ? error.message : 'Unable to resolve the laboratory request from the scanned value.',
+        variant: 'error',
+      });
+    },
+  });
+
+  const stopIntakeCamera = () => {
+    intakeStreamRef.current?.getTracks().forEach((track) => track.stop());
+    intakeStreamRef.current = null;
+    if (intakeVideoRef.current) {
+      intakeVideoRef.current.pause();
+      intakeVideoRef.current.srcObject = null;
+    }
+    setIsIntakeCameraOpen(false);
+    setIntakeCameraMessage('');
+    setIntakeCameraError('');
+  };
+
+  const startIntakeCamera = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setIntakeCameraError('This device or browser does not support camera access.');
+      return;
+    }
+
+    stopIntakeCamera();
+    setIntakeCameraError('');
+    setIntakeCameraMessage('Requesting camera permission...');
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      });
+
+      intakeStreamRef.current = stream;
+      setIsIntakeCameraOpen(true);
+      setIntakeCameraMessage('Camera ready. Align the laboratory QR code inside the frame.');
+    } catch {
+      setIntakeCameraError('Camera permission was denied or no camera was detected.');
+      setIntakeCameraMessage('');
+    }
+  };
 
   const { data: patientOptions = [] } = useQuery({
     queryKey: ['lab-form-patients'],
@@ -276,14 +412,78 @@ export function WorkflowTab() {
     return () => subscription.unsubscribe();
   }, [form, serviceOptions]);
 
+  useEffect(() => {
+    if (!isIntakeCameraOpen || !intakeVideoRef.current || !intakeStreamRef.current) {
+      return;
+    }
+
+    intakeVideoRef.current.srcObject = intakeStreamRef.current;
+    void intakeVideoRef.current.play().catch(() => {
+      setIntakeCameraError('Camera is ready. Tap Start camera again if preview does not appear.');
+    });
+  }, [isIntakeCameraOpen]);
+
+  useEffect(() => {
+    if (!isIntakeCameraOpen || !intakeVideoRef.current || !intakeCanvasRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const scanFrame = async () => {
+      if (cancelled || !intakeVideoRef.current || !intakeCanvasRef.current) {
+        return;
+      }
+
+      try {
+        const rawValue = readQrFromVideoFrame(intakeVideoRef.current, intakeCanvasRef.current);
+        const token = extractLabServiceReceiptRequestId(rawValue);
+        if (token && !lookupRequestMutation.isPending) {
+          setRequestLookupValue(rawValue);
+          stopIntakeCamera();
+          void lookupRequestMutation.mutateAsync(rawValue);
+          return;
+        }
+      } catch {
+        setIntakeCameraMessage('Camera is active. Keep the QR code centered and steady.');
+      }
+
+      window.setTimeout(scanFrame, 450);
+    };
+
+    void scanFrame();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isIntakeCameraOpen, lookupRequestMutation]);
+
   const filteredOrders = useMemo(() => {
     const q = deferredSearch.toLowerCase();
     return orders.filter((order) => {
-      return `${order.patientName ?? ''} ${order.serviceName ?? ''} ${order.status} ${order.patientNotes ?? ''}`
+      const displayStatus = toLabRequestDisplayStatus(order.status);
+      return `${order.id} ${order.receiptCode ?? ''} ${order.patientName ?? ''} ${order.serviceName ?? ''} ${displayStatus} ${order.patientNotes ?? ''}`
         .toLowerCase()
         .includes(q);
     });
   }, [deferredSearch, orders]);
+
+  const PAGE_SIZE = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredOrders.slice(start, start + PAGE_SIZE);
+  }, [currentPage, filteredOrders]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [deferredSearch]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   useEffect(() => {
     if (!isOrderModalOpen) {
@@ -314,6 +514,9 @@ export function WorkflowTab() {
 
   useEffect(() => {
     return () => {
+      intakeStreamRef.current?.getTracks().forEach((track) => track.stop());
+      intakeStreamRef.current = null;
+
       if (!cameraStreamRef.current) {
         return;
       }
@@ -335,6 +538,7 @@ export function WorkflowTab() {
       resultSummary: '',
       urgentFlag: false,
     });
+    setLookupResolvedRequest(null);
     setEditingOrderId(null);
     setResultAttachments([]);
     setIsOrderModalOpen(true);
@@ -356,6 +560,7 @@ export function WorkflowTab() {
       resultSummary: order.resultData ?? '',
       urgentFlag: order.urgentFlag,
     });
+    setLookupResolvedRequest(order ?? null);
     setEditingOrderId(orderId);
     setResultAttachments([]);
     setIsOrderModalOpen(true);
@@ -363,6 +568,7 @@ export function WorkflowTab() {
 
   const closeOrderModal = () => {
     setEditingOrderId(null);
+    setLookupResolvedRequest(null);
     if (cameraStreamRef.current) {
       cameraStreamRef.current.getTracks().forEach((track) => track.stop());
       cameraStreamRef.current = null;
@@ -383,21 +589,9 @@ export function WorkflowTab() {
       return;
     }
 
-    form.reset({
-      patientId: matchedOrder.patientId,
-      serviceId: matchedOrder.serviceId,
-      serviceCategory: matchedOrder.serviceCategory,
-      requestedBy: matchedOrder.requestedBy,
-      status: matchedOrder.status === 'pending' || matchedOrder.status === 'in_progress' || matchedOrder.status === 'completed' || matchedOrder.status === 'cancelled' ? matchedOrder.status : 'pending',
-      notes: matchedOrder.patientNotes ?? '',
-      resultSummary: matchedOrder.resultData ?? '',
-      urgentFlag: matchedOrder.urgentFlag,
-    });
-    setEditingOrderId(matchedOrder.id);
-    setResultAttachments([]);
-    setIsOrderModalOpen(true);
+    openProcessModalForRequest(matchedOrder);
     setAutoOpenedRequestId(requestedOrderId);
-  }, [autoOpenedRequestId, canProcessRequests, form, orders, searchParams]);
+  }, [autoOpenedRequestId, canProcessRequests, orders, searchParams]);
 
   useEffect(() => {
     if (!autoOpenedRequestId) {
@@ -419,6 +613,7 @@ export function WorkflowTab() {
   const isProcessingExistingOrder = Boolean(editingOrderId && canProcessRequests);
   const isLabStaffProcessingExistingOrder = role === 'lab_staff' && isProcessingExistingOrder;
   const processingOrder = editingOrderId ? orders.find((entry) => entry.id === editingOrderId) : null;
+  const activeProcessingOrder = lookupResolvedRequest ?? processingOrder;
   const showCreationFields = canCreateRequests && !isProcessingExistingOrder;
   const workflowModeLabel = hasDualAccess ? 'Administrator mode' : canProcessRequests ? 'Lab staff mode' : canCreateRequests ? 'Doctor mode' : 'Read-only mode';
   const modalTitle = isProcessingExistingOrder
@@ -698,6 +893,58 @@ export function WorkflowTab() {
           ) : null}
         </div>
 
+        {canProcessRequests ? (
+          <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-100">
+              <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700">Request Intake</p>
+              <p className="mt-1 text-sm text-slate-600">Scan QR with a scanner device or enter Request ID, INV-LAB, or ODC-LAB to open Process Lab Request.</p>
+            </div>
+            <form
+              className="px-6 py-5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void lookupRequestMutation.mutateAsync(requestLookupValue);
+              }}
+            >
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <Button className="rounded-none border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-emerald-700 hover:bg-emerald-100" onClick={() => void startIntakeCamera()} type="button">
+                    <Camera className="mr-2 size-4" />
+                    {isIntakeCameraOpen ? 'Restart camera' : 'Start camera scan'}
+                  </Button>
+                  {isIntakeCameraOpen ? (
+                    <Button className="rounded-none" onClick={stopIntakeCamera} type="button" variant="secondary">
+                      Stop camera
+                    </Button>
+                  ) : null}
+                </div>
+                {intakeCameraMessage ? <p className="text-xs text-slate-500">{intakeCameraMessage}</p> : null}
+                {intakeCameraError ? <p className="text-xs text-rose-600">{intakeCameraError}</p> : null}
+                {isIntakeCameraOpen ? (
+                  <div className="overflow-hidden border border-slate-200 bg-black">
+                    <video className="aspect-video w-full object-cover" muted playsInline ref={intakeVideoRef} />
+                    <canvas className="hidden" ref={intakeCanvasRef} />
+                  </div>
+                ) : null}
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <label className="flex min-w-0 flex-1 items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5">
+                    <QrCode className="size-4 shrink-0 text-slate-400" />
+                    <input
+                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                      onChange={(event) => setRequestLookupValue(event.target.value)}
+                      placeholder="Scan or type Request ID / INV-LAB / ODC-LAB"
+                      value={requestLookupValue}
+                    />
+                  </label>
+                  <Button className="rounded-none bg-emerald-700 px-5 py-2.5 text-xs font-extrabold uppercase tracking-widest hover:bg-emerald-800" disabled={lookupRequestMutation.isPending} type="submit">
+                    {lookupRequestMutation.isPending ? 'Checking...' : 'Process request'}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </div>
+        ) : null}
+
         <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200">
@@ -705,7 +952,10 @@ export function WorkflowTab() {
                 <tr>
                   <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Service</th>
                   <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Patient</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Receipt</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Payment</th>
                   <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Status</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Created</th>
                   <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Schedule</th>
                   <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Actions</th>
                 </tr>
@@ -713,12 +963,12 @@ export function WorkflowTab() {
               <tbody className="divide-y divide-slate-100">
                 {filteredOrders.length === 0 ? (
                   <tr>
-                    <td className="px-6 py-12 text-center text-sm text-slate-400" colSpan={5}>
+                    <td className="px-6 py-12 text-center text-sm text-slate-400" colSpan={8}>
                       {ordersLoading ? 'Loading lab orders...' : 'No lab orders yet.'}
                     </td>
                   </tr>
                 ) : (
-                  filteredOrders.map((order) => {
+                  paginatedOrders.map((order) => {
                     return (
                       <tr className="transition-colors hover:bg-slate-50" key={order.id}>
                         <td className="px-6 py-4 align-top">
@@ -731,8 +981,24 @@ export function WorkflowTab() {
                         <td className="px-6 py-4 align-top text-sm text-slate-600">
                           {order.patientName ?? order.patientId}
                         </td>
+                        <td className="px-6 py-4 align-top text-xs font-mono text-slate-600">
+                          {order.receiptCode ?? 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 align-top">
+                          <span className={
+                            order.paymentStatus === 'paid'
+                              ? 'bg-emerald-100 text-emerald-700 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1'
+                              : 'bg-rose-100 text-rose-700 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1'
+                          }
+                          >
+                            {order.paymentStatus === 'paid' ? 'Paid' : 'Pending'}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 align-top">
                           <LabStatusPill status={order.status} />
+                        </td>
+                        <td className="px-6 py-4 align-top text-xs text-slate-600 whitespace-nowrap">
+                          {new Date(order.createdAt).toLocaleString()}
                         </td>
                         <td className="px-6 py-4 align-top text-sm text-slate-600">
                           {order.completedAt ? new Date(order.completedAt).toLocaleString() : 'Not completed'}
@@ -741,7 +1007,12 @@ export function WorkflowTab() {
                           <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
                             {canProcessRequests ? (
                               <>
-                                <button className="inline-flex items-center gap-1 text-slate-600 hover:underline" onClick={() => openEditModal(order.id)} type="button">
+                                <button
+                                  className="inline-flex items-center gap-1 text-slate-600 hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
+                                  onClick={() => openEditModal(order.id)}
+                                  type="button"
+                                  disabled={order.paymentStatus !== 'paid'}
+                                >
                                   <Pencil className="size-3.5" />
                                   Process
                                 </button>
@@ -762,6 +1033,32 @@ export function WorkflowTab() {
               </tbody>
             </table>
           </div>
+          {filteredOrders.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
+              <p className="text-xs text-slate-500">
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)} of {filteredOrders.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <span className="text-xs font-semibold text-slate-600">Page {currentPage} of {totalPages}</span>
+                <button
+                  type="button"
+                  className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -835,6 +1132,45 @@ export function WorkflowTab() {
                       Lab staff can update request status and result notes, but cannot create doctor requests here.
                     </div>
                   )}
+                  {isProcessingExistingOrder && activeProcessingOrder ? (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700">
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Patient and request information</p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient</p>
+                          <p className="mt-1 font-semibold text-slate-950">{activeProcessingOrder.patientName ?? activeProcessingOrder.patientId}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Service</p>
+                          <p className="mt-1 font-semibold text-slate-950">{activeProcessingOrder.serviceName ?? activeProcessingOrder.serviceCategory}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Request ID</p>
+                          <p className="mt-1 break-all font-mono text-xs font-semibold text-slate-950">{activeProcessingOrder.id}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Receipt code</p>
+                          <p className="mt-1 break-all font-mono text-xs font-semibold text-slate-950">{activeProcessingOrder.receiptCode ?? 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Payment status</p>
+                          <p className="mt-1 font-semibold text-slate-950">{activeProcessingOrder.paymentStatus === 'paid' ? 'Paid' : 'Pending Cashier'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Service status</p>
+                          <p className="mt-1 font-semibold text-slate-950">{activeProcessingOrder.status}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Sample status</p>
+                          <p className="mt-1 font-semibold text-slate-950">{activeProcessingOrder.sampleStatus}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Result status</p>
+                          <p className="mt-1 font-semibold text-slate-950">{activeProcessingOrder.resultStatus}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
                 <div className="px-6 py-5 space-y-4 border-t border-slate-100">
                   <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Order Details</p>

@@ -171,6 +171,8 @@ export interface Database {
           service_id: string;
           service_category: string;
           transaction_type: string;
+          payment_status: string;
+          receipt_code: string | null;
           status: string;
           sample_status: string;
           result_status: string;

@@ -1,14 +1,19 @@
-import { AlertTriangle, CalendarDays } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { AlertTriangle, CalendarDays, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import QRCode from 'qrcode';
 
 import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
 import { getDatabase, listLabOrders, updateLabOrderSchedule } from '../../../lib/local-db';
+import { printHtmlDocument } from '../../../lib/print';
 import { queryKeys } from '../../../lib/query-keys';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase';
 import { cn } from '../../../lib/utils';
-import { useClinicLabQueue } from '../../lab-requests/hooks/use-lab-requests';
+import { useAuth } from '../../auth/auth-context';
+import { useClinicLabQueue, useConfirmLabRequestByFrontDesk, useUpdateLabRequestDetails } from '../../lab-requests/hooks/use-lab-requests';
+import { buildLabServiceReceiptLookupUrl } from '../lab-service-receipt';
+import { toLabRequestDisplayStatus } from './lab-request-status';
 import { LabStatusPill } from './lab-status-pill';
 
 const LAB_REQUEST_SCHEDULES_KEY = 'odc.lab-request-schedules.v1';
@@ -28,9 +33,200 @@ interface ScheduleOrderItem {
   patientLabel: string;
   serviceLabel: string;
   status: string;
+  paymentStatus: string;
+  receiptCode: string | null;
   urgentFlag: boolean;
   schedDate: string | null;
   schedTime: string | null;
+}
+
+interface ScheduleReceiptState {
+  requestId: string;
+  patientLabel: string;
+  serviceLabel: string;
+  status: string;
+  paymentStatus: string;
+  receiptCode: string | null;
+  scheduledDate: string;
+  scheduledTime: string;
+}
+
+function buildScheduleReceiptPrintDocument(input: {
+  qrSvgMarkup: string;
+  receipt: ScheduleReceiptState;
+}) {
+  const printedAt = new Date();
+  const paymentLabel = input.receipt.paymentStatus === 'paid' ? 'PAID' : 'PENDING';
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Laboratory Schedule Receipt</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Arial, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 28px;
+        background: #f8fafc;
+        color: #1f2937;
+      }
+      .sheet {
+        max-width: 760px;
+        margin: 0 auto;
+        background: #ffffff;
+        padding: 30px 44px 34px;
+      }
+      .clinic-name {
+        margin: 0;
+        color: #2563eb;
+        font-size: 20px;
+        font-weight: 700;
+        text-align: center;
+      }
+      h1 {
+        margin: 8px 0 0;
+        font-size: 17px;
+        font-weight: 800;
+        text-align: center;
+        text-transform: uppercase;
+      }
+      .divider {
+        margin: 22px 0 30px;
+        border: 0;
+        border-top: 2px solid #374151;
+      }
+      .meta {
+        display: grid;
+        grid-template-columns: 190px minmax(0, 1fr);
+        row-gap: 8px;
+        column-gap: 16px;
+      }
+      .meta-label {
+        font-size: 14px;
+        font-weight: 700;
+        color: #374151;
+      }
+      .meta-value {
+        font-size: 14px;
+        color: #111827;
+        text-align: right;
+        word-break: break-word;
+      }
+      .code {
+        font-family: "Courier New", monospace;
+      }
+      .status {
+        font-weight: 800;
+        color: ${input.receipt.paymentStatus === 'paid' ? '#059669' : '#b45309'};
+      }
+      .qr-panel {
+        margin-top: 26px;
+        border: 1px dashed #d1d5db;
+        border-radius: 10px;
+        padding: 18px 18px 14px;
+        text-align: center;
+      }
+      .qr-wrap {
+        margin-top: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 158px;
+      }
+      .qr-wrap svg {
+        width: 150px;
+        height: 150px;
+      }
+      .instructions {
+        margin-top: 22px;
+        border-left: 4px solid #f59e0b;
+        padding-left: 12px;
+      }
+      .instructions-title {
+        font-size: 14px;
+        font-weight: 800;
+        color: #1f2937;
+      }
+      .instructions ul {
+        margin: 10px 0 0 18px;
+        padding: 0;
+        color: #1f2937;
+        font-size: 14px;
+      }
+      .instructions li + li {
+        margin-top: 6px;
+      }
+      @media print {
+        body {
+          background: #ffffff;
+          padding: 0;
+        }
+        .sheet {
+          border: none;
+          border-radius: 0;
+          max-width: none;
+          padding: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="sheet">
+      <p class="clinic-name">Odyssey Clinic</p>
+      <h1>Laboratory Schedule Receipt</h1>
+      <hr class="divider" />
+
+      <section class="meta">
+        <p class="meta-label">Patient:</p>
+        <p class="meta-value">${input.receipt.patientLabel}</p>
+
+        <p class="meta-label">Laboratory service:</p>
+        <p class="meta-value">${input.receipt.serviceLabel}</p>
+
+        <p class="meta-label">Schedule date:</p>
+        <p class="meta-value">${input.receipt.scheduledDate}</p>
+
+        <p class="meta-label">Schedule time:</p>
+        <p class="meta-value">${input.receipt.scheduledTime}</p>
+
+        <p class="meta-label">Request ID:</p>
+        <p class="meta-value code">${input.receipt.requestId}</p>
+
+        <p class="meta-label">Receipt code:</p>
+        <p class="meta-value code">${input.receipt.receiptCode ?? 'N/A'}</p>
+
+        <p class="meta-label">Payment status:</p>
+        <p class="meta-value status">${paymentLabel}</p>
+
+        <p class="meta-label">Printed at:</p>
+        <p class="meta-value">${printedAt.toLocaleString('en-PH')}</p>
+      </section>
+
+      <section class="qr-panel">
+        <p><strong>Laboratory Receipt QR</strong></p>
+        <div class="qr-wrap">${input.qrSvgMarkup}</div>
+        <p>Scan this code in Billing or Laboratory scan page to load this request.</p>
+      </section>
+
+      <section class="instructions">
+        <p class="instructions-title">Instructions</p>
+        <ul>
+          <li>Proceed to Billing for payment confirmation if payment is still pending.</li>
+          <li>Keep this receipt and present the QR code to clinic staff.</li>
+          <li>After payment, laboratory can continue processing this request.</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>`;
 }
 
 function loadSupabaseSchedules(): Record<string, ScheduleEntry> {
@@ -88,6 +284,8 @@ function generateTimeSlots(): string[] {
 const TIME_SLOTS = generateTimeSlots();
 
 export function ScheduleTab() {
+  const { profile } = useAuth();
+  const role = profile?.role ?? 'patient';
   const database = getDatabase();
   const qc = useQueryClient();
 
@@ -116,6 +314,8 @@ export function ScheduleTab() {
 
   const resolvedClinicId = availableClinics[0]?.id ?? null;
   const { data: liveOrders = [] } = useClinicLabQueue(isSupabaseConfigured ? resolvedClinicId : null);
+  const confirmByFrontDeskMutation = useConfirmLabRequestByFrontDesk();
+  const updateLiveRequestMutation = useUpdateLabRequestDetails();
   const [supabaseSchedules, setSupabaseSchedules] = useState<Record<string, ScheduleEntry>>(() => loadSupabaseSchedules());
 
   const orders = useMemo<ScheduleOrderItem[]>(() => {
@@ -126,7 +326,9 @@ export function ScheduleTab() {
           id: order.id,
           patientLabel: order.patientName ?? 'Unknown patient',
           serviceLabel: order.serviceName ?? order.serviceCategory,
-          status: order.status,
+          status: toLabRequestDisplayStatus(order.status, Boolean(persisted)),
+          paymentStatus: order.paymentStatus,
+          receiptCode: order.receiptCode,
           urgentFlag: order.urgentFlag,
           schedDate: persisted?.date ?? null,
           schedTime: persisted?.time ?? null,
@@ -141,7 +343,9 @@ export function ScheduleTab() {
         id: order.id,
         patientLabel: [patient?.firstName, patient?.lastName].filter(Boolean).join(' ') || order.patientId,
         serviceLabel: service?.name ?? order.labServiceId,
-        status: order.status,
+        status: toLabRequestDisplayStatus(order.status, Boolean(order.schedDate && order.schedTime)),
+        paymentStatus: 'pending_cashier',
+        receiptCode: null,
         urgentFlag: Boolean(order.urgentFlag),
         schedDate: order.schedDate ?? null,
         schedTime: order.schedTime ?? null,
@@ -150,6 +354,13 @@ export function ScheduleTab() {
   }, [database.labServices, database.patients, liveOrders, localOrders, supabaseSchedules]);
 
   const unscheduled = useMemo(() => orders.filter((o) => !o.schedDate), [orders]);
+  const scheduledOrders = useMemo(
+    () =>
+      orders
+        .filter((o) => o.schedDate && o.schedTime)
+        .sort((left, right) => (right.schedDate ?? '').localeCompare(left.schedDate ?? '')),
+    [orders],
+  );
 
   const existingSchedules = useMemo(
     () => orders.filter((o) => o.schedDate && o.schedTime).map((o) => ({ date: o.schedDate!, time: o.schedTime! })),
@@ -160,8 +371,13 @@ export function ScheduleTab() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [scheduleReceipt, setScheduleReceipt] = useState<ScheduleReceiptState | null>(null);
+  const [scheduleReceiptQrSvg, setScheduleReceiptQrSvg] = useState('');
+  const [isPrintingReceipt, setIsPrintingReceipt] = useState(false);
 
   const calendarDays = useMemo(() => generateCalendarDays(), []);
 
@@ -205,6 +421,89 @@ export function ScheduleTab() {
     });
   }, [search, unscheduled]);
 
+  const PAGE_SIZE = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredOrders.slice(start, start + PAGE_SIZE);
+  }, [currentPage, filteredOrders]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const HISTORY_PAGE_SIZE = 8;
+  const historyTotalPages = Math.max(1, Math.ceil(scheduledOrders.length / HISTORY_PAGE_SIZE));
+  const paginatedHistory = useMemo(() => {
+    const start = (historyPage - 1) * HISTORY_PAGE_SIZE;
+    return scheduledOrders.slice(start, start + HISTORY_PAGE_SIZE);
+  }, [historyPage, scheduledOrders]);
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [scheduledOrders.length]);
+
+  useEffect(() => {
+    if (historyPage > historyTotalPages) {
+      setHistoryPage(historyTotalPages);
+    }
+  }, [historyPage, historyTotalPages]);
+
+  useEffect(() => {
+    if (!scheduleReceipt) {
+      setScheduleReceiptQrSvg('');
+      return;
+    }
+
+    let active = true;
+    void QRCode.toString(buildLabServiceReceiptLookupUrl(scheduleReceipt.requestId), {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      type: 'svg',
+      width: 220,
+    }).then((svg) => {
+      if (active) {
+        setScheduleReceiptQrSvg(svg);
+      }
+    }).catch(() => {
+      if (active) {
+        setScheduleReceiptQrSvg('');
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [scheduleReceipt]);
+
+  const closeScheduleReceiptModal = () => {
+    setScheduleReceipt(null);
+    setScheduleReceiptQrSvg('');
+    setIsPrintingReceipt(false);
+  };
+
+  const handlePrintScheduleReceipt = async () => {
+    if (!scheduleReceipt || !scheduleReceiptQrSvg) {
+      return;
+    }
+
+    setIsPrintingReceipt(true);
+    try {
+      await printHtmlDocument(buildScheduleReceiptPrintDocument({
+        qrSvgMarkup: scheduleReceiptQrSvg,
+        receipt: scheduleReceipt,
+      }));
+    } finally {
+      setIsPrintingReceipt(false);
+    }
+  };
+
   const scheduleMutation = useMutation({
     mutationFn: async () => {
       if (!selectedOrderId || !selectedDate || !selectedTime) throw new Error('All fields required');
@@ -217,7 +516,7 @@ export function ScheduleTab() {
       await updateLabOrderSchedule(selectedOrderId, selectedDate, selectedTime);
       return { mode: 'local' as const, id: selectedOrderId, date: selectedDate, time: selectedTime };
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (result.mode === 'supabase') {
         setSupabaseSchedules((current) => {
           const next = {
@@ -227,8 +526,41 @@ export function ScheduleTab() {
           saveSupabaseSchedules(next);
           return next;
         });
+
+        const scheduledRequest = liveOrders.find((order) => order.id === result.id);
+        if (scheduledRequest?.status === 'pending') {
+          try {
+            if (role === 'front_desk_cashier') {
+              await confirmByFrontDeskMutation.mutateAsync(result.id);
+            } else {
+              await updateLiveRequestMutation.mutateAsync({
+                requestId: result.id,
+                status: 'in_progress',
+                patientNotes: scheduledRequest.patientNotes,
+                urgentFlag: scheduledRequest.urgentFlag,
+              });
+            }
+          } catch {
+            // Scheduling should still succeed even if status sync is blocked by row-level policies.
+            setError('Schedule saved, but status sync is restricted for this account. It may still appear as pending in other screens.');
+          }
+        }
       } else {
         void qc.invalidateQueries({ queryKey: queryKeys.laboratory });
+      }
+
+      const receiptOrder = orders.find((order) => order.id === result.id);
+      if (role === 'front_desk_cashier' && receiptOrder) {
+        setScheduleReceipt({
+          requestId: receiptOrder.id,
+          patientLabel: receiptOrder.patientLabel,
+          serviceLabel: receiptOrder.serviceLabel,
+          status: receiptOrder.status,
+          paymentStatus: receiptOrder.paymentStatus,
+          receiptCode: receiptOrder.receiptCode,
+          scheduledDate: result.date,
+          scheduledTime: result.time,
+        });
       }
 
       setSelectedOrderId('');
@@ -244,7 +576,35 @@ export function ScheduleTab() {
   const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_0.85fr]">
+    <div className="space-y-6">
+      <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 bg-violet-700 p-2.5 text-white">
+              <CalendarDays className="size-5" />
+            </div>
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-widest text-violet-700">Laboratory Workflow</p>
+              <h2 className="text-xl font-extrabold tracking-tight text-slate-950">Schedule</h2>
+              <p className="mt-1 text-sm text-slate-500">Assign dates and time slots for pending laboratory requests.</p>
+            </div>
+          </div>
+          <div className="flex w-full max-w-sm items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5">
+            <Search className="size-4 shrink-0 text-slate-400" />
+            <input
+              className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+              placeholder="Search patient or test..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+        </div>
+        <div className="border-t border-slate-100 bg-slate-50 px-6 py-2">
+          <span className="text-xs font-bold text-slate-500">{unscheduled.length} pending scheduling</span>
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_0.85fr]">
       <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
         <div className="flex items-center gap-2.5 px-6 py-4 border-b border-slate-100">
           <div className="p-2 bg-violet-700 text-white shrink-0">
@@ -255,16 +615,13 @@ export function ScheduleTab() {
             <p className="text-[11px] text-slate-400 font-medium">{unscheduled.length} pending scheduling</p>
           </div>
         </div>
-        <div className="px-6 py-3 border-b border-slate-100">
-          <Input placeholder="Search patient or test…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
         <div className="divide-y divide-slate-100">
           {filteredOrders.length === 0 ? (
             <div className="px-6 py-12 text-center text-sm text-slate-400">
               {unscheduled.length === 0 ? 'All lab tests have been scheduled.' : 'No results match your search.'}
             </div>
           ) : (
-            filteredOrders.map((order) => {
+            paginatedOrders.map((order) => {
               return (
                 <button
                   key={order.id}
@@ -290,6 +647,32 @@ export function ScheduleTab() {
             })
           )}
         </div>
+        {filteredOrders.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
+            <p className="text-xs text-slate-500">
+              Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)} of {filteredOrders.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+              <span className="text-xs font-semibold text-slate-600">Page {currentPage} of {totalPages}</span>
+              <button
+                type="button"
+                className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={currentPage >= totalPages}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -398,6 +781,204 @@ export function ScheduleTab() {
           </div>
         )}
       </div>
+      </div>
+
+      <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-100">
+          <div>
+            <p className="font-extrabold text-sm uppercase tracking-wide text-slate-950">Confirmed / Scheduled Bookings</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">History of laboratory bookings with assigned date and time</p>
+          </div>
+          <span className="text-xs font-bold text-slate-500">{scheduledOrders.length} booking{scheduledOrders.length !== 1 ? 's' : ''}</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Patient</th>
+                <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Service</th>
+                <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Date</th>
+                <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Time</th>
+                <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Status</th>
+                {role === 'front_desk_cashier' ? (
+                  <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Receipt</th>
+                ) : null}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {paginatedHistory.length === 0 ? (
+                <tr>
+                  <td className="px-6 py-12 text-center text-sm text-slate-400" colSpan={role === 'front_desk_cashier' ? 6 : 5}>
+                    No scheduled laboratory bookings yet.
+                  </td>
+                </tr>
+              ) : (
+                paginatedHistory.map((order) => (
+                  <tr key={order.id} className="transition-colors hover:bg-slate-50">
+                    <td className="px-6 py-3 text-sm text-slate-700">{order.patientLabel}</td>
+                    <td className="px-6 py-3 text-sm font-semibold text-slate-900">{order.serviceLabel}</td>
+                    <td className="px-6 py-3 text-sm text-slate-700">{order.schedDate}</td>
+                    <td className="px-6 py-3 text-sm text-slate-700">{order.schedTime}</td>
+                    <td className="px-6 py-3"><LabStatusPill status={order.status} /></td>
+                    {role === 'front_desk_cashier' ? (
+                      <td className="px-6 py-3 text-right">
+                        <button
+                          type="button"
+                          className="border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-widest text-slate-700 transition hover:bg-slate-50"
+                          onClick={() => setScheduleReceipt({
+                            requestId: order.id,
+                            patientLabel: order.patientLabel,
+                            serviceLabel: order.serviceLabel,
+                            status: order.status,
+                            paymentStatus: order.paymentStatus,
+                            receiptCode: order.receiptCode,
+                            scheduledDate: order.schedDate ?? '',
+                            scheduledTime: order.schedTime ?? '',
+                          })}
+                        >
+                          View receipt
+                        </button>
+                      </td>
+                    ) : null}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {scheduledOrders.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
+            <p className="text-xs text-slate-500">
+              Showing {(historyPage - 1) * HISTORY_PAGE_SIZE + 1}-{Math.min(historyPage * HISTORY_PAGE_SIZE, scheduledOrders.length)} of {scheduledOrders.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => setHistoryPage((page) => Math.max(1, page - 1))}
+                disabled={historyPage === 1}
+              >
+                Previous
+              </button>
+              <span className="text-xs font-semibold text-slate-600">Page {historyPage} of {historyTotalPages}</span>
+              <button
+                type="button"
+                className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => setHistoryPage((page) => Math.min(historyTotalPages, page + 1))}
+                disabled={historyPage >= historyTotalPages}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {scheduleReceipt ? (
+        <div
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4 sm:p-6"
+          role="dialog"
+          onClick={closeScheduleReceiptModal}
+        >
+          <div
+            className="my-auto w-full max-w-2xl overflow-hidden border border-slate-200 bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="bg-violet-700 px-6 py-4">
+              <p className="text-xs font-extrabold uppercase tracking-widest text-violet-200">Laboratory Receipt</p>
+              <p className="mt-0.5 text-sm font-bold text-white">Schedule confirmed. Provide this QR for billing and intake.</p>
+            </div>
+
+            <div className="grid gap-5 px-6 py-5 md:grid-cols-[0.95fr_1.05fr]">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Scan code</p>
+                <div className="mt-3 flex justify-center rounded-xl bg-white p-3">
+                  {scheduleReceiptQrSvg ? (
+                    <div
+                      aria-label={`Receipt QR for ${scheduleReceipt.serviceLabel}`}
+                      className="size-[220px]"
+                      dangerouslySetInnerHTML={{ __html: scheduleReceiptQrSvg }}
+                    />
+                  ) : (
+                    <div className="flex size-[220px] items-center justify-center rounded-xl bg-slate-100 text-sm text-slate-500">
+                      Generating QR...
+                    </div>
+                  )}
+                </div>
+                <p className="mt-3 text-xs text-slate-500">Billing and laboratory can scan this code to open the linked request.</p>
+              </div>
+
+              <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Receipt details</p>
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-slate-400">Patient</p>
+                  <p className="mt-1 font-semibold text-slate-950">{scheduleReceipt.patientLabel}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-slate-400">Service</p>
+                  <p className="mt-1 font-semibold text-slate-950">{scheduleReceipt.serviceLabel}</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-slate-400">Date</p>
+                    <p className="mt-1 font-semibold text-slate-950">{scheduleReceipt.scheduledDate}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-slate-400">Time</p>
+                    <p className="mt-1 font-semibold text-slate-950">{scheduleReceipt.scheduledTime}</p>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-slate-400">Payment</p>
+                    <p className="mt-1 font-semibold text-slate-950">{scheduleReceipt.paymentStatus === 'paid' ? 'Paid' : 'Pending'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-slate-400">Status</p>
+                    <p className="mt-1"><LabStatusPill status={scheduleReceipt.status} /></p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-slate-400">Request ID</p>
+                  <p className="mt-1 break-all font-mono text-xs font-semibold text-slate-950">{scheduleReceipt.requestId}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-slate-400">Receipt code</p>
+                  <p className="mt-1 font-mono text-xs font-semibold text-slate-950">{scheduleReceipt.receiptCode ?? 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
+              <Link
+                className="inline-flex items-center justify-center border border-slate-200 bg-white px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-slate-700 transition hover:bg-slate-50"
+                to="/app/billing"
+              >
+                Proceed to billing
+              </Link>
+              <Button
+                className="rounded-none bg-violet-700 px-4 py-2 text-xs font-extrabold uppercase tracking-widest hover:bg-violet-800"
+                type="button"
+                onClick={() => void handlePrintScheduleReceipt()}
+                disabled={!scheduleReceiptQrSvg || isPrintingReceipt}
+              >
+                {isPrintingReceipt ? 'Opening print preview...' : 'Print receipt'}
+              </Button>
+              <Button
+                className="rounded-none"
+                variant="secondary"
+                type="button"
+                onClick={closeScheduleReceiptModal}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -26,6 +26,7 @@ function buildPrintDocument(input: {
   const receiptDate = new Date(input.invoice.createdAt);
   const serviceLabel = input.request.serviceName ?? input.request.serviceCategory;
   const paymentStatusLabel = input.invoice.paymentStatus.toUpperCase();
+  const laboratoryReceiptCode = input.request.receiptCode ?? input.invoice.invoiceNumber;
 
   return `<!doctype html>
 <html lang="en">
@@ -231,6 +232,9 @@ function buildPrintDocument(input: {
 
         <p class="meta-label">Invoice No.:</p>
         <p class="meta-value code">${input.invoice.invoiceNumber}</p>
+
+        <p class="meta-label">Receipt code:</p>
+        <p class="meta-value code">${laboratoryReceiptCode}</p>
       </section>
 
       <section>
