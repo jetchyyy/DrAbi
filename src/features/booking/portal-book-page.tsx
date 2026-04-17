@@ -23,6 +23,7 @@ import {
   formatTimeLabel,
   getAvailableTimeSlotsForDate,
   timeToMinutes,
+  filterPastTimeSlots,
 } from "../../lib/doctor-availability";
 import type { BookingListItem } from "../../lib/supabase-clinic";
 import { cn, formatCurrency, formatDateLabel } from "../../lib/utils";
@@ -177,8 +178,12 @@ export function PortalBookPage() {
   ]);
 
   const availableTimeSlots = useMemo(
-    () => allTimeSlots.filter((time) => !blockedSlots.includes(time)),
-    [allTimeSlots, blockedSlots],
+    () =>
+      filterPastTimeSlots(
+        allTimeSlots.filter((time) => !blockedSlots.includes(time)),
+        selectedDate,
+      ),
+    [allTimeSlots, blockedSlots, selectedDate],
   );
 
   const timeSessionOptions = useMemo(() => {
@@ -206,14 +211,24 @@ export function PortalBookPage() {
       return [];
     }
 
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const isToday = selectedDate === todayStr;
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
     return allTimeSlots
       .filter((time) => getTimeSession(time) === selectedTimeSession)
-      .map((time) => ({
-        time,
-        isBooked: blockedSlots.includes(time),
-        isAvailable: !blockedSlots.includes(time),
-      }));
-  }, [allTimeSlots, blockedSlots, selectedTimeSession]);
+      .map((time) => {
+        const isPast = isToday && timeToMinutes(time) <= currentMinutes;
+        const isBooked = blockedSlots.includes(time) || isPast;
+        return {
+          time,
+          isBooked,
+          isAvailable: !isBooked,
+          isPast,
+        };
+      });
+  }, [allTimeSlots, blockedSlots, selectedDate, selectedTimeSession]);
 
   useEffect(() => {
     if (services[0] && !form.getValues("serviceId")) {
@@ -293,15 +308,11 @@ export function PortalBookPage() {
       return;
     }
 
-    // Guard: disallow selecting a past date (belt-and-suspenders on top of
-    // the input `min` attribute, which can be bypassed via DevTools).
     if (values.preferredDate < today) {
       toast.error("Please select today or a future date for your booking.");
       return;
     }
 
-    // Guard: block patients who already have a pending booking on the chosen
-    // date with no linked appointment_id.
     const hasPendingBookingForDate = await checkPatientHasPendingBookingForDate(
       currentPatient.id,
       values.preferredDate,
@@ -629,7 +640,8 @@ export function PortalBookPage() {
               Boolean(unfinishedBooking) ||
               !selectedPreferredTime ||
               blockedSlots.includes(selectedPreferredTime) ||
-              (requiresDoctor && !selectedDoctorId)
+              (requiresDoctor && !selectedDoctorId) ||
+              !availableTimeSlots.includes(selectedPreferredTime)
             }
             type="submit"
           >

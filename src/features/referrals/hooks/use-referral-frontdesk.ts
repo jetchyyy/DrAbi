@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { isSupabaseConfigured, supabase } from "../../../lib/supabase";
 
 // ─── Domain Types ──────────────────────────────────────────────────────────────
@@ -88,8 +88,13 @@ interface ReferralRow {
 
 // ─── Hook ──────────────────────────────────────────────────────────────────────
 
+const PAGE_SIZE = 8;
+
 export interface UseReferralFrontdeskReturn {
+  // All patients (unfiltered count for the badge)
   patients: PatientWithReferral[];
+  // Paginated + filtered slice shown in the list
+  paginatedPatients: PatientWithReferral[];
   selectedPatient: PatientWithReferral | null;
   schedules: SpecialistSchedule[];
   selectedSchedule: SpecialistSchedule | null;
@@ -101,6 +106,14 @@ export interface UseReferralFrontdeskReturn {
   error: string | null;
   bookingError: string | null;
   bookingSuccess: boolean;
+  // Search & pagination
+  searchQuery: string;
+  currentPage: number;
+  totalPages: number;
+  filteredCount: number;
+  setSearchQuery: (query: string) => void;
+  setCurrentPage: (page: number) => void;
+  // Actions
   selectPatient: (patient: PatientWithReferral) => void;
   selectSchedule: (schedule: SpecialistSchedule) => void;
   setSelectedDate: (date: string) => void;
@@ -187,6 +200,45 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
+  // ── Search & pagination state ──────────────────────────────────────────────
+  const [searchQuery, setSearchQueryRaw] = useState<string>("");
+  const [currentPage, setCurrentPageRaw] = useState<number>(1);
+
+  // Reset to page 1 whenever the search query changes
+  const setSearchQuery = useCallback((query: string) => {
+    setSearchQueryRaw(query);
+    setCurrentPageRaw(1);
+  }, []);
+
+  const setCurrentPage = useCallback((page: number) => {
+    setCurrentPageRaw(page);
+  }, []);
+
+  // ── Derived: filtered + paginated patients ─────────────────────────────────
+  const filteredPatients = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return patients;
+    return patients.filter(
+      (p) =>
+        p.patient.fullName.toLowerCase().includes(q) ||
+        p.doctor.fullName.toLowerCase().includes(q) ||
+        (p.doctor.specialtyName ?? "").toLowerCase().includes(q),
+    );
+  }, [patients, searchQuery]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredPatients.length / PAGE_SIZE),
+  );
+
+  // Clamp currentPage when filteredPatients shrinks
+  const safePage = Math.min(currentPage, totalPages);
+
+  const paginatedPatients = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filteredPatients.slice(start, start + PAGE_SIZE);
+  }, [filteredPatients, safePage]);
+
   // ── Fetch patients with referrals ──────────────────────────────────────────
   useEffect(() => {
     async function fetchPatients() {
@@ -232,11 +284,12 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
           ]),
         );
 
-        // 4. Fetch referrals to get target_doctor_id
+        // 4. Fetch referrals to get target_doctor_id — exclude confirmed ones
         const { data: referralsData, error: referralsError } = await client
           .from("referrals")
           .select("id, target_doctor_id")
-          .in("id", referralIds);
+          .in("id", referralIds)
+          .neq("status", "confirmed");
         if (referralsError) throw referralsError;
         const referralMap = new Map(
           (referralsData ?? ([] as ReferralRow[])).map((r: ReferralRow) => [
@@ -490,6 +543,7 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
 
   return {
     patients,
+    paginatedPatients,
     selectedPatient,
     schedules,
     selectedSchedule,
@@ -501,6 +555,12 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
     error,
     bookingError,
     bookingSuccess,
+    searchQuery,
+    currentPage: safePage,
+    totalPages,
+    filteredCount: filteredPatients.length,
+    setSearchQuery,
+    setCurrentPage,
     selectPatient,
     selectSchedule,
     setSelectedDate,

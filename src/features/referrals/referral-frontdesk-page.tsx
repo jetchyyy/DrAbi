@@ -7,6 +7,7 @@ import { useReferralFrontdesk } from "./hooks/use-referral-frontdesk";
 export function ReferralFrontdeskPage() {
   const {
     patients,
+    paginatedPatients,
     selectedPatient,
     schedules,
     selectedSchedule,
@@ -18,6 +19,12 @@ export function ReferralFrontdeskPage() {
     error,
     bookingError,
     bookingSuccess,
+    searchQuery,
+    currentPage,
+    totalPages,
+    filteredCount,
+    setSearchQuery,
+    setCurrentPage,
     selectPatient,
     selectSchedule,
     setSelectedDate,
@@ -52,11 +59,20 @@ export function ReferralFrontdeskPage() {
         </div>
 
         <PatientsWithReferralsPage
-          patients={patients}
+          // Pass the current page slice, not the full list
+          patients={paginatedPatients}
           selectedPatient={selectedPatient}
           loading={loading}
           error={error}
           onSelectPatient={selectPatient}
+          // Search
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          // Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          filteredCount={filteredCount}
+          onPageChange={setCurrentPage}
         />
       </div>
 
@@ -105,5 +121,4 @@ export function ReferralFrontdeskPage() {
   );
 }
 
-/** Alias so existing imports of `ReferralPage` keep working */
 export { ReferralFrontdeskPage as ReferralPage };

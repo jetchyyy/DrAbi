@@ -98,3 +98,16 @@ export function getAvailableTimeSlotsForDate(
 
   return slots;
 }
+
+export function filterPastTimeSlots(slots: string[], date: string): string[] {
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (date !== today) {
+    return slots;
+  }
+
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  return slots.filter((slot) => timeToMinutes(slot) > currentMinutes);
+}
