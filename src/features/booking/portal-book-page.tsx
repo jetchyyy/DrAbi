@@ -94,6 +94,10 @@ export function PortalBookPage() {
   const { data: clinicSettings } = useClinicSettingsData();
   const { data: services = [] } = useBookableServices();
   const { data: doctors = [] } = useDoctorDirectory();
+  const directBookableDoctors = useMemo(
+    () => doctors.filter((doctor) => doctor.role === "doctor"),
+    [doctors],
+  );
   const { data: currentPatient } = useCurrentPatient(
     session?.user.id ?? null,
     profile?.email,
@@ -129,7 +133,7 @@ export function PortalBookPage() {
     requiresDoctor ? selectedDoctorId || null : null,
   );
   const selectedDoctor =
-    doctors.find((doctor) => doctor.id === selectedDoctorId) ?? null;
+    directBookableDoctors.find((doctor) => doctor.id === selectedDoctorId) ?? null;
   const selectedFeeAmount = selectedService
     ? selectedService.serviceType === "follow_up"
       ? (selectedDoctor?.followUpFee ?? 0)
@@ -244,10 +248,10 @@ export function PortalBookPage() {
       return;
     }
 
-    if (doctors[0] && !form.getValues("doctorId")) {
-      form.setValue("doctorId", doctors[0].id);
+    if (directBookableDoctors[0] && !form.getValues("doctorId")) {
+      form.setValue("doctorId", directBookableDoctors[0].id);
     }
-  }, [doctors, form, requiresDoctor]);
+  }, [directBookableDoctors, form, requiresDoctor]);
 
   useEffect(() => {
     const currentPreferredTime = form.getValues("preferredTime");
@@ -453,7 +457,7 @@ export function PortalBookPage() {
               <FormField label="Doctor">
                 <Select {...form.register("doctorId")}>
                   <option value="">Select doctor</option>
-                  {doctors.map((doctor) => (
+                  {directBookableDoctors.map((doctor) => (
                     <option key={doctor.id} value={doctor.id}>
                       {doctor.fullName}
                       {doctor.specialtyName ? ` (${doctor.specialtyName})` : ""}

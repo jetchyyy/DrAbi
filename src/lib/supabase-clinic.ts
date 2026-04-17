@@ -63,6 +63,7 @@ export interface DoctorDirectoryItem {
   id: string;
   profileId: string;
   fullName: string;
+  role: Role;
   specialtyId: string | null;
   specialtyName: string | null;
   consultationFee: number;
@@ -949,18 +950,52 @@ export async function listPatientsLiveOrDemo() {
       .map((booking) => booking.patient_id as string),
   );
 
-  return (data ?? []).map((row) => {
-    const patient = mapPatient(row);
-    return {
-      ...patient,
-      visitStatus:
-        patient.visitStatus === "visited_clinic" ||
-        patientIdsWithAppointment.has(patient.id) ||
-        patientIdsWithBooking.has(patient.id)
-          ? ("visited_clinic" as const)
-          : ("registered_no_visit" as const),
-    };
-  });
+  const patientRows = (data ?? []) as PatientRow[];
+  const linkedUserIds = Array.from(
+    new Set(
+      patientRows
+        .map((row) => row.user_id)
+        .filter((userId): userId is string => Boolean(userId)),
+    ),
+  );
+
+  const allowedUserIds = new Set<string>();
+  if (linkedUserIds.length > 0) {
+    const { data: profileRows, error: profileError } = await client
+      .from("profiles")
+      .select("id, role")
+      .in("id", linkedUserIds);
+
+    if (profileError) {
+      throw profileError;
+    }
+
+    for (const profile of (profileRows ?? []) as Array<{
+      id: string;
+      role: string | null;
+    }>) {
+      if (profile.role === "patient") {
+        allowedUserIds.add(profile.id);
+      }
+    }
+  }
+
+  return patientRows
+    .filter((row) =>
+      !row.user_id || allowedUserIds.has(row.user_id),
+    )
+    .map((row) => {
+      const patient = mapPatient(row);
+      return {
+        ...patient,
+        visitStatus:
+          patient.visitStatus === "visited_clinic" ||
+          patientIdsWithAppointment.has(patient.id) ||
+          patientIdsWithBooking.has(patient.id)
+            ? ("visited_clinic" as const)
+            : ("registered_no_visit" as const),
+      };
+    });
 }
 
 export async function createPatientLiveOrDemo(
@@ -1991,6 +2026,7 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
         id: user.id,
         profileId: user.id,
         fullName: user.fullName,
+        role: user.role,
         specialtyId: user.specialtyId ?? null,
         specialtyName:
           database.specialties.find(
@@ -2005,7 +2041,7 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
   const { data, error } = await client
     .from("doctors")
     .select(
-      "id, profile_id, specialty_id, consultation_fee, follow_up_fee, profiles!inner(full_name), specialties(name)",
+      "id, profile_id, specialty_id, consultation_fee, follow_up_fee, profiles!inner(full_name, role, is_active), specialties(name)",
     )
     .is("deleted_at", null)
     .order("created_at");
@@ -2021,22 +2057,40 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
       specialty_id: string | null;
       consultation_fee: number;
       follow_up_fee: number;
-      profiles: { full_name: string } | { full_name: string }[];
+      profiles:
+        | { full_name: string; role: string; is_active: boolean }
+        | { full_name: string; role: string; is_active: boolean }[];
       specialties: { name: string } | { name: string }[] | null;
     }>
-  ).map((row) => ({
-    id: row.id,
-    profileId: row.profile_id,
-    fullName: Array.isArray(row.profiles)
-      ? (row.profiles[0]?.full_name ?? "Doctor")
-      : row.profiles.full_name,
-    specialtyId: row.specialty_id,
-    specialtyName: Array.isArray(row.specialties)
-      ? (row.specialties[0]?.name ?? null)
-      : (row.specialties?.name ?? null),
-    consultationFee: Number(row.consultation_fee ?? 0),
-    followUpFee: Number(row.follow_up_fee ?? 0),
-  }));
+  )
+    .filter((row) => {
+      const profile = Array.isArray(row.profiles)
+        ? row.profiles[0]
+        : row.profiles;
+
+      return (
+        Boolean(profile?.is_active) &&
+        (profile?.role === "doctor" || profile?.role === "specialist")
+      );
+    })
+    .map((row) => {
+      const profile = Array.isArray(row.profiles)
+        ? row.profiles[0]
+        : row.profiles;
+
+      return {
+        id: row.id,
+        profileId: row.profile_id,
+        fullName: profile?.full_name ?? "Doctor",
+        role: mapRole(profile?.role),
+        specialtyId: row.specialty_id,
+        specialtyName: Array.isArray(row.specialties)
+          ? (row.specialties[0]?.name ?? null)
+          : (row.specialties?.name ?? null),
+        consultationFee: Number(row.consultation_fee ?? 0),
+        followUpFee: Number(row.follow_up_fee ?? 0),
+      };
+    });
 }
 
 export async function getGeneralistDirectoryLiveOrDemo(): Promise<
@@ -2045,11 +2099,12 @@ export async function getGeneralistDirectoryLiveOrDemo(): Promise<
   if (!isSupabaseConfigured) {
     const database = getDatabase();
     return database.users
-      .filter((user) => user.role === "doctor" || user.role === "specialist")
+      .filter((user) => user.role === "doctor")
       .map((user) => ({
         id: user.id,
         profileId: user.id,
         fullName: user.fullName,
+        role: user.role,
         specialtyId: user.specialtyId ?? null,
         specialtyName:
           database.specialties.find(
@@ -2060,65 +2115,8 @@ export async function getGeneralistDirectoryLiveOrDemo(): Promise<
       }));
   }
 
-  const client = requireSupabase();
-  const { data, error } = await client
-    .from("doctors")
-    .select(
-      `
-    id,
-    profile_id,
-    specialty_id,
-    consultation_fee,
-    follow_up_fee,
-    profiles!doctors_profile_id_fkey(
-      full_name,
-      role
-    ),
-    specialties(name)
-  `,
-    )
-    .is("deleted_at", null)
-    .order("created_at");
-  if (error) {
-    throw error;
-  }
-
-  return (
-    (
-      (data ?? []) as Array<{
-        id: string;
-        profile_id: string;
-        specialty_id: string | null;
-        consultation_fee: number;
-        follow_up_fee: number;
-        profiles:
-          | { full_name: string; role: string }
-          | { full_name: string; role: string }[];
-        specialties: { name: string } | { name: string }[] | null;
-      }>
-    )
-      // ✅ FILTER HERE
-      .filter((row) => {
-        const profile = Array.isArray(row.profiles)
-          ? row.profiles[0]
-          : row.profiles;
-
-        return profile?.role === "doctor";
-      })
-      .map((row) => ({
-        id: row.id,
-        profileId: row.profile_id,
-        fullName: Array.isArray(row.profiles)
-          ? (row.profiles[0]?.full_name ?? "Doctor")
-          : row.profiles.full_name,
-        specialtyId: row.specialty_id,
-        specialtyName: Array.isArray(row.specialties)
-          ? (row.specialties[0]?.name ?? null)
-          : (row.specialties?.name ?? null),
-        consultationFee: Number(row.consultation_fee ?? 0),
-        followUpFee: Number(row.follow_up_fee ?? 0),
-      }))
-  );
+  const providers = await getDoctorDirectoryLiveOrDemo();
+  return providers.filter((provider) => provider.role === "doctor");
 }
 
 export async function getCurrentDoctor(userId: string) {
@@ -2502,7 +2500,16 @@ export async function getCurrentPatient(userId: string) {
   if (error) {
     throw error;
   }
-  return data ? mapPatient(data) : null;
+  if (!data) {
+    return null;
+  }
+
+  const profile = await getCurrentProfile(userId);
+  if (profile && profile.role !== "patient") {
+    return null;
+  }
+
+  return mapPatient(data);
 }
 
 export async function getPatientByQrCodeLiveOrDemo(qrCode: string) {
@@ -2541,12 +2548,19 @@ export async function ensurePatientForUser(user: User) {
   }
 
   const client = requireSupabase();
+  const profile = await getCurrentProfile(user.id);
+  const metadata = user.user_metadata as Record<string, string | undefined>;
+  const resolvedRole = profile?.role ?? mapRole(metadata.role);
+
+  if (resolvedRole !== "patient") {
+    return null;
+  }
+
   const existing = await getCurrentPatient(user.id);
   if (existing) {
     return existing;
   }
 
-  const metadata = user.user_metadata as Record<string, string | undefined>;
   const fullName =
     metadata.full_name ??
     metadata.name ??

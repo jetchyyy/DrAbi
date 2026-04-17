@@ -13,7 +13,7 @@ import { Card, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
-import { useDoctorDirectory } from '../../hooks/use-clinic-data';
+import { useProviderDirectory } from '../../hooks/use-clinic-data';
 import { getDatabase } from '../../lib/local-db';
 import { formatDateLabel, formatDateTimeLabel } from '../../lib/utils';
 import { useAuth } from '../auth/auth-context';
@@ -67,7 +67,7 @@ export function PatientDetailPage() {
   const { patientId = '' } = useParams();
   const [searchParams] = useSearchParams();
   const { profile } = useAuth();
-  const { data: doctors = [] } = useDoctorDirectory();
+  const { data: providers = [] } = useProviderDirectory();
   const { data: referrals = [] } = useReferrals(patientId || null);
   const createReferral = useCreateReferral(patientId || null);
   const updateReferralOutcome = useUpdateReferralOutcome(patientId || null);
@@ -81,8 +81,13 @@ export function PatientDetailPage() {
   const { data: prescriptions = [] } = usePatientPrescriptions(patientId || null);
   const database = getDatabase();
 
-  const currentDoctor = doctors.find((doctor) => doctor.profileId === profile?.id);
-  const assignableDoctors = doctors.filter((doctor) => doctor.id !== currentDoctor?.id);
+  const currentDoctor = providers.find((doctor) => doctor.profileId === profile?.id);
+  const assignableDoctors = providers.filter(
+    (doctor) =>
+      doctor.role === 'specialist' &&
+      doctor.id !== currentDoctor?.id &&
+      doctor.profileId !== profile?.id,
+  );
   const canClinicalActions = profile?.role === 'doctor' || profile?.role === 'owner_admin' || profile?.role === 'nurse_staff';
   const canDoctorActions = profile?.role === 'doctor' || profile?.role === 'owner_admin';
   const canInventoryActions = profile?.role === 'doctor' || profile?.role === 'owner_admin' || profile?.role === 'nurse_staff' || profile?.role === 'front_desk_cashier';
@@ -201,7 +206,7 @@ export function PatientDetailPage() {
 
   const handleCreateReferral = referralForm.handleSubmit(async (values) => {
     if (!currentDoctor) return;
-    const targetDoctor = doctors.find((doctor) => doctor.id === values.targetDoctorId);
+    const targetDoctor = providers.find((doctor) => doctor.id === values.targetDoctorId);
 
     await createReferral.mutateAsync({
       patientId: patient.id,
@@ -559,8 +564,8 @@ export function PatientDetailPage() {
                 <p className="text-sm text-slate-500">No referrals have been recorded for this patient yet.</p>
               ) : (
                 referrals.map((referral) => {
-                  const referringDoctor = doctors.find((doctor) => doctor.id === referral.referringDoctorId);
-                  const targetDoctor = doctors.find((doctor) => doctor.id === referral.targetDoctorId);
+                  const referringDoctor = providers.find((doctor) => doctor.id === referral.referringDoctorId);
+                  const targetDoctor = providers.find((doctor) => doctor.id === referral.targetDoctorId);
 
                   return (
                     <div key={referral.id} className="rounded-3xl bg-slate-50 p-4">

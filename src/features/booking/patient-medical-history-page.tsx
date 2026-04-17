@@ -41,6 +41,10 @@ export function PatientMedicalHistoryPage() {
     profile?.email,
   );
   const { data: doctors = [] } = useDoctorDirectory();
+  const directBookableDoctors = useMemo(
+    () => doctors.filter((doctor) => doctor.role === 'doctor'),
+    [doctors],
+  );
   const { data: services = [] } = useServicesCatalog();
   const { data: appointments = [], isLoading: isAppointmentsLoading } = usePatientAppointments(currentPatient?.id ?? null);
   const { data: bookings = [], isLoading: isBookingsLoading } = usePatientBookings(currentPatient?.id ?? null);
@@ -254,7 +258,7 @@ export function PatientMedicalHistoryPage() {
             <div className="mt-6 space-y-4">
               {appointmentTimeline.map((appointment) => {
                 const doctor = doctors.find(
-                  (entry) => entry.id === appointment.doctorId,
+                  (entry) => entry.role === 'doctor' && entry.id === appointment.doctorId,
                 );
                 const service = services.find(
                   (entry) => entry.id === appointment.serviceId,
@@ -411,7 +415,7 @@ export function PatientMedicalHistoryPage() {
           ) : (
             <div className="mt-5 space-y-4">
               {bookingTimeline.map((booking) => {
-                const doctor = doctors.find((entry) => entry.id === booking.doctorId);
+                const doctor = directBookableDoctors.find((entry) => entry.id === booking.doctorId);
                 const service = services.find((entry) => entry.id === booking.serviceId);
 
                 return (

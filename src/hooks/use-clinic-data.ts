@@ -46,6 +46,13 @@ export function useDoctorDirectory() {
   });
 }
 
+export function useProviderDirectory() {
+  return useQuery({
+    queryKey: queryKeys.providers,
+    queryFn: getDoctorDirectoryLiveOrDemo,
+  });
+}
+
 export function useDoctorAvailability(doctorId: string | null) {
   return useQuery({
     queryKey: queryKeys.doctorAvailability(doctorId),

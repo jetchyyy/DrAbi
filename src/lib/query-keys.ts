@@ -3,6 +3,7 @@ export const queryKeys = {
   services: ['services'] as const,
   specialties: ['specialties'] as const,
   doctors: ['doctors'] as const,
+  providers: ['providers'] as const,
   doctorAvailability: (doctorId: string | null) => ['doctor-availability', doctorId] as const,
   specialistAvailability: (doctorId: string | null) => ['specialist-availability', doctorId] as const,
   blockedBookingSlots: (date: string | null, doctorId: string | null, serviceId: string | null) =>

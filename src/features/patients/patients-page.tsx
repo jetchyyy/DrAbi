@@ -450,7 +450,7 @@ export function PatientsPage() {
                           {patient.qrCode || 'Pending QR'}
                         </td>
                         <td className="px-6 py-4 align-top">
-                          <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
+                          <div className="flex min-w-max flex-col items-end gap-2 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
                             {can('patients.manage') ? (
                               <button
                                 className="inline-flex items-center gap-1 text-slate-600 hover:underline"

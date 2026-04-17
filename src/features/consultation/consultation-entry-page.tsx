@@ -13,7 +13,7 @@ import { Card, CardTitle } from '../../components/ui/card';
 import { FeedbackModal } from '../../components/ui/feedback-modal';
 import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
-import { useDoctorDirectory } from '../../hooks/use-clinic-data';
+import { useProviderDirectory } from '../../hooks/use-clinic-data';
 import { formatDateLabel, formatDateTimeLabel } from '../../lib/utils';
 import { getHomePathForRole } from '../../lib/role-routing';
 import type { Booking } from '../../types/domain';
@@ -128,7 +128,7 @@ export function ConsultationEntryPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { data: doctors = [] } = useDoctorDirectory();
+  const { data: providers = [] } = useProviderDirectory();
   
   const patientQuery = usePatientDetail(patientId || null);
   const { data: patient } = patientQuery;
@@ -138,8 +138,13 @@ export function ConsultationEntryPage() {
   
   const createConsultation = useCreateConsultation();
   const createReferral = useCreateReferral(patientId || null);
-  const currentDoctor = doctors.find((doctor) => doctor.profileId === profile?.id);
-  const assignableDoctors = doctors.filter((doctor) => doctor.id !== currentDoctor?.id);
+  const currentDoctor = providers.find((doctor) => doctor.profileId === profile?.id);
+  const assignableDoctors = providers.filter(
+    (doctor) =>
+      doctor.role === 'specialist' &&
+      doctor.id !== currentDoctor?.id &&
+      doctor.profileId !== profile?.id,
+  );
   
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [accessState, setAccessState] = useState<'checking' | 'allowed' | 'blocked' | 'error'>('checking');
@@ -416,7 +421,7 @@ export function ConsultationEntryPage() {
           appointmentId: consultation.appointmentId,
           referringDoctorId: soapDoctorId,
           targetDoctorId: values.specialistDoctorId,
-          targetSpecialtyId: doctors.find((doctor) => doctor.id === values.specialistDoctorId)?.specialtyId ?? null,
+          targetSpecialtyId: providers.find((doctor) => doctor.id === values.specialistDoctorId)?.specialtyId ?? null,
           reason: values.specialistReason?.trim() || values.diagnosis || values.consultationType,
           clinicalSummary: values.clinicalSummary,
           referralNotes: values.specialistNotes?.trim() || values.outcome || '',

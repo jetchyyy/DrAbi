@@ -13,7 +13,7 @@ import { Card, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
-import { useDoctorDirectory } from '../../hooks/use-clinic-data';
+import { useProviderDirectory } from '../../hooks/use-clinic-data';
 import { formatDateLabel, formatDateTimeLabel } from '../../lib/utils';
 import { useAuth } from '../auth/auth-context';
 import { usePatients } from '../patients/hooks/use-patients';
@@ -46,10 +46,10 @@ const specialistPortalSchema = z
 
 export function SpecialistReferralsPage() {
   const { profile } = useAuth();
-  const { data: doctors = [] } = useDoctorDirectory();
+  const { data: providers = [] } = useProviderDirectory();
   const { data: patients = [] } = usePatients();
 
-  const currentDoctor = doctors.find((doctor) => doctor.profileId === profile?.id) ?? null;
+  const currentDoctor = providers.find((doctor) => doctor.profileId === profile?.id) ?? null;
   const referralsQuery = useSpecialistReferrals(currentDoctor?.id ?? null);
   const referrals = referralsQuery.data ?? [];
   const updateReferralOutcome = useUpdateReferralOutcome(null);
@@ -99,14 +99,14 @@ export function SpecialistReferralsPage() {
     () =>
       referrals.map((referral) => {
         const patient = patients.find((item) => item.id === referral.patientId) ?? null;
-        const referringDoctor = doctors.find((doctor) => doctor.id === referral.referringDoctorId) ?? null;
+        const referringDoctor = providers.find((doctor) => doctor.id === referral.referringDoctorId) ?? null;
         return {
           referral,
           patient,
           referringDoctor,
         };
       }),
-    [doctors, patients, referrals],
+    [patients, providers, referrals],
   );
 
   const selectedReferralContext = enrichedReferrals.find((item) => item.referral.id === selectedReferral?.id) ?? null;

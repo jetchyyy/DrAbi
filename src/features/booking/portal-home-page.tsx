@@ -40,6 +40,7 @@ export function PortalHomePage() {
   const { data: clinic = defaultClinicSettings } = useClinicSettingsData();
   const { data: services = [] } = useBookableServices();
   const { data: doctors = [] } = useDoctorDirectory();
+  const directBookableDoctors = doctors.filter((doctor) => doctor.role === 'doctor');
   const { isAuthenticated } = useAuth();
   const bookingEnabled = isModuleEnabled('booking_appointments', clinic.enabledModules);
 
@@ -288,9 +289,9 @@ export function PortalHomePage() {
           ))}
         </div>
 
-        {doctors.length > 0 ? (
+        {directBookableDoctors.length > 0 ? (
           <div className="mt-px grid gap-px border border-slate-200 bg-slate-200 md:grid-cols-2 lg:grid-cols-4">
-            {doctors.map((doctor, i) => (
+            {directBookableDoctors.map((doctor, i) => (
               <div
                 key={doctor.id}
                 className="group flex cursor-default flex-col items-center bg-white p-6 text-center transition-colors duration-200 hover:bg-orange-50 animate-fade-up"
