@@ -73,6 +73,12 @@ export const appNavigation: NavItem[] = [
     permission: "appointments.view",
   },
   {
+    label: "Specialist Bookings List",
+    to: "/app/specialist-list",
+    icon: CalendarDays,
+    permission: "appointments.view",
+  },
+  {
     label: "Referrals",
     to: "/app/referrals",
     icon: CalendarDays,
@@ -194,16 +200,36 @@ export const appNavigation: NavItem[] = [
 ];
 
 export const specialistNavigation: SimpleNavItem[] = [
-  { label: "Referral Inbox", to: "/specialist/referrals", moduleKey: "patient_management" },
-  { label: "Availability", to: "/specialist/availability", moduleKey: "booking_appointments" },
+  {
+    label: "Referral Inbox",
+    to: "/specialist/referrals",
+    moduleKey: "patient_management",
+  },
+  {
+    label: "Availability",
+    to: "/specialist/availability",
+    moduleKey: "booking_appointments",
+  },
   { label: "My Profile", to: "/specialist/profile" },
 ];
 
 export const portalNavigation: SimpleNavItem[] = [
   { label: "Portal Home", to: "/portal" },
-  { label: "Book Appointment", to: "/portal/book", moduleKey: "booking_appointments" },
-  { label: "My Bookings", to: "/portal/my-bookings", moduleKey: "booking_appointments" },
-  { label: "My Medical History", to: "/portal/medical-history", moduleKey: "booking_appointments" },
+  {
+    label: "Book Appointment",
+    to: "/portal/book",
+    moduleKey: "booking_appointments",
+  },
+  {
+    label: "My Bookings",
+    to: "/portal/my-bookings",
+    moduleKey: "booking_appointments",
+  },
+  {
+    label: "My Medical History",
+    to: "/portal/medical-history",
+    moduleKey: "booking_appointments",
+  },
   { label: "My Profile", to: "/portal/profile" },
 ];
 

@@ -373,6 +373,8 @@ export interface Database {
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
+          cancelled_reason: string | null;
+          rescheduled_reason: string | null;
         };
         Insert: {
           patient_id: string;
@@ -398,6 +400,8 @@ export interface Database {
           referred_at?: string;
           specialist_visited_at?: string | null;
           completed_at?: string | null;
+          cancelled_reason?: string | null;
+          rescheduled_reason?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["referrals"]["Insert"]>;
       };
@@ -626,8 +630,12 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["inventory_categories"]["Row"]>;
-        Update: Partial<Database["public"]["Tables"]["inventory_categories"]["Row"]>;
+        Insert: Partial<
+          Database["public"]["Tables"]["inventory_categories"]["Row"]
+        >;
+        Update: Partial<
+          Database["public"]["Tables"]["inventory_categories"]["Row"]
+        >;
       };
       suppliers: {
         Row: {
@@ -673,8 +681,12 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["stock_transactions"]["Row"]>;
-        Update: Partial<Database["public"]["Tables"]["stock_transactions"]["Row"]>;
+        Insert: Partial<
+          Database["public"]["Tables"]["stock_transactions"]["Row"]
+        >;
+        Update: Partial<
+          Database["public"]["Tables"]["stock_transactions"]["Row"]
+        >;
       };
       pos_sales: {
         Row: {

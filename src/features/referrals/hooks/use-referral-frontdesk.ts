@@ -304,7 +304,8 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
           .from("referrals")
           .select("id, target_doctor_id")
           .in("id", referralIds)
-          .neq("status", "confirmed");
+          .neq("status", "confirmed")
+          .neq("status", "scheduled");
         if (referralsError) throw referralsError;
         const referralMap = new Map(
           (referralsData ?? ([] as ReferralRow[])).map((r: ReferralRow) => [
@@ -515,14 +516,24 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
 
       const now = new Date().toISOString();
 
-      const { error: referralError } = await client
-        .from("referrals")
-        .update({
-          appointment_date: selectedDate,
-          appointment_time: dbSlotTime,
-        } as never)
-        .eq("id", selectedPatient.referralId);
-      if (referralError) throw referralError;
+      const data = {
+        appointment_date: selectedDate,
+        appointment_time: dbSlotTime,
+        status: "scheduled",
+        updated_at: now,
+        specialist_schedule_id: selectedSchedule.id,
+        patient_id: selectedPatient.patient.id,
+      } as never;
+
+      const query = selectedPatient.referralId
+        ? client
+            .from("referrals")
+            .update(data)
+            .eq("id", selectedPatient.referralId)
+        : client.from("referrals").insert(data);
+
+      const { error } = await query;
+      if (error) throw error;
 
       const { error: insertError } = await client
         .from("specialist_appointments")
@@ -540,8 +551,6 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
         } as never);
       if (insertError) throw insertError;
 
-      // ── Optimistically add the new booking to local bookedSlots state ──
-      // This makes it immediately show as blocked without needing a refetch
       setBookedSlots((prev) => [
         ...prev,
         { date: selectedDate, time: dbSlotTime },

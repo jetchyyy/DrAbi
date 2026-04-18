@@ -22,6 +22,7 @@ import { ConsultationEntryPage } from "../features/consultation/consultation-ent
 import { DashboardPage } from "../features/dashboard/dashboard-page";
 import { DoctorAvailabilityPage } from "../features/doctor/doctor-availability-page";
 import { SpecialistReferralsPage } from "../features/referrals/specialist-referrals-page";
+import { ReferralsListPage } from "../features/referrals/specialist-frontdesk-list-page";
 import { InventoryPage } from "../features/inventory/inventory-page";
 import { LaboratoryPage } from "../features/laboratory/laboratory-page";
 import { LabServiceReceiptScanPage } from "../features/laboratory/lab-service-receipt-scan-page";
@@ -91,7 +92,10 @@ export const router = createBrowserRouter([
                 children: [
                   { path: "book", element: <PortalBookPage /> },
                   { path: "my-bookings", element: <MyBookingsPage /> },
-                  { path: "medical-history", element: <PatientMedicalHistoryPage /> },
+                  {
+                    path: "medical-history",
+                    element: <PatientMedicalHistoryPage />,
+                  },
                 ],
               },
               { path: "profile", element: <PatientProfilePage /> },
@@ -125,7 +129,10 @@ export const router = createBrowserRouter([
                   {
                     element: <PermissionGate permission="patients.view" />,
                     children: [
-                      { path: "referrals", element: <SpecialistReferralsPage /> },
+                      {
+                        path: "referrals",
+                        element: <SpecialistReferralsPage />,
+                      },
                       {
                         path: "patients/:patientId",
                         element: <PatientDetailPage />,
@@ -181,9 +188,7 @@ export const router = createBrowserRouter([
               },
               {
                 element: <ModuleGate moduleKey="dashboard" />,
-                children: [
-                  { path: "dashboard", element: <DashboardPage /> },
-                ],
+                children: [{ path: "dashboard", element: <DashboardPage /> }],
               },
               {
                 element: <ModuleGate moduleKey="patient_management" />,
@@ -192,8 +197,14 @@ export const router = createBrowserRouter([
                     element: <PermissionGate permission="patients.view" />,
                     children: [
                       { path: "patients", element: <PatientsPage /> },
-                      { path: "patients/logs", element: <PatientActionLogsPage /> },
-                      { path: "patients/scan", element: <PatientQrLookupPage /> },
+                      {
+                        path: "patients/logs",
+                        element: <PatientActionLogsPage />,
+                      },
+                      {
+                        path: "patients/scan",
+                        element: <PatientQrLookupPage />,
+                      },
                       {
                         path: "patients/:patientId",
                         element: <PatientDetailPage />,
@@ -201,13 +212,17 @@ export const router = createBrowserRouter([
                       {
                         path: "consultation/:patientId",
                         element: (
-                      <ProtectedRoute
-                        allowedRoles={["owner_admin", "doctor", "nurse_staff"]}
-                      />
-                    ),
+                          <ProtectedRoute
+                            allowedRoles={[
+                              "owner_admin",
+                              "doctor",
+                              "nurse_staff",
+                            ]}
+                          />
+                        ),
                         children: [
-                      { index: true, element: <ConsultationEntryPage /> },
-                    ],
+                          { index: true, element: <ConsultationEntryPage /> },
+                        ],
                       },
                     ],
                   },
@@ -220,10 +235,14 @@ export const router = createBrowserRouter([
                     element: <PermissionGate permission="appointments.view" />,
                     children: [
                       { path: "appointments", element: <AppointmentsPage /> },
-                  {
-                    path: "patient-bookings",
-                    element: <PatientBookingPageList />,
-                  },
+                      {
+                        path: "patient-bookings",
+                        element: <PatientBookingPageList />,
+                      },
+                      {
+                        path: "specialist-list",
+                        element: <ReferralsListPage />,
+                      },
                       { path: "referrals", element: <ReferralPage /> },
                       { path: "consultations", element: <AppointmentsPage /> },
                     ],
@@ -317,7 +336,9 @@ export const router = createBrowserRouter([
                 children: [
                   {
                     element: <PermissionGate permission="inventory.view" />,
-                    children: [{ path: "inventory", element: <InventoryPage /> }],
+                    children: [
+                      { path: "inventory", element: <InventoryPage /> },
+                    ],
                   },
                 ],
               },
@@ -326,7 +347,9 @@ export const router = createBrowserRouter([
                 children: [
                   {
                     element: <PermissionGate permission="laboratory.view" />,
-                    children: [{ path: "laboratory", element: <LaboratoryPage /> }],
+                    children: [
+                      { path: "laboratory", element: <LaboratoryPage /> },
+                    ],
                   },
                 ],
               },

@@ -32,16 +32,16 @@ function toMinutes(t: string): number {
 // ─── PH Time (UTC+8) ──────────────────────────────────────────────────────────
 
 function getTodayPH(): string {
-  const now = new Date();
-  const phMs = now.getTime() + now.getTimezoneOffset() * 60000 + 8 * 3600000;
-  return new Date(phMs).toISOString().slice(0, 10);
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+  // en-CA gives YYYY-MM-DD format
 }
 
 function getNowTimePH(): string {
-  const now = new Date();
-  const phMs = now.getTime() + now.getTimezoneOffset() * 60000 + 8 * 3600000;
-  const ph = new Date(phMs);
-  return `${ph.getHours()}:${String(ph.getMinutes()).padStart(2, "0")}`;
+  return new Date().toLocaleTimeString("en-GB", {
+    timeZone: "Asia/Manila",
+    hour: "2-digit",
+    minute: "2-digit",
+  }); // returns "HH:MM"
 }
 
 // ─── Recurrence Mapping ───────────────────────────────────────────────────────
@@ -233,7 +233,6 @@ function MiniCalendar({
           const schedule = dateToSchedule.get(dateStr);
           const isAvailable = !!schedule;
           const isSelected = selectedDate === dateStr;
-          const isToday = dateStr === todayPH;
           const isPast = dateStr < todayPH;
 
           return (
@@ -247,11 +246,9 @@ function MiniCalendar({
                   "w-8 h-8 text-xs font-bold transition-colors",
                   isSelected
                     ? "bg-orange-600 text-white"
-                    : isToday && !isSelected
-                      ? "border border-orange-300 text-orange-700 hover:bg-orange-50"
-                      : isAvailable && !isPast
-                        ? "text-slate-800 hover:bg-orange-50 hover:text-orange-700"
-                        : "text-slate-300 cursor-default",
+                    : isAvailable && !isPast
+                      ? "text-slate-800 hover:bg-orange-50 hover:text-orange-700"
+                      : "text-slate-300 cursor-default",
                 ].join(" ")}
               >
                 {day}

@@ -104,7 +104,7 @@ export function ReferralFrontdeskPage() {
           selectedSchedule={selectedSchedule}
           selectedDate={selectedDate}
           selectedTime={selectedTime}
-          bookedSlots={bookedSlots} // ← was missing, this was the bug
+          bookedSlots={bookedSlots}
           schedulesLoading={schedulesLoading}
           bookingLoading={bookingLoading}
           bookingError={bookingError}

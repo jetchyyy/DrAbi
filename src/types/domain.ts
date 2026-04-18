@@ -52,7 +52,9 @@ export type ReferralStatus =
   | "accepted"
   | "confirmed"
   | "completed"
+  | "scheduled"
   | "declined"
+  | "rescheduled"
   | "cancelled";
 export type PaymentStatus = "unpaid" | "partial" | "paid" | "void";
 export type LabOrderStatus =
@@ -61,7 +63,11 @@ export type LabOrderStatus =
   | "processing"
   | "ready"
   | "released";
-export type StockTransactionType = "stock_in" | "stock_out" | "adjustment" | "sale";
+export type StockTransactionType =
+  | "stock_in"
+  | "stock_out"
+  | "adjustment"
+  | "sale";
 export type VisitType = "in_person" | "teleconsultation";
 export type ServiceDeliveryMode = "in_person" | "teleconsultation" | "hybrid";
 export type PatientIntakeSource = "online_registration" | "staff_walk_in";
@@ -281,6 +287,8 @@ export interface Referral extends BaseRecord {
   referredAt: string;
   specialistVisitedAt?: string | null;
   completedAt?: string | null;
+  cancelledReason?: string | null;
+  rescheduledReason?: string | null;
 }
 
 export interface InvoiceItem extends BaseRecord {
