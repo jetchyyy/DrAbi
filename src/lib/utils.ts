@@ -18,6 +18,10 @@ export function formatDateLabel(value: string) {
   return format(new Date(value), "MMM d, yyyy");
 }
 
+export function formatTimeLabel(value: string) {
+  return format(new Date(value), "h:mm a");
+}
+
 export function formatDateTimeLabel(value: string) {
   return format(new Date(value), "MMM d, yyyy h:mm a");
 }

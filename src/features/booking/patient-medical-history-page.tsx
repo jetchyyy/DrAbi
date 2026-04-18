@@ -4,51 +4,59 @@ import {
   ClipboardList,
   FileText,
   Stethoscope,
-} from 'lucide-react';
-import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+} from "lucide-react";
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
 
-import { Card, CardTitle } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
-import { useDoctorDirectory, useServicesCatalog } from '../../hooks/use-clinic-data';
-import { formatDateLabel, formatDateTimeLabel } from '../../lib/utils';
-import { useAuth } from '../auth/auth-context';
-import { LabResultsDisplay } from '../consultation/components/lab-results-display';
-import { AppointmentLabRequestsCard } from '../lab-requests/components/appointment-lab-requests-card';
-import { useCurrentPatient } from './hooks/use-bookings';
+import { Card, CardTitle } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import {
+  useDoctorDirectory,
+  useServicesCatalog,
+} from "../../hooks/use-clinic-data";
+import {
+  formatTimeLabel,
+  formatDateLabel,
+  formatDateTimeLabel,
+} from "../../lib/utils";
+import { useAuth } from "../auth/auth-context";
+import { LabResultsDisplay } from "../consultation/components/lab-results-display";
+import { AppointmentLabRequestsCard } from "../lab-requests/components/appointment-lab-requests-card";
+import { useCurrentPatient } from "./hooks/use-bookings";
 import {
   usePatientAppointments,
   usePatientBookings,
   usePatientConsultations,
-} from '../patients/hooks/use-patients';
+} from "../patients/hooks/use-patients";
 
 function getAppointmentStatusIntent(status: string) {
-  if (status === 'completed') return 'success' as const;
-  if (status === 'cancelled' || status === 'no_show') return 'danger' as const;
-  return 'info' as const;
+  if (status === "completed") return "success" as const;
+  if (status === "cancelled" || status === "no_show") return "danger" as const;
+  return "info" as const;
 }
 
 function getBookingStatusIntent(status: string) {
-  if (status === 'confirmed') return 'success' as const;
-  if (status === 'cancelled') return 'danger' as const;
-  return 'warning' as const;
+  if (status === "confirmed") return "success" as const;
+  if (status === "cancelled") return "danger" as const;
+  return "warning" as const;
 }
 
 export function PatientMedicalHistoryPage() {
   const { profile, session } = useAuth();
-  const { data: currentPatient, isLoading: isPatientLoading } = useCurrentPatient(
-    session?.user.id ?? null,
-    profile?.email,
-  );
+  const { data: currentPatient, isLoading: isPatientLoading } =
+    useCurrentPatient(session?.user.id ?? null, profile?.email);
   const { data: doctors = [] } = useDoctorDirectory();
   const directBookableDoctors = useMemo(
-    () => doctors.filter((doctor) => doctor.role === 'doctor'),
+    () => doctors.filter((doctor) => doctor.role === "doctor"),
     [doctors],
   );
   const { data: services = [] } = useServicesCatalog();
-  const { data: appointments = [], isLoading: isAppointmentsLoading } = usePatientAppointments(currentPatient?.id ?? null);
-  const { data: bookings = [], isLoading: isBookingsLoading } = usePatientBookings(currentPatient?.id ?? null);
-  const { data: consultations = [], isLoading: isConsultationsLoading } = usePatientConsultations(currentPatient?.id ?? null);
+  const { data: appointments = [], isLoading: isAppointmentsLoading } =
+    usePatientAppointments(currentPatient?.id ?? null);
+  const { data: bookings = [], isLoading: isBookingsLoading } =
+    usePatientBookings(currentPatient?.id ?? null);
+  const { data: consultations = [], isLoading: isConsultationsLoading } =
+    usePatientConsultations(currentPatient?.id ?? null);
 
   const appointmentTimeline = useMemo(
     () =>
@@ -79,7 +87,7 @@ export function PatientMedicalHistoryPage() {
   );
 
   const completedVisits = appointmentTimeline.filter(
-    (appointment) => appointment.status === 'completed',
+    (appointment) => appointment.status === "completed",
   );
   const totalConsultations = consultationTimeline.length;
   const lastVisit = completedVisits[0] ?? appointmentTimeline[0] ?? null;
@@ -173,7 +181,9 @@ export function PatientMedicalHistoryPage() {
                 Last recorded visit
               </p>
               <p className="mt-1 text-base font-extrabold text-slate-950">
-                {lastVisit ? formatDateTimeLabel(lastVisit.scheduledAt) : 'No visit yet'}
+                {lastVisit
+                  ? formatDateTimeLabel(lastVisit.scheduledAt)
+                  : "No visit yet"}
               </p>
             </div>
           </div>
@@ -200,7 +210,8 @@ export function PatientMedicalHistoryPage() {
                 Recorded medical history
               </p>
               <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700">
-                {currentPatient.medicalHistory?.trim() || 'No medical history recorded yet.'}
+                {currentPatient.medicalHistory?.trim() ||
+                  "No medical history recorded yet."}
               </p>
             </div>
 
@@ -209,7 +220,8 @@ export function PatientMedicalHistoryPage() {
                 Allergy notes
               </p>
               <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700">
-                {currentPatient.allergies?.trim() || 'No allergy notes recorded yet.'}
+                {currentPatient.allergies?.trim() ||
+                  "No allergy notes recorded yet."}
               </p>
             </div>
 
@@ -218,13 +230,14 @@ export function PatientMedicalHistoryPage() {
                 Visit status
               </p>
               <p className="mt-2 text-sm font-semibold text-slate-700">
-                {currentPatient.visitStatus === 'visited_clinic'
-                  ? 'Visited clinic'
-                  : 'Registered, no visit yet'}
+                {currentPatient.visitStatus === "visited_clinic"
+                  ? "Visited clinic"
+                  : "Registered, no visit yet"}
               </p>
               {currentPatient.lastClinicVisitAt ? (
                 <p className="mt-1 text-sm text-slate-500">
-                  Last clinic visit: {formatDateTimeLabel(currentPatient.lastClinicVisitAt)}
+                  Last clinic visit:{" "}
+                  {formatDateTimeLabel(currentPatient.lastClinicVisitAt)}
                 </p>
               ) : null}
             </div>
@@ -240,7 +253,9 @@ export function PatientMedicalHistoryPage() {
               <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">
                 Visit timeline
               </p>
-              <CardTitle className="mt-1">Previous records and clinic visits</CardTitle>
+              <CardTitle className="mt-1">
+                Previous records and clinic visits
+              </CardTitle>
             </div>
           </div>
 
@@ -258,7 +273,9 @@ export function PatientMedicalHistoryPage() {
             <div className="mt-6 space-y-4">
               {appointmentTimeline.map((appointment) => {
                 const doctor = doctors.find(
-                  (entry) => entry.role === 'doctor' && entry.id === appointment.doctorId,
+                  (entry) =>
+                    entry.role === "doctor" &&
+                    entry.id === appointment.doctorId,
                 );
                 const service = services.find(
                   (entry) => entry.id === appointment.serviceId,
@@ -277,14 +294,16 @@ export function PatientMedicalHistoryPage() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-lg font-bold text-slate-950">
-                          {service?.name ?? 'Clinic appointment'}
+                          {service?.name ?? "Clinic appointment"}
                         </p>
                         <p className="mt-1 text-sm text-slate-500">
                           {formatDateTimeLabel(appointment.scheduledAt)}
                         </p>
                       </div>
-                      <Badge intent={getAppointmentStatusIntent(appointment.status)}>
-                        {appointment.status.replace('_', ' ')}
+                      <Badge
+                        intent={getAppointmentStatusIntent(appointment.status)}
+                      >
+                        {appointment.status.replace("_", " ")}
                       </Badge>
                     </div>
 
@@ -294,7 +313,7 @@ export function PatientMedicalHistoryPage() {
                           Provider
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-700">
-                          {doctor?.fullName ?? 'Clinic team'}
+                          {doctor?.fullName ?? "Clinic team"}
                         </p>
                       </div>
                       <div>
@@ -302,7 +321,7 @@ export function PatientMedicalHistoryPage() {
                           Visit type
                         </p>
                         <p className="mt-1 text-sm font-semibold capitalize text-slate-700">
-                          {appointment.visitType.replace('_', ' ')}
+                          {appointment.visitType.replace("_", " ")}
                         </p>
                       </div>
                     </div>
@@ -324,14 +343,14 @@ export function PatientMedicalHistoryPage() {
                           Consultation summary
                         </p>
                         <p className="mt-2 text-sm font-semibold text-slate-800">
-                          {linkedConsultation.consultationType} with{' '}
+                          {linkedConsultation.consultationType} with{" "}
                           {linkedConsultation.providerName}
                         </p>
                         <p className="mt-2 text-sm leading-relaxed text-slate-700">
                           {linkedConsultation.clinicalSummary?.trim() ||
                             linkedConsultation.assessment?.trim() ||
                             linkedConsultation.plan?.trim() ||
-                            'No written consultation summary yet.'}
+                            "No written consultation summary yet."}
                         </p>
                       </div>
                     ) : null}
@@ -341,7 +360,7 @@ export function PatientMedicalHistoryPage() {
                         appointmentId={appointment.id}
                         canCreate={false}
                         patientId={currentPatient.id}
-                        requestedBy={doctor?.id ?? ''}
+                        requestedBy={doctor?.id ?? ""}
                         title="Lab requests for this appointment"
                         compact
                       />
@@ -374,8 +393,10 @@ export function PatientMedicalHistoryPage() {
                         {consultation.consultationType}
                       </p>
                       <p className="mt-1 text-sm text-slate-500">
-                        {formatDateLabel(consultation.consultationDate)} at{' '}
-                        {consultation.consultationTime}
+                        {formatDateLabel(consultation.consultationDate)} at{" "}
+                        {formatTimeLabel(
+                          `${consultation.consultationDate} ${consultation.consultationTime}`,
+                        )}
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-slate-700">
@@ -387,7 +408,7 @@ export function PatientMedicalHistoryPage() {
                     {consultation.clinicalSummary?.trim() ||
                       consultation.assessment?.trim() ||
                       consultation.plan?.trim() ||
-                      'No consultation summary available.'}
+                      "No consultation summary available."}
                   </p>
 
                   {consultation.labResults?.trim() ? (
@@ -415,8 +436,12 @@ export function PatientMedicalHistoryPage() {
           ) : (
             <div className="mt-5 space-y-4">
               {bookingTimeline.map((booking) => {
-                const doctor = directBookableDoctors.find((entry) => entry.id === booking.doctorId);
-                const service = services.find((entry) => entry.id === booking.serviceId);
+                const doctor = directBookableDoctors.find(
+                  (entry) => entry.id === booking.doctorId,
+                );
+                const service = services.find(
+                  (entry) => entry.id === booking.serviceId,
+                );
 
                 return (
                   <div
@@ -426,10 +451,13 @@ export function PatientMedicalHistoryPage() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="font-bold text-slate-950">
-                          {service?.name ?? 'Clinic booking'}
+                          {service?.name ?? "Clinic booking"}
                         </p>
                         <p className="mt-1 text-sm text-slate-500">
-                          {formatDateLabel(booking.preferredDate)} at {booking.preferredTime}
+                          {formatDateLabel(booking.preferredDate)} at{" "}
+                          {formatTimeLabel(
+                            `${booking.preferredDate} ${booking.preferredTime}`,
+                          )}
                         </p>
                       </div>
                       <Badge intent={getBookingStatusIntent(booking.status)}>
@@ -443,7 +471,7 @@ export function PatientMedicalHistoryPage() {
                           Doctor
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-700">
-                          {doctor?.fullName ?? 'Clinic medical service'}
+                          {doctor?.fullName ?? "Clinic medical service"}
                         </p>
                       </div>
                       <div>
@@ -451,9 +479,9 @@ export function PatientMedicalHistoryPage() {
                           Payment
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-700">
-                          {booking.paymentStatus === 'paid'
-                            ? 'Paid at cashier'
-                            : 'Pending cashier payment'}
+                          {booking.paymentStatus === "paid"
+                            ? "Paid at cashier"
+                            : "Pending cashier payment"}
                         </p>
                       </div>
                     </div>

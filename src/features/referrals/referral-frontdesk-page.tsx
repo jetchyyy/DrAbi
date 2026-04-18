@@ -13,6 +13,7 @@ export function ReferralFrontdeskPage() {
     selectedSchedule,
     selectedDate,
     selectedTime,
+    bookedSlots, // ← now wired through
     loading,
     schedulesLoading,
     bookingLoading,
@@ -59,16 +60,13 @@ export function ReferralFrontdeskPage() {
         </div>
 
         <PatientsWithReferralsPage
-          // Pass the current page slice, not the full list
           patients={paginatedPatients}
           selectedPatient={selectedPatient}
           loading={loading}
           error={error}
           onSelectPatient={selectPatient}
-          // Search
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          // Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           filteredCount={filteredCount}
@@ -106,6 +104,7 @@ export function ReferralFrontdeskPage() {
           selectedSchedule={selectedSchedule}
           selectedDate={selectedDate}
           selectedTime={selectedTime}
+          bookedSlots={bookedSlots} // ← was missing, this was the bug
           schedulesLoading={schedulesLoading}
           bookingLoading={bookingLoading}
           bookingError={bookingError}

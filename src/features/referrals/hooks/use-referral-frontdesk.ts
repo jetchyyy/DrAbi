@@ -40,6 +40,13 @@ export interface PracticeLocation {
   [key: string]: unknown;
 }
 
+// ─── Booked Slot ──────────────────────────────────────────────────────────────
+
+export interface BookedSlot {
+  date: string; // "YYYY-MM-DD"
+  time: string; // "HH:MM:SS" as stored in DB
+}
+
 interface SpecialistScheduleRow {
   id: string;
   specialist_id: string;
@@ -50,6 +57,11 @@ interface SpecialistScheduleRow {
   practice_location: unknown;
   created_at: string;
   updated_at: string;
+}
+
+interface SpecialistAppointmentRow {
+  slot_date: string;
+  slot_time: string;
 }
 
 interface AppointmentRow {
@@ -86,34 +98,44 @@ interface ReferralRow {
   target_doctor_id: string | null;
 }
 
+// ─── Time Helper ──────────────────────────────────────────────────────────────
+
+/**
+ * Convert any time string to Postgres time format "HH:MM:SS".
+ * "7:00" → "07:00:00", "13:30" → "13:30:00", "07:00:00" → passthrough
+ */
+function toDbTime(t: string): string {
+  const hhmm = t.length > 5 ? t.slice(0, 5) : t;
+  const [hStr, mStr] = hhmm.split(":");
+  return `${hStr.padStart(2, "0")}:${mStr}:00`;
+}
+
 // ─── Hook ──────────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 8;
 
 export interface UseReferralFrontdeskReturn {
-  // All patients (unfiltered count for the badge)
   patients: PatientWithReferral[];
-  // Paginated + filtered slice shown in the list
   paginatedPatients: PatientWithReferral[];
   selectedPatient: PatientWithReferral | null;
   schedules: SpecialistSchedule[];
   selectedSchedule: SpecialistSchedule | null;
   selectedDate: string;
   selectedTime: string;
+  // Booked slots for the selected specialist — passed to the schedule UI
+  bookedSlots: BookedSlot[];
   loading: boolean;
   schedulesLoading: boolean;
   bookingLoading: boolean;
   error: string | null;
   bookingError: string | null;
   bookingSuccess: boolean;
-  // Search & pagination
   searchQuery: string;
   currentPage: number;
   totalPages: number;
   filteredCount: number;
   setSearchQuery: (query: string) => void;
   setCurrentPage: (page: number) => void;
-  // Actions
   selectPatient: (patient: PatientWithReferral) => void;
   selectSchedule: (schedule: SpecialistSchedule) => void;
   setSelectedDate: (date: string) => void;
@@ -193,6 +215,8 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
     useState<SpecialistSchedule | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedTime, setSelectedTime] = useState<string>("");
+  // ── NEW: booked slots for the currently selected specialist ──
+  const [bookedSlots, setBookedSlots] = useState<BookedSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
@@ -200,11 +224,9 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
-  // ── Search & pagination state ──────────────────────────────────────────────
   const [searchQuery, setSearchQueryRaw] = useState<string>("");
   const [currentPage, setCurrentPageRaw] = useState<number>(1);
 
-  // Reset to page 1 whenever the search query changes
   const setSearchQuery = useCallback((query: string) => {
     setSearchQueryRaw(query);
     setCurrentPageRaw(1);
@@ -214,7 +236,6 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
     setCurrentPageRaw(page);
   }, []);
 
-  // ── Derived: filtered + paginated patients ─────────────────────────────────
   const filteredPatients = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return patients;
@@ -230,8 +251,6 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
     1,
     Math.ceil(filteredPatients.length / PAGE_SIZE),
   );
-
-  // Clamp currentPage when filteredPatients shrinks
   const safePage = Math.min(currentPage, totalPages);
 
   const paginatedPatients = useMemo(() => {
@@ -251,27 +270,24 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
         }
         const client = requireSupabase();
 
-        // 1. Get appointments with related_referral_id
         const { data: apptData, error: apptError } = await client
           .from("appointments")
           .select("id, patient_id, doctor_id, related_referral_id")
           .not("related_referral_id", "is", null)
           .is("deleted_at", null);
-
         if (apptError) throw apptError;
+
         const appts = (apptData ?? []) as AppointmentRow[];
         if (appts.length === 0) {
           setPatients([]);
           return;
         }
 
-        // 2. Collect unique IDs
         const patientIds = [...new Set(appts.map((a) => a.patient_id))];
         const referralIds = [
           ...new Set(appts.map((a) => a.related_referral_id!)),
         ];
 
-        // 3. Fetch patients
         const { data: patientsData, error: patientsError } = await client
           .from("patients")
           .select("id, first_name, last_name")
@@ -284,7 +300,6 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
           ]),
         );
 
-        // 4. Fetch referrals to get target_doctor_id — exclude confirmed ones
         const { data: referralsData, error: referralsError } = await client
           .from("referrals")
           .select("id, target_doctor_id")
@@ -298,7 +313,6 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
           ]),
         );
 
-        // 5. Collect doctor IDs from referrals
         const doctorIds = [
           ...new Set(
             (referralsData ?? [])
@@ -307,7 +321,6 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
           ),
         ];
 
-        // 6. Fetch doctors
         const { data: doctorsData, error: doctorsError } = await client
           .from("doctors")
           .select("id, profile_id, specialty_id")
@@ -317,7 +330,6 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
           (doctorsData ?? ([] as DoctorRow[])).map((d: DoctorRow) => [d.id, d]),
         );
 
-        // 7. Fetch profiles for doctors
         const doctorProfileIds = (doctorsData ?? []).map(
           (d: DoctorRow) => d.profile_id,
         );
@@ -333,7 +345,6 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
           ]),
         );
 
-        // 8. Fetch specialties
         const specialtyIds = [
           ...new Set(
             (doctorsData ?? [])
@@ -356,29 +367,22 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
           );
         }
 
-        // 9. Build mapped output – dedupe by referral_id
         const seen = new Set<string>();
         const result: PatientWithReferral[] = [];
-
         for (const appt of appts) {
           const referralId = appt.related_referral_id!;
           if (seen.has(referralId)) continue;
           seen.add(referralId);
-
           const patientRow = patientMap.get(appt.patient_id);
           if (!patientRow) continue;
-
           const referral = referralMap.get(referralId);
           if (!referral?.target_doctor_id) continue;
-
           const doctor = doctorMap.get(referral.target_doctor_id);
           if (!doctor) continue;
-
           const doctorProfile = profileMap.get(doctor.profile_id);
           const specialtyName = doctor.specialty_id
             ? (specialtyMap.get(doctor.specialty_id) ?? null)
             : null;
-
           result.push({
             appointmentId: appt.id,
             patient: {
@@ -394,7 +398,6 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
             referralId,
           });
         }
-
         setPatients(result);
       } catch (err) {
         setError(
@@ -404,20 +407,20 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
         setLoading(false);
       }
     }
-
     void fetchPatients();
   }, []);
 
-  // ── Fetch schedules when patient selected ─────────────────────────────────
+  // ── Fetch schedules AND booked slots when patient selected ─────────────────
   const selectPatient = useCallback((patient: PatientWithReferral) => {
     setSelectedPatient(patient);
     setSelectedSchedule(null);
     setSelectedDate("");
     setSelectedTime("");
+    setBookedSlots([]);
     setBookingError(null);
     setBookingSuccess(false);
 
-    async function fetchSchedules() {
+    async function fetchSchedulesAndBookedSlots() {
       setSchedulesLoading(true);
       try {
         if (!isSupabaseConfigured) {
@@ -425,14 +428,32 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
           return;
         }
         const client = requireSupabase();
-        const { data, error: schedError } = await client
+
+        // Fetch schedules
+        const { data: schedData, error: schedError } = await client
           .from("specialist_schedules")
           .select("*")
           .eq("specialist_id", patient.doctor.id)
           .eq("is_active", true);
         if (schedError) throw schedError;
         setSchedules(
-          ((data ?? []) as SpecialistScheduleRow[]).map(mapScheduleRow),
+          ((schedData ?? []) as SpecialistScheduleRow[]).map(mapScheduleRow),
+        );
+
+        // ── Fetch ALL booked slots for this specialist ──
+        // This is the data that drives the pink/blocked slot display in the UI
+        const { data: bookedData, error: bookedError } = await client
+          .from("specialist_appointments")
+          .select("slot_date, slot_time")
+          .eq("specialist_id", patient.doctor.id)
+          .eq("is_booked", true);
+        if (bookedError) throw bookedError;
+
+        setBookedSlots(
+          ((bookedData ?? []) as SpecialistAppointmentRow[]).map((row) => ({
+            date: row.slot_date,
+            time: row.slot_time, // kept as-is ("HH:MM:SS"), normalizeTime handles it in the UI
+          })),
         );
       } catch (err) {
         setError(
@@ -443,7 +464,7 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
       }
     }
 
-    void fetchSchedules();
+    void fetchSchedulesAndBookedSlots();
   }, []);
 
   const selectSchedule = useCallback((schedule: SpecialistSchedule) => {
@@ -469,21 +490,21 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
     setBookingError(null);
 
     try {
-      if (!isSupabaseConfigured) {
-        throw new Error("Supabase is not configured.");
-      }
+      if (!isSupabaseConfigured) throw new Error("Supabase is not configured.");
       const client = requireSupabase();
 
-      // Check for double booking
+      // Always write to DB in "HH:MM:SS" format
+      const dbSlotTime = toDbTime(selectedTime);
+
+      // Double-booking check
       const { data: existing, error: checkError } = await client
         .from("specialist_appointments")
         .select("id")
         .eq("schedule_id", selectedSchedule.id)
         .eq("slot_date", selectedDate)
-        .eq("slot_time", selectedTime)
+        .eq("slot_time", dbSlotTime)
         .eq("is_booked", true)
         .maybeSingle();
-
       if (checkError) throw checkError;
       if (existing) {
         setBookingError(
@@ -494,18 +515,15 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
 
       const now = new Date().toISOString();
 
-      // Step 1: Update referral
       const { error: referralError } = await client
         .from("referrals")
         .update({
           appointment_date: selectedDate,
-          appointment_time: selectedTime,
+          appointment_time: dbSlotTime,
         } as never)
         .eq("id", selectedPatient.referralId);
-
       if (referralError) throw referralError;
 
-      // Step 2: Insert specialist appointment
       const { error: insertError } = await client
         .from("specialist_appointments")
         .insert({
@@ -514,14 +532,20 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
           referral_id: selectedPatient.referralId,
           patient_id: selectedPatient.patient.id,
           slot_date: selectedDate,
-          slot_time: selectedTime,
+          slot_time: dbSlotTime,
           is_booked: true,
           status: "pending",
           created_at: now,
           updated_at: now,
         } as never);
-
       if (insertError) throw insertError;
+
+      // ── Optimistically add the new booking to local bookedSlots state ──
+      // This makes it immediately show as blocked without needing a refetch
+      setBookedSlots((prev) => [
+        ...prev,
+        { date: selectedDate, time: dbSlotTime },
+      ]);
 
       setBookingSuccess(true);
     } catch (err) {
@@ -536,6 +560,7 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
     setSelectedSchedule(null);
     setSelectedDate("");
     setSelectedTime("");
+    setBookedSlots([]);
     setBookingError(null);
     setBookingSuccess(false);
     setSchedules([]);
@@ -549,6 +574,7 @@ export function useReferralFrontdesk(): UseReferralFrontdeskReturn {
     selectedSchedule,
     selectedDate,
     selectedTime,
+    bookedSlots,
     loading,
     schedulesLoading,
     bookingLoading,
