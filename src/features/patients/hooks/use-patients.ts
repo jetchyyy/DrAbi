@@ -1,8 +1,12 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { queryClient } from '../../../app/query-client';
-import { createPatientActionLog, listPatientActionLogs, recordInventoryUsage } from '../../../lib/local-db';
-import { queryKeys } from '../../../lib/query-keys';
+import { queryClient } from "../../../app/query-client";
+import {
+  createPatientActionLog,
+  listPatientActionLogs,
+  recordInventoryUsage,
+} from "../../../lib/local-db";
+import { queryKeys } from "../../../lib/query-keys";
 import {
   createPatientLiveOrDemo,
   createPrescriptionLiveOrDemo,
@@ -13,10 +17,20 @@ import {
   updatePatientLiveOrDemo,
   listConsultationsByPatientIdLiveOrDemo,
   listPatientsLiveOrDemo,
+  listPatientTeleconsultAppointmentsForCurrentUserLiveOrDemo,
   listPrescriptionsByPatientIdLiveOrDemo,
-} from '../../../lib/supabase-clinic';
-import type { InventoryUsageLog, Patient, PatientActionLog, Prescription } from '../../../types/domain';
-import { consultationService, type ConsultationSubmissionPayload } from '../../consultation/services/consultation-service';
+} from "../../../lib/supabase-clinic";
+import type {
+  InventoryUsageLog,
+  Patient,
+  PatientActionLog,
+  Prescription,
+} from "../../../types/domain";
+import { useAuth } from "../../auth/auth-context";
+import {
+  consultationService,
+  type ConsultationSubmissionPayload,
+} from "../../consultation/services/consultation-service";
 
 export function usePatients() {
   return useQuery({
@@ -27,7 +41,9 @@ export function usePatients() {
 
 export function useCreatePatient() {
   return useMutation({
-    mutationFn: async (payload: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'>) => createPatientLiveOrDemo(payload),
+    mutationFn: async (
+      payload: Omit<Patient, "id" | "createdAt" | "updatedAt">,
+    ) => createPatientLiveOrDemo(payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
     },
@@ -36,11 +52,18 @@ export function useCreatePatient() {
 
 export function useUpdatePatient() {
   return useMutation({
-    mutationFn: async ({ patientId, payload }: { patientId: string; payload: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'> }) =>
-      updatePatientLiveOrDemo(patientId, payload),
+    mutationFn: async ({
+      patientId,
+      payload,
+    }: {
+      patientId: string;
+      payload: Omit<Patient, "id" | "createdAt" | "updatedAt">;
+    }) => updatePatientLiveOrDemo(patientId, payload),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.patientDetail(variables.patientId) });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.patientDetail(variables.patientId),
+      });
     },
   });
 }
@@ -50,7 +73,9 @@ export function useDeletePatient() {
     mutationFn: async (patientId: string) => deletePatientLiveOrDemo(patientId),
     onSuccess: (_result, patientId) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.patientDetail(patientId) });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.patientDetail(patientId),
+      });
     },
   });
 }
@@ -64,38 +89,55 @@ export function usePatientActionLogs() {
 
 export function useCreatePatientActionLog() {
   return useMutation({
-    mutationFn: async (payload: Omit<PatientActionLog, 'id' | 'createdAt' | 'updatedAt'>) => createPatientActionLog(payload),
+    mutationFn: async (
+      payload: Omit<PatientActionLog, "id" | "createdAt" | "updatedAt">,
+    ) => createPatientActionLog(payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.patientActionLogs });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.patientActionLogs,
+      });
     },
   });
 }
 
 export function useCreateConsultation() {
   return useMutation({
-    mutationFn: async (payload: ConsultationSubmissionPayload) => consultationService.submitConsultation(payload),
+    mutationFn: async (payload: ConsultationSubmissionPayload) =>
+      consultationService.submitConsultation(payload),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.patientConsultations(variables.patientId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.patientPrescriptions(variables.patientId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.patientAppointments(variables.patientId) });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.patientConsultations(variables.patientId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.patientPrescriptions(variables.patientId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.patientAppointments(variables.patientId),
+      });
     },
   });
 }
 
 export function useCreatePrescription() {
   return useMutation({
-    mutationFn: async (payload: Omit<Prescription, 'id' | 'createdAt' | 'updatedAt'>) => createPrescriptionLiveOrDemo(payload),
+    mutationFn: async (
+      payload: Omit<Prescription, "id" | "createdAt" | "updatedAt">,
+    ) => createPrescriptionLiveOrDemo(payload),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.patientPrescriptions(variables.patientId) });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.patientPrescriptions(variables.patientId),
+      });
     },
   });
 }
 
 export function useRecordInventoryUsage() {
   return useMutation({
-    mutationFn: async (payload: Omit<InventoryUsageLog, 'id' | 'createdAt' | 'updatedAt'>) => recordInventoryUsage(payload),
+    mutationFn: async (
+      payload: Omit<InventoryUsageLog, "id" | "createdAt" | "updatedAt">,
+    ) => recordInventoryUsage(payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
       void queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
@@ -155,5 +197,21 @@ export function usePatientPrescriptions(patientId: string | null) {
       return listPrescriptionsByPatientIdLiveOrDemo(patientId);
     },
     enabled: Boolean(patientId),
+  });
+}
+
+export function usePatientTeleconsultAppointments() {
+  const { profile, session } = useAuth();
+  const userId = session?.user.id ?? null;
+  const email = profile?.email ?? null;
+
+  return useQuery({
+    queryKey: queryKeys.patientTeleconsultAppointments(userId ?? email),
+    queryFn: () =>
+      listPatientTeleconsultAppointmentsForCurrentUserLiveOrDemo({
+        userId,
+        email,
+      }),
+    enabled: profile?.role === "patient" && Boolean(userId || email),
   });
 }

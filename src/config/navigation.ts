@@ -233,6 +233,11 @@ export const portalNavigation: SimpleNavItem[] = [
     moduleKey: "booking_appointments",
   },
   {
+    label: "My Consultations",
+    to: "/portal/consultations",
+    moduleKey: "teleconsult",
+  },
+  {
     label: "My Medical History",
     to: "/portal/medical-history",
     moduleKey: "booking_appointments",

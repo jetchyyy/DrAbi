@@ -89,6 +89,17 @@ export interface BookingListItem {
   paymentStatus: BookingPaymentStatus;
 }
 
+export interface PatientTeleconsultationSummary {
+  id: string;
+  scheduledAt: string;
+  status: Appointment["status"];
+  doctorName: string;
+  serviceName: string;
+  teleconsultationPlatform: string;
+  teleconsultationAccessInstructions: string;
+  joinPath: string;
+}
+
 async function buildBookingListItemFromRow(
   row: BookingRow,
   maps?: {
@@ -524,6 +535,35 @@ function mapAppointmentStatus(value: string) {
     default:
       return "scheduled" as const;
   }
+}
+
+function mapTeleconsultationStatus(
+  value: string | null | undefined,
+): Appointment["status"] {
+  switch (value) {
+    case "scheduled":
+    case "confirmed":
+    case "in_progress":
+    case "completed":
+    case "cancelled":
+    case "no_show":
+      return value;
+    default:
+      return "scheduled";
+  }
+}
+
+function getTeleconsultationPlatformLabel(value: string | null | undefined) {
+  return value?.trim() || "Jitsi Meet";
+}
+
+function getTeleconsultationAccessInstructions(
+  value: string | null | undefined,
+) {
+  return (
+    value?.trim() ||
+    "Use the in-app Join teleconsult button a few minutes before your scheduled appointment."
+  );
 }
 
 function mapBookingStatus(value: string) {
@@ -982,9 +1022,7 @@ export async function listPatientsLiveOrDemo() {
   }
 
   return patientRows
-    .filter((row) =>
-      !row.user_id || allowedUserIds.has(row.user_id),
-    )
+    .filter((row) => !row.user_id || allowedUserIds.has(row.user_id))
     .map((row) => {
       const patient = mapPatient(row);
       return {
@@ -2671,6 +2709,179 @@ export async function getBookingListForUser(
   );
 }
 
+export async function listPatientTeleconsultAppointmentsForCurrentUserLiveOrDemo(input: {
+  userId: string | null;
+  email?: string | null;
+}): Promise<PatientTeleconsultationSummary[]> {
+  if (!input.userId && !input.email) {
+    return [];
+  }
+
+  if (!isSupabaseConfigured) {
+    const database = getDatabase();
+    const normalizedEmail = input.email?.trim().toLowerCase() ?? null;
+    const linkedPatient =
+      database.patients.find(
+        (patient) => Boolean(input.userId) && patient.userId === input.userId,
+      ) ??
+      database.patients.find(
+        (patient) =>
+          Boolean(normalizedEmail) &&
+          patient.email?.trim().toLowerCase() === normalizedEmail,
+      ) ??
+      null;
+
+    if (!linkedPatient) {
+      return [];
+    }
+
+    const doctorMap = new Map(
+      database.users.map((doctor) => [doctor.id, doctor.fullName]),
+    );
+    const serviceMap = new Map(
+      database.services.map((service) => [service.id, service.name]),
+    );
+
+    return database.appointments
+      .filter(
+        (appointment) =>
+          appointment.patientId === linkedPatient.id &&
+          appointment.visitType === "teleconsultation" &&
+          !appointment.deletedAt,
+      )
+      .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt))
+      .map((appointment) => ({
+        id: appointment.id,
+        scheduledAt: appointment.scheduledAt,
+        status: appointment.status,
+        doctorName: doctorMap.get(appointment.doctorId) ?? "Doctor",
+        serviceName: serviceMap.get(appointment.serviceId) ?? "Consultation",
+        teleconsultationPlatform: getTeleconsultationPlatformLabel(
+          appointment.teleconsultationPlatform,
+        ),
+        teleconsultationAccessInstructions:
+          getTeleconsultationAccessInstructions(
+            appointment.teleconsultationAccessInstructions,
+          ),
+        joinPath: `/portal/teleconsult/${appointment.id}`,
+      }));
+  }
+
+  if (!input.userId) {
+    return [];
+  }
+
+  const linkedPatient = await getCurrentPatient(input.userId);
+  if (!linkedPatient) {
+    return [];
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("appointments")
+    .select("*")
+    .eq("patient_id", linkedPatient.id)
+    .eq("visit_type", "teleconsultation")
+    .is("deleted_at", null)
+    .order("scheduled_at", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  const appointments = (data ?? []) as AppointmentRow[];
+  if (appointments.length === 0) {
+    return [];
+  }
+
+  const doctorIds = [
+    ...new Set(
+      appointments
+        .map((appointment) => appointment.doctor_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const serviceIds = [
+    ...new Set(
+      appointments
+        .map((appointment) => appointment.service_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+
+  const doctorQuery = doctorIds.length
+    ? client.from("doctors").select("id, profile_id").in("id", doctorIds)
+    : Promise.resolve({
+        data: [] as Array<{ id: string; profile_id: string }>,
+        error: null,
+      });
+  const serviceQuery = serviceIds.length
+    ? client.from("services").select("id, name").in("id", serviceIds)
+    : Promise.resolve({
+        data: [] as Array<{ id: string; name: string }>,
+        error: null,
+      });
+
+  const [
+    { data: doctorsData, error: doctorsError },
+    { data: servicesData, error: servicesError },
+  ] = await Promise.all([doctorQuery, serviceQuery]);
+
+  if (doctorsError) {
+    throw doctorsError;
+  }
+  if (servicesError) {
+    throw servicesError;
+  }
+
+  const typedDoctors = (doctorsData ?? []) as Array<{
+    id: string;
+    profile_id: string;
+  }>;
+  const profileIds = typedDoctors
+    .map((doctor) => doctor.profile_id)
+    .filter(Boolean);
+  const { data: profilesData, error: profilesError } = profileIds.length
+    ? await client.from("profiles").select("id, full_name").in("id", profileIds)
+    : { data: [] as Array<{ id: string; full_name: string }>, error: null };
+
+  if (profilesError) {
+    throw profilesError;
+  }
+
+  const profileMap = new Map(
+    ((profilesData ?? []) as Array<{ id: string; full_name: string }>).map(
+      (profile) => [profile.id, profile.full_name],
+    ),
+  );
+  const doctorMap = new Map(
+    typedDoctors.map((doctor) => [
+      doctor.id,
+      profileMap.get(doctor.profile_id) ?? "Doctor",
+    ]),
+  );
+  const serviceMap = new Map(
+    ((servicesData ?? []) as Array<{ id: string; name: string }>).map(
+      (service) => [service.id, service.name],
+    ),
+  );
+
+  return appointments.map((appointment) => ({
+    id: appointment.id,
+    scheduledAt: appointment.scheduled_at,
+    status: mapTeleconsultationStatus(appointment.status),
+    doctorName: doctorMap.get(appointment.doctor_id ?? "") ?? "Doctor",
+    serviceName: serviceMap.get(appointment.service_id ?? "") ?? "Consultation",
+    teleconsultationPlatform: getTeleconsultationPlatformLabel(
+      appointment.teleconsultation_platform,
+    ),
+    teleconsultationAccessInstructions: getTeleconsultationAccessInstructions(
+      appointment.teleconsultation_access_instructions,
+    ),
+    joinPath: `/portal/teleconsult/${appointment.id}`,
+  }));
+}
+
 export async function createBookingLiveOrDemo(input: {
   patientId: string;
   serviceId: string;
@@ -3749,8 +3960,6 @@ export async function getCategories(): Promise<
   return (data ?? []) as Array<{ id: string; name: string }>;
 }
 
-
-
 export async function listInventoryItemsLiveOrDemo(): Promise<InventoryItem[]> {
   if (!isSupabaseConfigured) {
     const { listInventoryItems } = await import("./local-db");
@@ -3799,7 +4008,6 @@ export async function listInventoryItemsLiveOrDemo(): Promise<InventoryItem[]> {
     updatedAt: row.updated_at,
   }));
 }
-
 
 export async function createInventoryItem(values: {
   categoryId: string;
@@ -3974,14 +4182,18 @@ export async function getInventoryItems(
   }));
 }
 
-export async function getInventoryLogs(page:number): Promise<InventoryUsageLog[]> {
-  
+export async function getInventoryLogs(
+  page: number,
+): Promise<InventoryUsageLog[]> {
   const limit = 10;
   const from = Math.max(0, (page - 1) * limit);
   const to = from + limit - 1;
   const client = requireSupabase();
 
-  const {data,error} = await client.from("inventory_usage_logs").select(`
+  const { data, error } = await client
+    .from("inventory_usage_logs")
+    .select(
+      `
       id,
       quantity,
       notes,
@@ -3990,50 +4202,54 @@ export async function getInventoryLogs(page:number): Promise<InventoryUsageLog[]
       patients:patients(first_name,last_name),
       inventory_items(name),
       appointments(reason)
-    `).range(from,to)
+    `,
+    )
+    .range(from, to);
 
   if (error) throw error;
 
-  return (data ?? []).map((row:any) => ({
+  return (data ?? []).map((row: any) => ({
     id: row.id,
-    patientId:`${row.patients?.first_name} ${row.patients?.last_name}`,
+    patientId: `${row.patients?.first_name} ${row.patients?.last_name}`,
     appointmentId: row.appointments?.reason,
     itemId: row.inventory_items?.name,
     quantity: row.quantity,
     notes: row.notes,
     scannedCode: row.scanned_code,
     recordedBy: row.profiles?.full_name,
-    createdAt:row.created_at,
+    createdAt: row.created_at,
     updatedAt: row.updated_at,
-  }))
-
+  }));
 }
 
-export async function createInventoryLogs(values:{
-  patientId:string,
-  appointmentId:string | null,
-  itemId:string,
-  quantity:number,
-  notes:string | null,
-  scannedCode:string
-  recordedBy:string,
-})
-{
+export async function createInventoryLogs(values: {
+  patientId: string;
+  appointmentId: string | null;
+  itemId: string;
+  quantity: number;
+  notes: string | null;
+  scannedCode: string;
+  recordedBy: string;
+}) {
   const client = requireSupabase();
 
-  const {data,error} = await client.from("inventory_usage_logs").insert({
-    patient_id:values.patientId,
-    appointment_id:values.appointmentId,
-    item_id:values.itemId,
-    quantity:values.quantity,
-    notes:values.notes,
-    scanned_code:values.scannedCode,
-    recorded_by:values.recordedBy
-  } as never).select("*").single();
+  const { data, error } = await client
+    .from("inventory_usage_logs")
+    .insert({
+      patient_id: values.patientId,
+      appointment_id: values.appointmentId,
+      item_id: values.itemId,
+      quantity: values.quantity,
+      notes: values.notes,
+      scanned_code: values.scannedCode,
+      recorded_by: values.recordedBy,
+    } as never)
+    .select("*")
+    .single();
   if (error) {
-  throw error;
-}
-  return data
+    throw error;
+  }
+  return data;
 }
 
 export async function listPosSalesLiveOrDemo(): Promise<PosSale[]> {

@@ -12,6 +12,7 @@ import { PatientRegisterPage } from "../features/auth/patient-register-page";
 import { ResetPasswordPage } from "../features/auth/reset-password-page";
 import { BillingPage } from "../features/billing/billing-page";
 import { BookingReceiptScanPage } from "../features/booking/booking-receipt-scan-page";
+import { PatientConsultationPage } from "../features/booking/patient-teleconsultation-page";
 import { PatientMedicalHistoryPage } from "../features/booking/patient-medical-history-page";
 import { MyBookingsPage } from "../features/booking/my-bookings-page";
 import { ReferralPage } from "../features/referrals/referral-frontdesk-page";
@@ -103,6 +104,10 @@ export const router = createBrowserRouter([
               {
                 element: <ModuleGate moduleKey="teleconsult" />,
                 children: [
+                  {
+                    path: "consultations",
+                    element: <PatientConsultationPage />,
+                  },
                   {
                     path: "teleconsult/:appointmentId",
                     element: <TeleconsultRoomPage />,
@@ -342,8 +347,13 @@ export const router = createBrowserRouter([
                     ],
                   },
                   {
-                    element:<PermissionGate permission="inventory.view"/>,
-                    children:[{path: "inventory-logs", element:<InventoryLogsPage/>}]
+                    element: <PermissionGate permission="inventory.view" />,
+                    children: [
+                      {
+                        path: "inventory-logs",
+                        element: <InventoryLogsPage />,
+                      },
+                    ],
                   },
                 ],
               },
