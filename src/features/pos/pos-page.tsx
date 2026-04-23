@@ -10,7 +10,7 @@ import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
 import { queryKeys } from '../../lib/query-keys';
 import { printHtmlDocument } from '../../lib/print';
-import { checkoutPosSaleLiveOrDemo, listInventoryItemsLiveOrDemo, listPatientsLiveOrDemo, listPosSalesLiveOrDemo } from '../../lib/supabase-clinic';
+import { checkoutPosSaleLiveOrDemo, createInventoryLogs, listInventoryItemsLiveOrDemo, listPatientsLiveOrDemo, listPosSalesLiveOrDemo } from '../../lib/supabase-clinic';
 import { formatCurrency } from '../../lib/utils';
 import type { InventoryItem, PosPaymentMethod } from '../../types/domain';
 import { useAuth } from '../auth/auth-context';
@@ -79,6 +79,7 @@ export function PosPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const [scannedItem, setScannedItem] = useState<InventoryItem | null>(null);
 
   const { data: items = [] } = useQuery({
     queryKey: [queryKeys.inventory, 'pos'],
@@ -193,6 +194,32 @@ export function PosPage() {
         throw new Error('Reference details are required for GCash and card payments.');
       }
 
+      if(!scannedItem){
+        throw new Error('No item scanned')
+      }
+      const entry = cart.find(e => e.item.id === scannedItem.id);
+      if (!entry) {
+        throw new Error("Scanned item not found in cart");
+      } 
+
+      const payload = {
+        patientId: patientId,
+        appointmentId: null,
+        itemId: scannedItem.id,
+        quantity: entry.quantity,
+        notes: paymentNotes.trim() || null,
+        scannedCode: scannedItem.qrCode,
+        recordedBy: profile.id,
+      };
+
+      try {
+        const inventoryLogs = await createInventoryLogs(payload);
+        console.log("SUCCESS:", inventoryLogs);
+      } catch (err: any) {
+        throw err;
+      }
+
+    
       return checkoutPosSaleLiveOrDemo({
         patientId: patientId || null,
         cashierId: profile.id,
@@ -206,6 +233,9 @@ export function PosPage() {
         })),
       });
     },
+   
+    
+
     onSuccess: async (result) => {
       setCart([]);
       setLookupValue('');
@@ -233,6 +263,7 @@ export function PosPage() {
       );
       await queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
       await queryClient.invalidateQueries({ queryKey: queryKeys.posSales });
+      await queryClient.invalidateQueries({queryKey:queryKeys.inventoryUsageLogs})
       toast.success('POS sale completed and stock updated.');
     },
   });
@@ -249,6 +280,7 @@ export function PosPage() {
       setLookupError('No inventory item matched that SKU or QR code.');
       return;
     }
+    setScannedItem(matchedItem)
 
     setCart((currentCart) => {
       const existingEntry = currentCart.find((entry) => entry.item.id === matchedItem.id);

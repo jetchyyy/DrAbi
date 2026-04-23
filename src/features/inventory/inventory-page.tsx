@@ -88,7 +88,7 @@ export function InventoryPage() {
   const createItemMutation = useMutation({
     mutationFn: async (values: InventoryFormValues) => createInventoryItem(values),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
+      await queryClient.invalidateQueries({ queryKey: [queryKeys.inventory] });
     },
   });
 
@@ -97,14 +97,14 @@ export function InventoryPage() {
       return updateInventoryItems(itemId, values)
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
+      await queryClient.invalidateQueries({ queryKey: [queryKeys.inventory] });
     },
   });
 
   const deleteItemMutation = useMutation({
     mutationFn: async (itemId: string) => deleteInventoryItem(itemId),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
+      await queryClient.invalidateQueries({ queryKey: [queryKeys.inventory] });
     },
   });
 

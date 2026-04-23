@@ -147,6 +147,13 @@ export const appNavigation: NavItem[] = [
     moduleKey: "inventory",
   },
   {
+    label: "Inventory Logs",
+    to: "/app/inventory-logs",
+    icon: ClipboardList,
+    permission: "inventory.view",
+    moduleKey: "inventory",
+  },
+  {
     label: "Laboratory",
     to: "/app/laboratory",
     icon: FlaskConical,

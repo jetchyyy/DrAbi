@@ -50,6 +50,7 @@ import type {
   Specialty,
   Supplier,
   UserProfile,
+  InventoryUsageLog,
 } from "../types/domain";
 import type { Database } from "../types/database";
 import { generateBookingReceiptCode, generatePatientQrCode } from "./utils";
@@ -3748,59 +3749,7 @@ export async function getCategories(): Promise<
   return (data ?? []) as Array<{ id: string; name: string }>;
 }
 
-export async function getInventoryItems(
-  page: number,
-): Promise<InventoryItem[]> {
-  if (!isSupabaseConfigured) {
-    const { listInventoryItems } = await import("./local-db");
-    return listInventoryItems();
-  }
 
-  const limit = 10;
-  const from = Math.max(0, (page - 1) * limit);
-  const to = from + limit - 1;
-  const client = requireSupabase();
-  const { data, error } = await client
-    .from("inventory_items")
-    .select("*")
-    .range(from, to);
-
-  if (error) {
-    throw error;
-  }
-
-  return (
-    (data ?? []) as Array<{
-      id: string;
-      category_id: string;
-      supplier_id: string | null;
-      qr_code: string;
-      name: string;
-      sku: string;
-      unit: string;
-      stock_on_hand: number;
-      reorder_level: number;
-      cost_price: number | null;
-      selling_price: number | null;
-      created_at: string;
-      updated_at: string;
-    }>
-  ).map((row) => ({
-    id: row.id,
-    category_id: row.category_id,
-    supplier_id: row.supplier_id,
-    qrCode: row.qr_code,
-    name: row.name,
-    sku: row.sku,
-    unit: row.unit,
-    stockOnHand: Number(row.stock_on_hand ?? 0),
-    reorderLevel: Number(row.reorder_level ?? 0),
-    costPrice: Number(row.cost_price ?? 0),
-    sellingPrice: Number(row.selling_price ?? 0),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }));
-}
 
 export async function listInventoryItemsLiveOrDemo(): Promise<InventoryItem[]> {
   if (!isSupabaseConfigured) {
@@ -3850,6 +3799,7 @@ export async function listInventoryItemsLiveOrDemo(): Promise<InventoryItem[]> {
     updatedAt: row.updated_at,
   }));
 }
+
 
 export async function createInventoryItem(values: {
   categoryId: string;
@@ -3968,6 +3918,122 @@ export async function deleteInventoryItem(id: string) {
   if (error) {
     throw error;
   }
+}
+
+export async function getInventoryItems(
+  page: number,
+): Promise<InventoryItem[]> {
+  if (!isSupabaseConfigured) {
+    const { listInventoryItems } = await import("./local-db");
+    return listInventoryItems();
+  }
+
+  const limit = 10;
+  const from = Math.max(0, (page - 1) * limit);
+  const to = from + limit - 1;
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("inventory_items")
+    .select("*")
+    .range(from, to);
+
+  if (error) {
+    throw error;
+  }
+
+  return (
+    (data ?? []) as Array<{
+      id: string;
+      category_id: string;
+      supplier_id: string | null;
+      qr_code: string;
+      name: string;
+      sku: string;
+      unit: string;
+      stock_on_hand: number;
+      reorder_level: number;
+      cost_price: number | null;
+      selling_price: number | null;
+      created_at: string;
+      updated_at: string;
+    }>
+  ).map((row) => ({
+    id: row.id,
+    category_id: row.category_id,
+    supplier_id: row.supplier_id,
+    qrCode: row.qr_code,
+    name: row.name,
+    sku: row.sku,
+    unit: row.unit,
+    stockOnHand: Number(row.stock_on_hand ?? 0),
+    reorderLevel: Number(row.reorder_level ?? 0),
+    costPrice: Number(row.cost_price ?? 0),
+    sellingPrice: Number(row.selling_price ?? 0),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
+}
+
+export async function getInventoryLogs(page:number): Promise<InventoryUsageLog[]> {
+  
+  const limit = 10;
+  const from = Math.max(0, (page - 1) * limit);
+  const to = from + limit - 1;
+  const client = requireSupabase();
+
+  const {data,error} = await client.from("inventory_usage_logs").select(`
+      id,
+      quantity,
+      notes,
+      scanned_code,
+      profiles(full_name),
+      patients:patients(first_name,last_name),
+      inventory_items(name),
+      appointments(reason)
+    `).range(from,to)
+
+  if (error) throw error;
+
+  return (data ?? []).map((row:any) => ({
+    id: row.id,
+    patientId:`${row.patients?.first_name} ${row.patients?.last_name}`,
+    appointmentId: row.appointments?.reason,
+    itemId: row.inventory_items?.name,
+    quantity: row.quantity,
+    notes: row.notes,
+    scannedCode: row.scanned_code,
+    recordedBy: row.profiles?.full_name,
+    createdAt:row.created_at,
+    updatedAt: row.updated_at,
+  }))
+
+}
+
+export async function createInventoryLogs(values:{
+  patientId:string,
+  appointmentId:string | null,
+  itemId:string,
+  quantity:number,
+  notes:string | null,
+  scannedCode:string
+  recordedBy:string,
+})
+{
+  const client = requireSupabase();
+
+  const {data,error} = await client.from("inventory_usage_logs").insert({
+    patient_id:values.patientId,
+    appointment_id:values.appointmentId,
+    item_id:values.itemId,
+    quantity:values.quantity,
+    notes:values.notes,
+    scanned_code:values.scannedCode,
+    recorded_by:values.recordedBy
+  } as never).select("*").single();
+  if (error) {
+  throw error;
+}
+  return data
 }
 
 export async function listPosSalesLiveOrDemo(): Promise<PosSale[]> {
