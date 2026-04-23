@@ -112,8 +112,9 @@ export function WorkflowTab() {
   const { profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const role = profile?.role ?? 'patient';
-  const canCreateRequests = role === 'doctor' || role === 'owner_admin';
+  const canCreateRequests = role === 'doctor' || role === 'owner_admin' || role === 'front_desk_cashier';
   const canProcessRequests = role === 'lab_staff' || role === 'owner_admin';
+  const isWalkInCreator = role === 'front_desk_cashier';
   const hasDualAccess = canCreateRequests && canProcessRequests;
   const [search, setSearch] = useState('');
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
@@ -633,7 +634,7 @@ export function WorkflowTab() {
     }
 
     if (isProcessingExistingOrder) {
-      return 'Update Request';
+      return isLabStaffProcessingExistingOrder ? 'Complete Lab Request' : 'Update Request';
     }
 
     if (canCreateRequests) {
@@ -653,7 +654,14 @@ export function WorkflowTab() {
           ? Boolean(processingOrder?.urgentFlag)
           : values.urgentFlag;
 
-        if (values.status === 'in_progress') {
+        if (isLabStaffProcessingExistingOrder) {
+          await completeMutation.mutateAsync({
+            requestId: editingOrderId,
+            resultData: values.resultSummary ?? '',
+            resultNotes: requestNotes,
+            attachments: resultAttachments,
+          });
+        } else if (values.status === 'in_progress') {
           await startMutation.mutateAsync(editingOrderId);
           await updateDetailsMutation.mutateAsync({
             requestId: editingOrderId,
@@ -1117,15 +1125,22 @@ export function WorkflowTab() {
                           ))}
                         </Select>
                       </FormField>
-                      <FormField error={form.formState.errors.requestedBy?.message} label="Requested by">
-                        <Select {...form.register('requestedBy')}>
-                          {doctorOptions.map((d) => (
-                            <option key={d.id} value={d.id}>
-                              {d.name}
-                            </option>
-                          ))}
-                        </Select>
-                      </FormField>
+                      {isWalkInCreator ? (
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                          Walk-in lab request will be logged under the front desk account.
+                          <input type="hidden" {...form.register('requestedBy')} />
+                        </div>
+                      ) : (
+                        <FormField error={form.formState.errors.requestedBy?.message} label="Requested by">
+                          <Select {...form.register('requestedBy')}>
+                            {doctorOptions.map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {d.name}
+                              </option>
+                            ))}
+                          </Select>
+                        </FormField>
+                      )}
                     </>
                   ) : (
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">

@@ -121,6 +121,29 @@ textarea {
 .animate-orb-2        { animation: orbDrift2 45s ease-in-out infinite; }
 .animate-orb-3        { animation: orbDrift3 30s ease-in-out infinite; }
 
+.scroll-reveal {
+  --sr-y: 30px;
+  opacity: 0;
+  transform: translateY(var(--sr-y)) scale(0.985);
+  transition:
+    opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 /* Stagger delays */
 .delay-100 { animation-delay: 0.10s; }
 .delay-150 { animation-delay: 0.15s; }
@@ -157,6 +180,195 @@ textarea {
 .chatbot-messages::-webkit-scrollbar-track { background: transparent; }
 .chatbot-messages::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
 .chatbot-messages::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+/* ── Hero bubbly floating badges ─────────────────────────── */
+
+@keyframes heroFloat1 {
+  0%, 100% { transform: translateY(0px);  }
+  50%       { transform: translateY(-9px); }
+}
+@keyframes heroFloat2 {
+  0%, 100% { transform: translateY(0px);   }
+  50%       { transform: translateY(-11px); }
+}
+@keyframes heroFloat3 {
+  0%, 100% { transform: translateY(0px);  }
+  50%       { transform: translateY(-7px); }
+}
+
+.animate-hero-float-1 { animation: heroFloat1 3.2s ease-in-out infinite; }
+.animate-hero-float-2 { animation: heroFloat2 4.0s ease-in-out infinite 0.6s; }
+.animate-hero-float-3 { animation: heroFloat3 3.6s ease-in-out infinite 1.2s; }
+
+.hero-doctor-placeholder {
+  position: relative;
+  width: min(100%, 560px);
+  height: min(88vh, 980px);
+  min-height: 640px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.hero-doctor-placeholder__halo {
+  position: absolute;
+  inset: 14% 7% 12%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.18) 48%, transparent 76%);
+  filter: blur(8px);
+}
+
+.hero-doctor-placeholder__head {
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  width: 26%;
+  height: 19%;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffd7b0 0%, #f5b98b 100%);
+  box-shadow: 0 24px 40px rgba(23, 41, 55, 0.08);
+}
+
+.hero-doctor-placeholder__head::before {
+  content: '';
+  position: absolute;
+  inset: -10% -6% 38%;
+  border-radius: 999px 999px 48% 48%;
+  background: linear-gradient(180deg, #5b3829 0%, #2c201d 100%);
+  z-index: -1;
+}
+
+.hero-doctor-placeholder__head::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -14%;
+  width: 24%;
+  height: 18%;
+  transform: translateX(-50%);
+  border-radius: 0 0 999px 999px;
+  background: linear-gradient(180deg, #f7c59a 0%, #efb488 100%);
+}
+
+.hero-doctor-placeholder__body {
+  position: absolute;
+  bottom: 8%;
+  left: 50%;
+  width: 66%;
+  height: 62%;
+  transform: translateX(-50%);
+  border-radius: 44% 44% 18% 18%;
+  background: linear-gradient(180deg, #f3f8ff 0%, #dbe8fb 48%, #f5f7fb 100%);
+  box-shadow: 0 28px 50px rgba(23, 41, 55, 0.14);
+}
+
+.hero-doctor-placeholder__body::before {
+  content: '';
+  position: absolute;
+  top: 7%;
+  left: 50%;
+  width: 32%;
+  height: 26%;
+  transform: translateX(-50%);
+  border-radius: 0 0 38% 38%;
+  background: linear-gradient(180deg, #d9ebff 0%, #b7d7f2 100%);
+}
+
+.hero-doctor-placeholder__body::after {
+  content: '';
+  position: absolute;
+  top: 18%;
+  left: 11%;
+  width: 78%;
+  height: 70%;
+  border-radius: 40% 40% 14% 14%;
+  background:
+    linear-gradient(135deg, transparent 0 32%, rgba(255,255,255,0.98) 32% 52%, transparent 52% 100%),
+    linear-gradient(225deg, transparent 0 32%, rgba(255,255,255,0.98) 32% 52%, transparent 52% 100%);
+  opacity: 0.9;
+}
+
+.hero-doctor-placeholder__coat {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 78%;
+  height: 48%;
+  transform: translateX(-50%);
+  border-radius: 34% 34% 10% 10%;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(244,247,252,0.98) 50%, rgba(233,239,248,1) 100%),
+    linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 45%);
+  box-shadow: 0 30px 55px rgba(15, 23, 42, 0.12);
+}
+
+.hero-doctor-placeholder__coat::before,
+.hero-doctor-placeholder__coat::after {
+  content: '';
+  position: absolute;
+  top: 18%;
+  width: 26%;
+  height: 48%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(236,241,249,0.95) 100%);
+  box-shadow: inset 0 0 0 1px rgba(209, 223, 238, 0.8);
+}
+
+.hero-doctor-placeholder__coat::before {
+  left: 16%;
+  transform: skewY(20deg);
+  border-radius: 18px 18px 90px 22px;
+}
+
+.hero-doctor-placeholder__coat::after {
+  right: 16%;
+  transform: skewY(-20deg);
+  border-radius: 18px 18px 22px 90px;
+}
+
+.hero-doctor-placeholder::before,
+.hero-doctor-placeholder::after {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+  border: 5px solid #475569;
+  opacity: 0.78;
+}
+
+.hero-doctor-placeholder::before {
+  right: 22%;
+  top: 43%;
+  width: 10%;
+  height: 18%;
+  border-left-color: transparent;
+  border-top-color: transparent;
+  transform: rotate(12deg);
+}
+
+.hero-doctor-placeholder::after {
+  right: 26%;
+  top: 58%;
+  width: 8%;
+  height: 8%;
+  background: rgba(255,255,255,0.96);
+  box-shadow: 0 0 0 4px #475569 inset;
+}
+
+.hero-doctor-placeholder__card {
+  position: absolute;
+  right: 6%;
+  bottom: 16%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 240px;
+  padding: 14px 16px;
+  border: 1px solid rgba(251, 146, 60, 0.35);
+  border-radius: 20px;
+  background: rgba(255,255,255,0.94);
+  box-shadow: 0 18px 40px rgba(23, 41, 55, 0.1);
+  backdrop-filter: blur(10px);
+}
 
 /* ── App Splash Screen ──────────────────────────────────── */
 

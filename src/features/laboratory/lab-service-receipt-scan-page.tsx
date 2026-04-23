@@ -228,7 +228,7 @@ export function LabServiceReceiptScanPage() {
           }
         }
 
-        const updatedRequest = await labRequestService.markRequestAsPaid(currentRequest.id, invoiceNumber);
+        const updatedRequest = await labRequestService.markRequestAsPaid(currentRequest.id, currentRequest.receiptCode ?? null);
         return { request: updatedRequest ?? currentRequest, invoiceNumber, invoiceId: createdInvoice.id };
       } catch (error) {
         if (createdInvoiceId) {
@@ -241,7 +241,7 @@ export function LabServiceReceiptScanPage() {
       const paidRequest = {
         ...result.request,
         paymentStatus: 'paid' as const,
-        receiptCode: result.invoiceNumber ?? result.request.receiptCode,
+        receiptCode: result.request.receiptCode,
       };
 
       qc.setQueryData(queryKeys.labRequest(result.request.id), paidRequest);

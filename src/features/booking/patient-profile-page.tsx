@@ -142,7 +142,7 @@ export function PatientProfilePage() {
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
       <Card>
         <div className="flex items-center gap-3">
-          <div className="rounded-none bg-orange-600 p-3 text-white">
+          <div className="rounded-xl bg-orange-600 p-3 text-white">
             <UserRound className="size-5" />
           </div>
           <div>
@@ -204,14 +204,14 @@ export function PatientProfilePage() {
           </div>
 
           <FormField error={profileForm.formState.errors.allergies?.message} label="Allergies">
-            <Textarea className="rounded-none" {...profileForm.register('allergies')} />
+            <Textarea {...profileForm.register('allergies')} />
           </FormField>
 
           <FormField error={profileForm.formState.errors.medicalHistory?.message} label="Medical history">
-            <Textarea className="rounded-none" {...profileForm.register('medicalHistory')} />
+            <Textarea {...profileForm.register('medicalHistory')} />
           </FormField>
 
-          <Button className="rounded-none bg-orange-600 px-6 py-3 font-extrabold uppercase tracking-widest hover:bg-orange-700" disabled={profileMutation.isPending} type="submit">
+          <Button className="rounded-xl bg-orange-600 px-6 py-3 font-extrabold uppercase tracking-widest hover:bg-orange-700" disabled={profileMutation.isPending} type="submit">
             {profileMutation.isPending ? 'Saving...' : 'Save profile'}
           </Button>
         </form>
@@ -219,7 +219,7 @@ export function PatientProfilePage() {
 
       <Card>
         <div className="flex items-center gap-3">
-          <div className="rounded-none bg-slate-900 p-3 text-white">
+          <div className="rounded-xl bg-slate-900 p-3 text-white">
             <LockKeyhole className="size-5" />
           </div>
           <div>
@@ -241,7 +241,7 @@ export function PatientProfilePage() {
             You can update your password here at any time. Your patient name stays fixed to protect the integrity of medical records.
           </p>
 
-          <Button className="rounded-none px-6 py-3 font-extrabold uppercase tracking-widest" disabled={passwordMutation.isPending} type="submit" variant="secondary">
+          <Button className="rounded-xl px-6 py-3 font-extrabold uppercase tracking-widest" disabled={passwordMutation.isPending} type="submit" variant="secondary">
             {passwordMutation.isPending ? 'Updating...' : 'Update password'}
           </Button>
         </form>

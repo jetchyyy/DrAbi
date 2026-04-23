@@ -118,7 +118,7 @@ export function ResetPasswordPage() {
           </div>
 
           <Link to="/login">
-            <Button className="w-full gap-2 rounded-none bg-orange-600 hover:bg-orange-700 font-extrabold uppercase tracking-widest text-sm py-5">
+            <Button className="w-full gap-2 rounded-xl bg-orange-600 hover:bg-orange-700 font-extrabold uppercase tracking-widest text-sm py-5">
               <ArrowLeft className="size-4" />
               Back to Sign In
             </Button>

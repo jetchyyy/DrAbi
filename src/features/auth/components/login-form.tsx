@@ -95,7 +95,7 @@ export function LoginForm({ defaultRedirectTo }: LoginFormProps) {
       </div>
 
       <Button
-        className="w-full gap-2 rounded-none bg-orange-600 py-5 text-sm font-extrabold uppercase tracking-widest transition-colors hover:bg-orange-700"
+        className="w-full gap-2 rounded-xl bg-orange-600 py-5 text-sm font-extrabold uppercase tracking-widest transition-colors hover:bg-orange-700"
         disabled={submitting}
         type="submit"
       >

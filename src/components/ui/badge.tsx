@@ -17,7 +17,7 @@ export function Badge({ children, intent = 'neutral', className }: PropsWithChil
   };
 
   return (
-    <span className={cn('inline-flex rounded-none px-3 py-1 text-xs font-medium', intents[intent], className)}>
+    <span className={cn('inline-flex rounded-full px-3 py-1 text-xs font-medium', intents[intent], className)}>
       {children}
     </span>
   );

@@ -123,7 +123,7 @@ export function MyBookingsPage() {
                   </div>
                 </div>
                 <Badge
-                  className="shrink-0 whitespace-nowrap rounded-none text-[10px] font-extrabold uppercase tracking-widest"
+                  className="shrink-0 whitespace-nowrap rounded-full text-[10px] font-extrabold uppercase tracking-widest"
                   intent={booking.status === 'confirmed' ? 'success' : booking.status === 'cancelled' ? 'danger' : 'info'}
                 >
                   {booking.status}

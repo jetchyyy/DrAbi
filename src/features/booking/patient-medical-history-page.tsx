@@ -141,7 +141,7 @@ export function PatientMedicalHistoryPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="border-l-4 border-l-orange-500">
           <div className="flex items-center gap-3">
-            <div className="rounded-none bg-orange-100 p-3 text-orange-700">
+            <div className="rounded-xl bg-orange-100 p-3 text-orange-700">
               <Activity className="size-5" />
             </div>
             <div>
@@ -157,7 +157,7 @@ export function PatientMedicalHistoryPage() {
 
         <Card className="border-l-4 border-l-slate-900">
           <div className="flex items-center gap-3">
-            <div className="rounded-none bg-slate-100 p-3 text-slate-800">
+            <div className="rounded-xl bg-slate-100 p-3 text-slate-800">
               <ClipboardList className="size-5" />
             </div>
             <div>
@@ -173,7 +173,7 @@ export function PatientMedicalHistoryPage() {
 
         <Card className="border-l-4 border-l-emerald-500">
           <div className="flex items-center gap-3">
-            <div className="rounded-none bg-emerald-100 p-3 text-emerald-700">
+            <div className="rounded-xl bg-emerald-100 p-3 text-emerald-700">
               <CalendarDays className="size-5" />
             </div>
             <div>
@@ -193,7 +193,7 @@ export function PatientMedicalHistoryPage() {
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <Card>
           <div className="flex items-center gap-3">
-            <div className="rounded-none bg-orange-600 p-3 text-white">
+            <div className="rounded-xl bg-orange-600 p-3 text-white">
               <FileText className="size-5" />
             </div>
             <div>
@@ -246,7 +246,7 @@ export function PatientMedicalHistoryPage() {
 
         <Card>
           <div className="flex items-center gap-3">
-            <div className="rounded-none bg-slate-900 p-3 text-white">
+            <div className="rounded-xl bg-slate-900 p-3 text-white">
               <Stethoscope className="size-5" />
             </div>
             <div>

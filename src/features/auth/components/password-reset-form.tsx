@@ -87,7 +87,7 @@ export function PasswordResetForm() {
 
       {/* Submit */}
       <Button
-        className="w-full gap-2 rounded-none bg-orange-600 hover:bg-orange-700 font-extrabold uppercase tracking-widest text-sm py-5 transition-colors"
+        className="w-full gap-2 rounded-xl bg-orange-600 hover:bg-orange-700 font-extrabold uppercase tracking-widest text-sm py-5 transition-colors"
         disabled={submitting}
         type="submit"
       >

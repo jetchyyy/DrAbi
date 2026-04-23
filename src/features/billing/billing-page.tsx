@@ -628,7 +628,7 @@ export function BillingPage() {
           }
 
           request =
-            (await labRequestService.markRequestAsPaid(createdRequest.id, createdInvoice.invoiceNumber)) ??
+            (await labRequestService.markRequestAsPaid(createdRequest.id, createdRequest.receiptCode ?? null)) ??
             createdRequest;
         }
 

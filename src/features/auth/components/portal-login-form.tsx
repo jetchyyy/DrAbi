@@ -94,7 +94,7 @@ export function PortalLoginForm() {
       </div>
 
       <Button
-        className="w-full gap-2 rounded-none bg-[#10295e] py-5 text-sm font-extrabold uppercase tracking-widest transition-colors hover:bg-[#08142c]"
+        className="w-full gap-2 rounded-xl bg-[#10295e] py-5 text-sm font-extrabold uppercase tracking-widest transition-colors hover:bg-[#08142c]"
         disabled={submitting}
         type="submit"
       >

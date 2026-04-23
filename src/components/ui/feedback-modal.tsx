@@ -47,12 +47,12 @@ export function FeedbackModal({
       role="dialog"
     >
       <div
-        className="w-full max-w-md overflow-hidden border border-slate-200 bg-white shadow-2xl"
+        className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className={`flex items-start justify-between gap-4 px-5 py-4 ${isSuccess ? 'bg-emerald-600' : 'bg-rose-600'}`}>
+        <div className={`flex items-start justify-between gap-4 rounded-t-2xl px-5 py-4 ${isSuccess ? 'bg-emerald-600' : 'bg-rose-600'}`}>
           <div className="flex items-start gap-3">
-            <div className="border border-white/25 bg-white/10 p-2 text-white">
+            <div className="rounded-xl border border-white/25 bg-white/10 p-2 text-white">
               <Icon className="size-5" />
             </div>
             <div>
@@ -64,7 +64,7 @@ export function FeedbackModal({
           </div>
           <button
             aria-label="Close feedback modal"
-            className="inline-flex items-center justify-center border border-white/25 bg-white/10 p-2 text-white transition hover:bg-white/20"
+            className="inline-flex items-center justify-center rounded-xl border border-white/25 bg-white/10 p-2 text-white transition hover:bg-white/20"
             onClick={onClose}
             type="button"
           >
@@ -76,7 +76,7 @@ export function FeedbackModal({
           <p className="text-sm leading-relaxed text-slate-600">{message}</p>
           <div className="flex justify-end">
             <Button
-              className={isSuccess ? 'rounded-none bg-emerald-600 hover:bg-emerald-700' : 'rounded-none bg-rose-600 hover:bg-rose-700'}
+              className={isSuccess ? 'rounded-xl bg-emerald-600 hover:bg-emerald-700' : 'rounded-xl bg-rose-600 hover:bg-rose-700'}
               onClick={onClose}
               type="button"
             >
