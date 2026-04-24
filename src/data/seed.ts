@@ -12,6 +12,7 @@ export function createSeedDatabase(): AppDatabase {
     appointments: [],
     consultations: [],
     prescriptions: [],
+    medicalCertificates: [],
     bookings: [],
     referrals: [],
     invoices: [],

@@ -10,10 +10,12 @@ import { queryKeys } from "../../../lib/query-keys";
 import {
   createPatientLiveOrDemo,
   createPrescriptionLiveOrDemo,
+  createMedicalCertificateLiveOrDemo,
   deletePatientLiveOrDemo,
   getPatientByIdLiveOrDemo,
   listAppointmentsByPatientIdLiveOrDemo,
   listBookingsByPatientIdLiveOrDemo,
+  listMedicalCertificatesByPatientIdLiveOrDemo,
   updatePatientLiveOrDemo,
   listConsultationsByPatientIdLiveOrDemo,
   listPatientsLiveOrDemo,
@@ -22,6 +24,7 @@ import {
 } from "../../../lib/supabase-clinic";
 import type {
   InventoryUsageLog,
+  MedicalCertificate,
   Patient,
   PatientActionLog,
   Prescription,
@@ -133,6 +136,20 @@ export function useCreatePrescription() {
   });
 }
 
+export function useCreateMedicalCertificate() {
+  return useMutation({
+    mutationFn: async (
+      payload: Omit<MedicalCertificate, "id" | "createdAt" | "updatedAt">,
+    ) => createMedicalCertificateLiveOrDemo(payload),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.patientMedicalCertificates(variables.patientId),
+      });
+    },
+  });
+}
+
 export function useRecordInventoryUsage() {
   return useMutation({
     mutationFn: async (
@@ -195,6 +212,17 @@ export function usePatientPrescriptions(patientId: string | null) {
     queryFn: async () => {
       if (!patientId) return [];
       return listPrescriptionsByPatientIdLiveOrDemo(patientId);
+    },
+    enabled: Boolean(patientId),
+  });
+}
+
+export function usePatientMedicalCertificates(patientId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.patientMedicalCertificates(patientId),
+    queryFn: async () => {
+      if (!patientId) return [];
+      return listMedicalCertificatesByPatientIdLiveOrDemo(patientId);
     },
     enabled: Boolean(patientId),
   });

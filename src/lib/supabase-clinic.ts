@@ -36,6 +36,7 @@ import type {
   BookingPaymentStatus,
   Invoice,
   InvoiceItem,
+  MedicalCertificate,
   Patient,
   PaymentStatus,
   PosPaymentMethod,
@@ -67,6 +68,9 @@ export interface DoctorDirectoryItem {
   role: Role;
   specialtyId: string | null;
   specialtyName: string | null;
+  licenseNumber: string | null;
+  birNumber: string | null;
+  ptrNumber: string | null;
   consultationFee: number;
   followUpFee: number;
 }
@@ -173,6 +177,7 @@ type SpecialistScheduleRow =
 type AppointmentRow = Database["public"]["Tables"]["appointments"]["Row"];
 type ConsultationRow = Database["public"]["Tables"]["consultations"]["Row"];
 type PrescriptionRow = Database["public"]["Tables"]["prescriptions"]["Row"];
+type MedicalCertificateRow = Database["public"]["Tables"]["medical_certificates"]["Row"];
 
 export interface OdcCredentialInput {
   accessKey?: string;
@@ -818,6 +823,21 @@ function mapPrescription(row: PrescriptionRow) {
     prescriptionName: row.prescription_name ?? row.medication,
     dosage: row.dosage,
     instruction: row.instruction ?? row.instructions,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapMedicalCertificate(row: MedicalCertificateRow): MedicalCertificate {
+  return {
+    id: row.id,
+    consultationId: row.consultation_id,
+    patientId: row.patient_id,
+    certificatePurpose: row.certificate_purpose,
+    diagnosis: row.diagnosis,
+    recommendation: row.recommendation,
+    restFrom: row.rest_from,
+    restUntil: row.rest_until,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -1658,6 +1678,28 @@ export async function listPrescriptionsByPatientIdLiveOrDemo(
   return ((data ?? []) as PrescriptionRow[]).map(mapPrescription);
 }
 
+export async function listMedicalCertificatesByPatientIdLiveOrDemo(
+  patientId: string,
+): Promise<MedicalCertificate[]> {
+  if (!isSupabaseConfigured) {
+    const { listMedicalCertificatesByPatient } = await import("./local-db");
+    return listMedicalCertificatesByPatient(patientId);
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("medical_certificates")
+    .select("*")
+    .eq("patient_id", patientId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as MedicalCertificateRow[]).map(mapMedicalCertificate);
+}
+
 export async function createAppointmentLiveOrDemo(
   input: Omit<Appointment, "id" | "createdAt" | "updatedAt">,
 ) {
@@ -1775,6 +1817,37 @@ export async function createPrescriptionLiveOrDemo(
   }
 
   return mapPrescription(data as PrescriptionRow);
+}
+
+export async function createMedicalCertificateLiveOrDemo(
+  input: Omit<MedicalCertificate, "id" | "createdAt" | "updatedAt">,
+) {
+  if (!isSupabaseConfigured) {
+    const { createMedicalCertificate } = await import("./local-db");
+    return createMedicalCertificate(input);
+  }
+
+  const client = requireSupabase();
+  const payload: Database["public"]["Tables"]["medical_certificates"]["Insert"] = {
+    consultation_id: input.consultationId,
+    patient_id: input.patientId,
+    certificate_purpose: input.certificatePurpose,
+    diagnosis: input.diagnosis,
+    recommendation: input.recommendation,
+    rest_from: input.restFrom ?? null,
+    rest_until: input.restUntil ?? null,
+  };
+
+  const { data, error } = await client
+    .from("medical_certificates")
+    .insert(payload as never)
+    .select("*")
+    .single();
+  if (error) {
+    throw error;
+  }
+
+  return mapMedicalCertificate(data as MedicalCertificateRow);
 }
 
 function mapService(row: ServiceRow): Service {
@@ -2071,6 +2144,9 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
           database.specialties.find(
             (specialty) => specialty.id === user.specialtyId,
           )?.name ?? null,
+        licenseNumber: null,
+        birNumber: null,
+        ptrNumber: null,
         consultationFee: 0,
         followUpFee: 0,
       }));
@@ -2080,7 +2156,7 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
   const { data, error } = await client
     .from("doctors")
     .select(
-      "id, profile_id, specialty_id, consultation_fee, follow_up_fee, profiles!inner(full_name, role, is_active), specialties(name)",
+      "id, profile_id, specialty_id, license_number, bir_number, ptr_number, consultation_fee, follow_up_fee, profiles!inner(full_name, role, is_active), specialties(name)",
     )
     .is("deleted_at", null)
     .order("created_at");
@@ -2094,11 +2170,14 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
       id: string;
       profile_id: string;
       specialty_id: string | null;
+      license_number: string | null;
+      bir_number: string | null;
+      ptr_number: string | null;
       consultation_fee: number;
       follow_up_fee: number;
       profiles:
-        | { full_name: string; role: string; is_active: boolean }
-        | { full_name: string; role: string; is_active: boolean }[];
+        | { full_name: string; role: string; is_active: boolean | null }
+        | { full_name: string; role: string; is_active: boolean | null }[];
       specialties: { name: string } | { name: string }[] | null;
     }>
   )
@@ -2108,7 +2187,7 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
         : row.profiles;
 
       return (
-        Boolean(profile?.is_active) &&
+        profile?.is_active !== false &&
         (profile?.role === "doctor" || profile?.role === "specialist")
       );
     })
@@ -2126,6 +2205,9 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
         specialtyName: Array.isArray(row.specialties)
           ? (row.specialties[0]?.name ?? null)
           : (row.specialties?.name ?? null),
+        licenseNumber: row.license_number,
+        birNumber: row.bir_number,
+        ptrNumber: row.ptr_number,
         consultationFee: Number(row.consultation_fee ?? 0),
         followUpFee: Number(row.follow_up_fee ?? 0),
       };
@@ -2149,6 +2231,9 @@ export async function getGeneralistDirectoryLiveOrDemo(): Promise<
           database.specialties.find(
             (specialty) => specialty.id === user.specialtyId,
           )?.name ?? null,
+        licenseNumber: null,
+        birNumber: null,
+        ptrNumber: null,
         consultationFee: 0,
         followUpFee: 0,
       }));
@@ -3518,6 +3603,7 @@ export async function createAdminUserLiveOrDemo(input: AdminCreateUserInput) {
     payload.prcLicenseNumber = input.prcLicenseNumber?.trim() ?? "";
     payload.prcLicenseExpiry = input.prcLicenseExpiry?.trim() ?? "";
     payload.birNumber = input.birNumber?.trim() ?? "";
+    payload.ptrNumber = input.ptrNumber?.trim() ?? "";
     payload.consultationFee = input.consultationFee ?? 0;
     payload.followUpFee = input.followUpFee ?? 0;
     if (input.prcIdFile) {
@@ -3566,6 +3652,7 @@ export interface AdminUpdateUserInput {
   prcLicenseNumber?: string;
   prcLicenseExpiry?: string;
   birNumber?: string;
+  ptrNumber?: string;
   consultationFee?: number;
   followUpFee?: number;
 }

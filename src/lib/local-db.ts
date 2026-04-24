@@ -21,6 +21,7 @@ import type {
   LabResult,
   LabService,
   LabServiceCategory,
+  MedicalCertificate,
   PatientActionLog,
   Patient,
   PosPaymentMethod,
@@ -882,6 +883,25 @@ export function createPrescription(input: Omit<Prescription, 'id' | 'createdAt' 
     });
     draft.auditLogs.unshift(createAuditLog(input.patientId, 'create', 'prescription'));
   }).prescriptions[0];
+}
+
+export function createMedicalCertificate(input: Omit<MedicalCertificate, 'id' | 'createdAt' | 'updatedAt'>) {
+  const timestamp = new Date().toISOString();
+  return updateDatabase((draft) => {
+    draft.medicalCertificates.unshift({
+      ...input,
+      id: generateId('medcert'),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    draft.auditLogs.unshift(createAuditLog(input.patientId, 'create', 'medical_certificate'));
+  }).medicalCertificates[0];
+}
+
+export function listMedicalCertificatesByPatient(patientId: string) {
+  return getDatabase().medicalCertificates
+    .filter((certificate) => certificate.patientId === patientId)
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
 export function listBookings() {

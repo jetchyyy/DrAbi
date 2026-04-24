@@ -43,6 +43,7 @@ const userSchema = z
     prcLicenseNumber: z.string().optional(),
     prcLicenseExpiry: z.string().optional(),
     birNumber: z.string().optional(),
+    ptrNumber: z.string().optional(),
     prcIdFile: z.custom<File | null>((value) => value === null || value instanceof File, {
       message: 'Upload a PRC ID file.',
     }).optional(),
@@ -77,6 +78,10 @@ const userSchema = z
 
     if (!value.birNumber?.trim()) {
       ctx.addIssue({ code: 'custom', path: ['birNumber'], message: 'BIR number is required for doctor and specialist accounts.' });
+    }
+
+    if (!value.ptrNumber?.trim()) {
+      ctx.addIssue({ code: 'custom', path: ['ptrNumber'], message: 'PTR number is required for doctor and specialist accounts.' });
     }
 
     if (!value.prcIdFile) {
@@ -122,6 +127,7 @@ function buildCreateUserInput(values: UserFormValues, accessRole: AccessRoleTemp
     prcLicenseNumber: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.prcLicenseNumber?.trim() ?? '' : undefined,
     prcLicenseExpiry: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.prcLicenseExpiry?.trim() ?? '' : undefined,
     birNumber: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.birNumber?.trim() ?? '' : undefined,
+    ptrNumber: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.ptrNumber?.trim() ?? '' : undefined,
     consultationFee: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.consultationFee ?? 0 : undefined,
     followUpFee: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.followUpFee ?? 0 : undefined,
     prcIdFile: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.prcIdFile ?? null : null,
@@ -162,6 +168,7 @@ export function SettingsUsersPage() {
         prcLicenseNumber: values.prcLicenseNumber?.trim(),
         prcLicenseExpiry: values.prcLicenseExpiry?.trim(),
         birNumber: values.birNumber?.trim(),
+        ptrNumber: values.ptrNumber?.trim(),
         consultationFee: values.consultationFee ?? 0,
         followUpFee: values.followUpFee ?? 0,
     }),
@@ -199,6 +206,7 @@ export function SettingsUsersPage() {
       prcLicenseNumber: '',
       prcLicenseExpiry: '',
       birNumber: '',
+      ptrNumber: '',
       prcIdFile: null,
       consultationFee: 0,
       followUpFee: 0,
@@ -255,6 +263,7 @@ export function SettingsUsersPage() {
       prcLicenseNumber: '',
       prcLicenseExpiry: '',
       birNumber: '',
+      ptrNumber: '',
       prcIdFile: null,
       consultationFee: 0,
       followUpFee: 0,
@@ -280,6 +289,7 @@ export function SettingsUsersPage() {
       prcLicenseNumber: '',
       prcLicenseExpiry: '',
       birNumber: '',
+      ptrNumber: '',
       prcIdFile: null,
       consultationFee: user.consultationFee ?? 0,
       followUpFee: user.followUpFee ?? 0,
@@ -565,9 +575,14 @@ export function SettingsUsersPage() {
                             <Input type="date" {...form.register('prcLicenseExpiry')} />
                           </FormField>
                         </div>
-                        <FormField error={form.formState.errors.birNumber?.message} label="BIR number">
-                          <Input {...form.register('birNumber')} />
-                        </FormField>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <FormField error={form.formState.errors.birNumber?.message} label="BIR number">
+                            <Input {...form.register('birNumber')} />
+                          </FormField>
+                          <FormField error={form.formState.errors.ptrNumber?.message} label="PTR number">
+                            <Input {...form.register('ptrNumber')} />
+                          </FormField>
+                        </div>
                         <FormField
                           error={form.formState.errors.prcIdFile?.message}
                           hint="Upload a JPG, PNG, or PDF copy of the PRC ID."

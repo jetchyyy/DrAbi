@@ -37,6 +37,7 @@ interface CreateUserPayload {
   prcLicenseNumber?: string;
   prcLicenseExpiry?: string;
   birNumber?: string;
+  ptrNumber?: string;
   prcIdFile?: PrcIdFileInput;
   consultationFee?: number;
   followUpFee?: number;
@@ -132,8 +133,8 @@ function validatePayload(body: CreateUserPayload) {
   }
 
   if (role === 'doctor' || role === 'specialist') {
-    if (!body.prcLicenseNumber?.trim() || !body.prcLicenseExpiry?.trim() || !body.birNumber?.trim() || !body.prcIdFile) {
-      throw new Error('Doctor and specialist accounts require PRC license number, PRC license expiry, BIR number, and PRC ID upload.');
+    if (!body.prcLicenseNumber?.trim() || !body.prcLicenseExpiry?.trim() || !body.birNumber?.trim() || !body.ptrNumber?.trim() || !body.prcIdFile) {
+      throw new Error('Doctor and specialist accounts require PRC license number, PRC license expiry, BIR number, PTR number, and PRC ID upload.');
     }
   }
 
@@ -147,6 +148,7 @@ function validatePayload(body: CreateUserPayload) {
     prcLicenseNumber: body.prcLicenseNumber?.trim() ?? '',
     prcLicenseExpiry: body.prcLicenseExpiry?.trim() ?? '',
     birNumber: body.birNumber?.trim() ?? '',
+    ptrNumber: body.ptrNumber?.trim() ?? '',
     prcIdFile: body.prcIdFile ?? null,
     consultationFee: typeof body.consultationFee === 'number' ? body.consultationFee : 0,
     followUpFee: typeof body.followUpFee === 'number' ? body.followUpFee : 0,
@@ -253,6 +255,7 @@ Deno.serve(async (request) => {
           phone: payload.contactNumber,
           role: payload.role,
           title: null,
+          is_active: true,
         },
         { onConflict: 'id' },
       );
@@ -280,6 +283,7 @@ Deno.serve(async (request) => {
             license_number: payload.prcLicenseNumber,
             license_expiry: payload.prcLicenseExpiry,
             bir_number: payload.birNumber,
+            ptr_number: payload.ptrNumber,
             prc_id_path: finalPrcIdPath,
             consultation_fee: payload.consultationFee,
             follow_up_fee: payload.followUpFee,

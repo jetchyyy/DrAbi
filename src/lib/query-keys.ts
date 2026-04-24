@@ -35,6 +35,8 @@ export const queryKeys = {
     ["patient-consultations", patientId] as const,
   patientPrescriptions: (patientId: string | null) =>
     ["patient-prescriptions", patientId] as const,
+  patientMedicalCertificates: (patientId: string | null) =>
+    ["patient-medical-certificates", patientId] as const,
   appointments: ["appointments"] as const,
   bookings: ["bookings"] as const,
   myBookings: (userId: string | null) => ["my-bookings", userId] as const,

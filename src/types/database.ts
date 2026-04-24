@@ -233,6 +233,7 @@ export interface Database {
           license_number: string | null;
           license_expiry: string | null;
           bir_number: string | null;
+          ptr_number: string | null;
           prc_id_path: string | null;
           consultation_fee: number;
           follow_up_fee: number;
@@ -622,6 +623,22 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["prescriptions"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["prescriptions"]["Row"]>;
+      };
+      medical_certificates: {
+        Row: {
+          id: string;
+          consultation_id: string;
+          patient_id: string;
+          certificate_purpose: string;
+          diagnosis: string;
+          recommendation: string;
+          rest_from: string | null;
+          rest_until: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["medical_certificates"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["medical_certificates"]["Row"]>;
       };
       inventory_categories: {
         Row: {

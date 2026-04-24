@@ -149,6 +149,7 @@ export interface AdminCreateUserInput {
   prcLicenseNumber?: string;
   prcLicenseExpiry?: string;
   birNumber?: string;
+  ptrNumber?: string;
   prcIdFile?: File | null;
   consultationFee?: number;
   followUpFee?: number;
@@ -254,6 +255,16 @@ export interface Prescription extends BaseRecord {
   prescriptionName: string;
   dosage: string;
   instruction: string;
+}
+
+export interface MedicalCertificate extends BaseRecord {
+  consultationId: string;
+  patientId: string;
+  certificatePurpose: string;
+  diagnosis: string;
+  recommendation: string;
+  restFrom?: string | null;
+  restUntil?: string | null;
 }
 
 export interface Booking extends BaseRecord {
@@ -457,6 +468,7 @@ export interface AppDatabase {
   appointments: Appointment[];
   consultations: Consultation[];
   prescriptions: Prescription[];
+  medicalCertificates: MedicalCertificate[];
   bookings: Booking[];
   referrals: Referral[];
   invoices: Invoice[];
