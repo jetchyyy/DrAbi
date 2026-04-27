@@ -30,8 +30,6 @@ export function HeroSection() {
     'group rounded-full bg-gradient-to-b from-orange-500 to-orange-600 px-8 py-3 text-sm font-extrabold text-white shadow-lg shadow-orange-300/55 ring-1 ring-orange-300/60 transition-all duration-300 hover:-translate-y-0.5 hover:from-orange-600 hover:to-orange-700 hover:shadow-xl hover:shadow-orange-400/55 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
   const secondaryHeroButtonClass =
     'rounded-full border-2 border-slate-200 bg-white/95 px-8 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-orange-300 hover:text-orange-600 hover:shadow-md active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
-  const tertiaryHeroButtonClass =
-    'rounded-full border-2 border-orange-200/80 bg-orange-50/80 px-6 py-4 text-sm font-bold text-orange-700 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-100/80 hover:text-orange-700 hover:shadow-md active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white 2xl:px-7 2xl:py-5';
 
   return (
     <section id="portal-hero" className="relative bg-orange-50" style={{ minHeight: '100vh' }}>
@@ -190,12 +188,12 @@ export function HeroSection() {
                 {bookingEnabled ? (
                   <div className="flex flex-wrap gap-3">
                     {isAuthenticated ? (
-                      <Link to="/portal/book">
+                      <Link to="/portal/my-bookings">
                         <Button
                           className={primaryHeroButtonClass}
                           style={{ borderRadius: '999px' }}
                         >
-                          Book Appointment <ArrowRight className="ml-2 size-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                          My Bookings <ArrowRight className="ml-2 size-4 transition-transform duration-300 group-hover:translate-x-0.5" />
                         </Button>
                       </Link>
                     ) : (
@@ -502,12 +500,12 @@ export function HeroSection() {
             {bookingEnabled ? (
               <>
                 {isAuthenticated ? (
-                  <Link to="/portal/book">
+                  <Link to="/portal/my-bookings">
                     <Button
                       className={`${primaryHeroButtonClass} flex items-center gap-2 px-6 py-4 2xl:px-7 2xl:py-5`}
                       style={{ borderRadius: '999px' }}
                     >
-                      Book Appointment <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                      My Bookings <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" />
                     </Button>
                   </Link>
                 ) : (
@@ -531,15 +529,6 @@ export function HeroSection() {
                     </Link>
                   </>
                 )}
-                <Link to="/portal/my-bookings">
-                  <Button
-                    variant="secondary"
-                    className={tertiaryHeroButtonClass}
-                    style={{ borderRadius: '999px' }}
-                  >
-                    My Bookings
-                  </Button>
-                </Link>
               </>
             ) : (
               <div

@@ -1,6 +1,5 @@
-import { Calendar, ChevronLeft, ChevronRight, GraduationCap, Stethoscope, UserCog } from 'lucide-react';
+import { ChevronLeft, ChevronRight, GraduationCap, Stethoscope, UserCog } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 
 import { ScrollReveal } from '../../../components/layout/scroll-reveal';
 import { useDoctorDirectory } from '../../../hooks/use-clinic-data';
@@ -125,15 +124,6 @@ function DoctorCard({ doctor, active }: { doctor: DoctorPortrait; active: boolea
       <p className="line-clamp-3 text-sm leading-relaxed text-slate-500">{doctor.desc}</p>
 
       <div className="flex-1" />
-
-      {/* Book CTA */}
-      <Link
-        to="/portal/book"
-        className="mt-5 inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-orange-600 hover:shadow-lg hover:shadow-orange-300/60"
-      >
-        <Calendar className="size-3.5" aria-hidden="true" />
-        Book Appointment
-      </Link>
     </div>
   );
 }
@@ -313,15 +303,7 @@ export function DoctorsSection() {
           </p>
           </div>
         </ScrollReveal>
-        <ScrollReveal className="shrink-0" delayMs={120} yOffset={16}>
-          <Link
-            to="/portal/book"
-            className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-orange-600 shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-orange-50 hover:shadow-xl hover:shadow-orange-900/30"
-          >
-            <Calendar className="size-4" aria-hidden="true" />
-            Book an Appointment
-          </Link>
-        </ScrollReveal>
+
       </div>
 
       {/* ── Portrait carousel ────────────────────────────── */}
@@ -372,12 +354,6 @@ export function DoctorsSection() {
                   </p>
 
                   <div className="flex-1" />
-                  <Link
-                    to="/portal/book"
-                    className="mt-4 inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-orange-600 hover:shadow-lg hover:shadow-orange-300/50"
-                  >
-                    Book →
-                  </Link>
                 </div>
               </ScrollReveal>
             ))}

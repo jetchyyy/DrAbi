@@ -223,11 +223,6 @@ export const specialistNavigation: SimpleNavItem[] = [
 export const portalNavigation: SimpleNavItem[] = [
   { label: "Portal Home", to: "/portal" },
   {
-    label: "Book Appointment",
-    to: "/portal/book",
-    moduleKey: "booking_appointments",
-  },
-  {
     label: "My Bookings",
     to: "/portal/my-bookings",
     moduleKey: "booking_appointments",
