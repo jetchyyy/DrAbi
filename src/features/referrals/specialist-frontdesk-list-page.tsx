@@ -1,5 +1,12 @@
-import { useState } from "react";
-import { Pencil, Trash2, AlertCircle, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Pencil,
+  Trash2,
+  AlertCircle,
+  Loader2,
+  CalendarCheck2,
+  Search,
+} from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { ReferralStatus } from "../../types/domain";
 import {
@@ -8,6 +15,8 @@ import {
   type ReferralListItem,
   type EditReferralInput,
 } from "./hooks/use-referral-list";
+
+const PAGE_SIZE = 7;
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
@@ -19,23 +28,23 @@ function ReferralStatusBadge({ status }: { status: ReferralStatus }) {
     },
     sent: {
       label: "Sent",
-      className: "bg-blue-50 text-blue-600 border-blue-200",
+      className: "bg-orange-50 text-orange-700 border-orange-200",
     },
     pending: {
       label: "Pending",
-      className: "bg-yellow-50 text-yellow-600 border-yellow-200",
+      className: "bg-sky-50 text-sky-600 border-sky-200",
     },
     scheduled: {
       label: "Scheduled",
-      className: "bg-sky-50 text-sky-600 border-sky-200",
+      className: "bg-indigo-50 text-indigo-600 border-indigo-200",
     },
     accepted: {
       label: "Accepted",
-      className: "bg-teal-50 text-teal-600 border-teal-200",
+      className: "bg-cyan-50 text-cyan-700 border-cyan-200",
     },
     confirmed: {
       label: "Confirmed",
-      className: "bg-green-50 text-green-600 border-green-200",
+      className: "bg-orange-50 text-orange-700 border-orange-200",
     },
     completed: {
       label: "Completed",
@@ -51,7 +60,7 @@ function ReferralStatusBadge({ status }: { status: ReferralStatus }) {
     },
     rescheduled: {
       label: "Rescheduled",
-      className: "bg-orange-50 text-orange-500 border-orange-200",
+      className: "bg-sky-50 text-sky-600 border-sky-200",
     },
   };
 
@@ -59,7 +68,7 @@ function ReferralStatusBadge({ status }: { status: ReferralStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-medium",
+        "inline-flex items-center border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest",
         entry.className,
       )}
     >
@@ -129,15 +138,15 @@ function EditReferralModal({
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl mx-4">
+      <div className="relative z-10 w-full max-w-lg border border-slate-200 bg-white shadow-2xl mx-4 max-h-[85vh] sm:max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <h2 className="text-base font-semibold text-gray-900">
+        <div className="flex items-center justify-between bg-orange-600 px-6 py-4">
+          <h2 className="text-sm font-bold text-white tracking-wide uppercase">
             Edit Referral
           </h2>
           <button
             onClick={onClose}
-            className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+            className="inline-flex items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
           >
             <svg
               className="h-4 w-4"
@@ -158,7 +167,7 @@ function EditReferralModal({
         {/* Body */}
         <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
           {/* Info summary */}
-          <div className="grid grid-cols-2 gap-4 rounded-xl bg-gray-50 p-4">
+          <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4">
             <div>
               <p className="text-xs text-gray-400 mb-0.5">Patient</p>
               <p className="text-sm font-medium text-gray-800">
@@ -181,7 +190,7 @@ function EditReferralModal({
                 type="date"
                 value={appointmentDate}
                 onChange={(e) => setAppointmentDate(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
               />
             </div>
             <div>
@@ -192,7 +201,7 @@ function EditReferralModal({
                 type="time"
                 value={appointmentTime}
                 onChange={(e) => setAppointmentTime(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
               />
             </div>
           </div>
@@ -205,7 +214,7 @@ function EditReferralModal({
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as ReferralStatus)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
             >
               {REFERRAL_STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -226,7 +235,7 @@ function EditReferralModal({
                 onChange={(e) => setCancelledReason(e.target.value)}
                 rows={3}
                 placeholder="Enter reason for cancellation..."
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
+                className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 resize-none"
               />
             </div>
           )}
@@ -242,7 +251,7 @@ function EditReferralModal({
                 onChange={(e) => setRescheduledReason(e.target.value)}
                 rows={3}
                 placeholder="Enter reason for rescheduling..."
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
+                className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 resize-none"
               />
             </div>
           )}
@@ -256,7 +265,7 @@ function EditReferralModal({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
+              className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 resize-none"
             />
           </div>
 
@@ -269,7 +278,7 @@ function EditReferralModal({
               value={clinicalSummary}
               onChange={(e) => setClinicalSummary(e.target.value)}
               rows={2}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
+              className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 resize-none"
             />
           </div>
 
@@ -282,24 +291,24 @@ function EditReferralModal({
               value={referralNotes}
               onChange={(e) => setReferralNotes(e.target.value)}
               rows={2}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
+              className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 resize-none"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4">
+        <div className="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
           <button
             onClick={onClose}
             disabled={isSaving}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-60"
+            className="border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-60"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving || !canSave}
-            className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 bg-orange-600 px-4 py-2 text-sm font-extrabold uppercase tracking-widest text-white hover:bg-orange-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Save Changes
@@ -329,7 +338,7 @@ function DeleteConfirmModal({
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-sm rounded-2xl bg-white shadow-2xl mx-4 p-6">
+      <div className="relative z-10 w-full max-w-sm border border-slate-200 bg-white shadow-2xl mx-4 p-6">
         <div className="flex flex-col items-center text-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
             <AlertCircle className="h-6 w-6 text-red-500" />
@@ -351,14 +360,14 @@ function DeleteConfirmModal({
           <button
             onClick={onClose}
             disabled={isDeleting}
-            className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-60"
+            className="flex-1 border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-60"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
             disabled={isDeleting}
-            className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 transition-colors disabled:opacity-60"
+            className="flex-1 inline-flex items-center justify-center gap-2 bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 transition-colors disabled:opacity-60"
           >
             {isDeleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Delete
@@ -386,6 +395,51 @@ export function ReferralsListPage() {
     useState<ReferralListItem | null>(null);
   const [deletingReferral, setDeletingReferral] =
     useState<ReferralListItem | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | ReferralStatus>(
+    "all",
+  );
+
+  const filteredReferrals = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    return referrals.filter((referral) => {
+      const matchesStatus =
+        statusFilter === "all" || referral.status === statusFilter;
+
+      const matchesSearch =
+        !q ||
+        referral.patientFullName.toLowerCase().includes(q) ||
+        (referral.reason ?? "").toLowerCase().includes(q) ||
+        (referral.cancelledReason ?? "").toLowerCase().includes(q) ||
+        (referral.rescheduledReason ?? "").toLowerCase().includes(q) ||
+        (referral.appointmentDate ?? "").toLowerCase().includes(q) ||
+        (referral.appointmentTime ?? "").toLowerCase().includes(q);
+
+      return matchesStatus && matchesSearch;
+    });
+  }, [referrals, search, statusFilter]);
+
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredReferrals.length / PAGE_SIZE)),
+    [filteredReferrals.length],
+  );
+
+  const paginatedReferrals = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredReferrals.slice(start, start + PAGE_SIZE);
+  }, [filteredReferrals, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   async function confirmDelete() {
     if (!deletingReferral) return;
@@ -413,21 +467,69 @@ export function ReferralsListPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-gray-900">Referrals</h1>
-        <p className="mt-0.5 text-sm text-gray-500">
-          Manage and track all patient referrals
-        </p>
+      <div className="border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 bg-orange-600 p-2.5 text-white">
+              <CalendarCheck2 className="size-5" />
+            </div>
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
+                Operations
+              </p>
+              <h1 className="text-xl font-extrabold tracking-tight text-slate-950">
+                Referrals
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Manage and track all patient referrals.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex w-full max-w-sm items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5">
+              <Search className="size-4 shrink-0 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search patient, reason..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+              />
+            </div>
+
+            <select
+              value={statusFilter}
+              onChange={(e) =>
+                setStatusFilter(e.target.value as "all" | ReferralStatus)
+              }
+              className="border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+            >
+              <option value="all">All Statuses</option>
+              {REFERRAL_STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="border-t border-slate-100 bg-slate-50 px-6 py-2">
+          <span className="text-xs font-bold text-slate-500">
+            {filteredReferrals.length} referral
+            {filteredReferrals.length !== 1 ? "s" : ""} found
+          </span>
+        </div>
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/60">
+          <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50">
+              <tr>
                 {[
                   "Patient",
                   "Schedule",
@@ -438,7 +540,7 @@ export function ReferralsListPage() {
                 ].map((col) => (
                   <th
                     key={col}
-                    className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500"
+                    className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500"
                   >
                     {col}
                   </th>
@@ -446,7 +548,7 @@ export function ReferralsListPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {referrals.length === 0 ? (
+              {filteredReferrals.length === 0 ? (
                 <tr>
                   <td
                     colSpan={6}
@@ -456,86 +558,88 @@ export function ReferralsListPage() {
                   </td>
                 </tr>
               ) : (
-                referrals.map((referral) => (
+                paginatedReferrals.map((referral) => (
                   <tr
                     key={referral.id}
-                    className="group hover:bg-gray-50/50 transition-colors"
+                    className="group hover:bg-slate-50 transition-colors"
                   >
                     {/* Patient */}
-                    <td className="px-5 py-4">
-                      <p className="font-medium text-gray-800">
+                    <td className="px-6 py-4 align-top">
+                      <p className="font-bold text-slate-950">
                         {referral.patientFullName}
                       </p>
                       {referral.reason && (
-                        <p className="mt-0.5 text-xs text-gray-400 line-clamp-1 max-w-[180px]">
+                        <p className="mt-0.5 text-xs text-slate-400 line-clamp-1 max-w-[180px]">
                           {referral.reason}
                         </p>
                       )}
                     </td>
 
                     {/* Schedule */}
-                    <td className="px-5 py-4">
+                    <td className="px-6 py-4 align-top">
                       {referral.appointmentDate || referral.appointmentTime ? (
                         <div>
                           {referral.appointmentDate && (
-                            <p className="text-gray-700">
+                            <p className="text-slate-700">
                               {referral.appointmentDate}
                             </p>
                           )}
                           {referral.appointmentTime && (
-                            <p className="text-xs text-gray-400">
+                            <p className="text-xs text-slate-400">
                               {referral.appointmentTime}
                             </p>
                           )}
                         </div>
                       ) : (
-                        <span className="text-gray-300">—</span>
+                        <span className="text-slate-300">—</span>
                       )}
                     </td>
 
                     {/* Status — read-only badge */}
-                    <td className="px-5 py-4">
+                    <td className="px-6 py-4 align-top">
                       <ReferralStatusBadge status={referral.status} />
                     </td>
 
                     {/* Cancelled reason */}
-                    <td className="px-5 py-4 max-w-[160px]">
+                    <td className="px-6 py-4 align-top max-w-[160px]">
                       {referral.cancelledReason ? (
-                        <p className="text-xs text-gray-600 line-clamp-2">
+                        <p className="text-xs text-slate-600 line-clamp-2">
                           {referral.cancelledReason}
                         </p>
                       ) : (
-                        <span className="text-gray-300">—</span>
+                        <span className="text-slate-300">—</span>
                       )}
                     </td>
 
                     {/* Reschedule reason */}
-                    <td className="px-5 py-4 max-w-[160px]">
+                    <td className="px-6 py-4 align-top max-w-[160px]">
                       {referral.rescheduledReason ? (
-                        <p className="text-xs text-gray-600 line-clamp-2">
+                        <p className="text-xs text-slate-600 line-clamp-2">
                           {referral.rescheduledReason}
                         </p>
                       ) : (
-                        <span className="text-gray-300">—</span>
+                        <span className="text-slate-300">—</span>
                       )}
                     </td>
 
                     {/* Actions */}
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="px-6 py-4 align-top">
+                      <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                         <button
                           onClick={() => setEditingReferral(referral)}
-                          className="rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-500 transition-colors"
+                          className="inline-flex items-center gap-1 text-slate-600 hover:underline"
                           title="Edit referral"
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="size-3.5" />
+                          Edit
                         </button>
                         <button
                           onClick={() => setDeletingReferral(referral)}
-                          className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                          className="inline-flex items-center gap-1 text-rose-600 hover:underline"
                           title="Delete referral"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="size-3.5" />
+                          Delete
                         </button>
                       </div>
                     </td>
@@ -546,6 +650,43 @@ export function ReferralsListPage() {
           </table>
         </div>
       </div>
+
+      {filteredReferrals.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-500">
+            Showing{" "}
+            {Math.min(
+              (currentPage - 1) * PAGE_SIZE + 1,
+              filteredReferrals.length,
+            )}
+            -{Math.min(currentPage * PAGE_SIZE, filteredReferrals.length)} of{" "}
+            {filteredReferrals.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="border border-slate-200 px-3 py-1.5 text-xs font-extrabold uppercase tracking-widest text-orange-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <span className="border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-extrabold uppercase tracking-widest text-slate-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+              }
+              disabled={currentPage === totalPages}
+              className="border border-slate-200 px-3 py-1.5 text-xs font-extrabold uppercase tracking-widest text-orange-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Edit modal */}
       {editingReferral && (
