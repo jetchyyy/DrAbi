@@ -177,7 +177,8 @@ type SpecialistScheduleRow =
 type AppointmentRow = Database["public"]["Tables"]["appointments"]["Row"];
 type ConsultationRow = Database["public"]["Tables"]["consultations"]["Row"];
 type PrescriptionRow = Database["public"]["Tables"]["prescriptions"]["Row"];
-type MedicalCertificateRow = Database["public"]["Tables"]["medical_certificates"]["Row"];
+type MedicalCertificateRow =
+  Database["public"]["Tables"]["medical_certificates"]["Row"];
 
 export interface OdcCredentialInput {
   accessKey?: string;
@@ -577,6 +578,7 @@ function mapBookingStatus(value: string) {
     case "confirmed":
     case "rescheduled":
     case "cancelled":
+    case "completed":
       return value;
     default:
       return "pending" as const;
@@ -1828,15 +1830,16 @@ export async function createMedicalCertificateLiveOrDemo(
   }
 
   const client = requireSupabase();
-  const payload: Database["public"]["Tables"]["medical_certificates"]["Insert"] = {
-    consultation_id: input.consultationId,
-    patient_id: input.patientId,
-    certificate_purpose: input.certificatePurpose,
-    diagnosis: input.diagnosis,
-    recommendation: input.recommendation,
-    rest_from: input.restFrom ?? null,
-    rest_until: input.restUntil ?? null,
-  };
+  const payload: Database["public"]["Tables"]["medical_certificates"]["Insert"] =
+    {
+      consultation_id: input.consultationId,
+      patient_id: input.patientId,
+      certificate_purpose: input.certificatePurpose,
+      diagnosis: input.diagnosis,
+      recommendation: input.recommendation,
+      rest_from: input.restFrom ?? null,
+      rest_until: input.restUntil ?? null,
+    };
 
   const { data, error } = await client
     .from("medical_certificates")
@@ -1917,7 +1920,7 @@ export async function updateClinicSettingsLiveOrDemo(
   input: Partial<ClinicSettings>,
 ): Promise<ClinicSettings> {
   if (!isSupabaseConfigured) {
-    const { updateClinicSettings } = await import('./local-db');
+    const { updateClinicSettings } = await import("./local-db");
     return updateClinicSettings(input) as ClinicSettings;
   }
 
@@ -1925,40 +1928,50 @@ export async function updateClinicSettingsLiveOrDemo(
 
   // Fetch the current row id (singleton — only one row exists)
   const { data: existing, error: fetchError } = await client
-    .from('clinic_settings')
-    .select('id')
+    .from("clinic_settings")
+    .select("id")
     .limit(1)
     .maybeSingle();
 
   if (fetchError) throw fetchError;
-  if (!existing) throw new Error('Clinic settings row not found in Supabase.');
+  if (!existing) throw new Error("Clinic settings row not found in Supabase.");
 
   const payload: Record<string, unknown> = {};
-  if (input.clinicName    !== undefined) payload.clinic_name             = input.clinicName;
-  if (input.legalName     !== undefined) payload.legal_name              = input.legalName;
-  if (input.shortCode     !== undefined) payload.short_code              = input.shortCode;
-  if (input.address       !== undefined) payload.address                 = input.address;
-  if (input.contactNumber !== undefined) payload.contact_number          = input.contactNumber;
-  if (input.email         !== undefined) payload.email                   = input.email;
-  if (input.website       !== undefined) payload.website                 = input.website;
-  if (input.logoUrl       !== undefined) payload.logo_url                = input.logoUrl;
-  if (input.primaryColor  !== undefined) payload.primary_color           = input.primaryColor;
-  if (input.accentColor   !== undefined) payload.accent_color            = input.accentColor;
-  if (input.bookingLeadDays          !== undefined) payload.booking_lead_days           = input.bookingLeadDays;
-  if (input.bookingCancellationHours !== undefined) payload.booking_cancellation_hours  = input.bookingCancellationHours;
-  if (input.appointmentSlotMinutes   !== undefined) payload.appointment_slot_minutes    = input.appointmentSlotMinutes;
-  if (input.systemEnabled !== undefined) payload.system_enabled          = input.systemEnabled;
-  if (input.systemMessage !== undefined) payload.system_message          = input.systemMessage;
-  if (input.enabledModules   !== undefined) payload.enabled_modules      = input.enabledModules;
-  if (input.operatingHours   !== undefined) payload.operating_hours      = input.operatingHours;
+  if (input.clinicName !== undefined) payload.clinic_name = input.clinicName;
+  if (input.legalName !== undefined) payload.legal_name = input.legalName;
+  if (input.shortCode !== undefined) payload.short_code = input.shortCode;
+  if (input.address !== undefined) payload.address = input.address;
+  if (input.contactNumber !== undefined)
+    payload.contact_number = input.contactNumber;
+  if (input.email !== undefined) payload.email = input.email;
+  if (input.website !== undefined) payload.website = input.website;
+  if (input.logoUrl !== undefined) payload.logo_url = input.logoUrl;
+  if (input.primaryColor !== undefined)
+    payload.primary_color = input.primaryColor;
+  if (input.accentColor !== undefined) payload.accent_color = input.accentColor;
+  if (input.bookingLeadDays !== undefined)
+    payload.booking_lead_days = input.bookingLeadDays;
+  if (input.bookingCancellationHours !== undefined)
+    payload.booking_cancellation_hours = input.bookingCancellationHours;
+  if (input.appointmentSlotMinutes !== undefined)
+    payload.appointment_slot_minutes = input.appointmentSlotMinutes;
+  if (input.systemEnabled !== undefined)
+    payload.system_enabled = input.systemEnabled;
+  if (input.systemMessage !== undefined)
+    payload.system_message = input.systemMessage;
+  if (input.enabledModules !== undefined)
+    payload.enabled_modules = input.enabledModules;
+  if (input.operatingHours !== undefined)
+    payload.operating_hours = input.operatingHours;
 
-  type ClinicSettingsUpdate = Database['public']['Tables']['clinic_settings']['Update'];
+  type ClinicSettingsUpdate =
+    Database["public"]["Tables"]["clinic_settings"]["Update"];
 
   const { data, error } = await client
-    .from('clinic_settings')
+    .from("clinic_settings")
     .update(payload as ClinicSettingsUpdate)
-    .eq('id', existing.id)
-    .select('*')
+    .eq("id", existing.id)
+    .select("*")
     .single();
 
   if (error) throw error;

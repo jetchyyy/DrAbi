@@ -133,7 +133,8 @@ export function PortalBookPage() {
     requiresDoctor ? selectedDoctorId || null : null,
   );
   const selectedDoctor =
-    directBookableDoctors.find((doctor) => doctor.id === selectedDoctorId) ?? null;
+    directBookableDoctors.find((doctor) => doctor.id === selectedDoctorId) ??
+    null;
   const selectedFeeAmount = selectedService
     ? selectedService.serviceType === "follow_up"
       ? (selectedDoctor?.followUpFee ?? 0)
@@ -156,7 +157,9 @@ export function PortalBookPage() {
     () =>
       existingBookings.find(
         (booking) =>
-          booking.status !== "cancelled" && booking.status !== "confirmed",
+          booking.status !== "cancelled" &&
+          booking.status !== "confirmed" &&
+          booking.status !== "completed",
       ) ?? null,
     [existingBookings],
   );

@@ -36,7 +36,7 @@ function getAppointmentStatusIntent(status: string) {
 }
 
 function getBookingStatusIntent(status: string) {
-  if (status === "confirmed") return "success" as const;
+  if (status === "completed") return "success" as const;
   if (status === "cancelled") return "danger" as const;
   return "warning" as const;
 }

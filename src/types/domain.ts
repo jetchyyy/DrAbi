@@ -41,7 +41,8 @@ export type BookingStatus =
   | "pending"
   | "confirmed"
   | "rescheduled"
-  | "cancelled";
+  | "cancelled"
+  | "completed";
 export type BookingFeeType = "consultation" | "follow_up" | "service_fee";
 export type BookingPaymentStatus = "pending_cashier" | "paid";
 export type ServiceType = "medical_service" | "consultation" | "follow_up";
