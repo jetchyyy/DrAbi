@@ -93,6 +93,7 @@ function PaymentBadge({ status }: { status: string }) {
 }
 
 function buildInvoicePrintDocument(input: {
+  clinicName: string;
   invoice: Invoice;
   patientName: string;
   patientContact: string;
@@ -302,7 +303,7 @@ function buildInvoicePrintDocument(input: {
   </head>
   <body>
     <main class="sheet">
-      <p class="clinic-name">Odyssey Clinic</p>
+      <p class="clinic-name">${(input.clinicName || 'Clinic').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
       <h1>Service Payment Receipt</h1>
 
       <hr class="divider" />
@@ -1011,6 +1012,7 @@ export function BillingPage() {
 
     await printHtmlDocument(
       buildInvoicePrintDocument({
+        clinicName: clinicSettings?.clinicName ?? 'Clinic',
         invoice: viewedInvoice,
         patientName: viewedInvoicePatient
           ? `${viewedInvoicePatient.firstName} ${viewedInvoicePatient.lastName}`

@@ -166,7 +166,7 @@ export function AppShell() {
               <Stethoscope className="size-4" />
             </div>
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-orange-600">Clinic OS</p>
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-orange-600">{clinic.shortCode || 'Clinic OS'}</p>
               <h1 className="text-sm font-extrabold leading-tight text-slate-950">{clinic.clinicName}</h1>
             </div>
           </div>
@@ -216,7 +216,7 @@ export function AppShell() {
               <Stethoscope className="size-4" />
             </div>
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-orange-600">Clinic OS</p>
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-orange-600">{clinic.shortCode || 'Clinic OS'}</p>
               <h1 className="text-sm font-extrabold leading-tight text-slate-950">{clinic.clinicName}</h1>
             </div>
           </div>

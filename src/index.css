@@ -392,7 +392,7 @@ textarea {
   overflow: hidden;
   padding: 24px;
   background:
-    radial-gradient(circle at 20% 20%, rgba(249, 115, 22, 0.22) 0%, transparent 40%),
+    radial-gradient(circle at 20% 20%, rgba(var(--splash-r), var(--splash-g), var(--splash-b), 0.22) 0%, transparent 40%),
     radial-gradient(circle at 80% 0%, rgba(7, 89, 133, 0.18) 0%, transparent 35%),
     linear-gradient(140deg, #fffaf3 0%, #fff 42%, #f8fbff 100%);
 }
@@ -410,7 +410,7 @@ textarea {
   height: min(42vw, 420px);
   left: -10%;
   bottom: -18%;
-  background: rgba(249, 115, 22, 0.18);
+  background: rgba(var(--splash-r), var(--splash-g), var(--splash-b), 0.18);
 }
 
 .splash-screen__glow--two {
@@ -469,7 +469,7 @@ textarea {
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  background: linear-gradient(180deg, #f97316 0%, #ea580c 100%);
+  background: linear-gradient(180deg, rgba(var(--splash-r), var(--splash-g), var(--splash-b), 0.85) 0%, rgba(var(--splash-r), var(--splash-g), var(--splash-b), 1) 100%);
   animation: splashLoader 1s ease-in-out infinite;
 }
 

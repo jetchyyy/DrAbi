@@ -20,7 +20,7 @@ export const defaultClinicSettings: ClinicSettings = {
   email: 'hello@odysseyclinic.test',
   website: 'https://odysseyclinic.test',
   logoUrl: '',
-  primaryColor: '#155eef',
+  primaryColor: '#ea580c',
   accentColor: '#0f766e',
   bookingLeadDays: 30,
   bookingCancellationHours: 12,

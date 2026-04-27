@@ -354,9 +354,10 @@ export function PublicLayout() {
           <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-orange-100/40" />
         </div>
         <div className="relative z-10 mx-auto max-w-7xl px-4 lg:px-8">
-          <div className="flex flex-col items-center justify-between gap-8 md:flex-row md:items-start">
-            {/* Brand */}
-            <div className="flex flex-col items-center gap-3 md:items-start">
+          <div className="grid gap-10 md:grid-cols-[1fr_auto_auto]">
+
+            {/* Brand + tagline */}
+            <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 <div className="rounded-full bg-orange-600 p-2.5 text-white shadow-md">
                   <Stethoscope className="size-5" />
@@ -365,19 +366,43 @@ export function PublicLayout() {
                   <p className="text-sm font-extrabold uppercase tracking-widest text-slate-950">
                     {clinic.clinicName}
                   </p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                    Patient Portal
-                  </p>
+                  {clinic.legalName && clinic.legalName !== clinic.clinicName ? (
+                    <p className="text-[10px] font-medium text-slate-400">{clinic.legalName}</p>
+                  ) : null}
                 </div>
               </div>
-              <p className="max-w-xs text-center text-xs leading-relaxed text-slate-400 md:text-left">
+              <p className="max-w-xs text-xs leading-relaxed text-slate-400">
                 Providing quality healthcare services to our community with
                 compassion and excellence.
               </p>
             </div>
 
+            {/* Contact info */}
+            <div className="flex flex-col gap-2">
+              <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Contact</p>
+              {clinic.address ? (
+                <p className="text-xs text-slate-500">{clinic.address}</p>
+              ) : null}
+              {clinic.contactNumber ? (
+                <a href={`tel:${clinic.contactNumber}`} className="text-xs font-semibold text-slate-600 transition hover:text-orange-600">
+                  {clinic.contactNumber}
+                </a>
+              ) : null}
+              {clinic.email ? (
+                <a href={`mailto:${clinic.email}`} className="text-xs font-semibold text-slate-600 transition hover:text-orange-600">
+                  {clinic.email}
+                </a>
+              ) : null}
+              {clinic.website ? (
+                <a href={clinic.website} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-slate-600 transition hover:text-orange-600">
+                  {clinic.website.replace(/^https?:\/\//, '')}
+                </a>
+              ) : null}
+            </div>
+
             {/* Nav links */}
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 md:justify-end">
+            <div className="flex flex-col gap-2">
+              <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Navigation</p>
               {visiblePortalNavigation.map((item) => (
                 <NavLink
                   key={item.to}

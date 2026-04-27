@@ -1,4 +1,4 @@
-﻿import type { User } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
 
 import { defaultClinicSettings } from "../config/clinic";
 import { normalizeEnabledModules } from "../config/modules";
@@ -1911,6 +1911,59 @@ export async function getClinicSettingsLiveOrDemo() {
   }
 
   return data ? mapClinicSettings(data) : defaultClinicSettings;
+}
+
+export async function updateClinicSettingsLiveOrDemo(
+  input: Partial<ClinicSettings>,
+): Promise<ClinicSettings> {
+  if (!isSupabaseConfigured) {
+    const { updateClinicSettings } = await import('./local-db');
+    return updateClinicSettings(input) as ClinicSettings;
+  }
+
+  const client = requireSupabase();
+
+  // Fetch the current row id (singleton — only one row exists)
+  const { data: existing, error: fetchError } = await client
+    .from('clinic_settings')
+    .select('id')
+    .limit(1)
+    .maybeSingle();
+
+  if (fetchError) throw fetchError;
+  if (!existing) throw new Error('Clinic settings row not found in Supabase.');
+
+  const payload: Record<string, unknown> = {};
+  if (input.clinicName    !== undefined) payload.clinic_name             = input.clinicName;
+  if (input.legalName     !== undefined) payload.legal_name              = input.legalName;
+  if (input.shortCode     !== undefined) payload.short_code              = input.shortCode;
+  if (input.address       !== undefined) payload.address                 = input.address;
+  if (input.contactNumber !== undefined) payload.contact_number          = input.contactNumber;
+  if (input.email         !== undefined) payload.email                   = input.email;
+  if (input.website       !== undefined) payload.website                 = input.website;
+  if (input.logoUrl       !== undefined) payload.logo_url                = input.logoUrl;
+  if (input.primaryColor  !== undefined) payload.primary_color           = input.primaryColor;
+  if (input.accentColor   !== undefined) payload.accent_color            = input.accentColor;
+  if (input.bookingLeadDays          !== undefined) payload.booking_lead_days           = input.bookingLeadDays;
+  if (input.bookingCancellationHours !== undefined) payload.booking_cancellation_hours  = input.bookingCancellationHours;
+  if (input.appointmentSlotMinutes   !== undefined) payload.appointment_slot_minutes    = input.appointmentSlotMinutes;
+  if (input.systemEnabled !== undefined) payload.system_enabled          = input.systemEnabled;
+  if (input.systemMessage !== undefined) payload.system_message          = input.systemMessage;
+  if (input.enabledModules   !== undefined) payload.enabled_modules      = input.enabledModules;
+  if (input.operatingHours   !== undefined) payload.operating_hours      = input.operatingHours;
+
+  type ClinicSettingsUpdate = Database['public']['Tables']['clinic_settings']['Update'];
+
+  const { data, error } = await client
+    .from('clinic_settings')
+    .update(payload as ClinicSettingsUpdate)
+    .eq('id', existing.id)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+
+  return mapClinicSettings(data);
 }
 
 export async function getBookableServicesLiveOrDemo() {

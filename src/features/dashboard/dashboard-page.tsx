@@ -13,6 +13,8 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { NavLink } from 'react-router-dom';
 
+import { defaultClinicSettings } from '../../config/clinic';
+import { useClinicSettingsData } from '../../hooks/use-clinic-data';
 import { getDashboardSnapshot, getDatabase } from '../../lib/local-db';
 import { queryKeys } from '../../lib/query-keys';
 import { formatCurrency, formatDateTimeLabel } from '../../lib/utils';
@@ -75,6 +77,7 @@ export function DashboardPage() {
     queryKey: queryKeys.dashboard,
     queryFn: async () => getDashboardSnapshot(),
   });
+  const { data: clinic = defaultClinicSettings } = useClinicSettingsData();
 
   const database = getDatabase();
   const todaysAppointments = database.appointments.slice(0, 5);
@@ -87,7 +90,7 @@ export function DashboardPage() {
       <div className="bg-white border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 px-6 py-5">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">Dashboard</p>
-          <h1 className="mt-1 text-2xl font-extrabold text-slate-950 tracking-tight">Good morning, {(snapshot as any)?.clinicName ?? 'Clinic Admin'} 👋</h1>
+          <h1 className="mt-1 text-2xl font-extrabold text-slate-950 tracking-tight">Good morning, {clinic.clinicName} 👋</h1>
           <p className="mt-1 text-sm text-slate-500">Here's what's happening at your clinic today.</p>
         </div>
         <NavLink

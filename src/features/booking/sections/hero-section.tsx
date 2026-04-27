@@ -60,13 +60,13 @@ export function HeroSection() {
           <div
             className="pointer-events-none absolute inset-x-0 bottom-0 h-[80%] sm:h-[74%]"
             style={{
-              background: 'linear-gradient(to top, rgba(234,88,12,1) 0%, rgba(234,88,12,0.92) 22%, rgba(234,88,12,0.65) 45%, rgba(234,88,12,0.18) 68%, transparent 100%)',
+              background: 'linear-gradient(to top, rgba(var(--primary-r),var(--primary-g),var(--primary-b),1) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.92) 22%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.65) 45%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.18) 68%, transparent 100%)',
             }}
           />
           <div
             className="pointer-events-none absolute inset-0"
             style={{
-              background: 'radial-gradient(circle at 85% 88%, rgba(120,32,0,0.28) 0%, rgba(120,32,0,0.12) 30%, transparent 62%)',
+              background: 'radial-gradient(circle at 85% 88%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.28) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.12) 30%, transparent 62%)',
             }}
           />
 
@@ -113,7 +113,7 @@ export function HeroSection() {
               width: '120px',
               height: '120px',
               borderRadius: '50%',
-              background: 'rgba(180,55,0,0.40)',
+              background: 'rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.40)',
             }}
           />
           {/* Rotated pill — lower-right */}
@@ -260,7 +260,7 @@ export function HeroSection() {
             <div
               className="relative z-10 mx-6 mb-0 w-auto px-6 py-4 sm:mx-8"
               style={{
-                background: 'rgba(234,88,12,0.88)',
+                background: 'rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.88)',
                 backdropFilter: 'blur(8px)',
                 borderRadius: '1rem',
                 paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)',
@@ -306,8 +306,8 @@ export function HeroSection() {
           }}
         />
         <div
-          className="absolute inset-y-0 right-0 bg-orange-500"
-          style={{ width: '51%', borderTopLeftRadius: '92px', borderBottomLeftRadius: '92px' }}
+          className="absolute inset-y-0 right-0"
+          style={{ width: '51%', borderTopLeftRadius: '92px', borderBottomLeftRadius: '92px', background: 'rgba(var(--primary-r),var(--primary-g),var(--primary-b),1)' }}
         />
 
         {/* Subtle grid texture — matches other sections */}
@@ -327,7 +327,7 @@ export function HeroSection() {
             width: '260px',
             height: '260px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(251,146,60,0.22) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.22) 0%, transparent 70%)',
           }}
         />
         <div
@@ -338,7 +338,7 @@ export function HeroSection() {
             width: '300px',
             height: '300px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(251,146,60,0.12) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.12) 0%, transparent 70%)',
           }}
         />
         <div
@@ -399,7 +399,7 @@ export function HeroSection() {
             width: '160px',
             height: '160px',
             borderRadius: '50%',
-            background: 'rgba(220,76,0,0.45)',
+            background: 'rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.45)',
           }}
         />
         {/* Small filled circle accent — left edge of orange, mid */}
