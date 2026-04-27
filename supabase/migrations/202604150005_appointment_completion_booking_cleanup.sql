@@ -12,11 +12,11 @@ BEGIN
     IF NEW.booking_id IS NOT NULL THEN
       UPDATE public.bookings
       SET 
-        status = 'cancelled',
+        status = 'completed',
         updated_at = timezone('utc'::text, now())
       WHERE 
         id = NEW.booking_id
-        AND status != 'cancelled';
+        AND status != 'completed';
     END IF;
   END IF;
   
