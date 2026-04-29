@@ -2,6 +2,10 @@ import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../../lib/query-keys";
 import { isSupabaseConfigured, supabase } from "../../../lib/supabase";
+import {
+  getSpecialistAvailabilityByDoctorIdLiveOrDemo,
+  listBlockedBookingSlotsLiveOrDemo,
+} from "../../../lib/supabase-clinic";
 import type { ReferralStatus } from "../../../types/domain";
 import type { Database } from "../../../types/database";
 
@@ -11,6 +15,7 @@ export interface ReferralListItem {
   id: string;
   patientId: string;
   patientFullName: string;
+  assignedSpecialistName: string | null;
   appointmentDate: string | null;
   appointmentTime: string | null;
   status: ReferralStatus;
@@ -64,14 +69,26 @@ type ReferralWithPatient = ReferralRow & {
   patients: { first_name: string; last_name: string } | null;
 };
 
+type DoctorRow = Pick<
+  Database["public"]["Tables"]["doctors"]["Row"],
+  "id" | "profile_id"
+>;
+
+type ProfileRow = Pick<
+  Database["public"]["Tables"]["profiles"]["Row"],
+  "id" | "full_name"
+>;
+
 function mapReferralRow(
   row: ReferralWithPatient,
   patientFullName: string,
+  assignedSpecialistName: string | null,
 ): ReferralListItem {
   return {
     id: row.id,
     patientId: row.patient_id,
     patientFullName,
+    assignedSpecialistName,
     appointmentDate: row.appointment_date ?? null,
     appointmentTime: row.appointment_time ?? null,
     status: mapReferralStatus(row.status),
@@ -111,12 +128,65 @@ async function fetchAllReferrals(): Promise<ReferralListItem[]> {
 
   if (error) throw error;
 
-  return ((data ?? []) as ReferralWithPatient[]).map((row) => {
+  const referrals = (data ?? []) as ReferralWithPatient[];
+
+  const specialistIds = [
+    ...new Set(
+      referrals
+        .map((row) => row.assigned_specialist_id)
+        .filter(Boolean) as string[],
+    ),
+  ];
+
+  let doctorMap = new Map<string, DoctorRow>();
+  let profileMap = new Map<string, ProfileRow>();
+
+  if (specialistIds.length > 0) {
+    const { data: doctorsData, error: doctorsError } = await supabase
+      .from("doctors")
+      .select("id, profile_id")
+      .in("id", specialistIds);
+    if (doctorsError) throw doctorsError;
+
+    doctorMap = new Map(
+      ((doctorsData ?? []) as DoctorRow[]).map((doctor) => [doctor.id, doctor]),
+    );
+
+    const profileIds = [
+      ...new Set(
+        ((doctorsData ?? []) as DoctorRow[])
+          .map((doctor) => doctor.profile_id)
+          .filter(Boolean),
+      ),
+    ];
+
+    if (profileIds.length > 0) {
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", profileIds);
+      if (profilesError) throw profilesError;
+
+      profileMap = new Map(
+        ((profilesData ?? []) as ProfileRow[]).map((profile) => [
+          profile.id,
+          profile,
+        ]),
+      );
+    }
+  }
+
+  return referrals.map((row) => {
     const patient = row.patients;
     const fullName = patient
       ? `${patient.first_name} ${patient.last_name}`.trim()
       : "Unknown Patient";
-    return mapReferralRow(row, fullName);
+    const assignedSpecialistName = row.assigned_specialist_id
+      ? (profileMap.get(
+          doctorMap.get(row.assigned_specialist_id)?.profile_id ?? "",
+        )?.full_name ?? null)
+      : null;
+    return mapReferralRow(row, fullName, assignedSpecialistName);
   });
 }
 
@@ -221,6 +291,39 @@ export function useReferralsList() {
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
   };
+}
+
+/**
+ * Fetch specialist availability (similar to doctor availability for bookings).
+ * Used for reschedule operations to show available slots.
+ */
+export function useSpecialistAvailabilityForReferral(
+  specialistId: string | null,
+) {
+  return useQuery({
+    queryKey: queryKeys.specialistAvailability(specialistId),
+    queryFn: () => getSpecialistAvailabilityByDoctorIdLiveOrDemo(specialistId),
+    enabled: !!specialistId,
+  });
+}
+
+/**
+ * Fetch blocked slots for a given date/specialist combination.
+ * Used to prevent double-booking and show only available times.
+ */
+export function useBlockedReferralSlots(
+  date: string | null,
+  specialistId: string | null,
+) {
+  return useQuery({
+    queryKey: queryKeys.blockedBookingSlots(date, specialistId, null),
+    queryFn: () =>
+      listBlockedBookingSlotsLiveOrDemo({
+        date: date!,
+        doctorId: specialistId,
+      }),
+    enabled: !!date && !!specialistId,
+  });
 }
 
 export const REFERRAL_STATUS_OPTIONS: Array<{

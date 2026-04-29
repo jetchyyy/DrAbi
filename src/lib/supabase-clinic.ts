@@ -4376,7 +4376,7 @@ export async function getInventoryLogs(
 }
 
 export async function createInventoryLogs(values: {
-  patientId: string;
+  patientId: string | null;
   appointmentId: string | null;
   itemId: string;
   quantity: number;

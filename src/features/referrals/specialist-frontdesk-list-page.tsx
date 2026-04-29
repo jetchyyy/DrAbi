@@ -7,16 +7,39 @@ import {
   CalendarCheck2,
   Search,
 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn, formatTimeLabel } from "../../lib/utils";
 import type { ReferralStatus } from "../../types/domain";
 import {
   useReferralsList,
   REFERRAL_STATUS_OPTIONS,
+  useSpecialistAvailabilityForReferral,
+  useBlockedReferralSlots,
   type ReferralListItem,
   type EditReferralInput,
 } from "./hooks/use-referral-list";
 
 const PAGE_SIZE = 7;
+
+function toMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function normalizeTime(raw: string): string {
+  return raw.length > 5 ? raw.slice(0, 5) : raw;
+}
+
+function getTodayPH(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+}
+
+function getNowTimePH(): string {
+  return new Date().toLocaleTimeString("en-GB", {
+    timeZone: "Asia/Manila",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
@@ -108,12 +131,93 @@ function EditReferralModal({
     referral.clinicalSummary,
   );
   const [referralNotes, setReferralNotes] = useState(referral.referralNotes);
+  const todayPH = getTodayPH();
+  const nowTimePH = normalizeTime(getNowTimePH());
+
+  // Availability data for reschedule
+  const { data: availability = [] } = useSpecialistAvailabilityForReferral(
+    status === "rescheduled" ? referral.assignedSpecialistId : null,
+  );
+  const { data: blockedSlots = [] } = useBlockedReferralSlots(
+    status === "rescheduled" ? appointmentDate : null,
+    referral.assignedSpecialistId,
+  );
+
+  // Compute available time slots from specialist availability for the selected date
+  const selectedDayOfWeek = useMemo(() => {
+    if (!appointmentDate) return -1;
+    return new Date(appointmentDate + "T00:00:00").getDay();
+  }, [appointmentDate]);
+
+  const availableSlots = useMemo(() => {
+    if (status !== "rescheduled" || selectedDayOfWeek < 0) return [];
+    if (appointmentDate && appointmentDate < todayPH) return [];
+
+    const daySlots = availability.filter(
+      (av) => av.dayOfWeek === selectedDayOfWeek,
+    );
+    if (daySlots.length === 0) return [];
+
+    const slots: string[] = [];
+    for (const slot of daySlots) {
+      const start = new Date(`1970-01-01T${slot.startTime}`);
+      const end = new Date(`1970-01-01T${slot.endTime}`);
+      const step = (slot.slotMinutes || 30) * 60 * 1000;
+      let cur = start.getTime();
+      while (cur < end.getTime()) {
+        const d = new Date(cur);
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        slots.push(`${hh}:${mm}`);
+        cur += step;
+      }
+    }
+
+    const blockedSlotsSet = new Set(
+      blockedSlots.map((slot) => normalizeTime(slot)),
+    );
+
+    return slots.filter((slot) => {
+      if (blockedSlotsSet.has(slot)) {
+        return false;
+      }
+
+      const isPastToday =
+        appointmentDate === todayPH && toMinutes(slot) <= toMinutes(nowTimePH);
+      return !isPastToday;
+    });
+  }, [
+    availability,
+    selectedDayOfWeek,
+    blockedSlots,
+    status,
+    appointmentDate,
+    todayPH,
+    nowTimePH,
+  ]);
+
+  useEffect(() => {
+    if (!appointmentDate) return;
+    if (appointmentDate < todayPH) {
+      setAppointmentDate("");
+      setAppointmentTime("");
+    }
+  }, [appointmentDate, todayPH]);
+
+  useEffect(() => {
+    if (appointmentTime && !availableSlots.includes(appointmentTime)) {
+      setAppointmentTime("");
+    }
+  }, [appointmentTime, availableSlots]);
 
   const showCancelReason = status === "cancelled";
   const showRescheduleReason = status === "rescheduled";
   const canSave =
     (status !== "cancelled" || cancelledReason.trim().length > 0) &&
-    (status !== "rescheduled" || rescheduledReason.trim().length > 0);
+    (status !== "rescheduled" ||
+      (rescheduledReason.trim().length > 0 &&
+        appointmentDate.trim().length > 0 &&
+        appointmentTime.trim().length > 0));
 
   async function handleSave() {
     if (!canSave) return;
@@ -123,8 +227,10 @@ function EditReferralModal({
       rescheduledReason: showRescheduleReason
         ? rescheduledReason.trim() || null
         : null,
-      appointmentDate: appointmentDate.trim() || null,
-      appointmentTime: appointmentTime.trim() || null,
+      appointmentDate:
+        status === "rescheduled" ? appointmentDate.trim() || null : null,
+      appointmentTime:
+        status === "rescheduled" ? appointmentTime.trim() || null : null,
       reason,
       clinicalSummary,
       referralNotes,
@@ -173,36 +279,13 @@ function EditReferralModal({
               <p className="text-sm font-medium text-gray-800">
                 {referral.patientFullName}
               </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Specialist: {referral.assignedSpecialistName ?? "Unassigned"}
+              </p>
             </div>
             <div>
               <p className="text-xs text-gray-400 mb-0.5">Current Status</p>
               <ReferralStatusBadge status={referral.status} />
-            </div>
-          </div>
-
-          {/* Schedule */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Appointment Date
-              </label>
-              <input
-                type="date"
-                value={appointmentDate}
-                onChange={(e) => setAppointmentDate(e.target.value)}
-                className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Appointment Time
-              </label>
-              <input
-                type="time"
-                value={appointmentTime}
-                onChange={(e) => setAppointmentTime(e.target.value)}
-                className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
-              />
             </div>
           </div>
 
@@ -254,6 +337,60 @@ function EditReferralModal({
                 className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 resize-none"
               />
             </div>
+          )}
+
+          {/* Schedule section — only when rescheduling */}
+          {showRescheduleReason && (
+            <>
+              <div className="border-t border-slate-200 pt-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-4">
+                  New Appointment Schedule
+                </h3>
+
+                {/* Appointment Date */}
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Appointment Date
+                  </label>
+                  <input
+                    type="date"
+                    value={appointmentDate}
+                    onChange={(e) => setAppointmentDate(e.target.value)}
+                    min={todayPH}
+                    className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                  />
+                </div>
+
+                {/* Appointment Time - now a select dropdown of available slots */}
+                {appointmentDate && (
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Appointment Time
+                    </label>
+                    {availableSlots.length > 0 ? (
+                      <select
+                        value={appointmentTime}
+                        onChange={(e) => setAppointmentTime(e.target.value)}
+                        className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                      >
+                        <option value="">Select a time slot</option>
+                        {availableSlots.map((slot) => (
+                          <option key={slot} value={slot}>
+                            {formatTimeLabel(`1970-01-01T${slot}`)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="px-3 py-2 bg-slate-50 border border-slate-200 text-sm text-slate-500">
+                        {selectedDayOfWeek >= 0
+                          ? "No available slots for this date (booked or past times are blocked)"
+                          : "Select a date first"}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           {/* Reason */}
@@ -411,6 +548,7 @@ export function ReferralsListPage() {
       const matchesSearch =
         !q ||
         referral.patientFullName.toLowerCase().includes(q) ||
+        (referral.assignedSpecialistName ?? "").toLowerCase().includes(q) ||
         (referral.reason ?? "").toLowerCase().includes(q) ||
         (referral.cancelledReason ?? "").toLowerCase().includes(q) ||
         (referral.rescheduledReason ?? "").toLowerCase().includes(q) ||
@@ -532,7 +670,7 @@ export function ReferralsListPage() {
               <tr>
                 {[
                   "Patient",
-                  "Schedule",
+                  "Specialist",
                   "Referral Status",
                   "Cancelled Reason",
                   "Reschedule Reason",
@@ -551,7 +689,7 @@ export function ReferralsListPage() {
               {filteredReferrals.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-5 py-16 text-center text-sm text-gray-400"
                   >
                     No referrals found.
@@ -577,6 +715,17 @@ export function ReferralsListPage() {
 
                     {/* Schedule */}
                     <td className="px-6 py-4 align-top">
+                      {referral.assignedSpecialistName ? (
+                        <p className="font-medium text-slate-700">
+                          Dr. {referral.assignedSpecialistName}
+                        </p>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                    </td>
+
+                    {/* Schedule */}
+                    <td className="px-6 py-4 align-top">
                       {referral.appointmentDate || referral.appointmentTime ? (
                         <div>
                           {referral.appointmentDate && (
@@ -586,7 +735,9 @@ export function ReferralsListPage() {
                           )}
                           {referral.appointmentTime && (
                             <p className="text-xs text-slate-400">
-                              {referral.appointmentTime}
+                              {formatTimeLabel(
+                                `1970-01-01T${referral.appointmentTime}`,
+                              )}
                             </p>
                           )}
                         </div>
