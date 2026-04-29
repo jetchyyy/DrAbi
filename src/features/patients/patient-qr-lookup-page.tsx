@@ -1,4 +1,4 @@
-import { Camera, QrCode, Search, StopCircle } from 'lucide-react';
+import { AlertCircle, Camera, CircleDashed, QrCode, Search, ShieldCheck, StopCircle } from 'lucide-react';
 import jsQR from 'jsqr';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -68,6 +68,21 @@ export function PatientQrLookupPage() {
   const streamRef = useRef<MediaStream | null>(null);
 
   const normalizedCode = useMemo(() => extractPatientQrCode(value), [value]);
+  const cameraStatusLabel = useMemo(() => {
+    if (cameraState === 'active') {
+      return 'Camera active';
+    }
+    if (cameraState === 'requesting') {
+      return 'Waiting for permission';
+    }
+    if (cameraState === 'denied') {
+      return 'Permission denied';
+    }
+    if (cameraState === 'unsupported') {
+      return 'Camera unsupported';
+    }
+    return 'Camera idle';
+  }, [cameraState]);
 
   const recordClinicVisit = async (patient: Patient) => {
     const todayKey = getLocalCalendarKey(new Date().toISOString());
@@ -279,15 +294,26 @@ export function PatientQrLookupPage() {
   return (
     <div className="mx-auto grid max-w-5xl gap-6 xl:grid-cols-[1.1fr_0.9fr]">
       <Card>
-        <p className="text-sm uppercase tracking-[0.18em] text-slate-400">QR lookup</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm uppercase tracking-[0.18em] text-slate-400">QR lookup</p>
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+            <CircleDashed className="size-3.5" />
+            {cameraStatusLabel}
+          </span>
+        </div>
         <CardTitle className="mt-2 text-3xl">Scan patient QR for consultation entry</CardTitle>
         <p className="mt-3 max-w-2xl text-sm text-slate-500">
           Doctors can allow camera access, scan the patient QR, and jump straight into the patient chart to record consultation details.
         </p>
+        <div className="mt-5 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 sm:grid-cols-3">
+          <p><span className="font-semibold text-slate-800">1.</span> Start camera or paste code</p>
+          <p><span className="font-semibold text-slate-800">2.</span> Confirm detected patient QR</p>
+          <p><span className="font-semibold text-slate-800">3.</span> Proceed to consultation</p>
+        </div>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-4">
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Button className="gap-2" onClick={() => void startCamera()} type="button" disabled={isValidating}>
                 <Camera className="size-4" />
                 {cameraState === 'active' ? 'Restart camera' : 'Allow camera and scan'}
@@ -301,8 +327,14 @@ export function PatientQrLookupPage() {
             </div>
             {cameraMessage ? <p className="text-sm text-slate-600">{cameraMessage}</p> : null}
             {cameraState === 'requesting' || cameraState === 'active' ? (
-              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-black">
-                <video className="aspect-video w-full object-cover" muted playsInline ref={videoRef} />
+              <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-black">
+                <video className="aspect-video w-full object-cover opacity-90" muted playsInline ref={videoRef} />
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="h-40 w-40 rounded-2xl border-2 border-white/70 shadow-[0_0_0_999px_rgba(0,0,0,0.28)]" />
+                </div>
+                <p className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-black/60 px-2 py-1 text-xs font-medium text-slate-100">
+                  Keep QR inside the frame
+                </p>
                 <canvas className="hidden" ref={canvasRef} />
               </div>
             ) : null}
@@ -319,14 +351,36 @@ export function PatientQrLookupPage() {
                 value={value}
               />
             </div>
+            {normalizedCode ? (
+              <p className="mt-2 text-xs text-slate-500">
+                Parsed code: <span className="font-mono font-semibold text-slate-700">{normalizedCode}</span>
+              </p>
+            ) : null}
           </label>
 
-          {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+          {error ? (
+            <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <AlertCircle className="mt-0.5 size-4 shrink-0" />
+              <p>{error}</p>
+            </div>
+          ) : null}
 
           <div className="flex flex-wrap gap-3">
             <Button className="gap-2" type="submit" disabled={isValidating}>
               <Search className="size-4" />
               {isValidating ? 'Validating payment...' : 'Proceed to consultation'}
+            </Button>
+            <Button
+              className="gap-2"
+              type="button"
+              variant="ghost"
+              disabled={isValidating || (!value && !error)}
+              onClick={() => {
+                setValue('');
+                setError('');
+              }}
+            >
+              Clear
             </Button>
             <Link
               className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -354,6 +408,15 @@ export function PatientQrLookupPage() {
         <p className="text-sm uppercase tracking-[0.18em] text-slate-400">How this works</p>
         <CardTitle className="mt-2 text-white">Doctor scanning workflow</CardTitle>
         <div className="mt-5 space-y-4 text-sm text-slate-300">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+            <p className="flex items-center gap-2 font-semibold text-slate-100">
+              <ShieldCheck className="size-4 text-emerald-300" />
+              Consultation safety checks
+            </p>
+            <p className="mt-2">
+              The QR lookup validates patient payment status before opening SOAP consultation.
+            </p>
+          </div>
           <p>The page asks for camera permission before opening the live scanner.</p>
           <p>Once the patient QR is detected, latest payment status is checked before consultation access.</p>
           <p>Paid patients are routed directly to SOAP consultation; unpaid balances are blocked for cashier follow-up.</p>

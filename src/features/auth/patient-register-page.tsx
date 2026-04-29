@@ -1,6 +1,8 @@
 import { CalendarCheck2, ClipboardList, MoveLeft, ShieldCheck, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import { useClinicSettingsData } from '../../hooks/use-clinic-data';
+import { defaultClinicSettings } from '../../config/clinic';
 import { PatientRegisterForm } from './components/patient-register-form';
 
 const steps = [
@@ -22,54 +24,53 @@ const steps = [
 ];
 
 export function PatientRegisterPage() {
+  const { data: clinic } = useClinicSettingsData();
+  const clinicName  = clinic?.clinicName  ?? defaultClinicSettings.clinicName;
+  const legalName   = clinic?.legalName   ?? defaultClinicSettings.legalName;
+  const year        = new Date().getFullYear();
+
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
 
       {/* ── Left branding panel ──────────────────────────────── */}
-      <div className="hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col relative overflow-hidden bg-[#08142c]">
+      <div
+        className="hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col relative overflow-hidden"
+        style={{ background: 'var(--color-panel-bg-deep, #08142c)' }}
+      >
 
         {/* Animated aurora background */}
         <div
           className="absolute inset-0 animate-aurora opacity-80"
           style={{
             background:
-              'linear-gradient(135deg, #08142c 0%, #10295e 25%, #1a3a6e 45%, #08142c 60%, #0c1f4a 80%, #08142c 100%)',
+              'linear-gradient(135deg, var(--color-panel-bg-deep, #08142c) 0%, color-mix(in srgb, var(--color-panel-bg-deep, #08142c) 50%, #10295e) 25%, color-mix(in srgb, var(--color-panel-bg-deep, #08142c) 35%, #1a3a6e) 45%, var(--color-panel-bg-deep, #08142c) 60%, color-mix(in srgb, var(--color-panel-bg-deep, #08142c) 60%, #0c1f4a) 80%, var(--color-panel-bg-deep, #08142c) 100%)',
             backgroundSize: '400% 400%',
           }}
         />
 
-        {/* Floating orbs */}
+        {/* Floating orbs — primary color tint */}
         <div
           className="pointer-events-none absolute animate-orb-1"
           style={{
-            top: '-80px',
-            right: '-60px',
-            width: '380px',
-            height: '380px',
+            top: '-80px', right: '-60px', width: '380px', height: '380px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(96,165,250,0.22) 0%, rgba(59,130,246,0.07) 60%, transparent 80%)',
+            background: 'radial-gradient(circle, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.22) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.07) 60%, transparent 80%)',
           }}
         />
         <div
           className="pointer-events-none absolute animate-orb-2"
           style={{
-            bottom: '-60px',
-            left: '5%',
-            width: '260px',
-            height: '260px',
+            bottom: '-60px', left: '5%', width: '260px', height: '260px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(147,197,253,0.15) 0%, rgba(96,165,250,0.05) 65%, transparent 85%)',
+            background: 'radial-gradient(circle, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.15) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.05) 65%, transparent 85%)',
           }}
         />
         <div
           className="pointer-events-none absolute animate-orb-3"
           style={{
-            top: '38%',
-            left: '12%',
-            width: '160px',
-            height: '160px',
+            top: '38%', left: '12%', width: '160px', height: '160px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(186,230,253,0.10) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.10) 0%, transparent 70%)',
           }}
         />
 
@@ -82,8 +83,8 @@ export function PatientRegisterPage() {
           }}
         />
 
-        {/* Top accent bar */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-[#3b82f6]" />
+        {/* Top accent bar — primary color */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-orange-600" />
 
         <div className="relative z-10 flex flex-col h-full px-12 py-12">
 
@@ -98,13 +99,13 @@ export function PatientRegisterPage() {
 
           {/* Logo */}
           <div className="mt-8 animate-slide-left">
-            <img src="/odc.jpg" alt="Odyssey Clinic Logo" className="h-16 w-16 object-contain" />
+            <img src="/odc.jpg" alt={`${clinicName} Logo`} className="h-16 w-16 object-contain" />
             <div className="mt-4">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-[#93c5fd]">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-orange-300">
                 Patient Portal
               </p>
               <h1 className="mt-1.5 text-3xl font-extrabold text-white leading-tight">
-                Odyssey Diagnostic<br />Clinic
+                {clinicName}
               </h1>
             </div>
           </div>
@@ -112,20 +113,20 @@ export function PatientRegisterPage() {
           {/* Hero */}
           <div className="mt-auto">
             <div className="inline-flex items-center gap-2 border border-white/15 bg-white/10 px-4 py-2 text-sm text-white/80 animate-fade-in delay-100">
-              <ShieldCheck className="size-4 text-[#93c5fd]" />
+              <ShieldCheck className="size-4 text-orange-300" />
               One account, all your records
             </div>
 
             <p className="mt-5 text-2xl font-semibold text-white leading-snug max-w-xs animate-slide-left delay-200">
               Get started in<br />
-              <span className="text-[#93c5fd]">under two minutes.</span>
+              <span className="text-orange-300">under two minutes.</span>
             </p>
 
             {/* Steps */}
             <div className="mt-8 space-y-4 animate-fade-up delay-300">
               {steps.map((s, i) => (
                 <div key={s.title} className="flex items-start gap-4">
-                  <div className="flex-shrink-0 flex items-center justify-center size-8 bg-white/10 text-[#93c5fd] text-xs font-extrabold">
+                  <div className="flex-shrink-0 flex items-center justify-center size-8 bg-orange-600 text-white text-xs font-extrabold">
                     {i + 1}
                   </div>
                   <div>
@@ -139,7 +140,7 @@ export function PatientRegisterPage() {
             {/* Footer */}
             <div className="mt-12 pt-8 border-t border-white/10 animate-fade-in delay-400">
               <p className="text-[11px] font-bold uppercase tracking-widest text-white/25">
-                © {new Date().getFullYear()} Odyssey Diagnostic Clinic · All rights reserved
+                © {year} {legalName} · All rights reserved
               </p>
             </div>
           </div>
@@ -150,12 +151,12 @@ export function PatientRegisterPage() {
       <div className="flex-1 flex flex-col items-center justify-center bg-white px-6 py-12 relative">
 
         {/* Mobile top accent */}
-        <div className="lg:hidden absolute top-0 left-0 right-0 h-1 bg-[#3b82f6]" />
+        <div className="lg:hidden absolute top-0 left-0 right-0 h-1 bg-orange-600" />
 
         {/* Mobile header */}
         <div className="lg:hidden absolute top-6 left-6 flex items-center gap-3">
-          <img src="/odc.jpg" alt="ODC Logo" className="h-10 w-10 object-contain" />
-          <p className="text-sm font-extrabold text-slate-950 uppercase tracking-widest">Odyssey Clinic</p>
+          <img src="/odc.jpg" alt="Logo" className="h-10 w-10 object-contain" />
+          <p className="text-sm font-extrabold text-slate-950 uppercase tracking-widest">{clinicName}</p>
         </div>
 
         {/* Mobile back link */}
@@ -175,7 +176,7 @@ export function PatientRegisterPage() {
           <div className="mt-6 pt-6 border-t border-slate-100 space-y-3 text-center">
             <p className="text-xs text-slate-400">
               Already have an account?{' '}
-              <Link to="/login" className="font-bold text-[#2563eb] hover:underline">
+              <Link to="/portal/login" className="font-bold text-orange-600 hover:underline">
                 Sign in here
               </Link>
             </p>

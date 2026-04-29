@@ -57,6 +57,7 @@ const payForServiceSchema = z.object({
 });
 
 type PayForServiceFormValues = z.infer<typeof payForServiceSchema>;
+const BILLING_PAGE_SIZE = 10;
 
 interface LabServiceOption {
   id: string;
@@ -387,6 +388,7 @@ export function BillingPage() {
   const bookingEnabled = isModuleEnabled('booking_appointments', clinicSettings?.enabledModules);
   const laboratoryEnabled = isModuleEnabled('laboratory', clinicSettings?.enabledModules);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isPayServiceModalOpen, setIsPayServiceModalOpen] = useState(false);
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
@@ -696,6 +698,18 @@ export function BillingPage() {
       }),
     [deferredSearch, invoices, patients],
   );
+  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / BILLING_PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStart = (safeCurrentPage - 1) * BILLING_PAGE_SIZE;
+  const paginatedInvoices = useMemo(
+    () => filteredInvoices.slice(pageStart, pageStart + BILLING_PAGE_SIZE),
+    [filteredInvoices, pageStart],
+  );
+  const showingStart = filteredInvoices.length === 0 ? 0 : pageStart + 1;
+  const showingEnd =
+    filteredInvoices.length === 0
+      ? 0
+      : Math.min(pageStart + BILLING_PAGE_SIZE, filteredInvoices.length);
   const viewedInvoice = invoices.find((invoice) => invoice.id === invoiceViewState.invoiceId) ?? null;
   const viewedInvoiceItem = invoiceItems.find((item) => item.invoiceId === invoiceViewState.invoiceId) ?? null;
   const viewedInvoicePatient = patients.find((patient) => patient.id === viewedInvoice?.patientId) ?? null;
@@ -1083,7 +1097,10 @@ export function BillingPage() {
                 <Search className="size-4 shrink-0 text-slate-400" />
                 <input
                   className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                  onChange={(event) => setSearch(event.target.value)}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setCurrentPage(1);
+                  }}
                   placeholder="Search invoice, patient, or payment status"
                   value={search}
                 />
@@ -1156,7 +1173,7 @@ export function BillingPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredInvoices.map((invoice) => {
+                  paginatedInvoices.map((invoice) => {
                     const patient = patients.find((item) => item.id === invoice.patientId);
 
                     return (
@@ -1197,6 +1214,36 @@ export function BillingPage() {
               </tbody>
             </table>
           </div>
+          {filteredInvoices.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
+              <p className="text-xs font-semibold text-slate-500">
+                Showing {showingStart}-{showingEnd} of {filteredInvoices.length} invoices
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  className="rounded-none px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                  disabled={safeCurrentPage <= 1}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  type="button"
+                  variant="secondary"
+                >
+                  Previous
+                </Button>
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                  Page {safeCurrentPage} of {totalPages}
+                </span>
+                <Button
+                  className="rounded-none px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                  disabled={safeCurrentPage >= totalPages}
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  type="button"
+                  variant="secondary"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 

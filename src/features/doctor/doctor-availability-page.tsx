@@ -79,6 +79,16 @@ function isSpecialistProfile(profile: {
   );
 }
 
+const TIME_GROUPS = [
+  { id: 'morning', label: 'Morning', startHour: 6, endHour: 11 },
+  { id: 'afternoon', label: 'Afternoon', startHour: 12, endHour: 17 },
+  { id: 'evening', label: 'Evening', startHour: 18, endHour: 23 },
+] as const;
+
+function extractHour(time: string) {
+  return Number(time.split(':')[0] ?? 0);
+}
+
 export function DoctorAvailabilityPage() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
@@ -176,6 +186,10 @@ export function DoctorAvailabilityPage() {
     () => Object.values(days).reduce((sum, day) => sum + day.selectedTimes.length, 0),
     [days],
   );
+  const enabledDaysCount = useMemo(
+    () => Object.values(days).reduce((count, day) => count + (day.enabled ? 1 : 0), 0),
+    [days],
+  );
 
   if (profile?.role !== 'doctor' && profile?.role !== 'specialist') {
     return (
@@ -205,6 +219,14 @@ export function DoctorAvailabilityPage() {
             </div>
           </div>
         </div>
+        <div className="mt-4 grid gap-3 text-xs font-semibold text-slate-600 sm:grid-cols-2">
+          <div className="rounded-sm border border-orange-100 bg-white px-3 py-2">
+            Active days: <span className="font-extrabold text-slate-900">{enabledDaysCount}</span> / {DOCTOR_AVAILABILITY_DAY_OPTIONS.length}
+          </div>
+          <div className="rounded-sm border border-orange-100 bg-white px-3 py-2">
+            Tip: Enable a day first, then choose slot size and booking times.
+          </div>
+        </div>
       </Card>
 
       <Card>
@@ -230,7 +252,15 @@ export function DoctorAvailabilityPage() {
           const timeSlots = buildDailyTimeSlots(state.slotMinutes);
 
           return (
-            <Card key={day.value} className={cn(!state.enabled && 'opacity-80')}>
+            <Card
+              key={day.value}
+              className={cn(
+                'transition-colors',
+                state.enabled
+                  ? 'border-orange-200/70'
+                  : 'border-slate-200 bg-slate-50/60',
+              )}
+            >
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <CardTitle>{day.label}</CardTitle>
@@ -260,76 +290,134 @@ export function DoctorAvailabilityPage() {
                 </label>
               </div>
 
-              <div className="mt-4">
-                <p className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-slate-400">Time slot size</p>
-                <Select
-                  disabled={!state.enabled}
-                  value={String(state.slotMinutes)}
-                  onChange={(event) => {
-                    const slotMinutes = Number(event.target.value);
-                    const nextSlots = new Set(buildDailyTimeSlots(slotMinutes));
-                    setDays((current) => ({
-                      ...current,
-                      [day.value]: {
-                        ...current[day.value],
-                        slotMinutes,
-                        selectedTimes: current[day.value].selectedTimes.filter((time) => nextSlots.has(time)),
-                      },
-                    }));
-                  }}
-                >
-                  {DOCTOR_SLOT_MINUTE_OPTIONS.map((minutes) => (
-                    <option key={minutes} value={minutes}>
-                      {minutes} minutes
-                    </option>
-                  ))}
-                </Select>
-              </div>
-
-              <div className="mt-5">
-                <p className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-slate-400">Available booking times</p>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {timeSlots.map((time) => {
-                    const checked = state.selectedTimes.includes(time);
-                    return (
-                      <label
-                        key={time}
-                        className={cn(
-                          'flex items-center gap-2 rounded-sm border px-3 py-2 text-sm transition-colors',
-                          state.enabled
-                            ? checked
-                              ? 'border-orange-300 bg-orange-50 text-orange-800'
-                              : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-orange-200'
-                            : 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300',
-                        )}
-                      >
-                        <input
-                          checked={checked}
-                          className="size-4 accent-orange-600"
-                          disabled={!state.enabled}
-                          onChange={(event) =>
-                            setDays((current) => {
-                              const selectedTimes = event.target.checked
-                                ? [...current[day.value].selectedTimes, time].sort()
-                                : current[day.value].selectedTimes.filter((value) => value !== time);
-
-                              return {
-                                ...current,
-                                [day.value]: {
-                                  ...current[day.value],
-                                  selectedTimes,
-                                },
-                              };
-                            })
-                          }
-                          type="checkbox"
-                        />
-                        <span>{formatTimeLabel(time)}</span>
-                      </label>
-                    );
-                  })}
+              {!state.enabled ? (
+                <div className="mt-4 rounded-sm border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+                  This day is hidden from booking. Turn on <span className="font-semibold text-slate-700">Available this day</span> to configure time slots.
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+                    <div className="w-full md:w-auto md:min-w-64">
+                      <p className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-slate-400">Time slot size</p>
+                      <Select
+                        value={String(state.slotMinutes)}
+                        onChange={(event) => {
+                          const slotMinutes = Number(event.target.value);
+                          const nextSlots = new Set(buildDailyTimeSlots(slotMinutes));
+                          setDays((current) => ({
+                            ...current,
+                            [day.value]: {
+                              ...current[day.value],
+                              slotMinutes,
+                              selectedTimes: current[day.value].selectedTimes.filter((time) => nextSlots.has(time)),
+                            },
+                          }));
+                        }}
+                      >
+                        {DOCTOR_SLOT_MINUTE_OPTIONS.map((minutes) => (
+                          <option key={minutes} value={minutes}>
+                            {minutes} minutes
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        className="rounded-xl px-3 py-1.5 text-xs"
+                        disabled={state.selectedTimes.length === timeSlots.length}
+                        onClick={() =>
+                          setDays((current) => ({
+                            ...current,
+                            [day.value]: {
+                              ...current[day.value],
+                              selectedTimes: [...timeSlots],
+                            },
+                          }))
+                        }
+                        type="button"
+                        variant="secondary"
+                      >
+                        Select all
+                      </Button>
+                      <Button
+                        className="rounded-xl px-3 py-1.5 text-xs"
+                        disabled={state.selectedTimes.length === 0}
+                        onClick={() =>
+                          setDays((current) => ({
+                            ...current,
+                            [day.value]: {
+                              ...current[day.value],
+                              selectedTimes: [],
+                            },
+                          }))
+                        }
+                        type="button"
+                        variant="ghost"
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 space-y-4">
+                    <p className="text-[11px] font-extrabold uppercase tracking-widest text-slate-400">Available booking times</p>
+                    {TIME_GROUPS.map((group) => {
+                      const groupSlots = timeSlots.filter((time) => {
+                        const hour = extractHour(time);
+                        return hour >= group.startHour && hour <= group.endHour;
+                      });
+
+                      if (groupSlots.length === 0) {
+                        return null;
+                      }
+
+                      return (
+                        <div key={group.id}>
+                          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{group.label}</p>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                            {groupSlots.map((time) => {
+                              const checked = state.selectedTimes.includes(time);
+                              return (
+                                <label
+                                  key={time}
+                                  className={cn(
+                                    'flex items-center gap-2 rounded-sm border px-3 py-2 text-sm transition-colors',
+                                    checked
+                                      ? 'border-orange-300 bg-orange-50 text-orange-800'
+                                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-orange-200',
+                                  )}
+                                >
+                                  <input
+                                    checked={checked}
+                                    className="size-4 accent-orange-600"
+                                    onChange={(event) =>
+                                      setDays((current) => {
+                                        const selectedTimes = event.target.checked
+                                          ? [...current[day.value].selectedTimes, time].sort()
+                                          : current[day.value].selectedTimes.filter((value) => value !== time);
+
+                                        return {
+                                          ...current,
+                                          [day.value]: {
+                                            ...current[day.value],
+                                            selectedTimes,
+                                          },
+                                        };
+                                      })
+                                    }
+                                    type="checkbox"
+                                  />
+                                  <span>{formatTimeLabel(time)}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </Card>
           );
         })}

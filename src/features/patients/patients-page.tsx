@@ -82,6 +82,8 @@ const walkInSteps = [
   },
 ] as const;
 
+const PATIENTS_PAGE_SIZE = 10;
+
 function getPatientSourceLabel(patient: Patient) {
   return patient.intakeSource === 'online_registration' ? 'Online registration' : 'Walk-in encoded by staff';
 }
@@ -102,6 +104,7 @@ export function PatientsPage() {
   const deletePatient = useDeletePatient();
   const createPatientActionLog = useCreatePatientActionLog();
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
   const [walkInStepIndex, setWalkInStepIndex] = useState(0);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -139,6 +142,15 @@ export function PatientsPage() {
       ),
     [deferredSearch, patients],
   );
+  const totalPages = Math.max(1, Math.ceil(filteredPatients.length / PATIENTS_PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStart = (safeCurrentPage - 1) * PATIENTS_PAGE_SIZE;
+  const paginatedPatients = useMemo(
+    () => filteredPatients.slice(pageStart, pageStart + PATIENTS_PAGE_SIZE),
+    [filteredPatients, pageStart],
+  );
+  const showingStart = filteredPatients.length === 0 ? 0 : pageStart + 1;
+  const showingEnd = filteredPatients.length === 0 ? 0 : Math.min(pageStart + PATIENTS_PAGE_SIZE, filteredPatients.length);
 
   useEffect(() => {
     if (!isWalkInModalOpen) {
@@ -375,7 +387,10 @@ export function PatientsPage() {
                 <Search className="size-4 shrink-0 text-slate-400" />
                 <input
                   className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                  onChange={(event) => setSearch(event.target.value)}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setCurrentPage(1);
+                  }}
                   placeholder="Search patient, email, QR code, or intake type"
                   value={search}
                 />
@@ -413,7 +428,7 @@ export function PatientsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredPatients.map((patient) => {
+                  {paginatedPatients.map((patient) => {
                     const visitBadge = getPatientVisitBadge(patient);
 
                     return (
@@ -483,6 +498,36 @@ export function PatientsPage() {
                 </tbody>
               </table>
             </div>
+            {filteredPatients.length > 0 ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
+                <p className="text-xs font-semibold text-slate-500">
+                  Showing {showingStart}-{showingEnd} of {filteredPatients.length} patients
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    className="rounded-none border-slate-300 px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                    disabled={safeCurrentPage <= 1}
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                    Page {safeCurrentPage} of {totalPages}
+                  </span>
+                  <Button
+                    className="rounded-none border-slate-300 px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                    disabled={safeCurrentPage >= totalPages}
+                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </div>
         )}
       </div>

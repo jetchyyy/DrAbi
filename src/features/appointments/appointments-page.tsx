@@ -59,6 +59,8 @@ const appointmentSchema = z.object({
   teleconsultationAccessInstructions: z.string().optional(),
 });
 
+const APPOINTMENTS_PAGE_SIZE = 10;
+
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
 
 interface FeedbackModalState {
@@ -115,6 +117,7 @@ export function AppointmentsPage() {
   const updateAppointmentMutation = useUpdateAppointment();
   const deleteAppointmentMutation = useDeleteAppointment();
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] =
     useState<Appointment | null>(null);
@@ -196,6 +199,28 @@ export function AppointmentsPage() {
       specialtyMap,
     ],
   );
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredAppointments.length / APPOINTMENTS_PAGE_SIZE),
+  );
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStart = (safeCurrentPage - 1) * APPOINTMENTS_PAGE_SIZE;
+  const paginatedAppointments = useMemo(
+    () =>
+      filteredAppointments.slice(
+        pageStart,
+        pageStart + APPOINTMENTS_PAGE_SIZE,
+      ),
+    [filteredAppointments, pageStart],
+  );
+  const showingStart = filteredAppointments.length === 0 ? 0 : pageStart + 1;
+  const showingEnd =
+    filteredAppointments.length === 0
+      ? 0
+      : Math.min(
+          pageStart + APPOINTMENTS_PAGE_SIZE,
+          filteredAppointments.length,
+        );
 
   useEffect(() => {
     const selectedDoctor = doctors.find(
@@ -425,7 +450,10 @@ export function AppointmentsPage() {
                 <Search className="size-4 shrink-0 text-slate-400" />
                 <input
                   className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                  onChange={(event) => setSearch(event.target.value)}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setCurrentPage(1);
+                  }}
                   placeholder="Search patient, doctor, service, or status"
                   value={search}
                 />
@@ -466,7 +494,7 @@ export function AppointmentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredAppointments.map((appointment) => {
+                {paginatedAppointments.map((appointment) => {
                   const patient = patientMap.get(appointment.patientId);
                   const doctor = doctorMap.get(appointment.doctorId);
                   const service = serviceMap.get(appointment.serviceId);
@@ -546,9 +574,52 @@ export function AppointmentsPage() {
                     </tr>
                   );
                 })}
+                {filteredAppointments.length === 0 ? (
+                  <tr>
+                    <td
+                      className="px-6 py-10 text-center text-sm text-slate-500"
+                      colSpan={6}
+                    >
+                      No appointments found for this search.
+                    </td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>
+          {filteredAppointments.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
+              <p className="text-xs font-semibold text-slate-500">
+                Showing {showingStart}-{showingEnd} of{" "}
+                {filteredAppointments.length} appointments
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  className="rounded-none border-slate-300 px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                  disabled={safeCurrentPage <= 1}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  type="button"
+                  variant="secondary"
+                >
+                  Previous
+                </Button>
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                  Page {safeCurrentPage} of {totalPages}
+                </span>
+                <Button
+                  className="rounded-none border-slate-300 px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                  disabled={safeCurrentPage >= totalPages}
+                  onClick={() =>
+                    setCurrentPage((page) => Math.min(totalPages, page + 1))
+                  }
+                  type="button"
+                  variant="secondary"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 

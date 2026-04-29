@@ -1,4 +1,4 @@
-import { Camera, CreditCard, Printer, QrCode, Search, ShoppingCart, Smartphone, StopCircle, Trash2, UserRound } from 'lucide-react';
+import { AlertCircle, Camera, CircleDashed, CreditCard, Printer, QrCode, Search, ShoppingCart, Smartphone, StopCircle, Trash2, UserRound } from 'lucide-react';
 import jsQR from 'jsqr';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
@@ -355,6 +355,23 @@ export function PosPage() {
   }
 
   const selectedPatient = patients.find((patient) => patient.id === patientId) ?? null;
+  const customerDisplayName = selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : 'Walk-in customer';
+  const paymentReferenceRequired = paymentMethod === 'gcash' || paymentMethod === 'card';
+  const cameraStatusLabel = useMemo(() => {
+    if (cameraState === 'active') {
+      return 'Camera active';
+    }
+    if (cameraState === 'requesting') {
+      return 'Waiting for permission';
+    }
+    if (cameraState === 'denied') {
+      return 'Permission denied';
+    }
+    if (cameraState === 'unsupported') {
+      return 'Camera unsupported';
+    }
+    return 'Camera idle';
+  }, [cameraState]);
 
   async function handlePrintReceipt() {
     if (!receiptState) {
@@ -416,11 +433,22 @@ export function PosPage() {
     <div className="space-y-6">
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <Card>
-          <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Point of Sale</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Point of Sale</p>
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <CircleDashed className="size-3.5" />
+              {cameraStatusLabel}
+            </span>
+          </div>
           <CardTitle className="mt-2 text-3xl">Inventory-based cashier checkout</CardTitle>
           <p className="mt-3 max-w-3xl text-sm text-slate-500">
             Add items by SKU, external scanner input, or built-in QR camera scan. Checkout saves the sale and deducts stock immediately.
           </p>
+          <div className="mt-5 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 sm:grid-cols-3">
+            <p><span className="font-semibold text-slate-800">1.</span> Scan or type item code</p>
+            <p><span className="font-semibold text-slate-800">2.</span> Review cart quantities</p>
+            <p><span className="font-semibold text-slate-800">3.</span> Complete payment and print receipt</p>
+          </div>
 
           <form className="mt-6 space-y-4" onSubmit={handleLookupSubmit}>
             <div className="space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-4">
@@ -438,8 +466,14 @@ export function PosPage() {
               </div>
               {cameraMessage ? <p className="text-sm text-slate-600">{cameraMessage}</p> : null}
               {cameraState === 'requesting' || cameraState === 'active' ? (
-                <div className="overflow-hidden rounded-3xl border border-slate-200 bg-black">
-                  <video className="aspect-video w-full object-cover" muted playsInline ref={videoRef} />
+                <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-black">
+                  <video className="aspect-video w-full object-cover opacity-90" muted playsInline ref={videoRef} />
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div className="h-40 w-40 rounded-2xl border-2 border-white/70 shadow-[0_0_0_999px_rgba(0,0,0,0.28)]" />
+                  </div>
+                  <p className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-black/60 px-2 py-1 text-xs font-medium text-slate-100">
+                    Keep item QR inside the frame
+                  </p>
                   <canvas className="hidden" ref={canvasRef} />
                 </div>
               ) : null}
@@ -461,10 +495,26 @@ export function PosPage() {
                   <Search className="size-4" />
                   Add item
                 </Button>
+                <Button
+                  className="gap-2 sm:self-stretch"
+                  onClick={() => {
+                    setLookupValue('');
+                    setLookupError('');
+                  }}
+                  type="button"
+                  variant="secondary"
+                >
+                  Clear
+                </Button>
               </div>
             </label>
 
-            {lookupError ? <p className="text-sm text-rose-600">{lookupError}</p> : null}
+            {lookupError ? (
+              <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                <p>{lookupError}</p>
+              </div>
+            ) : null}
           </form>
         </Card>
 
@@ -482,7 +532,7 @@ export function PosPage() {
             </div>
             <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Customer</p>
-              <p className="mt-2 text-base font-bold text-white">{selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : 'Walk-in customer'}</p>
+              <p className="mt-2 text-base font-bold text-white">{customerDisplayName}</p>
             </div>
           </div>
 
@@ -509,9 +559,20 @@ export function PosPage() {
               <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Cart</p>
               <CardTitle className="mt-2">Items ready for checkout</CardTitle>
             </div>
-            <div className="inline-flex items-center gap-2 rounded-2xl bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700">
-              <ShoppingCart className="size-4" />
-              {cart.length} line{cart.length !== 1 ? 's' : ''}
+            <div className="flex items-center gap-2">
+              <div className="inline-flex items-center gap-2 rounded-2xl bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700">
+                <ShoppingCart className="size-4" />
+                {cart.length} line{cart.length !== 1 ? 's' : ''}
+              </div>
+              <Button
+                className="rounded-2xl px-3 py-2 text-xs font-semibold"
+                disabled={cart.length === 0}
+                onClick={() => setCart([])}
+                type="button"
+                variant="secondary"
+              >
+                Clear cart
+              </Button>
             </div>
           </div>
 
@@ -539,11 +600,22 @@ export function PosPage() {
                     <tr key={entry.item.id}>
                       <td className="px-4 py-4">
                         <p className="font-bold text-slate-950">{entry.item.name}</p>
-                        <p className="mt-1 text-xs text-slate-500">{entry.item.sku} • {entry.item.unit}</p>
+                        <p className="mt-1 text-xs text-slate-500">{entry.item.sku} - {entry.item.unit}</p>
                       </td>
-                      <td className="px-4 py-4 text-sm text-slate-600">{entry.item.stockOnHand} available</td>
+                      <td className="px-4 py-4 text-sm text-slate-600">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            entry.item.stockOnHand <= entry.item.reorderLevel
+                              ? 'bg-rose-100 text-rose-700'
+                              : 'bg-emerald-100 text-emerald-700'
+                          }`}
+                        >
+                          {entry.item.stockOnHand} available
+                        </span>
+                      </td>
                       <td className="px-4 py-4">
                         <Input
+                          className="max-w-24"
                           min="1"
                           max={entry.item.stockOnHand}
                           type="number"
@@ -576,6 +648,15 @@ export function PosPage() {
           <CardTitle className="mt-2">Customer and payment details</CardTitle>
 
           <div className="mt-6 space-y-5">
+            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-600 sm:grid-cols-2">
+              <p>
+                Customer: <span className="text-slate-900">{customerDisplayName}</span>
+              </p>
+              <p>
+                Payment mode: <span className="text-slate-900 uppercase">{paymentMethod}</span>
+              </p>
+            </div>
+
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Customer</label>
               <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -615,6 +696,7 @@ export function PosPage() {
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
                 {paymentMethod === 'cash' ? 'Cash notes' : 'Reference / payment details'}
+                {paymentReferenceRequired ? <span className="ml-1 text-rose-600">*</span> : null}
               </label>
               <Input
                 placeholder={paymentMethod === 'cash' ? 'Optional cashier note' : 'Required reference number or payment details'}
@@ -627,6 +709,9 @@ export function PosPage() {
                   setPaymentReference(event.target.value);
                 }}
               />
+              {paymentReferenceRequired ? (
+                <p className="mt-2 text-xs text-slate-500">Reference is required for {paymentMethod.toUpperCase()} payments.</p>
+              ) : null}
             </div>
 
             {paymentMethod !== 'cash' ? (
@@ -649,7 +734,7 @@ export function PosPage() {
 
             <Button className="w-full gap-2" disabled={checkoutMutation.isPending || cart.length === 0} onClick={() => checkoutMutation.mutate()} type="button">
               <ShoppingCart className="size-4" />
-              {checkoutMutation.isPending ? 'Processing sale...' : 'Complete sale and deduct stock'}
+              {checkoutMutation.isPending ? 'Processing sale...' : `Complete sale (${formatCurrency(cartSubtotal)})`}
             </Button>
           </div>
         </Card>

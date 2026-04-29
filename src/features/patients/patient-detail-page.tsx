@@ -1,5 +1,5 @@
-﻿import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, FileText, FlaskConical, Pill, QrCode, ScanLine, TestTubeDiagonal, X } from 'lucide-react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ChevronDown, Eye, FileText, FlaskConical, Pill, QrCode, ScanLine, TestTubeDiagonal, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
@@ -78,6 +78,20 @@ const inventoryUsageSchema = z.object({
   quantity: z.number().min(1, 'Quantity must be at least 1.'),
   notes: z.string().min(4, 'Add a short note about how the item was used.'),
 });
+
+function formatConsultationText(value: string | null | undefined) {
+  const text = (value ?? '').trim();
+  return text.length > 0 ? text : 'Not provided';
+}
+
+function truncateText(value: string | null | undefined, maxLength = 120) {
+  const text = formatConsultationText(value);
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength).trimEnd()}...`;
+}
 
 function buildSavedPrescriptionDocument(input: {
   patientName: string;
@@ -295,6 +309,11 @@ export function PatientDetailPage() {
   });
   const [isPrintingPreviewDocument, setIsPrintingPreviewDocument] = useState(false);
   const [isSavingPreviewDocumentPdf, setIsSavingPreviewDocumentPdf] = useState(false);
+  const [expandedConsultationId, setExpandedConsultationId] = useState<string | null | undefined>(undefined);
+  const [expandedPrescriptionId, setExpandedPrescriptionId] = useState<string | null | undefined>(undefined);
+  const [expandedMedicalCertificateId, setExpandedMedicalCertificateId] = useState<string | null | undefined>(undefined);
+  const [expandedReferralId, setExpandedReferralId] = useState<string | null | undefined>(undefined);
+  const [expandedLabOrderId, setExpandedLabOrderId] = useState<string | null | undefined>(undefined);
 
   const pendingSpecialistReferral =
     currentDoctor
@@ -347,6 +366,38 @@ export function PatientDetailPage() {
       }, null),
     [medicalCertificates],
   );
+
+  const [activeTab, setActiveTab] = useState('overview');
+  const activeConsultationId =
+    expandedConsultationId === undefined
+      ? (consultationTimeline[0]?.consultation.id ?? null)
+      : expandedConsultationId;
+  const activePrescriptionId =
+    expandedPrescriptionId === undefined
+      ? (prescriptions[0]?.id ?? null)
+      : expandedPrescriptionId;
+  const activeMedicalCertificateId =
+    expandedMedicalCertificateId === undefined
+      ? (medicalCertificates[0]?.id ?? null)
+      : expandedMedicalCertificateId;
+  const activeReferralId =
+    expandedReferralId === undefined
+      ? (referrals[0]?.id ?? null)
+      : expandedReferralId;
+  const activeLabOrderId =
+    expandedLabOrderId === undefined
+      ? (filteredLabOrders[0]?.id ?? null)
+      : expandedLabOrderId;
+
+  const TABS = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'consultations', label: 'Consultations' },
+    { id: 'prescriptions', label: 'Prescriptions' },
+    { id: 'certificates', label: 'Certificates' },
+    { id: 'lab-tests', label: 'Lab Tests' },
+    { id: 'referrals', label: 'Referrals' },
+    { id: 'inventory', label: 'Inventory' },
+  ];
 
   if (patientQuery.isLoading) {
     return (
@@ -642,6 +693,24 @@ export function PatientDetailPage() {
     }
   };
 
+  const handleViewPrescriptionFromHistory = (prescription: Prescription) => {
+    const documentHtml = buildPrescriptionDocumentFor(prescription);
+    if (!documentHtml) {
+      toast.error('Unable to open this prescription file.');
+      return;
+    }
+
+    setSavedPrescription(prescription);
+    setIsViewingLatestPrescriptionFile(true);
+    try {
+      openDocumentPreviewInModal(documentHtml, `${prescription.prescriptionName} prescription`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to open this prescription file.');
+    } finally {
+      setIsViewingLatestPrescriptionFile(false);
+    }
+  };
+
   const handleSavePrescriptionAsPdf = async () => {
     const documentHtml = getSavedPrescriptionDocument();
     if (!documentHtml) {
@@ -707,6 +776,24 @@ export function PatientDetailPage() {
       openDocumentPreviewInModal(documentHtml, 'Latest medical certificate');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to open the latest medical certificate file.');
+    } finally {
+      setIsViewingLatestMedicalCertificateFile(false);
+    }
+  };
+
+  const handleViewMedicalCertificateFromHistory = (medicalCertificate: MedicalCertificate) => {
+    const documentHtml = buildMedicalCertificateDocumentFor(medicalCertificate);
+    if (!documentHtml) {
+      toast.error('Unable to open this medical certificate file.');
+      return;
+    }
+
+    setSavedMedicalCertificate(medicalCertificate);
+    setIsViewingLatestMedicalCertificateFile(true);
+    try {
+      openDocumentPreviewInModal(documentHtml, `${medicalCertificate.certificatePurpose} certificate`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to open this medical certificate file.');
     } finally {
       setIsViewingLatestMedicalCertificateFile(false);
     }
@@ -870,7 +957,7 @@ export function PatientDetailPage() {
               <CardTitle className="mt-2 text-3xl">
                 {patient.firstName} {patient.lastName}
               </CardTitle>
-              <p className="mt-2 text-sm text-slate-500">{patient.email} • {patient.mobileNumber}</p>
+              <p className="mt-2 text-sm text-slate-500">{patient.email} | {patient.mobileNumber}</p>
               <p className="mt-2 text-sm font-medium text-slate-700">QR code: <span className="font-mono">{patient.qrCode}</span></p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -891,131 +978,420 @@ export function PatientDetailPage() {
         <PatientQrCard patientName={`${patient.firstName} ${patient.lastName}`} qrCode={patient.qrCode} />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-        <Card>
-          <CardTitle>Clinical summary</CardTitle>
-          <dl className="mt-5 space-y-4 text-sm">
-            <div>
-              <dt className="text-slate-400">Birth date</dt>
-              <dd className="font-medium text-slate-950">{formatDateLabel(patient.birthDate)}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-400">Medical history</dt>
-              <dd className="font-medium text-slate-950">{patient.medicalHistory}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-400">Emergency contact</dt>
-              <dd className="font-medium text-slate-950">
-                {patient.emergencyContactName} • {patient.emergencyContactPhone}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-400">Address</dt>
-              <dd className="font-medium text-slate-950">{patient.address}</dd>
-            </div>
-          </dl>
-        </Card>
+      <div className="flex space-x-2 border-b border-slate-200 overflow-x-auto mt-6 pb-2">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`whitespace-nowrap px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${activeTab === tab.id ? 'bg-[var(--color-primary)] text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-        <div className="space-y-6">
+      {activeTab === 'overview' && (
+        <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <Card>
-            <CardTitle>Visit timeline</CardTitle>
-            <div className="mt-5 space-y-4">
-              {visits.map((visit) => (
-                <div key={visit.id} className="rounded-3xl bg-slate-50 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="font-medium text-slate-950">{formatDateTimeLabel(visit.scheduledAt)}</p>
-                    <Badge intent={consultationAppointmentIds.has(visit.id) ? 'info' : 'warning'}>
-                      {consultationAppointmentIds.has(visit.id) ? 'SOAP saved' : 'SOAP pending'}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-sm text-slate-500">{visit.reason}</p>
-                </div>
-              ))}
+            <CardTitle>Clinical overview</CardTitle>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Birth date</p>
+                <p className="mt-1 font-semibold text-slate-900">{formatDateLabel(patient.birthDate)}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Blood type</p>
+                <p className="mt-1 font-semibold text-slate-900">{formatConsultationText(patient.bloodType)}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Allergies</p>
+                <p className="mt-1 font-semibold text-slate-900">{formatConsultationText(patient.allergies)}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Emergency contact</p>
+                <p className="mt-1 font-semibold text-slate-900">
+                  {formatConsultationText(patient.emergencyContactName)} | {formatConsultationText(patient.emergencyContactPhone)}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Medical history</p>
+                <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                  {formatConsultationText(patient.medicalHistory)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Address</p>
+                <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                  {formatConsultationText(patient.address)}
+                </p>
+              </div>
             </div>
           </Card>
 
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <div className="space-y-6">
             <Card>
-              <div className="flex items-center gap-3">
-                <FileText className="size-5 text-[var(--color-primary)]" />
-                <CardTitle className="text-base">Consultations</CardTitle>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle>Visit timeline</CardTitle>
+                <Badge intent="info">{visits.length} visit{visits.length !== 1 ? 's' : ''}</Badge>
               </div>
-              <p className="mt-4 text-3xl font-semibold text-slate-950">{consultations.length}</p>
-            </Card>
-            <Card>
-              <div className="flex items-center gap-3">
-                <Pill className="size-5 text-[var(--color-primary)]" />
-                <CardTitle className="text-base">Prescriptions</CardTitle>
+              <div className="mt-5 space-y-3">
+                {visits.length === 0 ? (
+                  <p className="text-sm text-slate-500">No visits recorded yet for this patient.</p>
+                ) : (
+                  visits.map((visit) => (
+                    <div key={visit.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="font-medium text-slate-950">{formatDateTimeLabel(visit.scheduledAt)}</p>
+                        <Badge intent={consultationAppointmentIds.has(visit.id) ? 'info' : 'warning'}>
+                          {consultationAppointmentIds.has(visit.id) ? 'SOAP saved' : 'SOAP pending'}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Reason for visit</p>
+                      <p className="mt-1 text-sm text-slate-700">{formatConsultationText(visit.reason)}</p>
+                    </div>
+                  ))
+                )}
               </div>
-              <p className="mt-4 text-3xl font-semibold text-slate-950">{prescriptions.length}</p>
             </Card>
-            <Card>
-              <div className="flex items-center gap-3">
-                <QrCode className="size-5 text-[var(--color-primary)]" />
-                <CardTitle className="text-base">Items used</CardTitle>
-              </div>
-              <p className="mt-4 text-3xl font-semibold text-slate-950">{inventoryUsageLogs.length}</p>
-            </Card>
-            <Card>
-              <div className="flex items-center gap-3">
-                <TestTubeDiagonal className="size-5 text-[var(--color-primary)]" />
-                <CardTitle className="text-base">Lab orders</CardTitle>
-              </div>
-              <p className="mt-4 text-3xl font-semibold text-slate-950">{labOrders.length}</p>
-            </Card>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <Card className="border-sky-200 bg-sky-50/50">
+                <div className="flex items-center gap-3">
+                  <FileText className="size-5 text-sky-600" />
+                  <CardTitle className="text-base">Consultations</CardTitle>
+                </div>
+                <p className="mt-4 text-3xl font-semibold text-slate-950">{consultations.length}</p>
+              </Card>
+              <Card className="border-emerald-200 bg-emerald-50/50">
+                <div className="flex items-center gap-3">
+                  <Pill className="size-5 text-emerald-600" />
+                  <CardTitle className="text-base">Prescriptions</CardTitle>
+                </div>
+                <p className="mt-4 text-3xl font-semibold text-slate-950">{prescriptions.length}</p>
+              </Card>
+              <Card className="border-amber-200 bg-amber-50/50">
+                <div className="flex items-center gap-3">
+                  <QrCode className="size-5 text-amber-600" />
+                  <CardTitle className="text-base">Items used</CardTitle>
+                </div>
+                <p className="mt-4 text-3xl font-semibold text-slate-950">{inventoryUsageLogs.length}</p>
+              </Card>
+              <Card className="border-violet-200 bg-violet-50/50">
+                <div className="flex items-center gap-3">
+                  <TestTubeDiagonal className="size-5 text-violet-600" />
+                  <CardTitle className="text-base">Lab orders</CardTitle>
+                </div>
+                <p className="mt-4 text-3xl font-semibold text-slate-950">{labOrders.length}</p>
+              </Card>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <Card>
+      {activeTab === 'consultations' && (
+        <div className="mt-6">
+          <Card>
           <CardTitle>SOAP notes</CardTitle>
           <div className="mt-5 space-y-4">
             {consultationTimeline.length === 0 ? (
               <p className="text-sm text-slate-500">No SOAP notes have been saved for this patient yet.</p>
             ) : (
-              consultationTimeline.map(({ consultation, appointment }) => (
-                <div key={consultation.id} className="rounded-3xl bg-slate-50 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="font-medium text-slate-950">
-                      {appointment ? formatDateTimeLabel(appointment.scheduledAt) : 'Consultation note'}
-                    </p>
-                    <Badge intent="info">SOAP completed</Badge>
-                  </div>
-                  <div className="mt-4 space-y-3 text-sm text-slate-700">
-                    <p><span className="font-semibold text-slate-950">Consultation Type:</span> {consultation.consultationType}</p>
-                    <p><span className="font-semibold text-slate-950">Consultation Date:</span> {consultation.consultationDate}</p>
-                    <p><span className="font-semibold text-slate-950">Consultation Time:</span> {consultation.consultationTime}</p>
-                    <p><span className="font-semibold text-slate-950">Provider / Doctor Name:</span> {consultation.providerName}</p>
-                    <p><span className="font-semibold text-slate-950">Clinical Summary:</span> {consultation.clinicalSummary}</p>
-                    <p><span className="font-semibold text-slate-950">Diagnosis:</span> {consultation.diagnosis}</p>
-                    <p><span className="font-semibold text-slate-950">Present Illness History:</span> {consultation.presentIllnessHistory}</p>
-                    <p><span className="font-semibold text-slate-950">Review of Symptoms:</span> {consultation.reviewOfSymptoms}</p>
-                    <p><span className="font-semibold text-slate-950">Allergies:</span> {consultation.allergies}</p>
-                    <p><span className="font-semibold text-slate-950">Vitals:</span> {consultation.vitals}</p>
-                    <p><span className="font-semibold text-slate-950">Treatment Plan:</span> {consultation.treatmentPlan}</p>
-                    <p><span className="font-semibold text-slate-950">Medications:</span> {consultation.medications}</p>
-                    <div>
-                      <p className="font-semibold text-slate-950">Lab Results:</p>
-                      <div className="mt-2">
-                        <LabResultsDisplay value={consultation.labResults} />
+              consultationTimeline.map(({ consultation, appointment }) => {
+                const isExpanded = activeConsultationId === consultation.id;
+                const trayContentId = `consultation-tray-${consultation.id}`;
+
+                return (
+                <div
+                  key={consultation.id}
+                  className={`group rounded-3xl border p-4 transition-all ${
+                    isExpanded
+                      ? 'border-sky-200 bg-gradient-to-br from-sky-50 via-white to-white shadow-sm'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                  }`}
+                >
+                  <button
+                    aria-controls={trayContentId}
+                    aria-expanded={isExpanded}
+                    className="flex w-full items-start justify-between gap-3 rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+                    onClick={() =>
+                      setExpandedConsultationId((current) =>
+                        (current === undefined ? consultationTimeline[0]?.consultation.id ?? null : current) === consultation.id
+                          ? null
+                          : consultation.id,
+                      )
+                    }
+                    type="button"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-950">
+                        {appointment ? formatDateTimeLabel(appointment.scheduledAt) : 'Consultation note'}
+                      </p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">
+                        {formatConsultationText(consultation.providerName)}
+                      </p>
+                      <p className="mt-2 line-clamp-2 text-sm text-slate-600">
+                        <span className="font-semibold text-slate-800">Diagnosis:</span> {truncateText(consultation.diagnosis, 140)}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge intent="info">{isExpanded ? 'Expanded' : 'SOAP completed'}</Badge>
+                      <span
+                        className={`rounded-full p-1.5 transition-colors ${
+                          isExpanded ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
+                        }`}
+                      >
+                        <ChevronDown
+                          className={`size-4 transition-transform ${
+                            isExpanded ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </span>
+                    </div>
+                  </button>
+
+                  {isExpanded ? (
+                    <div className="mt-4 space-y-4 border-t border-sky-100 pt-4" id={trayContentId}>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Consultation Type</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-900">
+                            {formatConsultationText(consultation.consultationType)}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Diagnosis</p>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-sm font-semibold text-slate-900">
+                            {formatConsultationText(consultation.diagnosis)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Clinical Summary</p>
+                        <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                          {formatConsultationText(consultation.clinicalSummary)}
+                        </p>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Present Illness History</p>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                            {formatConsultationText(consultation.presentIllnessHistory)}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Review of Symptoms</p>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                            {formatConsultationText(consultation.reviewOfSymptoms)}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Allergies</p>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                            {formatConsultationText(consultation.allergies)}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Vitals</p>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                            {formatConsultationText(consultation.vitals)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Lab Results</p>
+                        <div className="mt-2">
+                          <LabResultsDisplay value={consultation.labResults} />
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">SOAP Breakdown</p>
+                        <div className="mt-2 grid gap-3 md:grid-cols-2">
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                            <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Subjective</p>
+                            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                              {formatConsultationText(consultation.subjective)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                            <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Objective</p>
+                            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                              {formatConsultationText(consultation.objective)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                            <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Assessment</p>
+                            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                              {formatConsultationText(consultation.assessment)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                            <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Plan</p>
+                            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                              {formatConsultationText(consultation.plan)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Treatment Plan</p>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                            {formatConsultationText(consultation.treatmentPlan)}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Medications</p>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                            {formatConsultationText(consultation.medications)}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Differential Diagnosis</p>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                            {formatConsultationText(consultation.differentialDiagnosis)}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Outcome</p>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                            {formatConsultationText(consultation.outcome)}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <p><span className="font-semibold text-slate-950">Differential Diagnosis:</span> {consultation.differentialDiagnosis}</p>
-                    <p><span className="font-semibold text-slate-950">Subjective:</span> {consultation.subjective}</p>
-                    <p><span className="font-semibold text-slate-950">Objective:</span> {consultation.objective}</p>
-                    <p><span className="font-semibold text-slate-950">Assessment:</span> {consultation.assessment}</p>
-                    <p><span className="font-semibold text-slate-950">Plan:</span> {consultation.plan}</p>
-                    <p><span className="font-semibold text-slate-950">Outcome:</span> {consultation.outcome}</p>
-                  </div>
+                  ) : (
+                    <div className="mt-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Quick preview</p>
+                      <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+                        {truncateText(consultation.clinicalSummary || consultation.subjective, 180)}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              ))
+              );
+              })
             )}
           </div>
-        </Card>
+          </Card>
+        </div>
+      )}
 
-        <div className="space-y-6">
-          {canDoctorActions ? (
+      {activeTab === 'prescriptions' && (
+        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+          <Card>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle>Prescription history</CardTitle>
+              <Button
+                className="gap-2 rounded-xl"
+                disabled={isViewingLatestPrescriptionFile || prescriptions.length === 0}
+                onClick={handleViewLatestPrescriptionFromChart}
+                type="button"
+                variant="secondary"
+              >
+                <Eye className="size-4" />
+                {isViewingLatestPrescriptionFile ? 'Opening latest file...' : 'View Latest Prescription'}
+              </Button>
+            </div>
+            <div className="mt-5 space-y-4">
+              {prescriptions.length === 0 ? (
+                <p className="text-sm text-slate-500">No prescriptions have been recorded for this patient yet.</p>
+              ) : (
+                prescriptions.map((prescription) => {
+                  const linkedConsultation = consultations.find((consultation) => consultation.id === prescription.consultationId);
+                  const isExpanded = activePrescriptionId === prescription.id;
+                  const trayContentId = `prescription-tray-${prescription.id}`;
+                  return (
+                    <div
+                      key={prescription.id}
+                      className={`rounded-3xl border p-4 transition-all ${
+                        isExpanded ? 'border-sky-200 bg-sky-50/50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <button
+                          aria-controls={trayContentId}
+                          aria-expanded={isExpanded}
+                          className="group min-w-0 flex-1 rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+                          onClick={() =>
+                            setExpandedPrescriptionId((current) =>
+                              (current === undefined ? prescriptions[0]?.id ?? null : current) === prescription.id
+                                ? null
+                                : prescription.id,
+                            )
+                          }
+                          type="button"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="space-y-1">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Prescription</p>
+                              <p className="font-semibold text-slate-950">{prescription.prescriptionName}</p>
+                              <p className="text-sm text-slate-500">
+                                {linkedConsultation ? `${linkedConsultation.consultationDate} ${linkedConsultation.consultationTime}` : 'Prescription saved'}
+                              </p>
+                            </div>
+                            <span
+                              className={`rounded-full p-1.5 transition-colors ${
+                                isExpanded ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
+                              }`}
+                            >
+                              <ChevronDown className={`size-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                            </span>
+                          </div>
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <Badge intent="info">{isExpanded ? 'Expanded' : 'Saved'}</Badge>
+                          <Button
+                            className="h-8 rounded-lg px-3"
+                            disabled={isViewingLatestPrescriptionFile}
+                            onClick={() => handleViewPrescriptionFromHistory(prescription)}
+                            type="button"
+                            variant="secondary"
+                          >
+                            <Eye className="mr-1.5 size-3.5" />
+                            View
+                          </Button>
+                        </div>
+                      </div>
+
+                      {isExpanded ? (
+                        <div className="mt-4 space-y-3 border-t border-sky-100 pt-4" id={trayContentId}>
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Dosage</p>
+                              <p className="mt-1 text-sm text-slate-700">{formatConsultationText(prescription.dosage)}</p>
+                            </div>
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Issued</p>
+                              <p className="mt-1 text-sm text-slate-700">{formatDateTimeLabel(prescription.createdAt)}</p>
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Instruction</p>
+                            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                              {formatConsultationText(prescription.instruction)}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-sm text-slate-500">
+                          {truncateText(prescription.instruction, 120)}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </Card>
+          <div className="space-y-6">
+            {canDoctorActions ? (
             <Card>
               <CardTitle>Prescription details</CardTitle>
               <p className="mt-2 text-sm text-slate-500">
@@ -1047,8 +1423,127 @@ export function PatientDetailPage() {
               </form>
             </Card>
           ) : null}
+          </div>
+        </div>
+      )}
 
-          {canDoctorActions ? (
+      {activeTab === 'certificates' && (
+        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+          <Card>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle>Medical certificate history</CardTitle>
+              <Button
+                className="gap-2 rounded-xl"
+                disabled={isViewingLatestMedicalCertificateFile || medicalCertificates.length === 0}
+                onClick={handleViewLatestMedicalCertificateFromChart}
+                type="button"
+                variant="secondary"
+              >
+                <Eye className="size-4" />
+                {isViewingLatestMedicalCertificateFile ? 'Opening latest file...' : 'View Latest Medical Certificate'}
+              </Button>
+            </div>
+            <div className="mt-5 space-y-4">
+              {medicalCertificates.length === 0 ? (
+                <p className="text-sm text-slate-500">No medical certificates have been recorded for this patient yet.</p>
+              ) : (
+                medicalCertificates.map((medicalCertificate) => {
+                  const linkedConsultation = consultations.find((consultation) => consultation.id === medicalCertificate.consultationId);
+                  const isExpanded = activeMedicalCertificateId === medicalCertificate.id;
+                  const trayContentId = `certificate-tray-${medicalCertificate.id}`;
+                  return (
+                    <div
+                      key={medicalCertificate.id}
+                      className={`rounded-3xl border p-4 transition-all ${
+                        isExpanded ? 'border-emerald-200 bg-emerald-50/40 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <button
+                          aria-controls={trayContentId}
+                          aria-expanded={isExpanded}
+                          className="group min-w-0 flex-1 rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                          onClick={() =>
+                            setExpandedMedicalCertificateId((current) =>
+                              (current === undefined ? medicalCertificates[0]?.id ?? null : current) === medicalCertificate.id
+                                ? null
+                                : medicalCertificate.id,
+                            )
+                          }
+                          type="button"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="space-y-1">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Certificate Purpose</p>
+                              <p className="font-semibold text-slate-950">{medicalCertificate.certificatePurpose}</p>
+                              <p className="text-sm text-slate-500">
+                                {linkedConsultation ? `${linkedConsultation.consultationDate} ${linkedConsultation.consultationTime}` : 'Certificate saved'}
+                              </p>
+                            </div>
+                            <span
+                              className={`rounded-full p-1.5 transition-colors ${
+                                isExpanded ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
+                              }`}
+                            >
+                              <ChevronDown className={`size-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                            </span>
+                          </div>
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <Badge intent="info">{isExpanded ? 'Expanded' : 'Saved'}</Badge>
+                          <Button
+                            className="h-8 rounded-lg px-3"
+                            disabled={isViewingLatestMedicalCertificateFile}
+                            onClick={() => handleViewMedicalCertificateFromHistory(medicalCertificate)}
+                            type="button"
+                            variant="secondary"
+                          >
+                            <Eye className="mr-1.5 size-3.5" />
+                            View
+                          </Button>
+                        </div>
+                      </div>
+
+                      {isExpanded ? (
+                        <div className="mt-4 space-y-3 border-t border-emerald-100 pt-4" id={trayContentId}>
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Diagnosis</p>
+                              <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                                {formatConsultationText(medicalCertificate.diagnosis)}
+                              </p>
+                            </div>
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Issued</p>
+                              <p className="mt-1 text-sm text-slate-700">{formatDateTimeLabel(medicalCertificate.createdAt)}</p>
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Recommendation</p>
+                            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                              {formatConsultationText(medicalCertificate.recommendation)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Rest Period</p>
+                            <p className="mt-1 text-sm text-slate-700">
+                              {(medicalCertificate.restFrom || 'Start not set')} to {(medicalCertificate.restUntil || 'End not set')}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-sm text-slate-500">
+                          {truncateText(medicalCertificate.recommendation, 120)}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </Card>
+          <div className="space-y-6">
+            {canDoctorActions ? (
             <Card>
               <CardTitle>Medical certificate details</CardTitle>
               <p className="mt-2 text-sm text-slate-500">
@@ -1088,8 +1583,46 @@ export function PatientDetailPage() {
               </form>
             </Card>
           ) : null}
+          </div>
+        </div>
+      )}
 
-          {canInventoryActions ? (
+      {activeTab === 'inventory' && (
+        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+          <Card>
+            <CardTitle>Inventory usage history</CardTitle>
+            <div className="mt-5 space-y-4">
+              {inventoryUsageLogs.length === 0 ? (
+                <p className="text-sm text-slate-500">No medicines or supplies have been recorded for this patient yet.</p>
+              ) : (
+                inventoryUsageLogs.map((log) => {
+                  const item = database.inventoryItems.find((inventoryItem) => inventoryItem.id === log.itemId);
+                  const linkedVisit = visits.find((visit) => visit.id === log.appointmentId);
+
+                  return (
+                    <div key={log.id} className="rounded-3xl bg-slate-50 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-slate-950">{item?.name ?? 'Inventory item removed'}</p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {log.quantity} {item?.unit ?? 'unit'} used
+                            {linkedVisit ? ` during ${formatDateTimeLabel(linkedVisit.scheduledAt)}` : ''}
+                          </p>
+                        </div>
+                        <Badge intent="info">{formatDateTimeLabel(log.createdAt)}</Badge>
+                      </div>
+                      <p className="mt-3 text-sm text-slate-700">{log.notes}</p>
+                      <p className="mt-3 break-all font-mono text-xs uppercase tracking-[0.18em] text-slate-400">
+                        Scanned code {log.scannedCode}
+                      </p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </Card>
+          <div className="space-y-6">
+            {canInventoryActions ? (
             <Card>
               <CardTitle>Scan medicine or supply QR</CardTitle>
               <p className="mt-2 text-sm text-slate-500">
@@ -1138,7 +1671,12 @@ export function PatientDetailPage() {
               </form>
             </Card>
           ) : null}
+          </div>
+        </div>
+      )}
 
+      {activeTab === 'referrals' && (
+        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
           <Card>
             <CardTitle>Referral coordination</CardTitle>
             <div className="mt-5 space-y-4">
@@ -1148,40 +1686,108 @@ export function PatientDetailPage() {
                 referrals.map((referral) => {
                   const referringDoctor = providers.find((doctor) => doctor.id === referral.referringDoctorId);
                   const targetDoctor = providers.find((doctor) => doctor.id === referral.targetDoctorId);
+                  const isExpanded = activeReferralId === referral.id;
+                  const trayContentId = `referral-tray-${referral.id}`;
+                  const statusClass =
+                    referral.status === 'completed'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : referral.status === 'accepted'
+                        ? 'bg-sky-100 text-sky-700'
+                        : referral.status === 'confirmed'
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : 'bg-amber-100 text-amber-700';
 
                   return (
-                    <div key={referral.id} className="rounded-3xl bg-slate-50 p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-slate-950">
+                    <div
+                      key={referral.id}
+                      className={`rounded-3xl border p-4 transition-all ${
+                        isExpanded ? 'border-indigo-200 bg-indigo-50/40 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                      }`}
+                    >
+                      <button
+                        aria-controls={trayContentId}
+                        aria-expanded={isExpanded}
+                        className="group flex w-full items-start justify-between gap-3 rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                        onClick={() =>
+                          setExpandedReferralId((current) =>
+                            (current === undefined ? referrals[0]?.id ?? null : current) === referral.id
+                              ? null
+                              : referral.id,
+                          )
+                        }
+                        type="button"
+                      >
+                        <div className="space-y-1">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Referral Route</p>
+                          <p className="font-semibold text-slate-950">
                             {referringDoctor?.fullName ?? 'Generalist'} to {targetDoctor?.fullName ?? 'Specialist'}
                           </p>
-                          <p className="mt-1 text-sm text-slate-500">{referral.reason}</p>
+                          <p className="text-sm text-slate-500">{truncateText(referral.reason, 120)}</p>
                         </div>
-                        <Badge intent={referral.status === 'completed' ? 'info' : 'warning'}>
-                          {referral.status.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                      <p className="mt-3 text-sm text-slate-600">{referral.clinicalSummary}</p>
-                      <p className="mt-2 text-sm text-slate-500">{referral.referralNotes}</p>
-                      {referral.specialistFindings ? (
-                        <div className="mt-3 space-y-2 text-sm text-slate-600">
-                          <p><span className="font-semibold text-slate-950">Specialist findings:</span> {referral.specialistFindings}</p>
-                          <p><span className="font-semibold text-slate-950">Recommendations:</span> {referral.specialistRecommendations}</p>
+                        <div className="flex items-center gap-2">
+                          <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${statusClass}`}>
+                            {referral.status.replace('_', ' ')}
+                          </span>
+                          <span
+                            className={`rounded-full p-1.5 transition-colors ${
+                              isExpanded ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
+                            }`}
+                          >
+                            <ChevronDown className={`size-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          </span>
+                        </div>
+                      </button>
+                      {isExpanded ? (
+                        <div className="mt-4 space-y-3 border-t border-indigo-100 pt-4" id={trayContentId}>
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Reason</p>
+                              <p className="mt-1 text-sm text-slate-700">{formatConsultationText(referral.reason)}</p>
+                            </div>
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Referred On</p>
+                              <p className="mt-1 text-sm text-slate-700">{formatDateTimeLabel(referral.referredAt)}</p>
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Clinical Summary</p>
+                            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                              {formatConsultationText(referral.clinicalSummary)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Referral Notes</p>
+                            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                              {formatConsultationText(referral.referralNotes)}
+                            </p>
+                          </div>
+                          {referral.specialistFindings ? (
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-700">Specialist Findings</p>
+                                <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                                  {formatConsultationText(referral.specialistFindings)}
+                                </p>
+                              </div>
+                              <div className="rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-700">Recommendations</p>
+                                <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                                  {formatConsultationText(referral.specialistRecommendations)}
+                                </p>
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
                       ) : null}
-                      <p className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-400">
-                        Referred {formatDateTimeLabel(referral.referredAt)}
-                      </p>
                     </div>
                   );
                 })
               )}
             </div>
           </Card>
-
-          {canDoctorActions && currentDoctor ? (
-            <Card>
+          <div className="space-y-6">
+            {canDoctorActions && currentDoctor ? (
+              <Card>
               <CardTitle>Refer to specialist</CardTitle>
               <p className="mt-2 text-sm text-slate-500">
                 The generalist decides if this patient should be escalated, then the specialist can close the loop here.
@@ -1269,132 +1875,15 @@ export function PatientDetailPage() {
                 </Button>
               </form>
             </Card>
-          ) : null}
+            ) : null}
+          </div>
         </div>
-      </div>
+      )}
 
-      <Card>
-        <CardTitle>Inventory usage history</CardTitle>
-        <div className="mt-5 space-y-4">
-          {inventoryUsageLogs.length === 0 ? (
-            <p className="text-sm text-slate-500">No medicines or supplies have been recorded for this patient yet.</p>
-          ) : (
-            inventoryUsageLogs.map((log) => {
-              const item = database.inventoryItems.find((inventoryItem) => inventoryItem.id === log.itemId);
-              const linkedVisit = visits.find((visit) => visit.id === log.appointmentId);
-
-              return (
-                <div key={log.id} className="rounded-3xl bg-slate-50 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-slate-950">{item?.name ?? 'Inventory item removed'}</p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {log.quantity} {item?.unit ?? 'unit'} used
-                        {linkedVisit ? ` during ${formatDateTimeLabel(linkedVisit.scheduledAt)}` : ''}
-                      </p>
-                    </div>
-                    <Badge intent="info">{formatDateTimeLabel(log.createdAt)}</Badge>
-                  </div>
-                  <p className="mt-3 text-sm text-slate-700">{log.notes}</p>
-                  <p className="mt-3 break-all font-mono text-xs uppercase tracking-[0.18em] text-slate-400">
-                    Scanned code {log.scannedCode}
-                  </p>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </Card>
-
-      <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle>Medical certificate history</CardTitle>
-          <Button
-            className="gap-2 rounded-xl"
-            disabled={isViewingLatestMedicalCertificateFile || medicalCertificates.length === 0}
-            onClick={handleViewLatestMedicalCertificateFromChart}
-            type="button"
-            variant="secondary"
-          >
-            <Eye className="size-4" />
-            {isViewingLatestMedicalCertificateFile ? 'Opening latest file...' : 'View Latest Medical Certificate'}
-          </Button>
-        </div>
-        <div className="mt-5 space-y-4">
-          {medicalCertificates.length === 0 ? (
-            <p className="text-sm text-slate-500">No medical certificates have been recorded for this patient yet.</p>
-          ) : (
-            medicalCertificates.map((medicalCertificate) => {
-              const linkedConsultation = consultations.find((consultation) => consultation.id === medicalCertificate.consultationId);
-              return (
-                <div key={medicalCertificate.id} className="rounded-3xl bg-slate-50 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="font-medium text-slate-950">{medicalCertificate.certificatePurpose}</p>
-                    <Badge intent="info">
-                      {linkedConsultation ? `${linkedConsultation.consultationDate} ${linkedConsultation.consultationTime}` : 'Certificate saved'}
-                    </Badge>
-                  </div>
-                  <p className="mt-3 text-sm text-slate-700">
-                    <span className="font-semibold text-slate-950">Diagnosis:</span> {medicalCertificate.diagnosis}
-                  </p>
-                  <p className="mt-2 text-sm text-slate-700">
-                    <span className="font-semibold text-slate-950">Recommendation:</span> {medicalCertificate.recommendation}
-                  </p>
-                  {(medicalCertificate.restFrom || medicalCertificate.restUntil) ? (
-                    <p className="mt-2 text-sm text-slate-700">
-                      <span className="font-semibold text-slate-950">Rest period:</span> {medicalCertificate.restFrom || 'Start not set'} to {medicalCertificate.restUntil || 'End not set'}
-                    </p>
-                  ) : null}
-                </div>
-              );
-            })
-          )}
-        </div>
-      </Card>
-
-      <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle>Prescription history</CardTitle>
-          <Button
-            className="gap-2 rounded-xl"
-            disabled={isViewingLatestPrescriptionFile || prescriptions.length === 0}
-            onClick={handleViewLatestPrescriptionFromChart}
-            type="button"
-            variant="secondary"
-          >
-            <Eye className="size-4" />
-            {isViewingLatestPrescriptionFile ? 'Opening latest file...' : 'View Latest Prescription'}
-          </Button>
-        </div>
-        <div className="mt-5 space-y-4">
-          {prescriptions.length === 0 ? (
-            <p className="text-sm text-slate-500">No prescriptions have been recorded for this patient yet.</p>
-          ) : (
-            prescriptions.map((prescription) => {
-              const linkedConsultation = consultations.find((consultation) => consultation.id === prescription.consultationId);
-              return (
-                <div key={prescription.id} className="rounded-3xl bg-slate-50 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="font-medium text-slate-950">{prescription.prescriptionName}</p>
-                    <Badge intent="info">
-                      {linkedConsultation ? `${linkedConsultation.consultationDate} ${linkedConsultation.consultationTime}` : 'Prescription saved'}
-                    </Badge>
-                  </div>
-                  <p className="mt-3 text-sm text-slate-700">
-                    <span className="font-semibold text-slate-950">Dosage:</span> {prescription.dosage}
-                  </p>
-                  <p className="mt-2 text-sm text-slate-700">
-                    <span className="font-semibold text-slate-950">Instruction:</span> {prescription.instruction}
-                  </p>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </Card>
-
-      {/* ── Lab Test History ─────────────────────────────────────────── */}
-      <Card>
+      {activeTab === 'lab-tests' && (
+        <div className="mt-6">
+          {/* ── Lab Test History ─────────────────────────────────────────── */}
+          <Card>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <FlaskConical className="size-5 text-violet-600" />
@@ -1437,36 +1926,82 @@ export function PatientDetailPage() {
             (labExpanded ? filteredLabOrders : filteredLabOrders.slice(0, 10)).map((order) => {
               const svc = database.labServices.find((s) => s.id === order.labServiceId);
               const doctor = database.users.find((u) => u.id === order.requestedBy);
+              const isExpanded = activeLabOrderId === order.id;
+              const trayContentId = `lab-order-tray-${order.id}`;
+              const statusClass =
+                order.status === 'released'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : order.status === 'ready'
+                    ? 'bg-sky-100 text-sky-700'
+                    : order.status === 'processing'
+                      ? 'bg-violet-100 text-violet-700'
+                      : 'bg-amber-100 text-amber-700';
               return (
-                <div key={order.id} className="rounded-sm bg-slate-50 p-4 border border-slate-100">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
+                <div
+                  key={order.id}
+                  className={`rounded-2xl border p-4 transition-all ${
+                    isExpanded ? 'border-violet-200 bg-violet-50/40 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                  }`}
+                >
+                  <button
+                    aria-controls={trayContentId}
+                    aria-expanded={isExpanded}
+                    className="group flex w-full items-start justify-between gap-3 rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
+                    onClick={() =>
+                      setExpandedLabOrderId((current) =>
+                        (current === undefined ? filteredLabOrders[0]?.id ?? null : current) === order.id
+                          ? null
+                          : order.id,
+                      )
+                    }
+                    type="button"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Lab Test</p>
+                      <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold text-sm text-slate-950">{svc?.name ?? 'Unknown test'}</p>
-                        {order.urgentFlag && (
+                        {order.urgentFlag ? (
                           <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 bg-rose-100 text-rose-600">Urgent</span>
-                        )}
+                        ) : null}
                       </div>
-                      {doctor && <p className="text-xs text-slate-500 mt-0.5">Requested by {doctor.fullName}</p>}
-                      {order.schedDate && (
-                        <p className="text-xs text-sky-600 mt-0.5 font-medium">
-                          Scheduled: {order.schedDate}{order.schedTime ? ` at ${order.schedTime}` : ''}
-                        </p>
-                      )}
-                      {order.notes && <p className="text-xs text-slate-400 mt-1 italic">{order.notes}</p>}
+                      <p className="text-sm text-slate-500">{doctor?.fullName ?? 'Unknown provider'}</p>
                     </div>
-                    <span className={
-                      order.status === 'released'
-                        ? 'bg-emerald-100 text-emerald-700 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1'
-                        : order.status === 'ready'
-                        ? 'bg-sky-100 text-sky-700 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1'
-                        : order.status === 'processing'
-                        ? 'bg-violet-100 text-violet-700 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1'
-                        : 'bg-orange-100 text-orange-700 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1'
-                    }>
-                      {order.status}
-                    </span>
-                  </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${statusClass}`}>
+                        {order.status}
+                      </span>
+                      <span
+                        className={`rounded-full p-1.5 transition-colors ${
+                          isExpanded ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
+                        }`}
+                      >
+                        <ChevronDown className={`size-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      </span>
+                    </div>
+                  </button>
+
+                  {isExpanded ? (
+                    <div className="mt-4 space-y-3 border-t border-violet-100 pt-4" id={trayContentId}>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Requested By</p>
+                          <p className="mt-1 text-sm text-slate-700">{doctor?.fullName ?? 'Unknown provider'}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Schedule</p>
+                          <p className="mt-1 text-sm text-slate-700">
+                            {order.schedDate ? `${order.schedDate}${order.schedTime ? ` at ${order.schedTime}` : ''}` : 'Not scheduled'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Lab Notes</p>
+                        <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+                          {formatConsultationText(order.notes)}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               );
             })
@@ -1483,8 +2018,11 @@ export function PatientDetailPage() {
           </button>
         )}
       </Card>
+        </div>
+      )}
     </div>
   );
 }
+
 
 

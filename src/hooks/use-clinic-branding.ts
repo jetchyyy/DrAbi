@@ -12,6 +12,27 @@ function hexToRgb(hex: string): [number, number, number] | null {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
+/**
+ * Returns the hue (0-360) of a hex color.
+ * Used to derive a harmonious dark panel background from the primary color.
+ */
+function hexToHue(hex: string): number | null {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return null;
+  const [r, g, b] = rgb.map(x => x / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max === min) return 0; // achromatic
+  const d = max - min;
+  let h = 0;
+  switch (max) {
+    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+    case g: h = ((b - r) / d + 2) / 6; break;
+    case b: h = ((r - g) / d + 4) / 6; break;
+  }
+  return Math.round(h * 360);
+}
+
 function lighten(r: number, g: number, b: number, t: number): [number, number, number] {
   return [
     Math.round(r * t + 255 * (1 - t)),
@@ -173,6 +194,16 @@ export function useClinicBranding() {
       root.style.setProperty('--primary-b', String(b));
     }
 
+    // Derive a harmonious dark panel background from the primary hue:
+    //   hsl(<primary-hue>, 28%, 9%)  — deep-panel (admin login)
+    //   hsl(<primary-hue>, 35%, 6%)  — deeper-panel (portal login / register)
+    const hue = hexToHue(primary);
+    if (hue !== null) {
+      root.style.setProperty('--primary-hue', String(hue));
+      root.style.setProperty('--color-panel-bg',      `hsl(${hue}, 28%, 9%)`);
+      root.style.setProperty('--color-panel-bg-deep', `hsl(${hue}, 35%, 6%)`);
+    }
+
     const shades = generateShades(primary);
     if (shades) {
       let styleEl = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
@@ -190,6 +221,9 @@ export function useClinicBranding() {
       root.style.removeProperty('--primary-r');
       root.style.removeProperty('--primary-g');
       root.style.removeProperty('--primary-b');
+      root.style.removeProperty('--primary-hue');
+      root.style.removeProperty('--color-panel-bg');
+      root.style.removeProperty('--color-panel-bg-deep');
       document.getElementById(STYLE_ID)?.remove();
     };
   }, [clinic?.primaryColor, clinic?.accentColor]);

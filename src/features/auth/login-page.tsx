@@ -1,5 +1,7 @@
 import { CalendarCheck2, Shield, Users } from 'lucide-react';
 
+import { useClinicSettingsData } from '../../hooks/use-clinic-data';
+import { defaultClinicSettings } from '../../config/clinic';
 import { LoginForm } from './components/login-form';
 
 const features = [
@@ -21,54 +23,53 @@ const features = [
 ];
 
 export function LoginPage() {
+  const { data: clinic } = useClinicSettingsData();
+  const clinicName   = clinic?.clinicName   ?? defaultClinicSettings.clinicName;
+  const legalName    = clinic?.legalName    ?? defaultClinicSettings.legalName;
+  const year         = new Date().getFullYear();
+
   return (
     <div className="min-h-screen flex">
 
-      {/* ── Left branding panel ──────────────────────────────── */}
-      <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] flex-col bg-[#172937] relative overflow-hidden">
+      {/* ── Left branding panel ──────────────────────── */}
+      <div
+        className="hidden lg:flex lg:w-[55%] xl:w-[60%] flex-col relative overflow-hidden"
+        style={{ background: 'var(--color-panel-bg, #172937)' }}
+      >
 
         {/* Animated aurora background */}
         <div
           className="absolute inset-0 animate-aurora opacity-70"
           style={{
             background:
-              'linear-gradient(135deg, #172937 0%, #1f3a52 25%, #2d5a7b 45%, #172937 60%, #1a2f45 80%, #172937 100%)',
+              'linear-gradient(135deg, var(--color-panel-bg, #172937) 0%, color-mix(in srgb, var(--color-panel-bg, #172937) 60%, #2d5a7b) 25%, color-mix(in srgb, var(--color-panel-bg, #172937) 40%, #2d5a7b) 45%, var(--color-panel-bg, #172937) 60%, color-mix(in srgb, var(--color-panel-bg, #172937) 70%, #1a2f45) 80%, var(--color-panel-bg, #172937) 100%)',
             backgroundSize: '400% 400%',
           }}
         />
 
-        {/* Floating orbs */}
+        {/* Floating orbs — use primary color */}
         <div
           className="pointer-events-none absolute animate-orb-1"
           style={{
-            top: '-80px',
-            right: '-60px',
-            width: '420px',
-            height: '420px',
+            top: '-80px', right: '-60px', width: '420px', height: '420px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(249,115,22,0.25) 0%, rgba(234,88,12,0.08) 60%, transparent 80%)',
+            background: 'radial-gradient(circle, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.25) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.08) 60%, transparent 80%)',
           }}
         />
         <div
           className="pointer-events-none absolute animate-orb-2"
           style={{
-            bottom: '-60px',
-            left: '8%',
-            width: '300px',
-            height: '300px',
+            bottom: '-60px', left: '8%', width: '300px', height: '300px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(251,146,60,0.18) 0%, rgba(249,115,22,0.06) 65%, transparent 85%)',
+            background: 'radial-gradient(circle, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.18) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.06) 65%, transparent 85%)',
           }}
         />
         <div
           className="pointer-events-none absolute animate-orb-3"
           style={{
-            top: '40%',
-            left: '15%',
-            width: '180px',
-            height: '180px',
+            top: '40%', left: '15%', width: '180px', height: '180px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(253,186,116,0.12) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.12) 0%, transparent 70%)',
           }}
         />
 
@@ -81,22 +82,18 @@ export function LoginPage() {
           }}
         />
 
-        {/* Orange accent strip at top */}
+        {/* Primary-color accent strip at top */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-orange-600" />
 
         <div className="relative z-10 flex flex-col h-full px-14 py-12">
 
           {/* Logo + clinic badge */}
           <div className="animate-slide-left">
-            <img
-              src="/odc.jpg"
-              alt="Odyssey Clinic Logo"
-              className="h-20 w-20 object-contain"
-            />
+            <img src="/odc.jpg" alt={`${clinicName} Logo`} className="h-20 w-20 object-contain" />
             <div className="mt-4">
               <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-orange-400">Clinic Management Platform</p>
               <h1 className="mt-1.5 text-3xl font-extrabold text-white leading-tight tracking-tight">
-                Odyssey Clinic<br />Operations System
+                {clinicName}<br />Operations System
               </h1>
             </div>
           </div>
@@ -130,7 +127,7 @@ export function LoginPage() {
             {/* Footer badge */}
             <div className="mt-12 pt-8 border-t border-white/10 animate-fade-in delay-400">
               <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
-                © {new Date().getFullYear()} Odyssey Diagnostic Clinic · All rights reserved
+                © {year} {legalName} · All rights reserved
               </p>
             </div>
           </div>
@@ -142,11 +139,11 @@ export function LoginPage() {
 
         {/* Mobile-only logo */}
         <div className="lg:hidden absolute top-6 left-6 flex items-center gap-3">
-          <img src="/odc.jpg" alt="ODC Logo" className="h-10 w-10 object-contain" />
-          <p className="text-sm font-extrabold text-slate-950 uppercase tracking-widest">Odyssey Clinic</p>
+          <img src="/odc.jpg" alt="Logo" className="h-10 w-10 object-contain" />
+          <p className="text-sm font-extrabold text-slate-950 uppercase tracking-widest">{clinicName}</p>
         </div>
 
-        {/* Orange top accent on mobile */}
+        {/* Primary top accent on mobile */}
         <div className="lg:hidden absolute top-0 left-0 right-0 h-1 bg-orange-600" />
 
         <div className="w-full max-w-sm animate-fade-up">

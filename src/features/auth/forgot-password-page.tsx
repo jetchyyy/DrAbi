@@ -1,56 +1,57 @@
 import { ArrowLeft, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import { useClinicSettingsData } from '../../hooks/use-clinic-data';
+import { defaultClinicSettings } from '../../config/clinic';
 import { PasswordResetForm } from './components/password-reset-form';
 
 export function ForgotPasswordPage() {
+  const { data: clinic } = useClinicSettingsData();
+  const clinicName  = clinic?.clinicName  ?? defaultClinicSettings.clinicName;
+  const legalName   = clinic?.legalName   ?? defaultClinicSettings.legalName;
+  const year        = new Date().getFullYear();
+
   return (
     <div className="min-h-screen flex">
 
-      {/* ── Left branding panel (same as login) ─────────────── */}
-      <div className="hidden lg:flex lg:w-[45%] flex-col bg-[#172937] relative overflow-hidden">
+      {/* ── Left branding panel (same style as login) ──────── */}
+      <div
+        className="hidden lg:flex lg:w-[45%] flex-col relative overflow-hidden"
+        style={{ background: 'var(--color-panel-bg, #172937)' }}
+      >
         {/* Animated aurora background */}
         <div
           className="absolute inset-0 animate-aurora opacity-70"
           style={{
             background:
-              'linear-gradient(135deg, #172937 0%, #1f3a52 25%, #2d5a7b 45%, #172937 60%, #1a2f45 80%, #172937 100%)',
+              'linear-gradient(135deg, var(--color-panel-bg, #172937) 0%, color-mix(in srgb, var(--color-panel-bg, #172937) 60%, #2d5a7b) 25%, color-mix(in srgb, var(--color-panel-bg, #172937) 40%, #2d5a7b) 45%, var(--color-panel-bg, #172937) 60%, color-mix(in srgb, var(--color-panel-bg, #172937) 70%, #1a2f45) 80%, var(--color-panel-bg, #172937) 100%)',
             backgroundSize: '400% 400%',
           }}
         />
 
-        {/* Floating orbs */}
+        {/* Floating orbs — primary color */}
         <div
           className="pointer-events-none absolute animate-orb-1"
           style={{
-            top: '-80px',
-            right: '-60px',
-            width: '380px',
-            height: '380px',
+            top: '-80px', right: '-60px', width: '380px', height: '380px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(249,115,22,0.25) 0%, rgba(234,88,12,0.08) 60%, transparent 80%)',
+            background: 'radial-gradient(circle, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.25) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.08) 60%, transparent 80%)',
           }}
         />
         <div
           className="pointer-events-none absolute animate-orb-2"
           style={{
-            bottom: '-50px',
-            left: '10%',
-            width: '280px',
-            height: '280px',
+            bottom: '-50px', left: '10%', width: '280px', height: '280px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(251,146,60,0.18) 0%, rgba(249,115,22,0.06) 65%, transparent 85%)',
+            background: 'radial-gradient(circle, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.18) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.06) 65%, transparent 85%)',
           }}
         />
         <div
           className="pointer-events-none absolute animate-orb-3"
           style={{
-            top: '35%',
-            left: '12%',
-            width: '160px',
-            height: '160px',
+            top: '35%', left: '12%', width: '160px', height: '160px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(253,186,116,0.12) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.12) 0%, transparent 70%)',
           }}
         />
 
@@ -62,16 +63,18 @@ export function ForgotPasswordPage() {
               'repeating-linear-gradient(0deg, transparent, transparent 39px, #fff 39px, #fff 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #fff 39px, #fff 40px)',
           }}
         />
-        {/* Orange top strip */}
+
+        {/* Primary-color top strip */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-orange-600" />
 
         <div className="relative z-10 flex flex-col h-full px-12 py-12">
-          {/* Logo */}
+
+          {/* Logo + clinic name */}
           <div className="animate-slide-left">
-            <img src="/odc.jpg" alt="Odyssey Clinic Logo" className="h-16 w-16 object-contain" />
+            <img src="/odc.jpg" alt={`${clinicName} Logo`} className="h-16 w-16 object-contain" />
             <p className="mt-4 text-[10px] font-extrabold uppercase tracking-[0.3em] text-orange-400">Clinic OS Access</p>
             <h1 className="mt-1.5 text-2xl font-extrabold text-white leading-tight tracking-tight">
-              Odyssey Clinic<br />Operations System
+              {clinicName}<br />Operations System
             </h1>
           </div>
 
@@ -87,27 +90,30 @@ export function ForgotPasswordPage() {
               If you don't receive the email within a few minutes, check your spam folder or contact your system administrator.
             </p>
 
+            {/* Copyright — legalName from clinic settings */}
             <div className="mt-12 pt-8 border-t border-white/10">
               <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
-                © {new Date().getFullYear()} Odyssey Diagnostic Clinic
+                © {year} {legalName}
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Right form panel ─────────────────────────────────── */}
+      {/* ── Right form panel ───────────────────────────────── */}
       <div className="flex-1 flex flex-col items-center justify-center bg-white px-6 py-12 relative">
-        {/* Orange top accent mobile */}
+
+        {/* Primary top accent — mobile */}
         <div className="lg:hidden absolute top-0 left-0 right-0 h-1 bg-orange-600" />
 
         {/* Mobile logo */}
         <div className="lg:hidden absolute top-6 left-6 flex items-center gap-3">
-          <img src="/odc.jpg" alt="ODC Logo" className="h-9 w-9 object-contain" />
-          <p className="text-sm font-extrabold text-slate-950 uppercase tracking-widest">Odyssey Clinic</p>
+          <img src="/odc.jpg" alt="Logo" className="h-9 w-9 object-contain" />
+          <p className="text-sm font-extrabold text-slate-950 uppercase tracking-widest">{clinicName}</p>
         </div>
 
         <div className="w-full max-w-sm animate-fade-up">
+
           {/* Back link */}
           <Link
             to="/login"
