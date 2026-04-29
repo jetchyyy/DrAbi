@@ -32,21 +32,21 @@ export function PatientQrCard({ patientName, qrCode }: PatientQrCardProps) {
   }, [qrCode]);
 
   return (
-    <Card className="h-full">
+    <Card>
       <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Patient QR</p>
       <CardTitle className="mt-2">Scan to open chart</CardTitle>
       <p className="mt-2 text-sm text-slate-500">
         Staff can scan this QR to jump straight to {patientName}&apos;s chart and continue SOAP documentation.
       </p>
-      <div className="mt-5 flex justify-center rounded-[28px] bg-slate-50 p-5">
+      <div className="mt-4 flex justify-center rounded-[24px] bg-slate-50 p-4">
         {svgMarkup ? (
           <div
             aria-label={`QR code for ${patientName}`}
-            className="size-[220px]"
+            className="size-[180px] sm:size-[200px]"
             dangerouslySetInnerHTML={{ __html: svgMarkup }}
           />
         ) : (
-          <div className="flex size-[220px] items-center justify-center rounded-3xl bg-white text-sm text-slate-400">
+          <div className="flex size-[180px] items-center justify-center rounded-3xl bg-white text-sm text-slate-400 sm:size-[200px]">
             Generating QR...
           </div>
         )}

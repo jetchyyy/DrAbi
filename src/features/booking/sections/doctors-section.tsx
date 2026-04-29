@@ -173,9 +173,9 @@ function DoctorCarousel({ doctors }: { doctors: typeof DOCTOR_PORTRAITS }) {
   };
 
   return (
-    <div className="relative px-6 sm:px-8" style={{ overflowX: 'clip', overflowY: 'visible' }}>
+    <div className="relative px-6 sm:px-8">
       {/* Track */}
-      <div className="pt-4 pb-1" style={{ overflowX: 'clip', overflowY: 'visible' }}>
+      <div className="overflow-x-clip pt-4 pb-1" style={{ overflowY: 'visible' }}>
         <div
           ref={trackRef}
           className="flex gap-5"
@@ -199,7 +199,7 @@ function DoctorCarousel({ doctors }: { doctors: typeof DOCTOR_PORTRAITS }) {
       <button
         onClick={() => goTo(activeIndex - 1)}
         disabled={activeIndex === 0}
-        className="absolute -left-1 top-[40%] z-20 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg shadow-orange-200/60 ring-1 ring-orange-100 transition-all duration-200 hover:bg-orange-500 hover:text-white hover:shadow-xl hover:shadow-orange-300/60 disabled:pointer-events-none disabled:opacity-35 sm:-left-3"
+        className="absolute left-1 top-[40%] z-20 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg shadow-orange-200/60 ring-1 ring-orange-100 transition-all duration-200 hover:bg-orange-500 hover:text-white hover:shadow-xl hover:shadow-orange-300/60 disabled:pointer-events-none disabled:opacity-35 sm:left-2"
         aria-label="Previous doctors"
       >
         <ChevronLeft className="size-5" />
@@ -209,7 +209,7 @@ function DoctorCarousel({ doctors }: { doctors: typeof DOCTOR_PORTRAITS }) {
       <button
         onClick={() => goTo(activeIndex + 1)}
         disabled={activeIndex >= maxIndex}
-        className="absolute -right-1 top-[40%] z-20 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg shadow-orange-200/60 ring-1 ring-orange-100 transition-all duration-200 hover:bg-orange-500 hover:text-white hover:shadow-xl hover:shadow-orange-300/60 disabled:pointer-events-none disabled:opacity-35 sm:-right-3"
+        className="absolute right-1 top-[40%] z-20 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg shadow-orange-200/60 ring-1 ring-orange-100 transition-all duration-200 hover:bg-orange-500 hover:text-white hover:shadow-xl hover:shadow-orange-300/60 disabled:pointer-events-none disabled:opacity-35 sm:right-2"
         aria-label="Next doctors"
       >
         <ChevronRight className="size-5" />
@@ -241,10 +241,26 @@ export function DoctorsSection() {
 
   return (
     <section
-      className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500 to-orange-600 px-5 pb-16 pt-12 shadow-lg ring-1 ring-orange-400 sm:px-8"
-      style={{ borderRadius: '1.5rem' }}
+      className="relative overflow-hidden px-5 pb-16 pt-12 sm:px-8"
       aria-labelledby="portal-doctors-heading"
     >
+      {/* Drop your image at /public/doctors-section-bg.jpg */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: 'url(/doctors-section-bg.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          filter: 'saturate(0.92)',
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(to bottom, rgba(15,23,42,0.58) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.46) 30%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.76) 64%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.90) 100%)',
+        }}
+      />
       {/* ── Abstract background shapes ──────────────────── */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {/* Large navy rotated block — top-right */}
@@ -283,30 +299,29 @@ export function DoctorsSection() {
         />
       </div>
 
-      {/* ── Section header ──────────────────────────────── */}
-      <div className="relative z-10 mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+      {/* Section header */}
+      <div className="relative z-10 mb-10">
         <ScrollReveal yOffset={20}>
-          <div>
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/20 px-4 py-1.5">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
-            <span className="text-xs font-bold uppercase tracking-wider text-white">Medical Team</span>
-          </div>
-          <h2
-            id="portal-doctors-heading"
-            className="text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl"
-          >
-            Meet Our<br />
-            <span className="text-orange-100">Specialists</span>
-          </h2>
-          <p className="mt-4 max-w-sm text-sm leading-relaxed text-orange-100">
-            Board-certified physicians committed to delivering compassionate, evidence-based care for every patient.
-          </p>
+          <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/20 px-4 py-1.5">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+              <span className="text-xs font-bold uppercase tracking-wider text-white">Medical Team</span>
+            </div>
+            <h2
+              id="portal-doctors-heading"
+              className="text-4xl font-black leading-tight tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] sm:text-5xl"
+            >
+              Meet Our Specialists
+            </h2>
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/90 drop-shadow-[0_1px_6px_rgba(0,0,0,0.35)] sm:text-base">
+              Board-certified physicians delivering compassionate, evidence-based care and personalized support at
+              every step of your treatment journey.
+            </p>
           </div>
         </ScrollReveal>
-
       </div>
 
-      {/* ── Portrait carousel ────────────────────────────── */}
+      {/* Portrait carousel ────────────────────────────── */}
       <ScrollReveal className="relative z-10" delayMs={180} yOffset={18}>
         <DoctorCarousel doctors={DOCTOR_PORTRAITS} />
       </ScrollReveal>
@@ -363,3 +378,4 @@ export function DoctorsSection() {
     </section>
   );
 }
+

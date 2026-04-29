@@ -4,12 +4,58 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
 import { useAuth } from '../../features/auth/auth-context';
 import { useClinicSettingsData } from '../../hooks/use-clinic-data';
-import { appNavigation } from '../../config/navigation';
+import { appNavigation, type NavItem } from '../../config/navigation';
 import { defaultClinicSettings } from '../../config/clinic';
 import { isModuleEnabled } from '../../config/modules';
 import { roleLabels } from '../../config/permissions';
 import { Button } from '../ui/button';
 import { cn, getInitials } from '../../lib/utils';
+
+type NavigationSection =
+  | 'Overview'
+  | 'Patient Care'
+  | 'Appointments & Queue'
+  | 'Finance'
+  | 'Operations'
+  | 'Administration'
+  | 'Account'
+  | 'General';
+
+const navigationSectionOrder: NavigationSection[] = [
+  'Overview',
+  'General',
+  'Patient Care',
+  'Appointments & Queue',
+  'Finance',
+  'Operations',
+  'Administration',
+  'Account',
+];
+
+function getNavigationSection(item: NavItem): NavigationSection {
+  if (item.to.startsWith('/app/settings')) {
+    return 'Administration';
+  }
+  if (item.to === '/app/profile') {
+    return 'Account';
+  }
+  if (item.moduleKey === 'dashboard') {
+    return 'Overview';
+  }
+  if (item.moduleKey === 'patient_management') {
+    return 'Patient Care';
+  }
+  if (item.moduleKey === 'booking_appointments') {
+    return 'Appointments & Queue';
+  }
+  if (item.moduleKey === 'billing' || item.moduleKey === 'pos') {
+    return 'Finance';
+  }
+  if (item.moduleKey === 'inventory' || item.moduleKey === 'laboratory') {
+    return 'Operations';
+  }
+  return 'General';
+}
 
 export function AppShell() {
   const { profile, can, pinSetupRequired, pinVerificationRequired, setSecurityPin, verifySecurityPin, signOut } = useAuth();
@@ -36,29 +82,39 @@ export function AppShell() {
     setMobileSidebarOpen(false);
   }, [location.pathname]);
 
-  const navigationItems = appNavigation
-    .filter((item) =>
+  const visibleNavigation = appNavigation.filter(
+    (item) =>
       can(item.permission)
       && (!item.roles || (profile ? item.roles.includes(profile.role) : false))
-      && (!item.moduleKey || isModuleEnabled(item.moduleKey, clinic.enabledModules)))
-    .map((item) => (
-      <NavLink
-        key={item.to}
-        className={({ isActive }) =>
-          cn(
-            'flex items-center gap-3 px-3 py-2.5 text-sm font-semibold transition-all duration-150',
-            isActive
-              ? 'bg-orange-50 text-orange-700 border-l-[3px] border-orange-600 font-extrabold'
-              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-[3px] border-transparent',
-          )
-        }
-        onClick={() => setMobileSidebarOpen(false)}
-        to={item.to}
-      >
+      && (!item.moduleKey || isModuleEnabled(item.moduleKey, clinic.enabledModules)),
+  );
+  const navigationGroups = navigationSectionOrder
+    .map((section) => ({
+      section,
+      items: visibleNavigation.filter((item) => getNavigationSection(item) === section),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  const renderNavigationItem = (item: NavItem) => (
+    <NavLink
+      key={item.to}
+      className={({ isActive }) =>
+        cn(
+          'flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-md px-3 py-2.5 text-sm font-semibold transition-all duration-150',
+          isActive
+            ? 'bg-orange-50 text-orange-700 ring-1 ring-orange-200'
+            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+        )
+      }
+      onClick={() => setMobileSidebarOpen(false)}
+      to={item.to}
+    >
+      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600">
         <item.icon className="size-4 shrink-0" />
-        {item.label}
-      </NavLink>
-    ));
+      </span>
+      <span className="min-w-0 flex-1 break-words text-[13px] leading-snug">{item.label}</span>
+    </NavLink>
+  );
 
   const pinPadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] as const;
 
@@ -180,9 +236,13 @@ export function AppShell() {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-2 pt-4">
-          <p className="px-3 pb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Main Menu</p>
-          {navigationItems}
+        <nav className="flex-1 overflow-y-auto px-3 pb-2 pt-4">
+          {navigationGroups.map((group) => (
+            <div className="mb-4 space-y-1" key={group.section}>
+              <p className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{group.section}</p>
+              {group.items.map((item) => renderNavigationItem(item))}
+            </div>
+          ))}
         </nav>
 
         <div className="space-y-2 border-t border-slate-100 px-4 py-4">
@@ -207,7 +267,7 @@ export function AppShell() {
       </aside>
 
       {/* ── White Sidebar ────────────────────────────────────── */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-white border-r border-slate-200 lg:flex overflow-hidden">
+      <aside className="sticky top-0 hidden h-screen w-72 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white lg:flex xl:w-80">
 
         {/* Brand */}
         <div className="px-5 pt-6 pb-5 border-b border-slate-100">
@@ -223,9 +283,13 @@ export function AppShell() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 pt-4 pb-2 space-y-0.5 overflow-y-auto">
-          <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 px-3 pb-2">Main Menu</p>
-          {navigationItems}
+        <nav className="flex-1 overflow-y-auto px-3 pb-2 pt-4">
+          {navigationGroups.map((group) => (
+            <div className="mb-4 space-y-1" key={group.section}>
+              <p className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{group.section}</p>
+              {group.items.map((item) => renderNavigationItem(item))}
+            </div>
+          ))}
         </nav>
 
         {/* User profile footer */}

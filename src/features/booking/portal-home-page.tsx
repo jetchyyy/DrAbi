@@ -1,8 +1,10 @@
-﻿import { DoctorsSection } from './sections/doctors-section';
+import { ScrollReveal } from '../../components/layout/scroll-reveal';
+import { DoctorsSection } from './sections/doctors-section';
+import { FaqSection } from './sections/faq-section';
 import { FeaturesSection } from './sections/features-section';
 import { HeroSection } from './sections/hero-section';
+import { HowItWorksSection } from './sections/how-it-works-section';
 import { ServicesSection } from './sections/services-section';
-import { ScrollReveal } from '../../components/layout/scroll-reveal';
 
 export function PortalHomePage() {
   return (
@@ -10,15 +12,21 @@ export function PortalHomePage() {
       <ScrollReveal yOffset={24}>
         <HeroSection />
       </ScrollReveal>
-      <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-8 lg:px-8">
+      <div className="w-full space-y-0 py-0">
         <ScrollReveal delayMs={60}>
-          <FeaturesSection />
+          <HowItWorksSection />
         </ScrollReveal>
-        <ScrollReveal delayMs={120}>
+        <ScrollReveal delayMs={100}>
           <ServicesSection />
         </ScrollReveal>
-        <ScrollReveal delayMs={170}>
+        <ScrollReveal delayMs={140}>
+          <FeaturesSection />
+        </ScrollReveal>
+        <ScrollReveal delayMs={180}>
           <DoctorsSection />
+        </ScrollReveal>
+        <ScrollReveal delayMs={260}>
+          <FaqSection />
         </ScrollReveal>
       </div>
     </div>

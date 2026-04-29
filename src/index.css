@@ -384,6 +384,11 @@ textarea {
   50% { transform: translateY(-8px); opacity: 1; }
 }
 
+@keyframes feedback-shrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
 .splash-screen {
   position: relative;
   min-height: 100vh;

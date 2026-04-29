@@ -850,7 +850,7 @@ export function PatientDetailPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {previewModal.open ? (
         <div
           aria-modal="true"
@@ -949,7 +949,8 @@ export function PatientDetailPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr] xl:items-start">
+        <div className="space-y-4">
         <Card>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -974,11 +975,42 @@ export function PatientDetailPage() {
             </div>
           </div>
         </Card>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Card className="border-sky-200 bg-sky-50/50">
+            <div className="flex items-center gap-3">
+              <FileText className="size-5 text-sky-600" />
+              <CardTitle className="text-base">Consultations</CardTitle>
+            </div>
+            <p className="mt-3 text-2xl font-semibold text-slate-950">{consultations.length}</p>
+          </Card>
+          <Card className="border-emerald-200 bg-emerald-50/50">
+            <div className="flex items-center gap-3">
+              <Pill className="size-5 text-emerald-600" />
+              <CardTitle className="text-base">Prescriptions</CardTitle>
+            </div>
+            <p className="mt-3 text-2xl font-semibold text-slate-950">{prescriptions.length}</p>
+          </Card>
+          <Card className="border-amber-200 bg-amber-50/50">
+            <div className="flex items-center gap-3">
+              <QrCode className="size-5 text-amber-600" />
+              <CardTitle className="text-base">Items used</CardTitle>
+            </div>
+            <p className="mt-3 text-2xl font-semibold text-slate-950">{inventoryUsageLogs.length}</p>
+          </Card>
+          <Card className="border-violet-200 bg-violet-50/50">
+            <div className="flex items-center gap-3">
+              <TestTubeDiagonal className="size-5 text-violet-600" />
+              <CardTitle className="text-base">Lab orders</CardTitle>
+            </div>
+            <p className="mt-3 text-2xl font-semibold text-slate-950">{labOrders.length}</p>
+          </Card>
+        </div>
+        </div>
 
         <PatientQrCard patientName={`${patient.firstName} ${patient.lastName}`} qrCode={patient.qrCode} />
       </div>
 
-      <div className="flex space-x-2 border-b border-slate-200 overflow-x-auto mt-6 pb-2">
+      <div className="mt-4 flex space-x-2 overflow-x-auto border-b border-slate-200 pb-2">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -991,7 +1023,7 @@ export function PatientDetailPage() {
       </div>
 
       {activeTab === 'overview' && (
-        <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
           <Card>
             <CardTitle>Clinical overview</CardTitle>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -1056,36 +1088,6 @@ export function PatientDetailPage() {
               </div>
             </Card>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Card className="border-sky-200 bg-sky-50/50">
-                <div className="flex items-center gap-3">
-                  <FileText className="size-5 text-sky-600" />
-                  <CardTitle className="text-base">Consultations</CardTitle>
-                </div>
-                <p className="mt-4 text-3xl font-semibold text-slate-950">{consultations.length}</p>
-              </Card>
-              <Card className="border-emerald-200 bg-emerald-50/50">
-                <div className="flex items-center gap-3">
-                  <Pill className="size-5 text-emerald-600" />
-                  <CardTitle className="text-base">Prescriptions</CardTitle>
-                </div>
-                <p className="mt-4 text-3xl font-semibold text-slate-950">{prescriptions.length}</p>
-              </Card>
-              <Card className="border-amber-200 bg-amber-50/50">
-                <div className="flex items-center gap-3">
-                  <QrCode className="size-5 text-amber-600" />
-                  <CardTitle className="text-base">Items used</CardTitle>
-                </div>
-                <p className="mt-4 text-3xl font-semibold text-slate-950">{inventoryUsageLogs.length}</p>
-              </Card>
-              <Card className="border-violet-200 bg-violet-50/50">
-                <div className="flex items-center gap-3">
-                  <TestTubeDiagonal className="size-5 text-violet-600" />
-                  <CardTitle className="text-base">Lab orders</CardTitle>
-                </div>
-                <p className="mt-4 text-3xl font-semibold text-slate-950">{labOrders.length}</p>
-              </Card>
-            </div>
           </div>
         </div>
       )}
@@ -1284,7 +1286,7 @@ export function PatientDetailPage() {
       )}
 
       {activeTab === 'prescriptions' && (
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
           <Card>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle>Prescription history</CardTitle>
@@ -1428,7 +1430,7 @@ export function PatientDetailPage() {
       )}
 
       {activeTab === 'certificates' && (
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
           <Card>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle>Medical certificate history</CardTitle>
@@ -1588,7 +1590,7 @@ export function PatientDetailPage() {
       )}
 
       {activeTab === 'inventory' && (
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
           <Card>
             <CardTitle>Inventory usage history</CardTitle>
             <div className="mt-5 space-y-4">
@@ -1676,7 +1678,7 @@ export function PatientDetailPage() {
       )}
 
       {activeTab === 'referrals' && (
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
           <Card>
             <CardTitle>Referral coordination</CardTitle>
             <div className="mt-5 space-y-4">

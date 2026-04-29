@@ -624,11 +624,11 @@ export function HeroSection() {
 
           <div className="mt-6 space-y-3 2xl:space-y-4">
             <div
-              className="flex items-center gap-3 px-4 py-3 text-sm font-medium"
+              className="flex items-start gap-3 px-4 py-3 text-sm font-medium"
               style={{ background: 'rgba(255,255,255,0.18)', borderRadius: '999px' }}
             >
               <MapPin className="size-4 shrink-0 text-orange-200" />
-              <span className="truncate">{clinic.address}</span>
+              <span className="min-w-0 whitespace-normal break-words leading-snug">{clinic.address}</span>
             </div>
             <div
               className="flex items-center gap-3 px-4 py-3 text-sm font-medium"

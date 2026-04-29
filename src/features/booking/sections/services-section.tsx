@@ -18,12 +18,12 @@ import { useAuth } from '../../auth/auth-context';
  */
 
 const SERVICE_PALETTES = [
-  { from: '#ea580c', text: 'text-orange-600', ring: 'ring-orange-200', numColor: 'text-orange-100' },
-  { from: '#0369a1', text: 'text-sky-600', ring: 'ring-sky-200', numColor: 'text-sky-100' },
-  { from: '#059669', text: 'text-emerald-600', ring: 'ring-emerald-200', numColor: 'text-emerald-100' },
-  { from: '#7c3aed', text: 'text-violet-600', ring: 'ring-violet-200', numColor: 'text-violet-100' },
-  { from: '#be123c', text: 'text-rose-600', ring: 'ring-rose-200', numColor: 'text-rose-100' },
-  { from: '#b45309', text: 'text-amber-600', ring: 'ring-amber-200', numColor: 'text-amber-100' },
+  { from: '#ea580c', text: 'text-orange-700', ring: 'ring-orange-200', numColor: 'text-orange-300' },
+  { from: '#0369a1', text: 'text-sky-700', ring: 'ring-sky-200', numColor: 'text-sky-300' },
+  { from: '#059669', text: 'text-emerald-700', ring: 'ring-emerald-200', numColor: 'text-emerald-300' },
+  { from: '#7c3aed', text: 'text-violet-700', ring: 'ring-violet-200', numColor: 'text-violet-300' },
+  { from: '#be123c', text: 'text-rose-700', ring: 'ring-rose-200', numColor: 'text-rose-300' },
+  { from: '#b45309', text: 'text-amber-700', ring: 'ring-amber-200', numColor: 'text-amber-300' },
 ];
 
 export function ServicesSection() {
@@ -32,45 +32,54 @@ export function ServicesSection() {
   const { isAuthenticated } = useAuth();
   const bookingEnabled = isModuleEnabled('booking_appointments', clinic.enabledModules);
 
-  // Build flat render list: inject featured clinic card at index 1, photo card at end
+  // Build flat render list: featured card first, then all services
   type RenderItem =
     | { type: 'service'; idx: number }
-    | { type: 'featured' }
-    | { type: 'photo' };
+    | { type: 'featured' };
 
-  const renderList: RenderItem[] = [];
-  services.forEach((_, i) => {
-    if (i === 1) renderList.push({ type: 'featured' });
-    renderList.push({ type: 'service', idx: i });
-  });
-  if (services.length <= 1) renderList.push({ type: 'featured' });
-  renderList.push({ type: 'photo' });
+  const renderList: RenderItem[] = [{ type: 'featured' }, ...services.map((_, idx) => ({ type: 'service' as const, idx }))];
 
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-white px-8 py-16 shadow-sm ring-1 ring-orange-100" id="services" style={{ borderRadius: '1.5rem' }}>
-      {/* Section header — split layout like reference */}
-      <ScrollReveal className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end" yOffset={18}>
-        <div>
-          <h2 className="text-4xl font-extrabold leading-tight tracking-tight text-slate-950">
-            Our medical<br />services
-            <span className="ml-3 text-xl font-semibold text-slate-400">{'{ What you get }'}</span>
+    <section className="relative overflow-hidden bg-white px-5 py-16 sm:px-8" id="services">
+      {/* Background image + hero-style orange overlays */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: 'url(/services-clinic-photo.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          filter: 'saturate(0.95)',
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: 'linear-gradient(to top, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.92) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.70) 32%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.28) 62%, rgba(255,255,255,0.88) 100%)',
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: 'radial-gradient(circle at 82% 18%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.22) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.08) 35%, transparent 65%)',
+        }}
+      />
+
+      {/* Centered section header */}
+      <ScrollReveal className="relative z-10 mb-10 text-center" yOffset={18}>
+        <div className="mx-auto max-w-3xl rounded-2xl bg-white/78 px-5 py-4 shadow-sm ring-1 ring-white/70 backdrop-blur-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-700">Medical Services</p>
+          <h2 className="mt-2 text-4xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-5xl">
+            Our Services
           </h2>
-        </div>
-        <div className="flex flex-col items-start gap-2 md:items-end">
-          <p className="max-w-xs text-sm leading-relaxed text-slate-500 md:text-right">
-            We provide a full range of medical services — from consultation to diagnosis and treatment.
+          <p className="mx-auto mt-4 max-w-2xl text-sm font-medium leading-relaxed text-slate-800 sm:text-base">
+            Patient-first care delivered through consultation, diagnosis, and personalized treatment plans that match
+            your needs.
           </p>
-          <Link
-            className="text-sm font-bold text-orange-600 underline-offset-2 transition-colors hover:underline"
-            to="#services"
-          >
-            See all services →
-          </Link>
         </div>
       </ScrollReveal>
 
       {/* Bento grid */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
+      <div className="relative z-10 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
         {renderList.map((item, renderIdx) => {
           /* ── Featured clinic card ── */
           if (item.type === 'featured') {
@@ -102,25 +111,6 @@ export function ServicesSection() {
             );
           }
 
-          /* ── Clinic photo card ── */
-          if (item.type === 'photo') {
-            return (
-              <ScrollReveal key="photo" delayMs={90 + renderIdx * 45} yOffset={16} className="col-span-2">
-                <div
-                  className="overflow-hidden rounded-3xl"
-                  style={{ minHeight: '260px', borderRadius: '1.5rem' }}
-                >
-                  <img
-                    src="/services-clinic-photo.jpg"
-                    alt="Our Clinic"
-                    className="h-full w-full object-cover"
-                    style={{ minHeight: '260px' }}
-                  />
-                </div>
-              </ScrollReveal>
-            );
-          }
-
           /* ── Service card ── */
           const service = services[item.idx];
           const palette = SERVICE_PALETTES[item.idx % SERVICE_PALETTES.length];
@@ -146,7 +136,7 @@ export function ServicesSection() {
                 </div>
 
                 {/* Description */}
-                <p className={`mb-4 flex-1 text-xs leading-relaxed ${palette.text}`}>
+                <p className="mb-4 flex-1 text-xs leading-relaxed text-slate-700">
                   {service.description ?? 'Professional medical care tailored to your individual needs.'}
                 </p>
 
@@ -158,7 +148,7 @@ export function ServicesSection() {
                   >
                     {bookingEnabled ? 'Make an appointment' : 'View portal'}
                   </Link>
-                  <span className="text-xs font-extrabold text-slate-400">{formatCurrency(service.price)}</span>
+                  <span className="text-xs font-extrabold text-slate-700">{formatCurrency(service.price)}</span>
                 </div>
               </div>
             </ScrollReveal>
@@ -168,3 +158,4 @@ export function ServicesSection() {
     </section>
   );
 }
+

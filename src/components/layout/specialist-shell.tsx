@@ -38,7 +38,7 @@ export function SpecialistShell() {
         key={item.to}
         className={({ isActive }) =>
           cn(
-            'flex items-center gap-3 px-3 py-2.5 text-sm font-semibold transition-all duration-150',
+            'flex w-full min-w-0 items-center gap-3 overflow-hidden px-3 py-2.5 text-sm font-semibold transition-all duration-150',
             isActive
               ? 'bg-orange-50 text-orange-700 border-l-[3px] border-orange-600 font-extrabold'
               : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-[3px] border-transparent',
@@ -48,7 +48,7 @@ export function SpecialistShell() {
         to={item.to}
       >
         <Icon className="size-4 shrink-0" />
-        {item.label}
+        <span className="min-w-0 flex-1 truncate">{item.label}</span>
       </NavLink>
     );
   });

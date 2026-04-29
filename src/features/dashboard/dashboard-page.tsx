@@ -103,7 +103,6 @@ function KpiCard({
 
   return (
     <div className="relative overflow-hidden rounded-2xl p-5 shadow-sm" style={{ background: p.surface }}>
-      <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-white/70" />
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div>
           <p className={`text-[11px] font-extrabold uppercase tracking-[0.16em] ${p.label}`}>{label}</p>

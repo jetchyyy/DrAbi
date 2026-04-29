@@ -470,25 +470,25 @@ export function AppointmentsPage() {
 
         <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
                     Patient
                   </th>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
                     Doctor / Service
                   </th>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
                     Schedule
                   </th>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
                     Visit Type
                   </th>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  <th className="whitespace-nowrap px-4 py-2.5 text-right text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
                     Actions
                   </th>
                 </tr>
@@ -504,7 +504,7 @@ export function AppointmentsPage() {
                       className="transition-colors hover:bg-slate-50"
                       key={appointment.id}
                     >
-                      <td className="px-6 py-4 align-top">
+                      <td className="px-4 py-3 align-top">
                         <div className="space-y-1">
                           <p className="font-bold text-slate-950">
                             {patient?.firstName} {patient?.lastName}
@@ -514,16 +514,16 @@ export function AppointmentsPage() {
                           </p>
                         </div>
                       </td>
-                      <td className="px-6 py-4 align-top">
+                      <td className="px-4 py-3 align-top">
                         <div className="space-y-1 text-sm text-slate-600">
                           <p>{doctor?.fullName}</p>
                           <p>{service?.name}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4 align-top text-sm text-slate-600">
+                      <td className="whitespace-nowrap px-4 py-3 align-top text-sm text-slate-600">
                         {formatDateTimeLabel(appointment.scheduledAt)}
                       </td>
-                      <td className="px-6 py-4 align-top">
+                      <td className="px-4 py-3 align-top">
                         <div className="flex flex-wrap gap-2">
                           {appointment.visitType === "teleconsultation" ? (
                             <span className="inline-flex items-center gap-1 bg-sky-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-sky-700">
@@ -537,10 +537,10 @@ export function AppointmentsPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 align-top">
+                      <td className="px-4 py-3 align-top">
                         <StatusPill status={appointment.status} />
                       </td>
-                      <td className="px-6 py-4 align-top">
+                      <td className="px-4 py-3 align-top">
                         <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
                           <button
                             className="inline-flex items-center gap-1 text-slate-600 hover:underline"
@@ -577,7 +577,7 @@ export function AppointmentsPage() {
                 {filteredAppointments.length === 0 ? (
                   <tr>
                     <td
-                      className="px-6 py-10 text-center text-sm text-slate-500"
+                      className="px-4 py-8 text-center text-sm text-slate-500"
                       colSpan={6}
                     >
                       No appointments found for this search.
