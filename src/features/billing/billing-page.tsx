@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Coins, Eye, Pencil, Plus, Printer, Receipt, ScanLine, Search, TestTube2, Trash2, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import QRCode from 'qrcode';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -38,13 +38,17 @@ import {
 import { formatCurrency } from '../../lib/utils';
 import type { Invoice } from '../../types/domain';
 
-const billingSchema = z.object({
-  patientId: z.string().min(1, 'Patient is required.'),
-  bookingId: z.string().optional(),
+const invoiceItemSchema = z.object({
   description: z.string().min(2, 'Description must be at least 2 characters.'),
   category: z.enum(['consultation', 'laboratory', 'medicine', 'other']),
   quantity: z.number().min(1, 'Quantity must be at least 1.'),
   unitPrice: z.number().min(1, 'Unit price must be at least 1.'),
+});
+
+const billingSchema = z.object({
+  patientId: z.string().min(1, 'Patient is required.'),
+  bookingId: z.string().optional(),
+  items: z.array(invoiceItemSchema).min(1, 'At least one invoice item is required.'),
 });
 
 type BillingFormValues = z.infer<typeof billingSchema>;
@@ -93,290 +97,453 @@ function PaymentBadge({ status }: { status: string }) {
   return <span className="bg-rose-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-rose-700">Unpaid</span>;
 }
 
-function buildInvoicePrintDocument(input: {
+export function buildInvoicePrintDocument(input: {
   clinicName: string;
   invoice: Invoice;
   patientName: string;
   patientContact: string;
-  itemDescription: string;
-  itemCategory: string;
-  quantity: number;
-  unitPrice: number;
+  items: Array<{
+    description: string;
+    category: string;
+    quantity: number;
+    unitPrice: number;
+  }>;
   qrSvgMarkup?: string;
   qrHelperText?: string;
 }) {
   const createdAt = new Date(input.invoice.createdAt);
   const paymentStatusLabel = input.invoice.paymentStatus.toUpperCase();
+ 
+  // Build up to 6 item rows; pad with empty rows so the table always looks full
+  const MIN_ROWS = 6;
+  const items = input.items.slice();
+  while (items.length < MIN_ROWS) {
+    items.push({ description: '', category: '', quantity: 0, unitPrice: 0 });
+  }
+ 
+  const itemRows = items
+    .map((item, i) => {
+      const amount = item.quantity && item.unitPrice ? item.quantity * item.unitPrice : 0;
+      return `
+        <tr class="${i % 2 === 0 ? 'row-even' : 'row-odd'}">
+          <td class="td-desc">${item.description ? item.description.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : ''}</td>
+          <td class="td-center">${item.quantity || ''}</td>
+          <td class="td-right">${item.unitPrice ? formatCurrency(item.unitPrice) : ''}</td>
+          <td class="td-right td-amount">${amount ? formatCurrency(amount) : ''}</td>
+        </tr>`;
+    })
+    .join('');
+ 
+  const statusClass =
+    input.invoice.paymentStatus === 'paid'
+      ? 'status-paid'
+      : input.invoice.paymentStatus === 'partial'
+        ? 'status-partial'
+        : 'status-unpaid';
+ 
   return `<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Service Payment Receipt</title>
-    <style>
-      :root {
-        color-scheme: light;
-        font-family: Arial, sans-serif;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        padding: 28px;
-        background: #f8fafc;
-        color: #1f2937;
-      }
-      .sheet {
-        max-width: 760px;
-        margin: 0 auto;
-        background: #ffffff;
-        padding: 30px 44px 34px;
-      }
-      .clinic-name {
-        margin: 0;
-        color: #2563eb;
-        font-size: 20px;
-        font-weight: 700;
-        text-align: center;
-      }
-      h1 {
-        margin: 8px 0 0;
-        font-size: 17px;
-        font-weight: 800;
-        text-align: center;
-        text-transform: uppercase;
-        letter-spacing: 0.01em;
-      }
-      p {
-        margin: 0;
-        line-height: 1.5;
-      }
-      .divider {
-        margin: 22px 0 30px;
-        border: 0;
-        border-top: 2px solid #374151;
-      }
-      .meta {
-        display: grid;
-        grid-template-columns: 180px minmax(0, 1fr);
-        row-gap: 8px;
-        gap: 16px;
-        align-items: start;
-      }
-      .meta-label {
-        font-size: 14px;
-        font-weight: 700;
-        color: #374151;
-      }
-      .meta-value {
-        font-size: 14px;
-        color: #111827;
-        text-align: right;
-        word-break: break-word;
-      }
-      .code {
-        font-family: "Courier New", monospace;
-      }
-      .status-paid {
-        color: #059669;
-        font-weight: 800;
-      }
-      .status-unpaid {
-        color: #dc2626;
-        font-weight: 800;
-      }
-      .status-partial {
-        color: #d97706;
-        font-weight: 800;
-      }
-      .section-title {
-        margin-top: 30px;
-        font-size: 15px;
-        font-weight: 700;
-        color: #1f2937;
-      }
-      .section-rule {
-        margin: 10px 0 14px;
-        border: 0;
-        border-top: 1px solid #d1d5db;
-      }
-      .service-row {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 110px 120px auto;
-        gap: 16px;
-        align-items: center;
-        font-size: 14px;
-        color: #111827;
-      }
-      .service-row.header {
-        color: #6b7280;
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-      }
-      .service-row + .service-row {
-        margin-top: 10px;
-      }
-      .service-amount {
-        text-align: right;
-        font-weight: 800;
-      }
-      .service-centered {
-        text-align: center;
-      }
-      .total-box {
-        margin-top: 26px;
-        border-left: 4px solid #2563eb;
-        padding: 11px 14px;
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 16px;
-        align-items: center;
-      }
-      .total-label {
-        font-size: 16px;
-        font-weight: 800;
-        color: #1f2937;
-      }
-      .total-value {
-        font-size: 16px;
-        font-weight: 800;
-        color: #059669;
-      }
-      .qr-panel {
-        margin-top: 26px;
-        border: 1px dashed #d1d5db;
-        border-radius: 10px;
-        padding: 18px 18px 14px;
-        text-align: center;
-      }
-      .qr-title {
-        font-size: 14px;
-        font-weight: 700;
-        color: #1f2937;
-      }
-      .qr-wrap {
-        margin-top: 14px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 158px;
-      }
-      .qr-wrap svg {
-        width: 150px;
-        height: 150px;
-      }
-      .qr-note {
-        margin-top: 10px;
-        font-size: 11px;
-        color: #6b7280;
-      }
-      .footnote {
-        margin-top: 20px;
-        border-left: 4px solid #f59e0b;
-        padding-left: 12px;
-      }
-      .footnote-title {
-        font-size: 14px;
-        font-weight: 800;
-        color: #1f2937;
-      }
-      .footnote p:last-child {
-        margin-top: 8px;
-        color: #475569;
-        font-size: 14px;
-      }
-      @media print {
-        body {
-          background: #ffffff;
-          padding: 0;
-        }
-        .sheet {
-          border: none;
-          border-radius: 0;
-          max-width: none;
-          padding: 0;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <main class="sheet">
-      <p class="clinic-name">${(input.clinicName || 'Clinic').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
-      <h1>Service Payment Receipt</h1>
-
-      <hr class="divider" />
-
-      <section class="meta">
-        <p class="meta-label">Patient:</p>
-        <p class="meta-value">${input.patientName}</p>
-
-        <p class="meta-label">Contact:</p>
-        <p class="meta-value">${input.patientContact || 'No contact info recorded'}</p>
-
-        <p class="meta-label">Date:</p>
-        <p class="meta-value">${createdAt.toLocaleDateString('en-PH')}</p>
-
-        <p class="meta-label">Time:</p>
-        <p class="meta-value">${createdAt.toLocaleTimeString('en-PH')}</p>
-
-        <p class="meta-label">Status:</p>
-        <p class="meta-value ${
-          input.invoice.paymentStatus === 'paid'
-            ? 'status-paid'
-            : input.invoice.paymentStatus === 'partial'
-              ? 'status-partial'
-              : 'status-unpaid'
-        }">${paymentStatusLabel}</p>
-
-        <p class="meta-label">Invoice No.:</p>
-        <p class="meta-value code">${input.invoice.invoiceNumber}</p>
-      </section>
-
-      <section>
-        <p class="section-title">Services Paid:</p>
-        <hr class="section-rule" />
-        <div class="service-row header">
-          <p>Description</p>
-          <p class="service-centered">Category</p>
-          <p class="service-centered">Qty x Rate</p>
-          <p class="service-amount">Amount</p>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CPRMed Billing Invoice – ${input.invoice.invoiceNumber}</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+    body {
+      background: #f0f0f0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #111;
+      padding: 24px;
+    }
+ 
+    /* ── Page sheet ── */
+    .sheet {
+      max-width: 680px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 0 0 36px;
+      position: relative;
+      overflow: hidden;
+    }
+ 
+    /* ── Green wave footer strip ── */
+    .sheet::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 58px;
+      background: #4caf50;
+      border-radius: 80% 80% 0 0 / 40px 40px 0 0;
+      z-index: 0;
+    }
+ 
+    /* ── Header band ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 28px 10px;
+      border-bottom: 2px solid #e8e8e8;
+    }
+ 
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+ 
+    /* Play-button hex icon */
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: #222;
+      clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .logo-icon::after {
+      content: '';
+      display: block;
+      width: 0;
+      height: 0;
+      border-top: 8px solid transparent;
+      border-bottom: 8px solid transparent;
+      border-left: 13px solid #fff;
+      margin-left: 3px;
+    }
+ 
+    .brand-text {
+      line-height: 1;
+    }
+    .brand-name {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+    }
+    .brand-cpr { color: #4caf50; }
+    .brand-med { color: #2196f3; }
+    .brand-tagline {
+      font-size: 10px;
+      color: #555;
+      letter-spacing: 0.04em;
+      margin-top: 2px;
+    }
+ 
+    /* ECG pulse line */
+    .ecg-wrap {
+      flex: 1;
+      margin: 0 18px;
+      overflow: hidden;
+      height: 36px;
+      display: flex;
+      align-items: center;
+    }
+    .ecg-wrap svg { width: 100%; height: 36px; }
+ 
+    .header-right {
+      text-align: right;
+      min-width: 110px;
+    }
+    .invoice-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #777;
+    }
+    .invoice-number {
+      font-size: 13px;
+      font-weight: 800;
+      color: #111;
+      font-family: 'Courier New', monospace;
+    }
+ 
+    /* ── Meta row (Date / Billed To / Status) ── */
+    .meta-band {
+      padding: 12px 28px;
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 8px 24px;
+      background: #fafafa;
+      border-bottom: 1px solid #e8e8e8;
+      font-size: 12px;
+    }
+    .meta-label {
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #555;
+      font-size: 10px;
+    }
+    .meta-value {
+      font-weight: 700;
+      color: #111;
+      font-size: 13px;
+      margin-top: 2px;
+      border-bottom: 1.5px solid #aaa;
+      padding-bottom: 2px;
+      min-width: 120px;
+    }
+    .meta-value.patient-name {
+      min-width: 240px;
+    }
+ 
+    /* Status badge */
+    .status-paid   { color: #fff; background: #4caf50; }
+    .status-unpaid { color: #fff; background: #f44336; }
+    .status-partial{ color: #fff; background: #ff9800; }
+    .status-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 3px;
+      margin-top: 4px;
+    }
+ 
+    /* ── Invoice table ── */
+    .table-wrap {
+      padding: 0 28px;
+      margin-top: 16px;
+    }
+ 
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+ 
+    thead tr {
+      background: #2c2c2c;
+      color: #fff;
+    }
+    thead th {
+      padding: 9px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    thead th:first-child  { text-align: left;   width: 44%; }
+    thead th:nth-child(2) { text-align: center; width: 14%; }
+    thead th:nth-child(3) { text-align: right;  width: 20%; }
+    thead th:nth-child(4) { text-align: right;  width: 22%; }
+ 
+    tbody tr { border-bottom: 1px solid #d9e4f5; }
+    .row-even { background: #fff; }
+    .row-odd  { background: #f7f9fd; }
+ 
+    .td-desc   { padding: 9px 10px; font-size: 12.5px; min-height: 32px; }
+    .td-center { text-align: center; padding: 9px 6px; font-size: 12.5px; }
+    .td-right  { text-align: right;  padding: 9px 10px; font-size: 12.5px; }
+    .td-amount { font-weight: 700; }
+ 
+    /* ── Totals ── */
+    .totals-wrap {
+      padding: 10px 28px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+    }
+    .total-row {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 32px;
+      width: 280px;
+    }
+    .total-row + .total-row {
+      border-top: 1.5px solid #111;
+      padding-top: 5px;
+    }
+    .total-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #444;
+      min-width: 80px;
+    }
+    .total-label.grand { font-size: 14px; color: #111; }
+    .total-value {
+      font-size: 13px;
+      font-weight: 800;
+      color: #111;
+      text-align: right;
+      min-width: 100px;
+    }
+    .total-value.grand { font-size: 15px; }
+ 
+    /* ── QR block ── */
+    .qr-section {
+      margin: 14px 28px 0;
+      border: 1px dashed #b0b0b0;
+      padding: 12px 16px 10px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .qr-section svg { width: 90px; height: 90px; flex-shrink: 0; }
+    .qr-text {
+      font-size: 11px;
+      color: #555;
+      line-height: 1.5;
+    }
+    .qr-text strong { color: #111; }
+ 
+    /* ── Signature grid ── */
+    .sig-grid {
+      position: relative;
+      z-index: 1;
+      margin: 20px 28px 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 40px;
+    }
+    .sig-block { text-align: center; }
+    .sig-line {
+      border-top: 1.5px solid #fff;
+      margin-bottom: 5px;
+    }
+    .sig-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #fff;
+    }
+ 
+    /* ── Footnote ── */
+    .footnote {
+      margin: 14px 28px 0;
+      font-size: 10px;
+      color: #888;
+      text-align: center;
+    }
+ 
+    @media print {
+      body { background: #fff; padding: 0; }
+      .sheet { max-width: none; }
+    }
+  </style>
+</head>
+<body>
+<main class="sheet">
+ 
+  <!-- ═══ HEADER ═══ -->
+  <header class="header">
+    <div class="logo-wrap">
+      <div class="logo-icon"></div>
+      <div class="brand-text">
+        <div class="brand-name">
+          <span class="brand-cpr">CPR</span><span class="brand-med">Med</span>
         </div>
-        <div class="service-row">
-          <p>${input.itemDescription}</p>
-          <p class="service-centered">${input.itemCategory}</p>
-          <p class="service-centered">${input.quantity} x ${formatCurrency(input.unitPrice)}</p>
-          <p class="service-amount">${formatCurrency(input.invoice.total)}</p>
-        </div>
-      </section>
-
-      <section class="total-box">
-        <p class="total-label">Total Amount:</p>
-        <p class="total-value">${formatCurrency(input.invoice.total)}</p>
-      </section>
-
-      ${
-        input.qrSvgMarkup
-          ? `<section class="qr-panel">
-        <p class="qr-title">Payment Verification QR Code</p>
-        <div class="qr-wrap">${input.qrSvgMarkup}</div>
-        <p class="qr-note">${input.qrHelperText ?? 'Present this QR code for staff scanning.'}</p>
-      </section>`
-          : ''
-      }
-
-      <section class="footnote">
-        <p class="footnote-title">${input.qrSvgMarkup ? 'Important Instructions:' : 'Billing Note:'}</p>
-        <p>${
-          input.qrSvgMarkup
-            ? 'Present this receipt to the clinic or laboratory staff and let them scan the QR code before proceeding with the test.'
-            : 'This receipt reflects the recorded billing line item and payment status saved in the system.'
-        }</p>
-      </section>
-    </main>
-  </body>
+        <div class="brand-tagline">Center for Prime Response</div>
+      </div>
+    </div>
+ 
+    <!-- ECG pulse SVG -->
+    <div class="ecg-wrap">
+      <svg viewBox="0 0 260 36" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <polyline
+          points="0,18 30,18 40,18 45,6 50,30 55,4 60,32 65,18 80,18 110,18 120,18 125,8 130,28 135,4 140,30 145,18 160,18 190,18 200,18 205,8 210,28 215,4 220,30 225,18 260,18"
+          fill="none"
+          stroke="#4caf50"
+          stroke-width="2"
+          stroke-linejoin="round"
+          stroke-linecap="round"
+        />
+      </svg>
+    </div>
+ 
+    <div class="header-right">
+      <div class="invoice-label">Billing Invoice</div>
+      <div class="invoice-number">${input.invoice.invoiceNumber}</div>
+    </div>
+  </header>
+ 
+  <!-- ═══ META BAND ═══ -->
+  <div class="meta-band">
+    <div>
+      <div class="meta-label">Date</div>
+      <div class="meta-value">${createdAt.toLocaleDateString('en-PH')}</div>
+    </div>
+    <div>
+      <div class="meta-label">Billed To</div>
+      <div class="meta-value patient-name">${input.patientName}</div>
+    </div>
+    <div>
+      <div class="meta-label">Status</div>
+      <span class="status-badge ${statusClass}">${paymentStatusLabel}</span>
+    </div>
+  </div>
+ 
+  <!-- ═══ ITEMS TABLE ═══ -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th>Qty.</th>
+          <th>Price</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemRows}
+      </tbody>
+    </table>
+  </div>
+ 
+  <!-- ═══ TOTALS ═══ -->
+  <div class="totals-wrap">
+    <div class="total-row">
+      <span class="total-label">Subtotal</span>
+      <span class="total-value">${formatCurrency(input.invoice.subtotal)}</span>
+    </div>
+    <div class="total-row">
+      <span class="total-label grand">Total:</span>
+      <span class="total-value grand">${formatCurrency(input.invoice.total)}</span>
+    </div>
+  </div>
+ 
+  ${
+    input.qrSvgMarkup
+      ? `<!-- ═══ QR ═══ -->
+  <div class="qr-section">
+    ${input.qrSvgMarkup}
+    <div class="qr-text">
+      <strong>Payment Verification QR Code</strong><br/>
+      ${input.qrHelperText ?? 'Present this QR code to clinic staff for verification.'}
+    </div>
+  </div>`
+      : ''
+  }
+ 
+  <p class="footnote">
+    This invoice is generated from the CPRMed system and reflects the billing summary and payment status saved in the clinic database.
+  </p>
+ 
+  <!-- ═══ SIGNATURE STRIP (sits on green wave) ═══ -->
+  <div class="sig-grid">
+    <div class="sig-block">
+      <div class="sig-line"></div>
+      <div class="sig-label">Doctor Assigned</div>
+    </div>
+    <div class="sig-block">
+      <div class="sig-line"></div>
+      <div class="sig-label">Receptionist</div>
+    </div>
+  </div>
+ 
+</main>
+</body>
 </html>`;
 }
 
@@ -478,7 +645,7 @@ export function BillingPage() {
 
   const createInvoiceMutation = useMutation({
     mutationFn: async (values: BillingFormValues) => {
-      const total = values.quantity * values.unitPrice;
+      const total = values.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
       const taggedBooking = bookings.find((booking) => booking.id === values.bookingId) ?? null;
       return createInvoiceLiveOrDemo(
         {
@@ -489,7 +656,12 @@ export function BillingPage() {
           subtotal: total,
           total,
         },
-        [{ description: values.description, quantity: values.quantity, unitPrice: values.unitPrice, category: values.category }],
+        values.items.map((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          category: item.category,
+        })),
       );
     },
     onSuccess: async () => {
@@ -500,7 +672,7 @@ export function BillingPage() {
 
   const updateInvoiceMutation = useMutation({
     mutationFn: async ({ invoiceId, values }: { invoiceId: string; values: BillingFormValues }) => {
-      const total = values.quantity * values.unitPrice;
+      const total = values.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
       const taggedBooking = bookings.find((booking) => booking.id === values.bookingId) ?? null;
       return updateInvoiceLiveOrDemo(
         invoiceId,
@@ -512,7 +684,12 @@ export function BillingPage() {
           subtotal: total,
           total,
         },
-        { description: values.description, quantity: values.quantity, unitPrice: values.unitPrice, category: values.category },
+        values.items.map((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          category: item.category,
+        })),
       );
     },
     onSuccess: async () => {
@@ -666,12 +843,17 @@ export function BillingPage() {
     defaultValues: {
       patientId: patients[0]?.id ?? '',
       bookingId: '',
-      description: 'General Consultation',
-      category: 'consultation',
-      quantity: 1,
-      unitPrice: 800,
+      items: [
+        {
+          description: 'General Consultation',
+          category: 'consultation',
+          quantity: 1,
+          unitPrice: 800,
+        },
+      ],
     },
   });
+  const itemsFieldArray = useFieldArray({ control: form.control, name: 'items' });
 
   const payServiceForm = useForm<PayForServiceFormValues>({
     resolver: zodResolver(payForServiceSchema),
@@ -711,8 +893,10 @@ export function BillingPage() {
       ? 0
       : Math.min(pageStart + BILLING_PAGE_SIZE, filteredInvoices.length);
   const viewedInvoice = invoices.find((invoice) => invoice.id === invoiceViewState.invoiceId) ?? null;
-  const viewedInvoiceItem = invoiceItems.find((item) => item.invoiceId === invoiceViewState.invoiceId) ?? null;
+  const viewedInvoiceItems = invoiceItems.filter((item) => item.invoiceId === invoiceViewState.invoiceId);
+  const viewedInvoiceItem = viewedInvoiceItems[0] ?? null;
   const viewedInvoicePatient = patients.find((patient) => patient.id === viewedInvoice?.patientId) ?? null;
+  const viewedInvoiceLabItem = viewedInvoiceItems.find((item) => item.category === 'laboratory') ?? viewedInvoiceItem;
 
   useEffect(() => {
     const invoiceIdFromQuery = (searchParams.get('invoiceId') ?? '').trim();
@@ -783,10 +967,14 @@ export function BillingPage() {
     form.reset({
       patientId: patients[0]?.id ?? '',
       bookingId: '',
-      description: 'General Consultation',
-      category: 'consultation',
-      quantity: 1,
-      unitPrice: 800,
+      items: [
+        {
+          description: 'General Consultation',
+          category: 'consultation',
+          quantity: 1,
+          unitPrice: 800,
+        },
+      ],
     });
     setEditingInvoiceId(null);
     setIsInvoiceModalOpen(true);
@@ -804,18 +992,20 @@ export function BillingPage() {
 
   const openEditModal = (invoiceId: string) => {
     const invoice = invoices.find((entry) => entry.id === invoiceId);
-    const item = invoiceItems.find((entry) => entry.invoiceId === invoiceId);
-    if (!invoice || !item) {
+    const items = invoiceItems.filter((entry) => entry.invoiceId === invoiceId);
+    if (!invoice || items.length === 0) {
       return;
     }
 
     form.reset({
       patientId: invoice.patientId,
       bookingId: '',
-      description: item.description,
-      category: item.category,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
+      items: items.map((item) => ({
+        description: item.description,
+        category: item.category,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      })),
     });
     setEditingInvoiceId(invoiceId);
     setIsInvoiceModalOpen(true);
@@ -943,11 +1133,11 @@ export function BillingPage() {
 
     let relatedRequest: LabRequestRecord | null = null;
 
-    if (viewedInvoice.paymentStatus === 'paid' && viewedInvoiceItem?.category === 'laboratory') {
+    if (viewedInvoice.paymentStatus === 'paid' && viewedInvoiceLabItem?.category === 'laboratory') {
       try {
         if (!isSupabaseConfigured || !supabase) {
           const database = getDatabase();
-          const matchedService = database.labServices.find((service) => service.name === viewedInvoiceItem.description) ?? null;
+          const matchedService = database.labServices.find((service) => service.name === viewedInvoiceLabItem.description) ?? null;
           const matchingOrders = database.labOrders
             .filter((order) => order.patientId === viewedInvoice.patientId)
             .filter((order) => (matchedService ? order.labServiceId === matchedService.id : true))
@@ -970,7 +1160,7 @@ export function BillingPage() {
               requestedBy: order.requestedBy,
               requestedByName: null,
               serviceId: order.labServiceId,
-              serviceName: service?.name ?? viewedInvoiceItem.description,
+              serviceName: service?.name ?? viewedInvoiceLabItem.description,
               serviceCategory: service?.category ?? 'laboratory',
               department: 'Laboratory',
               transactionType: 'cashier_paid_service',
@@ -996,10 +1186,10 @@ export function BillingPage() {
             .filter((request) => request.transactionType === 'cashier_paid_service')
             .filter((request) => {
               if (request.serviceName) {
-                return request.serviceName === viewedInvoiceItem.description;
+                return request.serviceName === viewedInvoiceLabItem.description;
               }
 
-              return request.serviceCategory.toLowerCase() === viewedInvoiceItem.category.toLowerCase();
+              return request.serviceCategory.toLowerCase() === viewedInvoiceLabItem.category.toLowerCase();
             })
             .sort(
               (left, right) =>
@@ -1032,10 +1222,7 @@ export function BillingPage() {
           ? `${viewedInvoicePatient.firstName} ${viewedInvoicePatient.lastName}`
           : 'Unknown patient',
         patientContact: viewedInvoicePatient?.email || viewedInvoicePatient?.mobileNumber || '',
-        itemDescription: viewedInvoiceItem?.description || 'No line item recorded',
-        itemCategory: viewedInvoiceItem?.category || 'other',
-        quantity: viewedInvoiceItem?.quantity || 1,
-        unitPrice: viewedInvoiceItem?.unitPrice || viewedInvoice.total,
+        items: viewedInvoiceItems,
         qrSvgMarkup,
         qrHelperText: relatedRequest
           ? 'Clinic or laboratory staff can scan this QR code to open the linked request and proceed with the test.'
@@ -1294,14 +1481,26 @@ export function BillingPage() {
                         const booking = bookings.find((item) => item.id === event.target.value) ?? null;
                         form.setValue('bookingId', event.target.value);
                         if (!booking) {
+                          form.setValue('items', [
+                            {
+                              description: 'General Consultation',
+                              category: 'consultation',
+                              quantity: 1,
+                              unitPrice: 800,
+                            },
+                          ]);
                           return;
                         }
 
                         form.setValue('patientId', booking.patientId);
-                        form.setValue('description', booking.feeType === 'follow_up' ? 'Follow-up Consultation' : 'Consultation Fee');
-                        form.setValue('category', 'consultation');
-                        form.setValue('quantity', 1);
-                        form.setValue('unitPrice', booking.feeAmount);
+                        form.setValue('items', [
+                          {
+                            description: booking.feeType === 'follow_up' ? 'Follow-up Consultation' : 'Consultation Fee',
+                            category: 'consultation',
+                            quantity: 1,
+                            unitPrice: booking.feeAmount,
+                          },
+                        ]);
                       }}
                     >
                       <option value="">Manual entry</option>
@@ -1319,26 +1518,69 @@ export function BillingPage() {
                 </div>
 
                 <div className="space-y-4 border-t border-slate-100 px-4 py-5 sm:px-6">
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Line Item</p>
-                  <FormField error={form.formState.errors.description?.message} label="Description">
-                    <Input {...form.register('description')} />
-                  </FormField>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <FormField error={form.formState.errors.category?.message} label="Category">
-                      <Select {...form.register('category')}>
-                        <option value="consultation">Consultation</option>
-                        <option value="laboratory">Laboratory</option>
-                        <option value="medicine">Medicine</option>
-                        <option value="other">Other</option>
-                      </Select>
-                    </FormField>
-                    <FormField error={form.formState.errors.quantity?.message} label="Qty">
-                      <Input type="number" {...form.register('quantity', { valueAsNumber: true })} />
-                    </FormField>
-                    <FormField error={form.formState.errors.unitPrice?.message} label="Unit price">
-                      <Input type="number" {...form.register('unitPrice', { valueAsNumber: true })} />
-                    </FormField>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Line items</p>
+                      <p className="text-sm text-slate-500">Add one or more billing entries to match the printed invoice layout.</p>
+                    </div>
+                    <Button
+                      className="rounded-none border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-slate-700 hover:bg-slate-100"
+                      onClick={() =>
+                        itemsFieldArray.append({
+                          description: 'New service',
+                          category: 'other',
+                          quantity: 1,
+                          unitPrice: 0,
+                        })
+                      }
+                      type="button"
+                      variant="secondary"
+                    >
+                      Add line item
+                    </Button>
                   </div>
+
+                  {itemsFieldArray.fields.map((field, index) => (
+                    <div key={field.id} className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm font-semibold text-slate-900">Item {index + 1}</p>
+                        {itemsFieldArray.fields.length > 1 ? (
+                          <button
+                            className="text-xs font-semibold uppercase tracking-widest text-rose-600 hover:text-rose-700"
+                            onClick={() => itemsFieldArray.remove(index)}
+                            type="button"
+                          >
+                            Remove
+                          </button>
+                        ) : null}
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-4">
+                        <FormField
+                          error={form.formState.errors.items?.[index]?.description?.message}
+                          label="Description"
+                        >
+                          <Input {...form.register(`items.${index}.description` as const)} />
+                        </FormField>
+                        <FormField error={form.formState.errors.items?.[index]?.category?.message} label="Category">
+                          <Select {...form.register(`items.${index}.category` as const)}>
+                            <option value="consultation">Consultation</option>
+                            <option value="laboratory">Laboratory</option>
+                            <option value="medicine">Medicine</option>
+                            <option value="other">Other</option>
+                          </Select>
+                        </FormField>
+                        <FormField error={form.formState.errors.items?.[index]?.quantity?.message} label="Qty">
+                          <Input type="number" {...form.register(`items.${index}.quantity` as const, { valueAsNumber: true })} />
+                        </FormField>
+                        <FormField error={form.formState.errors.items?.[index]?.unitPrice?.message} label="Unit price">
+                          <Input type="number" {...form.register(`items.${index}.unitPrice` as const, { valueAsNumber: true })} />
+                        </FormField>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-700">
+                        Amount: {formatCurrency((form.getValues(`items.${index}.quantity`) ?? 0) * (form.getValues(`items.${index}.unitPrice`) ?? 0))}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
 

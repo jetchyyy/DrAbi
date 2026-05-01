@@ -1,16 +1,90 @@
 -- ============================================================================
--- ODYSSEY CLINIC SYSTEM - FUNCTIONS, POLICIES & BOOTSTRAP DATA
+-- FRESH ODYSSEY CLINIC SYSTEM - FUNCTIONS, POLICIES & BOOTSTRAP
 -- ============================================================================
--- Part 2 of the fresh database setup. Run this AFTER the schema migration.
--- This includes all RLS policies, business logic functions, triggers, and
--- bootstrap data.
---
--- Date: 2026-04-25
--- Version: 1.0
+-- This migration adds functions, RLS policies, and bootstrap data.
+-- Run this AFTER the schema migration file.
 -- ============================================================================
 
 -- ============================================================================
--- PART 1: RLS POLICIES
+-- PART 1: HELPER FUNCTIONS
+-- ============================================================================
+
+-- Current App Role
+create or replace function public.current_app_role()
+returns public.app_role
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select role
+  from public.profiles
+  where id = auth.uid()
+  limit 1;
+$$;
+
+-- Is Staff
+create or replace function public.is_staff()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.profiles
+    where id = auth.uid()
+      and role in (
+        'owner_admin'::public.app_role,
+        'doctor'::public.app_role,
+        'specialist'::public.app_role,
+        'nurse_staff'::public.app_role,
+        'front_desk_cashier'::public.app_role,
+        'lab_staff'::public.app_role,
+        'inventory_staff'::public.app_role
+      )
+  );
+$$;
+
+-- Is Lab Staff
+create or replace function public.is_lab_staff()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.profiles
+    where id = auth.uid()
+      and role in ('lab_staff'::public.app_role, 'owner_admin'::public.app_role)
+  );
+$$;
+
+-- Has Clinic Access
+drop function if exists public.has_clinic_access(uuid);
+create or replace function public.has_clinic_access(p_clinic_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and (
+        p.role = 'owner_admin'::public.app_role
+        or p.clinic_id = p_clinic_id
+      )
+  );
+$$;
+
+-- ============================================================================
+-- PART 2: RLS POLICIES
 -- ============================================================================
 
 -- Clinic Settings
@@ -278,25 +352,65 @@ create policy "pos sale items cashier access" on public.pos_sale_items for selec
 );
 
 -- Medical Certificates
-alter table public.medical_certificates enable row level security;
+create policy "medical certificates staff access" on public.medical_certificates for all using (public.is_staff()) with check (public.is_staff());
+create policy "medical certificates patient read" on public.medical_certificates for select using (
+  exists (
+    select 1
+    from public.patients p
+    where p.id = patient_id
+      and p.user_id = auth.uid()
+  )
+);
 
 -- Specialist Schedules
-alter table public.specialist_schedules enable row level security;
+create policy "specialist schedules staff access" on public.specialist_schedules for all using (public.is_staff()) with check (public.is_staff());
 
 -- Specialist Appointments
-alter table public.specialist_appointments enable row level security;
+create policy "specialist appointments staff access" on public.specialist_appointments for all using (public.is_staff()) with check (public.is_staff());
 
 -- Chat Threads
-alter table public.chat_threads enable row level security;
+create policy "chat threads participant access" on public.chat_threads for all using (
+  participant_a = auth.uid() or participant_b = auth.uid()
+) with check (
+  participant_a = auth.uid() or participant_b = auth.uid()
+);
 
 -- Messages
-alter table public.messages enable row level security;
+create policy "messages participant access" on public.messages for all using (
+  exists (
+    select 1
+    from public.chat_threads ct
+    where ct.id = thread_id
+      and (ct.participant_a = auth.uid() or ct.participant_b = auth.uid())
+  )
+) with check (
+  exists (
+    select 1
+    from public.chat_threads ct
+    where ct.id = thread_id
+      and (ct.participant_a = auth.uid() or ct.participant_b = auth.uid())
+  )
+);
 
 -- Thread Unread
-alter table public.thread_unread enable row level security;
+create policy "thread unread participant access" on public.thread_unread for all using (
+  exists (
+    select 1
+    from public.chat_threads ct
+    where ct.id = thread_id
+      and (ct.participant_a = auth.uid() or ct.participant_b = auth.uid())
+  )
+) with check (
+  exists (
+    select 1
+    from public.chat_threads ct
+    where ct.id = thread_id
+      and (ct.participant_a = auth.uid() or ct.participant_b = auth.uid())
+  )
+);
 
 -- ============================================================================
--- PART 2: BUSINESS LOGIC FUNCTIONS
+-- PART 3: BUSINESS LOGIC FUNCTIONS
 -- ============================================================================
 
 -- Auth User Creation Handler
@@ -673,6 +787,11 @@ begin
   return new;
 end;
 $$;
+
+drop trigger if exists ensure_appointment_direct_thread_trigger on public.appointments;
+create trigger ensure_appointment_direct_thread_trigger
+after insert or update of status on public.appointments
+for each row execute function public.ensure_appointment_direct_thread();
 
 -- Enforce Referral Front Desk Flow
 create or replace function public.enforce_referral_frontdesk_flow()
@@ -1431,7 +1550,7 @@ grant select on public.pos_sale_items to authenticated;
 grant execute on function public.checkout_pos_sale(uuid, uuid, text, text, text, jsonb) to authenticated;
 
 -- ============================================================================
--- PART 3: PAYMENT & BILLING TRIGGERS
+-- PART 4: PAYMENT & BILLING TRIGGERS
 -- ============================================================================
 
 -- Sync Payment to Appointment Status
@@ -1441,15 +1560,15 @@ BEGIN
   IF NEW.payment_status = 'paid' AND (OLD.payment_status IS NULL OR OLD.payment_status != 'paid') THEN
     IF NEW.appointment_id IS NOT NULL THEN
       UPDATE public.appointments
-      SET 
+      SET
         status = 'confirmed',
         updated_at = timezone('utc'::text, now())
-      WHERE 
-        id = NEW.appointment_id 
+      WHERE
+        id = NEW.appointment_id
         AND status = 'scheduled';
     END IF;
   END IF;
-  
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
@@ -1467,15 +1586,15 @@ BEGIN
   IF NEW.payment_status = 'paid' AND (OLD.payment_status IS NULL OR OLD.payment_status != 'paid') THEN
     IF NEW.appointment_id IS NOT NULL THEN
       UPDATE public.bookings
-      SET 
+      SET
         status = 'confirmed',
         updated_at = timezone('utc'::text, now())
-      WHERE 
+      WHERE
         appointment_id = NEW.appointment_id
         AND status = 'pending';
     END IF;
   END IF;
-  
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
@@ -1490,21 +1609,21 @@ EXECUTE FUNCTION public.sync_payment_to_booking_status();
 CREATE OR REPLACE FUNCTION public.sync_consultation_completion_to_appointment()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF NEW.appointment_id IS NOT NULL 
+  IF NEW.appointment_id IS NOT NULL
     AND (OLD.clinical_summary IS NULL OR OLD.clinical_summary = '')
-    AND NEW.clinical_summary IS NOT NULL 
+    AND NEW.clinical_summary IS NOT NULL
     AND NEW.clinical_summary != '' THEN
-    
+
     UPDATE public.appointments
-    SET 
+    SET
       status = 'completed',
       consultation_id = NEW.id,
       updated_at = timezone('utc'::text, now())
-    WHERE 
+    WHERE
       id = NEW.appointment_id
       AND status != 'completed';
   END IF;
-  
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
@@ -1522,15 +1641,15 @@ BEGIN
   IF NEW.status = 'completed' AND (OLD.status IS NULL OR OLD.status != 'completed') THEN
     IF NEW.booking_id IS NOT NULL THEN
       UPDATE public.bookings
-      SET 
+      SET
         status = 'completed',
         updated_at = timezone('utc'::text, now())
-      WHERE 
+      WHERE
         id = NEW.booking_id
         AND status != 'completed';
     END IF;
   END IF;
-  
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
@@ -1567,7 +1686,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.sync_invoice_payment_to_service_request();
 
 -- ============================================================================
--- PART 4: BOOTSTRAP DATA & INITIALIZATION
+-- PART 5: BOOTSTRAP DATA & INITIALIZATION
 -- ============================================================================
 
 -- Bootstrap Default Clinic
@@ -1804,7 +1923,7 @@ where p.user_id = pr.id
   and p.deleted_at is null;
 
 -- ============================================================================
--- PART 5: STORAGE SETUP (Lab Request Attachments)
+-- PART 6: STORAGE SETUP (Lab Request Attachments)
 -- ============================================================================
 
 insert into storage.buckets (id, name, public)
@@ -1829,7 +1948,7 @@ with check (
 );
 
 -- ============================================================================
--- PART 6: GRANTS & PERMISSIONS
+-- PART 7: GRANTS & PERMISSIONS
 -- ============================================================================
 
 grant select on public.providers to authenticated;
@@ -1843,8 +1962,8 @@ grant execute on function public.complete_lab_service_request(uuid, text, text) 
 grant execute on function public.cancel_lab_service_request(uuid, text) to authenticated;
 
 -- ============================================================================
--- END OF MIGRATION - PART 2
+-- END OF FUNCTIONS, POLICIES & BOOTSTRAP MIGRATION
 -- ============================================================================
--- All functions, policies, and bootstrap data have been successfully created.
--- Your Odyssey Clinic system is now fully operational!
+-- This file contains functions, RLS policies, and bootstrap data.
+-- Run this AFTER the schema migration file.
 -- ============================================================================
