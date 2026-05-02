@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Package2,
   ReceiptText,
+  FileText,
   Settings,
   Stethoscope,
   Users,
@@ -183,6 +184,13 @@ export const appNavigation: NavItem[] = [
     to: "/app/settings/support",
     icon: Boxes,
     permission: "settings.view",
+  },
+  {
+    label: "Documents",
+    to: "/app/settings/documents",
+    icon: FileText,
+    permission: "settings.view",
+    roles: ["owner_admin"],
   },
   {
     label: "Settings",

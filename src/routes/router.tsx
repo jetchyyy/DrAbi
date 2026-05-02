@@ -38,6 +38,7 @@ import { SettingsServicesPage } from "../features/settings/settings-services-pag
 import { SettingsSupportPage } from "../features/settings/settings-support-page";
 import { SettingsRolesPage } from "../features/settings/settings-roles-page";
 import { SettingsUsersPage } from "../features/settings/settings-users-page";
+import { SettingsDocumentsPage } from "../features/settings/settings-documents-page";
 import { NotFoundPage } from "../features/shared/not-found-page";
 import { OdcPage } from "../features/shared/odc-page";
 import { TeleconsultRoomPage } from "../features/teleconsult/teleconsult-room-page";
@@ -378,6 +379,7 @@ export const router = createBrowserRouter([
               { path: "settings/users", element: <SettingsUsersPage /> },
               { path: "settings/roles", element: <SettingsRolesPage /> },
               { path: "settings/support", element: <SettingsSupportPage /> },
+              { path: "settings/documents", element: <SettingsDocumentsPage /> },
             ],
           },
         ],

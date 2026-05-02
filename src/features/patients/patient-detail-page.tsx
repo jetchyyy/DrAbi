@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronDown, Eye, FileText, FlaskConical, Pill, QrCode, ScanLine, TestTubeDiagonal, X } from 'lucide-react';
+import { ChevronDown, Eye, FileText, FlaskConical, Pill, Plus, QrCode, ScanLine, TestTubeDiagonal, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
@@ -58,9 +58,6 @@ const frontDeskConfirmationSchema = z.object({
 
 const prescriptionSchema = z.object({
   consultationId: z.string().min(1, 'Save a consultation first or choose an existing one.'),
-  prescriptionName: z.string().min(2, 'Prescription name is required.'),
-  dosage: z.string().min(2, 'Dosage is required.'),
-  instruction: z.string().min(2, 'Instruction is required.'),
 });
 
 const medicalCertificateSchema = z.object({
@@ -70,6 +67,9 @@ const medicalCertificateSchema = z.object({
   recommendation: z.string().min(2, 'Recommendation is required.'),
   restFrom: z.string().optional(),
   restUntil: z.string().optional(),
+  checkFinancial: z.boolean().optional(),
+  checkSchool: z.boolean().optional(),
+  checkWork: z.boolean().optional(),
 });
 
 const inventoryUsageSchema = z.object({
@@ -95,6 +95,11 @@ function truncateText(value: string | null | undefined, maxLength = 120) {
 
 function buildSavedPrescriptionDocument(input: {
   patientName: string;
+  patientAge?: string;
+  patientSex?: string;
+  patientAddress?: string;
+  patientWeight?: string;
+  patientCivilStatus?: string;
   doctorName: string;
   doctorSpecialty: string;
   doctorLicenseNumber: string;
@@ -105,7 +110,8 @@ function buildSavedPrescriptionDocument(input: {
   clinicAddress: string;
   clinicContactNumber: string;
   clinicEmail: string;
-  prescription: Prescription;
+  prescriptions: Prescription[];
+  issuedDate: string;
   nextAppointment: string;
 }) {
   return buildPrescriptionPrintDocument({
@@ -120,10 +126,17 @@ function buildSavedPrescriptionDocument(input: {
     doctorPtrNumber: input.doctorPtrNumber,
     doctorPrcQrData: input.doctorPrcQrData,
     patientName: input.patientName,
-    issuedDate: input.prescription.createdAt,
-    medicationName: input.prescription.prescriptionName,
-    dosage: input.prescription.dosage,
-    instruction: input.prescription.instruction,
+    patientAge: input.patientAge,
+    patientSex: input.patientSex,
+    patientAddress: input.patientAddress,
+    patientWeight: input.patientWeight,
+    patientCivilStatus: input.patientCivilStatus,
+    issuedDate: input.issuedDate,
+    medications: input.prescriptions.map((p) => ({
+      name: p.prescriptionName,
+      dosage: p.dosage,
+      instruction: p.instruction,
+    })),
     nextAppointment: input.nextAppointment,
   });
 }
@@ -147,6 +160,9 @@ function buildDoctorPrcResultQrData(input: {
 
 function buildSavedMedicalCertificateDocument(input: {
   patientName: string;
+  patientAge: string;
+  patientSex: string;
+  patientAddress: string;
   doctorName: string;
   doctorSpecialty: string;
   doctorLicenseNumber: string;
@@ -158,6 +174,9 @@ function buildSavedMedicalCertificateDocument(input: {
   clinicContactNumber: string;
   clinicEmail: string;
   medicalCertificate: MedicalCertificate;
+  checkFinancial: boolean;
+  checkSchool: boolean;
+  checkWork: boolean;
 }) {
   return buildMedicalCertificatePrintDocument({
     clinicName: input.clinicName,
@@ -171,12 +190,18 @@ function buildSavedMedicalCertificateDocument(input: {
     doctorPtrNumber: input.doctorPtrNumber,
     doctorPrcQrData: input.doctorPrcQrData,
     patientName: input.patientName,
+    patientAge: input.patientAge,
+    patientSex: input.patientSex,
+    patientAddress: input.patientAddress,
     issuedDate: input.medicalCertificate.createdAt,
     certificatePurpose: input.medicalCertificate.certificatePurpose,
     diagnosis: input.medicalCertificate.diagnosis,
     recommendation: input.medicalCertificate.recommendation,
     restFrom: input.medicalCertificate.restFrom ?? '',
     restUntil: input.medicalCertificate.restUntil ?? '',
+    checkFinancial: input.checkFinancial,
+    checkSchool: input.checkSchool,
+    checkWork: input.checkWork,
   });
 }
 
@@ -240,9 +265,6 @@ export function PatientDetailPage() {
     resolver: zodResolver(prescriptionSchema),
     defaultValues: {
       consultationId: '',
-      prescriptionName: '',
-      dosage: '',
-      instruction: '',
     },
   });
   const medicalCertificateForm = useForm<z.infer<typeof medicalCertificateSchema>>({
@@ -254,6 +276,9 @@ export function PatientDetailPage() {
       recommendation: '',
       restFrom: '',
       restUntil: '',
+      checkFinancial: false,
+      checkSchool: false,
+      checkWork: false,
     },
   });
   const inventoryUsageForm = useForm<z.infer<typeof inventoryUsageSchema>>({
@@ -292,6 +317,7 @@ export function PatientDetailPage() {
   const [savedPrescription, setSavedPrescription] = useState<Prescription | null>(null);
   const [showMedicalCertificateStatusModal, setShowMedicalCertificateStatusModal] = useState(false);
   const [savedMedicalCertificate, setSavedMedicalCertificate] = useState<MedicalCertificate | null>(null);
+  const [savedMedicalCertificateCheckboxes, setSavedMedicalCertificateCheckboxes] = useState({ checkFinancial: false, checkSchool: false, checkWork: false });
   const [isViewingLatestMedicalCertificateFile, setIsViewingLatestMedicalCertificateFile] = useState(false);
   const [isPrintingMedicalCertificate, setIsPrintingMedicalCertificate] = useState(false);
   const [isSavingMedicalCertificatePdf, setIsSavingMedicalCertificatePdf] = useState(false);
@@ -311,6 +337,9 @@ export function PatientDetailPage() {
   const [isSavingPreviewDocumentPdf, setIsSavingPreviewDocumentPdf] = useState(false);
   const [expandedConsultationId, setExpandedConsultationId] = useState<string | null | undefined>(undefined);
   const [expandedPrescriptionId, setExpandedPrescriptionId] = useState<string | null | undefined>(undefined);
+  const [pendingMedications, setPendingMedications] = useState<Array<{ id: string; name: string; dosage: string; instruction: string }>>([]);
+  const [draftMedication, setDraftMedication] = useState({ name: '', dosage: '', instruction: '' });
+  const [draftMedicationErrors, setDraftMedicationErrors] = useState({ name: '', dosage: '', instruction: '' });
   const [expandedMedicalCertificateId, setExpandedMedicalCertificateId] = useState<string | null | undefined>(undefined);
   const [expandedReferralId, setExpandedReferralId] = useState<string | null | undefined>(undefined);
   const [expandedLabOrderId, setExpandedLabOrderId] = useState<string | null | undefined>(undefined);
@@ -475,23 +504,25 @@ export function PatientDetailPage() {
   });
 
   const handleCreatePrescription = prescriptionForm.handleSubmit(async (values) => {
-    const createdPrescription = await createPrescription.mutateAsync({
-      consultationId: values.consultationId,
-      patientId: patient.id,
-      prescriptionName: values.prescriptionName,
-      dosage: values.dosage,
-      instruction: values.instruction,
-    });
+    if (pendingMedications.length === 0) {
+      return;
+    }
 
-    setSavedPrescription(createdPrescription);
+    let lastCreated: typeof savedPrescription = null;
+    for (const med of pendingMedications) {
+      lastCreated = await createPrescription.mutateAsync({
+        consultationId: values.consultationId,
+        patientId: patient.id,
+        prescriptionName: med.name,
+        dosage: med.dosage,
+        instruction: med.instruction,
+      });
+    }
+
+    setSavedPrescription(lastCreated);
     setShowPrescriptionStatusModal(true);
-
-    prescriptionForm.reset({
-      consultationId: values.consultationId,
-      prescriptionName: '',
-      dosage: '',
-      instruction: '',
-    });
+    setPendingMedications([]);
+    setDraftMedication({ name: '', dosage: '', instruction: '' });
   });
 
   const handleCreateMedicalCertificate = medicalCertificateForm.handleSubmit(async (values) => {
@@ -506,6 +537,11 @@ export function PatientDetailPage() {
     });
 
     setSavedMedicalCertificate(createdMedicalCertificate);
+    setSavedMedicalCertificateCheckboxes({
+      checkFinancial: values.checkFinancial ?? false,
+      checkSchool: values.checkSchool ?? false,
+      checkWork: values.checkWork ?? false,
+    });
     setShowMedicalCertificateStatusModal(true);
 
     medicalCertificateForm.reset({
@@ -515,15 +551,25 @@ export function PatientDetailPage() {
       recommendation: '',
       restFrom: '',
       restUntil: '',
+      checkFinancial: false,
+      checkSchool: false,
+      checkWork: false,
     });
   });
 
-  const buildPrescriptionDocumentFor = (prescription: Prescription | null) => {
-    if (!prescription) {
+  const buildPrescriptionDocumentFor = (consultationId: string | null) => {
+    if (!consultationId) {
       return null;
     }
 
-    const linkedConsultation = consultations.find((consultation) => consultation.id === prescription.consultationId) ?? null;
+    const consultationPrescriptions = prescriptions.filter(
+      (p) => p.consultationId === consultationId,
+    );
+    if (consultationPrescriptions.length === 0) {
+      return null;
+    }
+
+    const linkedConsultation = consultations.find((consultation) => consultation.id === consultationId) ?? null;
     const linkedDoctor = linkedConsultation
       ? providers.find((provider) => provider.id === linkedConsultation.doctorId) ?? null
       : null;
@@ -536,8 +582,18 @@ export function PatientDetailPage() {
     const doctorBirNumber = linkedDoctor?.birNumber ?? currentDoctor?.birNumber ?? '';
     const doctorPtrNumber = linkedDoctor?.ptrNumber ?? currentDoctor?.ptrNumber ?? '';
 
+    const patientAge = patient.birthDate
+      ? String(new Date().getFullYear() - new Date(patient.birthDate).getFullYear() - (
+          new Date() < new Date(new Date(patient.birthDate).setFullYear(new Date().getFullYear())) ? 1 : 0
+        ))
+      : '';
+    const patientSex = patient.sex === 'male' ? 'Male' : patient.sex === 'female' ? 'Female' : 'Other';
+
     return buildSavedPrescriptionDocument({
       patientName: `${patient.firstName} ${patient.lastName}`,
+      patientAge,
+      patientSex,
+      patientAddress: patient.address ?? '',
       doctorName,
       doctorSpecialty,
       doctorLicenseNumber,
@@ -554,12 +610,13 @@ export function PatientDetailPage() {
       clinicAddress: clinicSettings?.address ?? 'Address not configured',
       clinicContactNumber: clinicSettings?.contactNumber ?? 'Contact not configured',
       clinicEmail: clinicSettings?.email ?? 'Email not configured',
-      prescription,
+      prescriptions: consultationPrescriptions,
+      issuedDate: consultationPrescriptions[0].createdAt,
       nextAppointment,
     });
   };
 
-  const buildMedicalCertificateDocumentFor = (medicalCertificate: MedicalCertificate | null) => {
+  const buildMedicalCertificateDocumentFor = (medicalCertificate: MedicalCertificate | null, checkboxes = savedMedicalCertificateCheckboxes) => {
     if (!medicalCertificate) {
       return null;
     }
@@ -574,8 +631,18 @@ export function PatientDetailPage() {
     const doctorBirNumber = linkedDoctor?.birNumber ?? currentDoctor?.birNumber ?? '';
     const doctorPtrNumber = linkedDoctor?.ptrNumber ?? currentDoctor?.ptrNumber ?? '';
 
+    const patientAge = patient.birthDate
+      ? String(new Date().getFullYear() - new Date(patient.birthDate).getFullYear() - (
+          new Date() < new Date(new Date(patient.birthDate).setFullYear(new Date().getFullYear())) ? 1 : 0
+        ))
+      : '';
+    const patientSex = patient.sex === 'male' ? 'Male' : patient.sex === 'female' ? 'Female' : 'Other';
+
     return buildSavedMedicalCertificateDocument({
       patientName: `${patient.firstName} ${patient.lastName}`,
+      patientAge,
+      patientSex,
+      patientAddress: patient.address ?? '',
       doctorName,
       doctorSpecialty,
       doctorLicenseNumber,
@@ -593,10 +660,13 @@ export function PatientDetailPage() {
       clinicContactNumber: clinicSettings?.contactNumber ?? 'Contact not configured',
       clinicEmail: clinicSettings?.email ?? 'Email not configured',
       medicalCertificate,
+      checkFinancial: checkboxes.checkFinancial,
+      checkSchool: checkboxes.checkSchool,
+      checkWork: checkboxes.checkWork,
     });
   };
 
-  const getSavedPrescriptionDocument = () => buildPrescriptionDocumentFor(savedPrescription);
+  const getSavedPrescriptionDocument = () => buildPrescriptionDocumentFor(savedPrescription?.consultationId ?? null);
 
   const getSavedMedicalCertificateDocument = () => buildMedicalCertificateDocumentFor(savedMedicalCertificate);
 
@@ -676,7 +746,8 @@ export function PatientDetailPage() {
   };
 
   const handleViewLatestPrescriptionFromChart = () => {
-    const documentHtml = buildPrescriptionDocumentFor(latestPrescription);
+    const consultationId = latestPrescription?.consultationId ?? null;
+    const documentHtml = buildPrescriptionDocumentFor(consultationId);
     if (!documentHtml) {
       toast.error('No prescription is available yet for this patient.');
       return;
@@ -694,7 +765,7 @@ export function PatientDetailPage() {
   };
 
   const handleViewPrescriptionFromHistory = (prescription: Prescription) => {
-    const documentHtml = buildPrescriptionDocumentFor(prescription);
+    const documentHtml = buildPrescriptionDocumentFor(prescription.consultationId);
     if (!documentHtml) {
       toast.error('Unable to open this prescription file.');
       return;
@@ -1307,6 +1378,7 @@ export function PatientDetailPage() {
               ) : (
                 prescriptions.map((prescription) => {
                   const linkedConsultation = consultations.find((consultation) => consultation.id === prescription.consultationId);
+                  const siblingsCount = prescriptions.filter((p) => p.consultationId === prescription.consultationId).length;
                   const isExpanded = activePrescriptionId === prescription.id;
                   const trayContentId = `prescription-tray-${prescription.id}`;
                   return (
@@ -1336,6 +1408,7 @@ export function PatientDetailPage() {
                               <p className="font-semibold text-slate-950">{prescription.prescriptionName}</p>
                               <p className="text-sm text-slate-500">
                                 {linkedConsultation ? `${linkedConsultation.consultationDate} ${linkedConsultation.consultationTime}` : 'Prescription saved'}
+                                {siblingsCount > 1 ? ` · ${siblingsCount} medications` : ''}
                               </p>
                             </div>
                             <span
@@ -1397,7 +1470,7 @@ export function PatientDetailPage() {
             <Card>
               <CardTitle>Prescription details</CardTitle>
               <p className="mt-2 text-sm text-slate-500">
-                Add the patient prescription after saving the consultation, or attach it to an existing consultation entry.
+                Select a consultation, add one or more medications to the list, then save all at once.
               </p>
               <form className="mt-5 space-y-4" onSubmit={handleCreatePrescription}>
                 <FormField error={prescriptionForm.formState.errors.consultationId?.message} label="Consultation record">
@@ -1410,17 +1483,86 @@ export function PatientDetailPage() {
                     ))}
                   </Select>
                 </FormField>
-                <FormField error={prescriptionForm.formState.errors.prescriptionName?.message} label="Prescription Name">
-                  <Input {...prescriptionForm.register('prescriptionName')} />
-                </FormField>
-                <FormField error={prescriptionForm.formState.errors.dosage?.message} label="Dosage">
-                  <Input {...prescriptionForm.register('dosage')} />
-                </FormField>
-                <FormField error={prescriptionForm.formState.errors.instruction?.message} label="Instruction">
-                  <Textarea rows={3} {...prescriptionForm.register('instruction')} />
-                </FormField>
-                <Button className="w-full" disabled={createPrescription.isPending} type="submit">
-                  {createPrescription.isPending ? 'Saving prescription...' : 'Save prescription'}
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-slate-700">Medications</span>
+                  </div>
+
+                  {pendingMedications.map((med, index) => (
+                    <div className="flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 p-3" key={med.id}>
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <p className="text-xs font-bold uppercase tracking-wide text-sky-600">#{index + 1}</p>
+                        <p className="text-sm font-semibold text-slate-900">{med.name}</p>
+                        <p className="text-xs text-slate-500">{med.dosage}</p>
+                        <p className="text-xs text-slate-500 italic">{med.instruction}</p>
+                      </div>
+                      <button
+                        className="mt-0.5 shrink-0 text-slate-400 hover:text-red-500"
+                        onClick={() => setPendingMedications((prev) => prev.filter((m) => m.id !== med.id))}
+                        type="button"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  ))}
+
+                  <div className="space-y-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-400">New medication</p>
+                    <FormField error={draftMedicationErrors.name} label="Medication name">
+                      <Input
+                        onChange={(e) => setDraftMedication((prev) => ({ ...prev, name: e.target.value }))}
+                        value={draftMedication.name}
+                      />
+                    </FormField>
+                    <FormField error={draftMedicationErrors.dosage} label="Dosage">
+                      <Input
+                        onChange={(e) => setDraftMedication((prev) => ({ ...prev, dosage: e.target.value }))}
+                        value={draftMedication.dosage}
+                      />
+                    </FormField>
+                    <FormField error={draftMedicationErrors.instruction} label="Instruction (Sig.)">
+                      <Textarea
+                        onChange={(e) => setDraftMedication((prev) => ({ ...prev, instruction: e.target.value }))}
+                        rows={2}
+                        value={draftMedication.instruction}
+                      />
+                    </FormField>
+                    <button
+                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-sky-300 bg-white py-2 text-sm font-semibold text-sky-600 hover:bg-sky-50"
+                      onClick={() => {
+                        const errors = {
+                          name: draftMedication.name.trim().length < 2 ? 'Medication name is required.' : '',
+                          dosage: draftMedication.dosage.trim().length < 2 ? 'Dosage is required.' : '',
+                          instruction: draftMedication.instruction.trim().length < 2 ? 'Instruction is required.' : '',
+                        };
+                        setDraftMedicationErrors(errors);
+                        if (errors.name || errors.dosage || errors.instruction) return;
+                        setPendingMedications((prev) => [
+                          ...prev,
+                          { id: crypto.randomUUID(), ...draftMedication },
+                        ]);
+                        setDraftMedication({ name: '', dosage: '', instruction: '' });
+                        setDraftMedicationErrors({ name: '', dosage: '', instruction: '' });
+                      }}
+                      type="button"
+                    >
+                      <Plus className="size-4" />
+                      Add to list
+                    </button>
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full"
+                  disabled={createPrescription.isPending || pendingMedications.length === 0}
+                  type="submit"
+                >
+                  {createPrescription.isPending
+                    ? 'Saving...'
+                    : pendingMedications.length === 0
+                      ? 'Add at least one medication'
+                      : `Save ${pendingMedications.length} medication${pendingMedications.length > 1 ? 's' : ''}`}
                 </Button>
               </form>
             </Card>
@@ -1551,6 +1693,9 @@ export function PatientDetailPage() {
               <p className="mt-2 text-sm text-slate-500">
                 Create an official medical certificate linked to an existing consultation entry for this patient.
               </p>
+              <div className="mt-3 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                Patient name, age, sex, and address are automatically pulled from the patient's profile and will appear on the printed certificate.
+              </div>
               <form className="mt-5 space-y-4" onSubmit={handleCreateMedicalCertificate}>
                 <FormField error={medicalCertificateForm.formState.errors.consultationId?.message} label="Consultation record">
                   <Select {...medicalCertificateForm.register('consultationId')}>
@@ -1578,6 +1723,23 @@ export function PatientDetailPage() {
                   <FormField label="Rest until">
                     <Input type="date" {...medicalCertificateForm.register('restUntil')} />
                   </FormField>
+                </div>
+                <div>
+                  <p className="mb-2 text-sm font-medium text-slate-700">Certificate issued for</p>
+                  <div className="space-y-2">
+                    <label className="flex cursor-pointer items-center gap-3">
+                      <input className="h-4 w-4 rounded border-slate-300" type="checkbox" {...medicalCertificateForm.register('checkFinancial')} />
+                      <span className="text-sm text-slate-700">Financial and Medical assistance program</span>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-3">
+                      <input className="h-4 w-4 rounded border-slate-300" type="checkbox" {...medicalCertificateForm.register('checkSchool')} />
+                      <span className="text-sm text-slate-700">School related purpose</span>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-3">
+                      <input className="h-4 w-4 rounded border-slate-300" type="checkbox" {...medicalCertificateForm.register('checkWork')} />
+                      <span className="text-sm text-slate-700">Work related purpose</span>
+                    </label>
+                  </div>
                 </div>
                 <Button className="w-full" disabled={createMedicalCertificate.isPending} type="submit">
                   {createMedicalCertificate.isPending ? 'Saving certificate...' : 'Save medical certificate'}
