@@ -1,12 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Coins, Eye, Pencil, Plus, Printer, Receipt, ScanLine, Search, TestTube2, Trash2, X } from 'lucide-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Coins, Eye, Pencil, Plus, Receipt, ScanLine, Search, TestTube2, Trash2, X, CreditCard } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
-import QRCode from 'qrcode';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { z } from 'zod';
 
 import { FormField } from '../../components/forms/form-field';
 import { Button } from '../../components/ui/button';
@@ -19,536 +16,40 @@ import { isModuleEnabled } from '../../config/modules';
 import { useAuth } from '../auth/auth-context';
 import { useClinicSettingsData } from '../../hooks/use-clinic-data';
 import { LabServiceReceiptCard } from '../laboratory/components/lab-service-receipt-card';
-import { buildLabServiceReceiptLookupUrl } from '../laboratory/lab-service-receipt';
-import { labRequestService } from '../lab-requests/api/lab-request-service';
-import type { LabRequestRecord } from '../lab-requests/types';
-import { getDatabase } from '../../lib/local-db';
-import { printHtmlDocument } from '../../lib/print';
-import { queryKeys } from '../../lib/query-keys';
-import { isSupabaseConfigured, supabase } from '../../lib/supabase';
-import {
-  createInvoiceLiveOrDemo,
-  deleteInvoiceLiveOrDemo,
-  listBookingsLiveOrDemo,
-  listInvoiceItemsLiveOrDemo,
-  listInvoicesLiveOrDemo,
-  listPatientsLiveOrDemo,
-  updateInvoiceLiveOrDemo,
-} from '../../lib/supabase-clinic';
 import { formatCurrency } from '../../lib/utils';
-import type { Invoice } from '../../types/domain';
+// import { labRequestService } from '../../lab-requests/api/lab-request-service';
+// import type { LabRequestRecord } from '../../lab-requests/types';
+import { PaymentBadge } from './payment-badge';
+import { PaymentUpdateModal } from './components/payment-update-modal';
+import {
+  usePatients,
+  useBookings,
+  useInvoices,
+  useInvoiceItems,
+  useLabServiceOptions,
+  useCreateInvoice,
+  useUpdateInvoice,
+  useDeleteInvoice,
+  usePayForService,
+  useUpdatePayment,
+} from './api/billing-mutations';
 
-const invoiceItemSchema = z.object({
-  description: z.string().min(2, 'Description must be at least 2 characters.'),
-  category: z.enum(['consultation', 'laboratory', 'medicine', 'other']),
-  quantity: z.number().min(1, 'Quantity must be at least 1.'),
-  unitPrice: z.number().min(1, 'Unit price must be at least 1.'),
-});
+import {
+  billingSchema,
+  payForServiceSchema,
+  type BillingFormValues,
+  type PayForServiceFormValues,
+  type FeedbackModalState,
+  type LabReceiptState,
+  type InvoiceViewState,
+  BILLING_PAGE_SIZE,
+} from './types/forms';
 
-const billingSchema = z.object({
-  patientId: z.string().min(1, 'Patient is required.'),
-  bookingId: z.string().optional(),
-  items: z.array(invoiceItemSchema).min(1, 'At least one invoice item is required.'),
-});
 
-type BillingFormValues = z.infer<typeof billingSchema>;
 
-const payForServiceSchema = z.object({
-  patientId: z.string().min(1, 'Patient is required.'),
-  serviceId: z.string().min(1, 'Laboratory service is required.'),
-  notes: z.string().optional(),
-  urgentFlag: z.boolean(),
-});
 
-type PayForServiceFormValues = z.infer<typeof payForServiceSchema>;
-const BILLING_PAGE_SIZE = 10;
-
-interface LabServiceOption {
-  id: string;
-  clinicId: string | null;
-  name: string;
-  description: string | null;
-  category: string;
-  serviceFee: number;
-}
-
-interface FeedbackModalState {
-  open: boolean;
-  title: string;
-  message: string;
-  variant: 'success' | 'error';
-}
-
-interface LabReceiptState {
-  open: boolean;
-  invoice: Invoice | null;
-  request: LabRequestRecord | null;
-  patientName: string;
-}
-
-interface InvoiceViewState {
-  open: boolean;
-  invoiceId: string | null;
-}
-
-function PaymentBadge({ status }: { status: string }) {
-  if (status === 'paid') return <span className="bg-emerald-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-emerald-700">Paid</span>;
-  if (status === 'partial') return <span className="bg-orange-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-orange-700">Partial</span>;
-  return <span className="bg-rose-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-rose-700">Unpaid</span>;
-}
-
-export function buildInvoicePrintDocument(input: {
-  clinicName: string;
-  invoice: Invoice;
-  patientName: string;
-  patientContact: string;
-  items: Array<{
-    description: string;
-    category: string;
-    quantity: number;
-    unitPrice: number;
-  }>;
-  qrSvgMarkup?: string;
-  qrHelperText?: string;
-}) {
-  const createdAt = new Date(input.invoice.createdAt);
-  const paymentStatusLabel = input.invoice.paymentStatus.toUpperCase();
- 
-  // Build up to 6 item rows; pad with empty rows so the table always looks full
-  const MIN_ROWS = 6;
-  const items = input.items.slice();
-  while (items.length < MIN_ROWS) {
-    items.push({ description: '', category: '', quantity: 0, unitPrice: 0 });
-  }
- 
-  const itemRows = items
-    .map((item, i) => {
-      const amount = item.quantity && item.unitPrice ? item.quantity * item.unitPrice : 0;
-      return `
-        <tr class="${i % 2 === 0 ? 'row-even' : 'row-odd'}">
-          <td class="td-desc">${item.description ? item.description.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : ''}</td>
-          <td class="td-center">${item.quantity || ''}</td>
-          <td class="td-right">${item.unitPrice ? formatCurrency(item.unitPrice) : ''}</td>
-          <td class="td-right td-amount">${amount ? formatCurrency(amount) : ''}</td>
-        </tr>`;
-    })
-    .join('');
- 
-  const statusClass =
-    input.invoice.paymentStatus === 'paid'
-      ? 'status-paid'
-      : input.invoice.paymentStatus === 'partial'
-        ? 'status-partial'
-        : 'status-unpaid';
- 
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CPRMed Billing Invoice – ${input.invoice.invoiceNumber}</title>
-  <style>
-    :root { color-scheme: light; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
- 
-    body {
-      background: #f0f0f0;
-      font-family: Arial, Helvetica, sans-serif;
-      color: #111;
-      padding: 24px;
-    }
- 
-    /* ── Page sheet ── */
-    .sheet {
-      max-width: 680px;
-      margin: 0 auto;
-      background: #ffffff;
-      padding: 0 0 36px;
-      position: relative;
-      overflow: hidden;
-    }
- 
-    /* ── Green wave footer strip ── */
-    .sheet::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 58px;
-      background: #4caf50;
-      border-radius: 80% 80% 0 0 / 40px 40px 0 0;
-      z-index: 0;
-    }
- 
-    /* ── Header band ── */
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 18px 28px 10px;
-      border-bottom: 2px solid #e8e8e8;
-    }
- 
-    .logo-wrap {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
- 
-    /* Play-button hex icon */
-    .logo-icon {
-      width: 36px;
-      height: 36px;
-      background: #222;
-      clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .logo-icon::after {
-      content: '';
-      display: block;
-      width: 0;
-      height: 0;
-      border-top: 8px solid transparent;
-      border-bottom: 8px solid transparent;
-      border-left: 13px solid #fff;
-      margin-left: 3px;
-    }
- 
-    .brand-text {
-      line-height: 1;
-    }
-    .brand-name {
-      font-size: 26px;
-      font-weight: 900;
-      letter-spacing: -0.5px;
-    }
-    .brand-cpr { color: #4caf50; }
-    .brand-med { color: #2196f3; }
-    .brand-tagline {
-      font-size: 10px;
-      color: #555;
-      letter-spacing: 0.04em;
-      margin-top: 2px;
-    }
- 
-    /* ECG pulse line */
-    .ecg-wrap {
-      flex: 1;
-      margin: 0 18px;
-      overflow: hidden;
-      height: 36px;
-      display: flex;
-      align-items: center;
-    }
-    .ecg-wrap svg { width: 100%; height: 36px; }
- 
-    .header-right {
-      text-align: right;
-      min-width: 110px;
-    }
-    .invoice-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: #777;
-    }
-    .invoice-number {
-      font-size: 13px;
-      font-weight: 800;
-      color: #111;
-      font-family: 'Courier New', monospace;
-    }
- 
-    /* ── Meta row (Date / Billed To / Status) ── */
-    .meta-band {
-      padding: 12px 28px;
-      display: grid;
-      grid-template-columns: 1fr 1fr auto;
-      gap: 8px 24px;
-      background: #fafafa;
-      border-bottom: 1px solid #e8e8e8;
-      font-size: 12px;
-    }
-    .meta-label {
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #555;
-      font-size: 10px;
-    }
-    .meta-value {
-      font-weight: 700;
-      color: #111;
-      font-size: 13px;
-      margin-top: 2px;
-      border-bottom: 1.5px solid #aaa;
-      padding-bottom: 2px;
-      min-width: 120px;
-    }
-    .meta-value.patient-name {
-      min-width: 240px;
-    }
- 
-    /* Status badge */
-    .status-paid   { color: #fff; background: #4caf50; }
-    .status-unpaid { color: #fff; background: #f44336; }
-    .status-partial{ color: #fff; background: #ff9800; }
-    .status-badge {
-      display: inline-block;
-      font-size: 10px;
-      font-weight: 900;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      padding: 3px 10px;
-      border-radius: 3px;
-      margin-top: 4px;
-    }
- 
-    /* ── Invoice table ── */
-    .table-wrap {
-      padding: 0 28px;
-      margin-top: 16px;
-    }
- 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
- 
-    thead tr {
-      background: #2c2c2c;
-      color: #fff;
-    }
-    thead th {
-      padding: 9px 10px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-    }
-    thead th:first-child  { text-align: left;   width: 44%; }
-    thead th:nth-child(2) { text-align: center; width: 14%; }
-    thead th:nth-child(3) { text-align: right;  width: 20%; }
-    thead th:nth-child(4) { text-align: right;  width: 22%; }
- 
-    tbody tr { border-bottom: 1px solid #d9e4f5; }
-    .row-even { background: #fff; }
-    .row-odd  { background: #f7f9fd; }
- 
-    .td-desc   { padding: 9px 10px; font-size: 12.5px; min-height: 32px; }
-    .td-center { text-align: center; padding: 9px 6px; font-size: 12.5px; }
-    .td-right  { text-align: right;  padding: 9px 10px; font-size: 12.5px; }
-    .td-amount { font-weight: 700; }
- 
-    /* ── Totals ── */
-    .totals-wrap {
-      padding: 10px 28px 0;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 5px;
-    }
-    .total-row {
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 32px;
-      width: 280px;
-    }
-    .total-row + .total-row {
-      border-top: 1.5px solid #111;
-      padding-top: 5px;
-    }
-    .total-label {
-      font-size: 13px;
-      font-weight: 700;
-      color: #444;
-      min-width: 80px;
-    }
-    .total-label.grand { font-size: 14px; color: #111; }
-    .total-value {
-      font-size: 13px;
-      font-weight: 800;
-      color: #111;
-      text-align: right;
-      min-width: 100px;
-    }
-    .total-value.grand { font-size: 15px; }
- 
-    /* ── QR block ── */
-    .qr-section {
-      margin: 14px 28px 0;
-      border: 1px dashed #b0b0b0;
-      padding: 12px 16px 10px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .qr-section svg { width: 90px; height: 90px; flex-shrink: 0; }
-    .qr-text {
-      font-size: 11px;
-      color: #555;
-      line-height: 1.5;
-    }
-    .qr-text strong { color: #111; }
- 
-    /* ── Signature grid ── */
-    .sig-grid {
-      position: relative;
-      z-index: 1;
-      margin: 20px 28px 0;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0 40px;
-    }
-    .sig-block { text-align: center; }
-    .sig-line {
-      border-top: 1.5px solid #fff;
-      margin-bottom: 5px;
-    }
-    .sig-label {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #fff;
-    }
- 
-    /* ── Footnote ── */
-    .footnote {
-      margin: 14px 28px 0;
-      font-size: 10px;
-      color: #888;
-      text-align: center;
-    }
- 
-    @media print {
-      body { background: #fff; padding: 0; }
-      .sheet { max-width: none; }
-    }
-  </style>
-</head>
-<body>
-<main class="sheet">
- 
-  <!-- ═══ HEADER ═══ -->
-  <header class="header">
-    <div class="logo-wrap">
-      <div class="logo-icon"></div>
-      <div class="brand-text">
-        <div class="brand-name">
-          <span class="brand-cpr">CPR</span><span class="brand-med">Med</span>
-        </div>
-        <div class="brand-tagline">Center for Prime Response</div>
-      </div>
-    </div>
- 
-    <!-- ECG pulse SVG -->
-    <div class="ecg-wrap">
-      <svg viewBox="0 0 260 36" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-        <polyline
-          points="0,18 30,18 40,18 45,6 50,30 55,4 60,32 65,18 80,18 110,18 120,18 125,8 130,28 135,4 140,30 145,18 160,18 190,18 200,18 205,8 210,28 215,4 220,30 225,18 260,18"
-          fill="none"
-          stroke="#4caf50"
-          stroke-width="2"
-          stroke-linejoin="round"
-          stroke-linecap="round"
-        />
-      </svg>
-    </div>
- 
-    <div class="header-right">
-      <div class="invoice-label">Billing Invoice</div>
-      <div class="invoice-number">${input.invoice.invoiceNumber}</div>
-    </div>
-  </header>
- 
-  <!-- ═══ META BAND ═══ -->
-  <div class="meta-band">
-    <div>
-      <div class="meta-label">Date</div>
-      <div class="meta-value">${createdAt.toLocaleDateString('en-PH')}</div>
-    </div>
-    <div>
-      <div class="meta-label">Billed To</div>
-      <div class="meta-value patient-name">${input.patientName}</div>
-    </div>
-    <div>
-      <div class="meta-label">Status</div>
-      <span class="status-badge ${statusClass}">${paymentStatusLabel}</span>
-    </div>
-  </div>
- 
-  <!-- ═══ ITEMS TABLE ═══ -->
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Description</th>
-          <th>Qty.</th>
-          <th>Price</th>
-          <th>Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${itemRows}
-      </tbody>
-    </table>
-  </div>
- 
-  <!-- ═══ TOTALS ═══ -->
-  <div class="totals-wrap">
-    <div class="total-row">
-      <span class="total-label">Subtotal</span>
-      <span class="total-value">${formatCurrency(input.invoice.subtotal)}</span>
-    </div>
-    <div class="total-row">
-      <span class="total-label grand">Total:</span>
-      <span class="total-value grand">${formatCurrency(input.invoice.total)}</span>
-    </div>
-  </div>
- 
-  ${
-    input.qrSvgMarkup
-      ? `<!-- ═══ QR ═══ -->
-  <div class="qr-section">
-    ${input.qrSvgMarkup}
-    <div class="qr-text">
-      <strong>Payment Verification QR Code</strong><br/>
-      ${input.qrHelperText ?? 'Present this QR code to clinic staff for verification.'}
-    </div>
-  </div>`
-      : ''
-  }
- 
-  <p class="footnote">
-    This invoice is generated from the CPRMed system and reflects the billing summary and payment status saved in the clinic database.
-  </p>
- 
-  <!-- ═══ SIGNATURE STRIP (sits on green wave) ═══ -->
-  <div class="sig-grid">
-    <div class="sig-block">
-      <div class="sig-line"></div>
-      <div class="sig-label">Doctor Assigned</div>
-    </div>
-    <div class="sig-block">
-      <div class="sig-line"></div>
-      <div class="sig-label">Receptionist</div>
-    </div>
-  </div>
- 
-</main>
-</body>
-</html>`;
-}
 
 export function BillingPage() {
-  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: clinicSettings } = useClinicSettingsData();
   const { profile } = useAuth();
@@ -558,7 +59,9 @@ export function BillingPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isPayServiceModalOpen, setIsPayServiceModalOpen] = useState(false);
+  const [isPaymentUpdateModalOpen, setIsPaymentUpdateModalOpen] = useState(false);
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
+  const [updatingPaymentInvoiceId, setUpdatingPaymentInvoiceId] = useState<string | null>(null);
   const [feedbackModal, setFeedbackModal] = useState<FeedbackModalState>({
     open: false,
     title: '',
@@ -577,266 +80,25 @@ export function BillingPage() {
   });
   const deferredSearch = useDeferredValue(search);
 
-  const { data: patients = [] } = useQuery({
-    queryKey: queryKeys.patients,
-    queryFn: async () => listPatientsLiveOrDemo(),
-  });
+  const { data: patients = [] } = usePatients();
 
-  const { data: bookings = [] } = useQuery({
-    queryKey: queryKeys.bookings,
-    queryFn: async () => listBookingsLiveOrDemo(),
-  });
+  const { data: bookings = [] } = useBookings();
 
-  const { data: invoices = [] } = useQuery({
-    queryKey: queryKeys.invoices,
-    queryFn: async () => listInvoicesLiveOrDemo(),
-  });
+  const { data: invoices = [] } = useInvoices();
 
-  const { data: invoiceItems = [] } = useQuery({
-    queryKey: queryKeys.invoiceItems,
-    queryFn: async () => listInvoiceItemsLiveOrDemo(),
-  });
+  const { data: invoiceItems = [] } = useInvoiceItems();
 
-  const { data: labServiceOptions = [] } = useQuery({
-    queryKey: ['lab-request-services'],
-    queryFn: async () => {
-      if (!isSupabaseConfigured || !supabase) {
-        return getDatabase().labServices
-          .slice()
-          .sort((left, right) => left.name.localeCompare(right.name))
-          .map((service) => ({
-            id: service.id,
-            clinicId: null,
-            name: service.name,
-            description: service.description,
-            category: service.category,
-            serviceFee: service.price,
-          })) satisfies LabServiceOption[];
-      }
+  const { data: labServiceOptions = [] } = useLabServiceOptions();
 
-      const { data, error } = await supabase
-        .from('medical_services')
-        .select('id, clinic_id, name, description, category, service_fee')
-        .eq('department', 'Laboratory')
-        .eq('is_active', true)
-        .order('name', { ascending: true });
+  const createInvoiceMutation = useCreateInvoice();
 
-      if (error) {
-        throw error;
-      }
+  const updateInvoiceMutation = useUpdateInvoice();
 
-      return ((data ?? []) as Array<{
-        id: string;
-        clinic_id: string | null;
-        name: string;
-        description: string | null;
-        category: string;
-        service_fee: number;
-      }>).map((service) => ({
-        id: service.id,
-        clinicId: service.clinic_id,
-        name: service.name,
-        description: service.description,
-        category: service.category,
-        serviceFee: Number(service.service_fee ?? 0),
-      }));
-    },
-  });
+  const deleteInvoiceMutation = useDeleteInvoice();
 
-  const createInvoiceMutation = useMutation({
-    mutationFn: async (values: BillingFormValues) => {
-      const total = values.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-      const taggedBooking = bookings.find((booking) => booking.id === values.bookingId) ?? null;
-      return createInvoiceLiveOrDemo(
-        {
-          patientId: values.patientId,
-          appointmentId: taggedBooking?.appointmentId ?? null,
-          invoiceNumber: `INV-${Date.now()}`,
-          paymentStatus: 'unpaid',
-          subtotal: total,
-          total,
-        },
-        values.items.map((item) => ({
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          category: item.category,
-        })),
-      );
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.invoiceItems });
-    },
-  });
+  const payForServiceMutation = usePayForService();
 
-  const updateInvoiceMutation = useMutation({
-    mutationFn: async ({ invoiceId, values }: { invoiceId: string; values: BillingFormValues }) => {
-      const total = values.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-      const taggedBooking = bookings.find((booking) => booking.id === values.bookingId) ?? null;
-      return updateInvoiceLiveOrDemo(
-        invoiceId,
-        {
-          patientId: values.patientId,
-          appointmentId: taggedBooking?.appointmentId ?? null,
-          invoiceNumber: invoices.find((invoice) => invoice.id === invoiceId)?.invoiceNumber ?? `INV-${Date.now()}`,
-          paymentStatus: 'unpaid',
-          subtotal: total,
-          total,
-        },
-        values.items.map((item) => ({
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          category: item.category,
-        })),
-      );
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.invoiceItems });
-    },
-  });
-
-  const deleteInvoiceMutation = useMutation({
-    mutationFn: async (invoiceId: string) => deleteInvoiceLiveOrDemo(invoiceId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.invoiceItems });
-    },
-  });
-
-  const payForServiceMutation = useMutation({
-    mutationFn: async (values: PayForServiceFormValues) => {
-      if (!profile?.id) {
-        throw new Error('You must be signed in to record a paid lab service.');
-      }
-
-      const selectedService = labServiceOptions.find((service) => service.id === values.serviceId) ?? null;
-      if (!selectedService) {
-        throw new Error('The selected laboratory service could not be found.');
-      }
-
-      const amount = Number(selectedService.serviceFee ?? 0);
-      if (amount <= 0) {
-        throw new Error('The selected laboratory service does not have a valid service fee yet.');
-      }
-
-      const patient = patients.find((entry) => entry.id === values.patientId) ?? null;
-      let createdInvoice: Invoice | null = null;
-
-      try {
-        createdInvoice = await createInvoiceLiveOrDemo(
-          {
-            patientId: values.patientId,
-            appointmentId: null,
-            invoiceNumber: `INV-LAB-${Date.now()}`,
-            paymentStatus: 'paid',
-            subtotal: amount,
-            total: amount,
-          },
-          [
-            {
-              description: selectedService.name,
-              quantity: 1,
-              unitPrice: amount,
-              category: 'laboratory',
-            },
-          ],
-        );
-
-        let request: LabRequestRecord;
-        if (!isSupabaseConfigured || !supabase) {
-          const { createLabOrder } = await import('../../lib/local-db');
-          const order = createLabOrder({
-            patientId: values.patientId,
-            appointmentId: null,
-            labServiceId: selectedService.id,
-            requestedBy: profile.id,
-            status: 'requested',
-            notes: values.notes?.trim() || '',
-            urgentFlag: values.urgentFlag,
-            schedDate: null,
-            schedTime: null,
-          });
-
-          request = {
-            id: order.id,
-            clinicId: '',
-            clinicName: null,
-            appointmentId: null,
-            patientId: values.patientId,
-            patientName: patient ? `${patient.firstName} ${patient.lastName}` : null,
-            requestedBy: profile.id,
-            requestedByName: profile.fullName,
-            serviceId: selectedService.id,
-            serviceName: selectedService.name,
-            serviceCategory: selectedService.category,
-            department: 'Laboratory',
-            transactionType: 'cashier_paid_service',
-            paymentStatus: 'paid',
-            receiptCode: createdInvoice.invoiceNumber,
-            status: 'pending',
-            sampleStatus: 'pending',
-            resultStatus: 'pending',
-            patientNotes: values.notes?.trim() || null,
-            resultData: null,
-            resultNotes: null,
-            urgentFlag: values.urgentFlag,
-            completedBy: null,
-            completedByName: null,
-            completedAt: null,
-            media: [],
-            createdAt: order.createdAt,
-            updatedAt: order.updatedAt,
-          };
-        } else {
-          const createdRequest = await labRequestService.createRequest({
-            clinicId: selectedService.clinicId,
-            patientId: values.patientId,
-            requestedBy: profile.id,
-            appointmentId: null,
-            serviceId: selectedService.id,
-            serviceCategory: selectedService.category,
-            patientNotes: values.notes?.trim() || '',
-            urgentFlag: values.urgentFlag,
-            transactionType: 'cashier_paid_service',
-          });
-
-          if (!createdRequest) {
-            throw new Error('The lab request was not returned after payment.');
-          }
-
-          request =
-            (await labRequestService.markRequestAsPaid(createdRequest.id, createdRequest.receiptCode ?? null)) ??
-            createdRequest;
-        }
-
-        return {
-          invoice: createdInvoice,
-          request,
-          patientName: patient ? `${patient.firstName} ${patient.lastName}` : 'Patient',
-        };
-      } catch (error) {
-        if (createdInvoice) {
-          await deleteInvoiceLiveOrDemo(createdInvoice.id).catch(() => undefined);
-        }
-        throw error;
-      }
-    },
-    onSuccess: async (result) => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.invoiceItems });
-      await queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
-      await queryClient.invalidateQueries({ queryKey: ['lab-request', result.request.id] });
-      setLabReceiptState({
-        open: true,
-        invoice: result.invoice,
-        request: result.request,
-        patientName: result.patientName,
-      });
-    },
-  });
+  const updatePaymentMutation = useUpdatePayment();
 
   const form = useForm<BillingFormValues>({
     resolver: zodResolver(billingSchema),
@@ -868,7 +130,7 @@ export function BillingPage() {
   const selectedBookingId = form.watch('bookingId');
   const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId) ?? null;
   const selectedLabServiceId = payServiceForm.watch('serviceId');
-  const selectedLabService = labServiceOptions.find((service) => service.id === selectedLabServiceId) ?? null;
+  const selectedLabService = labServiceOptions.find((service: any) => service.id === selectedLabServiceId) ?? null;
 
   const filteredInvoices = useMemo(
     () =>
@@ -896,7 +158,7 @@ export function BillingPage() {
   const viewedInvoiceItems = invoiceItems.filter((item) => item.invoiceId === invoiceViewState.invoiceId);
   const viewedInvoiceItem = viewedInvoiceItems[0] ?? null;
   const viewedInvoicePatient = patients.find((patient) => patient.id === viewedInvoice?.patientId) ?? null;
-  const viewedInvoiceLabItem = viewedInvoiceItems.find((item) => item.category === 'laboratory') ?? viewedInvoiceItem;
+  // const viewedInvoiceLabItem = viewedInvoiceItems.find((item) => item.category === 'laboratory') ?? viewedInvoiceItem;
 
   useEffect(() => {
     const invoiceIdFromQuery = (searchParams.get('invoiceId') ?? '').trim();
@@ -963,6 +225,13 @@ export function BillingPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [invoiceViewState.open, isInvoiceModalOpen, isPayServiceModalOpen]);
 
+  useEffect(() => {
+    if (updatePaymentMutation.isSuccess) {
+      closePaymentUpdateModal();
+      toast.success('Payment status updated successfully');
+    }
+  }, [updatePaymentMutation.isSuccess]);
+
   const openCreateModal = () => {
     form.reset({
       patientId: patients[0]?.id ?? '',
@@ -1027,6 +296,16 @@ export function BillingPage() {
     setIsPayServiceModalOpen(false);
   };
 
+  const openPaymentUpdateModal = (invoiceId: string) => {
+    setUpdatingPaymentInvoiceId(invoiceId);
+    setIsPaymentUpdateModalOpen(true);
+  };
+
+  const closePaymentUpdateModal = () => {
+    setUpdatingPaymentInvoiceId(null);
+    setIsPaymentUpdateModalOpen(false);
+  };
+
   const closeInvoiceViewModal = () => {
     setInvoiceViewState({
       open: false,
@@ -1053,7 +332,7 @@ export function BillingPage() {
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       if (editingInvoiceId) {
-        await updateInvoiceMutation.mutateAsync({ invoiceId: editingInvoiceId, values });
+        await updateInvoiceMutation.mutateAsync({ invoiceId: editingInvoiceId, values, bookings, invoices });
         setFeedbackModal({
           open: true,
           title: 'Invoice updated',
@@ -1061,7 +340,7 @@ export function BillingPage() {
           variant: 'success',
         });
       } else {
-        await createInvoiceMutation.mutateAsync(values);
+        await createInvoiceMutation.mutateAsync({ values, bookings });
         setFeedbackModal({
           open: true,
           title: 'Invoice created',
@@ -1107,7 +386,7 @@ export function BillingPage() {
 
   const onSubmitPaidService = payServiceForm.handleSubmit(async (values) => {
     try {
-      await payForServiceMutation.mutateAsync(values);
+      await payForServiceMutation.mutateAsync({ values, profile, labServiceOptions, patients });
       setFeedbackModal({
         open: true,
         title: 'Lab service paid',
@@ -1125,124 +404,124 @@ export function BillingPage() {
     }
   });
 
-  const handleOpenInvoiceOutput = async () => {
-    if (!viewedInvoice) {
-      toast.error('No invoice is selected for printing.');
-      return;
-    }
+  // const handleOpenInvoiceOutput = async () => {
+  //   if (!viewedInvoice) {
+  //     toast.error('No invoice is selected for printing.');
+  //     return;
+  //   }
 
-    let relatedRequest: LabRequestRecord | null = null;
+  //   let relatedRequest: LabRequestRecord | null = null;
 
-    if (viewedInvoice.paymentStatus === 'paid' && viewedInvoiceLabItem?.category === 'laboratory') {
-      try {
-        if (!isSupabaseConfigured || !supabase) {
-          const database = getDatabase();
-          const matchedService = database.labServices.find((service) => service.name === viewedInvoiceLabItem.description) ?? null;
-          const matchingOrders = database.labOrders
-            .filter((order) => order.patientId === viewedInvoice.patientId)
-            .filter((order) => (matchedService ? order.labServiceId === matchedService.id : true))
-            .sort(
-              (left, right) =>
-                Math.abs(new Date(left.createdAt).getTime() - new Date(viewedInvoice.createdAt).getTime()) -
-                Math.abs(new Date(right.createdAt).getTime() - new Date(viewedInvoice.createdAt).getTime()),
-            );
+  //   if (viewedInvoice.paymentStatus === 'paid' && viewedInvoiceLabItem?.category === 'laboratory') {
+  //     try {
+  //       if (!isSupabaseConfigured || !supabase) {
+  //         const database = getDatabase();
+  //         const matchedService = database.labServices.find((service) => service.name === viewedInvoiceLabItem.description) ?? null;
+  //         const matchingOrders = database.labOrders
+  //           .filter((order) => order.patientId === viewedInvoice.patientId)
+  //           .filter((order) => (matchedService ? order.labServiceId === matchedService.id : true))
+  //           .sort(
+  //             (left, right) =>
+  //               Math.abs(new Date(left.createdAt).getTime() - new Date(viewedInvoice.createdAt).getTime()) -
+  //               Math.abs(new Date(right.createdAt).getTime() - new Date(viewedInvoice.createdAt).getTime()),
+  //             );
 
-          const order = matchingOrders[0] ?? null;
-          if (order) {
-            const service = database.labServices.find((entry) => entry.id === order.labServiceId) ?? null;
-            relatedRequest = {
-              id: order.id,
-              clinicId: '',
-              clinicName: null,
-              appointmentId: order.appointmentId ?? null,
-              patientId: order.patientId,
-              patientName: viewedInvoicePatient ? `${viewedInvoicePatient.firstName} ${viewedInvoicePatient.lastName}` : null,
-              requestedBy: order.requestedBy,
-              requestedByName: null,
-              serviceId: order.labServiceId,
-              serviceName: service?.name ?? viewedInvoiceLabItem.description,
-              serviceCategory: service?.category ?? 'laboratory',
-              department: 'Laboratory',
-              transactionType: 'cashier_paid_service',
-              status: order.status === 'released' ? 'completed' : 'pending',
-              sampleStatus: order.status === 'processing' || order.status === 'ready' || order.status === 'released' ? 'processing' : 'pending',
-              resultStatus: order.status === 'released' ? 'completed' : 'pending',
-              patientNotes: order.notes || null,
-              resultData: null,
-              resultNotes: null,
-              urgentFlag: Boolean(order.urgentFlag),
-              completedBy: null,
-              completedByName: null,
-              completedAt: null,
-              media: [],
-              createdAt: order.createdAt,
-              updatedAt: order.updatedAt,
-            };
-          }
-        } else {
-          const patientRequests = await labRequestService.getPatientRequests(viewedInvoice.patientId);
-          const matchingRequests = patientRequests
-            .filter((request) => request.department === 'Laboratory')
-            .filter((request) => request.transactionType === 'cashier_paid_service')
-            .filter((request) => {
-              if (request.serviceName) {
-                return request.serviceName === viewedInvoiceLabItem.description;
-              }
+  //         const order = matchingOrders[0] ?? null;
+  //         if (order) {
+  //           const service = database.labServices.find((entry) => entry.id === order.labServiceId) ?? null;
+  //           relatedRequest = {
+  //             id: order.id,
+  //             clinicId: '',
+  //             clinicName: null,
+  //             appointmentId: order.appointmentId ?? null,
+  //             patientId: order.patientId,
+  //             patientName: viewedInvoicePatient ? `${viewedInvoicePatient.firstName} ${viewedInvoicePatient.lastName}` : null,
+  //             requestedBy: order.requestedBy,
+  //             requestedByName: null,
+  //             serviceId: order.labServiceId,
+  //             serviceName: service?.name ?? viewedInvoiceLabItem.description,
+  //             serviceCategory: service?.category ?? 'laboratory',
+  //             department: 'Laboratory',
+  //             transactionType: 'cashier_paid_service',
+  //             status: order.status === 'released' ? 'completed' : 'pending',
+  //             sampleStatus: order.status === 'processing' || order.status === 'ready' || order.status === 'released' ? 'processing' : 'pending',
+  //             resultStatus: order.status === 'released' ? 'completed' : 'pending',
+  //             patientNotes: order.notes || null,
+  //             resultData: null,
+  //             resultNotes: null,
+  //             urgentFlag: Boolean(order.urgentFlag),
+  //             completedBy: null,
+  //             completedByName: null,
+  //             completedAt: null,
+  //             media: [],
+  //             createdAt: order.createdAt,
+  //             updatedAt: order.updatedAt,
+  //           };
+  //         }
+  //       } else {
+  //         const patientRequests = await labRequestService.getPatientRequests(viewedInvoice.patientId);
+  //         const matchingRequests = patientRequests
+  //           .filter((request) => request.department === 'Laboratory')
+  //           .filter((request) => request.transactionType === 'cashier_paid_service')
+  //           .filter((request) => {
+  //             if (request.serviceName) {
+  //               return request.serviceName === viewedInvoiceLabItem.description;
+  //             }
 
-              return request.serviceCategory.toLowerCase() === viewedInvoiceLabItem.category.toLowerCase();
-            })
-            .sort(
-              (left, right) =>
-                Math.abs(new Date(left.createdAt).getTime() - new Date(viewedInvoice.createdAt).getTime()) -
-                Math.abs(new Date(right.createdAt).getTime() - new Date(viewedInvoice.createdAt).getTime()),
-            );
+  //             return request.serviceCategory.toLowerCase() === viewedInvoiceLabItem.category.toLowerCase();
+  //           })
+  //           .sort(
+  //             (left, right) =>
+  //               Math.abs(new Date(left.createdAt).getTime() - new Date(viewedInvoice.createdAt).getTime()) -
+  //               Math.abs(new Date(right.createdAt).getTime() - new Date(viewedInvoice.createdAt).getTime()),
+  //           );
 
-          relatedRequest = matchingRequests[0] ?? null;
-        }
-      } catch {
-        relatedRequest = null;
-      }
-    }
+  //         relatedRequest = matchingRequests[0] ?? null;
+  //       }
+  //     } catch {
+  //       relatedRequest = null;
+  //     }
+  //   }
 
-    let qrSvgMarkup = '';
-    if (relatedRequest) {
-      qrSvgMarkup = await QRCode.toString(buildLabServiceReceiptLookupUrl(relatedRequest.id), {
-        errorCorrectionLevel: 'M',
-        margin: 1,
-        type: 'svg',
-        width: 220,
-      });
-    }
+  //   let qrSvgMarkup = '';
+  //   if (relatedRequest) {
+  //     qrSvgMarkup = await QRCode.toString(buildLabServiceReceiptLookupUrl(relatedRequest.id), {
+  //       errorCorrectionLevel: 'M',
+  //       margin: 1,
+  //       type: 'svg',
+  //       width: 220,
+  //     });
+  //   }
 
-    await printHtmlDocument(
-      buildInvoicePrintDocument({
-        clinicName: clinicSettings?.clinicName ?? 'Clinic',
-        invoice: viewedInvoice,
-        patientName: viewedInvoicePatient
-          ? `${viewedInvoicePatient.firstName} ${viewedInvoicePatient.lastName}`
-          : 'Unknown patient',
-        patientContact: viewedInvoicePatient?.email || viewedInvoicePatient?.mobileNumber || '',
-        items: viewedInvoiceItems,
-        qrSvgMarkup,
-        qrHelperText: relatedRequest
-          ? 'Clinic or laboratory staff can scan this QR code to open the linked request and proceed with the test.'
-          : undefined,
-      }),
-    );
-  };
+  //   await printHtmlDocument(
+  //     buildInvoicePrintDocument({
+  //       clinicName: clinicSettings?.clinicName ?? 'Clinic',
+  //       invoice: viewedInvoice,
+  //       patientName: viewedInvoicePatient
+  //         ? `${viewedInvoicePatient.firstName} ${viewedInvoicePatient.lastName}`
+  //         : 'Unknown patient',
+  //       patientContact: viewedInvoicePatient?.email || viewedInvoicePatient?.mobileNumber || '',
+  //       items: viewedInvoiceItems,
+  //       qrSvgMarkup,
+  //       qrHelperText: relatedRequest
+  //         ? 'Clinic or laboratory staff can scan this QR code to open the linked request and proceed with the test.'
+  //         : undefined,
+  //     }),
+  //   );
+  // };
 
-  const handlePrintViewedInvoice = () => {
-    void handleOpenInvoiceOutput().catch(() => {
-      toast.error('The invoice could not be sent to the print dialog.');
-    });
-  };
+  // const handlePrintViewedInvoice = () => {
+  //   void handleOpenInvoiceOutput().catch(() => {
+  //     toast.error('The invoice could not be sent to the print dialog.');
+  //   });
+  // };
 
-  const handleSaveViewedInvoiceAsPdf = () => {
-    toast.message('When the print dialog opens, choose "Save as PDF" as the destination.');
-    void handleOpenInvoiceOutput().catch(() => {
-      toast.error('The invoice could not be prepared for PDF saving.');
-    });
-  };
+  // const handleSaveViewedInvoiceAsPdf = () => {
+  //   toast.message('When the print dialog opens, choose "Save as PDF" as the destination.');
+  //   void handleOpenInvoiceOutput().catch(() => {
+  //     toast.error('The invoice could not be prepared for PDF saving.');
+  //   });
+  // };
 
   return (
     <>
@@ -1380,6 +659,12 @@ export function BillingPage() {
                         <td className="px-6 py-4 align-top text-sm font-bold text-slate-950">{formatCurrency(invoice.total)}</td>
                         <td className="px-6 py-4 align-top">
                           <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
+                            {invoice.paymentStatus === 'unpaid' ? (
+                              <button className="inline-flex items-center gap-1 text-blue-600 hover:underline" onClick={() => openPaymentUpdateModal(invoice.id)} type="button">
+                                <CreditCard className="size-3.5" />
+                                Mark as Paid
+                              </button>
+                            ) : null}
                             <button className="inline-flex items-center gap-1 text-emerald-700 hover:underline" onClick={() => openViewModal(invoice.id)} type="button">
                               <Eye className="size-3.5" />
                               View
@@ -1652,7 +937,7 @@ export function BillingPage() {
                   <FormField error={payServiceForm.formState.errors.serviceId?.message} label="Lab service">
                     <Select {...payServiceForm.register('serviceId')} disabled={labServiceOptions.length === 0}>
                       <option value="">Select a laboratory service</option>
-                      {labServiceOptions.map((service) => (
+                      {labServiceOptions.map((service: any) => (
                         <option key={service.id} value={service.id}>
                           {service.name} - {formatCurrency(service.serviceFee)}
                         </option>
@@ -1804,14 +1089,14 @@ export function BillingPage() {
             </div>
 
             <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
-              <Button className="gap-2 rounded-none sm:w-auto" onClick={handleSaveViewedInvoiceAsPdf} type="button" variant="secondary">
+              {/* <Button className="gap-2 rounded-none sm:w-auto" onClick={handleSaveViewedInvoiceAsPdf} type="button" variant="secondary">
                 <Receipt className="size-4" />
                 Save as PDF
               </Button>
               <Button className="gap-2 rounded-none sm:w-auto" onClick={handlePrintViewedInvoice} type="button">
                 <Printer className="size-4" />
                 Print receipt
-              </Button>
+              </Button> */}
               <Button className="rounded-none" onClick={closeInvoiceViewModal} type="button" variant="secondary">
                 Close
               </Button>
@@ -1819,6 +1104,21 @@ export function BillingPage() {
           </div>
         </div>
       ) : null}
+
+      <PaymentUpdateModal
+        isOpen={isPaymentUpdateModalOpen}
+        onClose={closePaymentUpdateModal}
+        onConfirm={(paymentType, referenceNumber) => {
+          if (updatingPaymentInvoiceId) {
+            updatePaymentMutation.mutate({
+              invoiceId: updatingPaymentInvoiceId,
+              paymentType,
+              referenceNumber,
+            });
+          }
+        }}
+        isLoading={updatePaymentMutation.isPending}
+      />
 
       <FeedbackModal
         autoCloseMs={3000}
