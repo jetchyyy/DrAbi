@@ -1,4 +1,4 @@
-import { Stethoscope } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { ScrollReveal } from '../../../components/layout/scroll-reveal';
@@ -7,155 +7,155 @@ import { isModuleEnabled } from '../../../config/modules';
 import { useBookableServices, useClinicSettingsData } from '../../../hooks/use-clinic-data';
 import { formatCurrency } from '../../../lib/utils';
 import { useAuth } from '../../auth/auth-context';
+import {
+  PORTAL_SECTION_FULL_WIDTH,
+  PORTAL_SECTION_PX,
+  portalSectionLeadClassnames,
+  portalSectionTitleClassnames,
+} from '../portal-section-shell';
 
-/*
- * Nano Banana prompt for /public/services-clinic-photo.jpg:
- * "A warm and inviting medical clinic interior, a doctor warmly interacting with a patient
- * in a bright modern consultation room, clean white and light neutral walls, soft natural
- * lighting, professional clinic atmosphere, photorealistic, wide landscape format 16:9,
- * orange and warm accent tones visible in decor or furniture, depth of field blur on
- * background, hopeful and caring mood"
+function ServicePricingRow({
+  name,
+  description,
+  priceLabel,
+  isLast,
+}: {
+  name: string;
+  description: string;
+  priceLabel: string;
+  isLast?: boolean;
+}) {
+  return (
+    <div>
+      <div className="flex min-w-0 items-end gap-x-3 sm:gap-x-4">
+        <span className="min-w-0 max-w-[min(100%,22rem)] font-display text-lg font-semibold leading-snug tracking-tight text-slate-900 sm:max-w-[min(100%,38rem)] sm:text-xl lg:max-w-none lg:max-w-[62%] lg:text-[1.3125rem]">
+          {name}
+        </span>
+        <span
+          aria-hidden
+          className="mb-[0.42em] h-px min-w-[1rem] flex-1 border-b border-dotted border-slate-300/95"
+        />
+        <span className="shrink-0 whitespace-nowrap font-sans text-[15px] font-medium tabular-nums tracking-tight text-slate-800 sm:text-base">
+          {priceLabel}
+        </span>
+      </div>
+      <p
+        className={
+          isLast ?
+            'mt-2.5 max-w-xl font-sans text-[13px] font-normal leading-relaxed tracking-tight text-slate-500 sm:mt-3 sm:max-w-[36rem] sm:text-sm sm:leading-[1.6] lg:max-w-[38rem] lg:text-[0.9325rem] lg:leading-[1.62]'
+          : 'mt-2.5 mb-7 max-w-xl font-sans text-[13px] font-normal leading-relaxed tracking-tight text-slate-500 sm:mt-3 sm:mb-8 sm:max-w-[36rem] sm:text-sm sm:leading-[1.6] lg:max-w-[38rem] lg:text-[0.9325rem] lg:leading-[1.62]'
+        }
+      >
+        {description}
+      </p>
+    </div>
+  );
+}
+
+const primaryCtaClass =
+  'group inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-green-900/10 ring-1 ring-black/[0.04] transition hover:brightness-[0.97] active:brightness-95';
+
+/**
+ * Clinic services: full-width (hero-style horizontal pad) pricing list + hero image column.
  */
-
-const SERVICE_PALETTES = [
-  { from: '#ea580c', text: 'text-orange-700', ring: 'ring-orange-200', numColor: 'text-orange-300' },
-  { from: '#0369a1', text: 'text-sky-700', ring: 'ring-sky-200', numColor: 'text-sky-300' },
-  { from: '#059669', text: 'text-emerald-700', ring: 'ring-emerald-200', numColor: 'text-emerald-300' },
-  { from: '#7c3aed', text: 'text-violet-700', ring: 'ring-violet-200', numColor: 'text-violet-300' },
-  { from: '#be123c', text: 'text-rose-700', ring: 'ring-rose-200', numColor: 'text-rose-300' },
-  { from: '#b45309', text: 'text-amber-700', ring: 'ring-amber-200', numColor: 'text-amber-300' },
-];
-
 export function ServicesSection() {
   const { data: clinic = defaultClinicSettings } = useClinicSettingsData();
   const { data: services = [] } = useBookableServices();
   const { isAuthenticated } = useAuth();
   const bookingEnabled = isModuleEnabled('booking_appointments', clinic.enabledModules);
 
-  // Build flat render list: featured card first, then all services
-  type RenderItem =
-    | { type: 'service'; idx: number }
-    | { type: 'featured' };
-
-  const renderList: RenderItem[] = [{ type: 'featured' }, ...services.map((_, idx) => ({ type: 'service' as const, idx }))];
+  const bookTo = bookingEnabled ? (isAuthenticated ? '/portal/book' : '/portal/register') : '/portal';
 
   return (
-    <section className="relative overflow-hidden bg-white px-5 py-16 sm:px-8" id="services">
-      {/* Background image + hero-style orange overlays */}
+    <section
+      className="relative isolate w-full max-w-none overflow-x-clip bg-[#f7f9fc] py-12 sm:py-16 lg:py-20 xl:py-[5.25rem]"
+      id="services"
+    >
       <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage: 'url(/services-clinic-photo.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          filter: 'saturate(0.95)',
-        }}
-      />
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: 'linear-gradient(to top, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.92) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.70) 32%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.28) 62%, rgba(255,255,255,0.88) 100%)',
-        }}
-      />
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: 'radial-gradient(circle at 82% 18%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.22) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.08) 35%, transparent 65%)',
-        }}
-      />
-
-      {/* Centered section header */}
-      <ScrollReveal className="relative z-10 mb-10 text-center" yOffset={18}>
-        <div className="mx-auto max-w-3xl rounded-2xl bg-white/78 px-5 py-4 shadow-sm ring-1 ring-white/70 backdrop-blur-sm">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-700">Medical Services</p>
-          <h2 className="mt-2 text-4xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-5xl">
-            Our Services
-          </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-sm font-medium leading-relaxed text-slate-800 sm:text-base">
-            Patient-first care delivered through consultation, diagnosis, and personalized treatment plans that match
-            your needs.
+        className={`relative z-[1] flex w-full min-w-0 max-w-none flex-col ${PORTAL_SECTION_PX} ${PORTAL_SECTION_FULL_WIDTH}`}
+      >
+        <ScrollReveal className="w-full text-center" yOffset={16}>
+          <p className="inline-flex items-center justify-center gap-2 font-sans text-[11px] font-semibold uppercase leading-none tracking-[0.22em] text-[var(--color-accent)] sm:tracking-[0.26em]">
+            Medical services
           </p>
-        </div>
-      </ScrollReveal>
+          <h2 className={`${portalSectionTitleClassnames('mx-auto mt-5 max-w-6xl text-balance')} sm:mt-6`}>
+            Comprehensive Care, All in One Clinic
+          </h2>
+          <p
+            className={portalSectionLeadClassnames(
+              'mx-auto mt-7 max-w-[31rem] px-2 text-center sm:mt-[1.75rem] sm:max-w-3xl sm:px-0 lg:mt-8 lg:max-w-[46rem]',
+            )}
+          >
+            From consultations to certifications, everything you need is available in one clinic. No long queues, no multiple stops, just straightforward care when you need it
+          </p>
+        </ScrollReveal>
 
-      {/* Bento grid */}
-      <div className="relative z-10 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
-        {renderList.map((item, renderIdx) => {
-          /* ── Featured clinic card ── */
-          if (item.type === 'featured') {
-            return (
-              <ScrollReveal key="featured" delayMs={80 + renderIdx * 45} yOffset={20}>
-                <div
-                  className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500 to-orange-600 p-6"
-                  style={{ minHeight: '260px', borderRadius: '1.5rem' }}
-                >
-                  {/* Floating bubbles */}
-                  <div className="absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-white/10" />
-                  <div className="absolute -left-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
-                  <div className="absolute bottom-14 left-8 h-16 w-16 rounded-full bg-white/15" />
-                  <div className="absolute right-8 top-12 h-10 w-10 rounded-full bg-white/20" />
-                  <div className="absolute left-1/3 top-1/3 h-20 w-20 rounded-full bg-white/8" />
-                  <div className="relative z-10 flex h-full flex-col justify-between gap-6 pt-1">
-                    <div>
-                      <p className="text-base font-extrabold uppercase tracking-tight text-white">{clinic.clinicName}</p>
-                      <p className="mt-2 text-xs leading-relaxed text-orange-100/90">
-                        From consultation and diagnosis to treatment with care and attention to detail.
-                      </p>
-                    </div>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
-                      <Stethoscope className="size-5 text-white" />
-                    </div>
-                  </div>
-                </div>
-              </ScrollReveal>
-            );
-          }
+        <div className="mt-12 grid w-full min-w-0 grid-cols-1 gap-10 sm:mt-14 sm:gap-12 lg:mt-16 lg:grid-cols-2 lg:items-start lg:gap-x-12 lg:gap-y-12 xl:gap-x-16 xl:gap-y-14">
+          <ScrollReveal className="min-w-0 w-full" yOffset={20}>
+            <div className="overflow-hidden rounded-[1.85rem] bg-slate-200/40 shadow-[0_26px_64px_-40px_rgba(15,23,42,0.35)] sm:rounded-[2.15rem]">
+              <img
+                alt="Bright clinic reception and waiting area with seating, natural light, and plants."
+                className="aspect-[4/5] h-full min-h-[220px] w-full object-cover object-center sm:aspect-[10/13] lg:aspect-auto lg:min-h-[min(520px,calc(100vh-14rem))] lg:max-h-[640px]"
+                decoding="async"
+                src="/servicebg.png"
+              />
+            </div>
+          </ScrollReveal>
 
-          /* ── Service card ── */
-          const service = services[item.idx];
-          const palette = SERVICE_PALETTES[item.idx % SERVICE_PALETTES.length];
-          const num = String(item.idx + 1).padStart(2, '0');
-
-          return (
-            <ScrollReveal key={service.id} delayMs={100 + renderIdx * 45} yOffset={20}>
-              <div
-                className={`group flex flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${palette.ring}`}
-                style={{ minHeight: '260px', borderRadius: '1.5rem' }}
-              >
-                {/* Faded number top-right */}
-                <div className="mb-1 flex justify-end">
-                  <span className={`text-5xl font-extrabold leading-none ${palette.numColor}`}>{num}</span>
-                </div>
-
-                {/* Icon + name */}
-                <div className="mb-3 flex items-center gap-2">
-                  <Stethoscope className={`size-5 shrink-0 ${palette.text}`} />
-                  <h3 className="text-sm font-extrabold leading-snug tracking-tight text-slate-950 transition-colors group-hover:text-orange-700">
-                    {service.name}
-                  </h3>
-                </div>
-
-                {/* Description */}
-                <p className="mb-4 flex-1 text-xs leading-relaxed text-slate-700">
-                  {service.description ?? 'Professional medical care tailored to your individual needs.'}
+          <ScrollReveal className="flex min-h-0 min-w-0 w-full flex-col" delayMs={60} yOffset={18}>
+            {services.length ? (
+              <ul className="list-none space-y-0 p-0" role="list">
+                {services.map((service, idx) => (
+                  <li key={service.id}>
+                    <ServicePricingRow
+                      name={service.name}
+                      description={
+                        service.description?.trim()
+                          ? service.description.trim()
+                          : 'Ask your clinician what this visit includes when you confirm your booking.'
+                      }
+                      isLast={idx === services.length - 1}
+                      priceLabel={`From ${formatCurrency(service.price)}`}
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="space-y-3">
+                <p className="font-sans text-[15px] leading-relaxed text-slate-600">
+                  We&apos;re updating the service list. Please call reception to ask about appointments and pricing
+                  {clinic.contactNumber ? (
+                    <>
+                      {' '}
+                      at{' '}
+                      <a className="font-semibold text-[var(--color-accent)] hover:underline" href={`tel:${clinic.contactNumber.replace(/\s+/g, '')}`}>
+                        {clinic.contactNumber}
+                      </a>
+                      .
+                    </>
+                  ) : (
+                    '.'
+                  )}
                 </p>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-                  <Link
-                    className="text-xs font-bold text-orange-600 underline-offset-2 transition-colors hover:underline"
-                    to={bookingEnabled ? (isAuthenticated ? '/portal/book' : '/portal/register') : '/portal'}
-                  >
-                    {bookingEnabled ? 'Make an appointment' : 'View portal'}
-                  </Link>
-                  <span className="text-xs font-extrabold text-slate-700">{formatCurrency(service.price)}</span>
-                </div>
               </div>
-            </ScrollReveal>
-          );
-        })}
+            )}
+
+            <div className="mt-10 sm:mt-11">
+              {bookingEnabled ? (
+                <Link className={primaryCtaClass} to={bookTo}>
+                  Book a visit
+                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} />
+                </Link>
+              ) : (
+                <Link className={primaryCtaClass} to="/portal">
+                  Open portal
+                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} />
+                </Link>
+              )}
+            </div>
+          </ScrollReveal>
+        </div>
       </div>
     </section>
   );
 }
-

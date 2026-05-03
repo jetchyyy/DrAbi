@@ -2,8 +2,9 @@ import {
   ArrowRight,
   ChevronDown,
   LogOut,
+  Mail,
   Menu,
-  Stethoscope,
+  Phone,
   UserRound,
   X,
 } from "lucide-react";
@@ -21,13 +22,11 @@ export function PublicLayout() {
   const { data: clinic = defaultClinicSettings } = useClinicSettingsData();
   const { profile, isAuthenticated, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isHeroNavFloating, setIsHeroNavFloating] = useState(true);
   const desktopMenuRef = useRef<HTMLDivElement | null>(null);
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const location = useLocation();
   const isPortalHome =
     location.pathname === "/portal" || location.pathname === "/portal/";
-  const useFloatingHomeHeader = isPortalHome && isHeroNavFloating;
 
   useEffect(() => {
     const handlePointerDownOutside = (event: PointerEvent) => {
@@ -50,47 +49,30 @@ export function PublicLayout() {
       window.removeEventListener("pointerdown", handlePointerDownOutside);
   }, [menuOpen]);
 
-  useEffect(() => {
-    if (!isPortalHome) {
-      setIsHeroNavFloating(false);
-      return;
-    }
-
-    const syncHeaderState = () => {
-      const heroSection = document.getElementById("portal-hero");
-      if (!heroSection) {
-        setIsHeroNavFloating(true);
-        return;
-      }
-
-      const heroBottom = heroSection.getBoundingClientRect().bottom;
-      setIsHeroNavFloating(heroBottom > 96);
-    };
-
-    syncHeaderState();
-    window.addEventListener("scroll", syncHeaderState, { passive: true });
-    window.addEventListener("resize", syncHeaderState);
-
-    return () => {
-      window.removeEventListener("scroll", syncHeaderState);
-      window.removeEventListener("resize", syncHeaderState);
-    };
-  }, [isPortalHome]);
-
   const visiblePortalNavigation = portalNavigation.filter(
     (item) =>
       !item.moduleKey || isModuleEnabled(item.moduleKey, clinic.enabledModules),
   );
 
+  const telHref = clinic.contactNumber
+    ? `tel:${clinic.contactNumber.replace(/\s+/g, "")}`
+    : "";
+
   return (
     <div
       className="min-h-screen flex flex-col font-sans"
-      style={{
-        backgroundColor: "#f9f7f4",
-        backgroundImage:
-          "radial-gradient(circle, #d4c9be 1.5px, transparent 1.5px)",
-        backgroundSize: "28px 28px",
-      }}
+      style={
+        isPortalHome
+          ? {
+              backgroundColor: '#ffffff',
+            }
+          : {
+              backgroundColor: '#f9f7f4',
+              backgroundImage:
+                'radial-gradient(circle, #d4c9be 1.5px, transparent 1.5px)',
+              backgroundSize: '28px 28px',
+            }
+      }
     >
       <header
         className={
@@ -101,43 +83,43 @@ export function PublicLayout() {
       >
         <div
           className={
-            useFloatingHomeHeader
-              ? "mx-3 mt-3 flex max-w-7xl items-center justify-between gap-3 rounded-full border border-white/50 bg-white px-4 py-3 shadow-lg shadow-slate-900/8 sm:mx-4 sm:mt-4 sm:px-5 sm:py-4 lg:mx-auto lg:mt-6 lg:px-8"
-              : isPortalHome
-                ? "mx-auto flex max-w-full items-center justify-between gap-3 border-b-2 border-slate-200 bg-white px-4 py-4 shadow-sm lg:px-8 lg:py-5"
-                : "mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 lg:px-8 lg:py-5"
+            isPortalHome
+              ? 'pointer-events-none w-full px-3 pt-3 sm:px-5 sm:pt-4 lg:px-8 lg:pt-5'
+              : 'contents'
           }
         >
+          <div
+            className={
+              isPortalHome
+                ? 'pointer-events-auto mx-auto flex w-full max-w-7xl items-center justify-between gap-4 rounded-[1.625rem] border border-white/45 bg-white/35 px-5 py-3 shadow-[0_26px_55px_-24px_rgba(15,50,105,0.18),inset_0_1px_0_rgba(255,255,255,0.52)] backdrop-blur-xl backdrop-saturate-150 sm:rounded-[2rem] sm:px-7 sm:py-3.5 xl:gap-8'
+                : 'mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 lg:px-8 lg:py-5'
+            }
+          >
           <Link
-            className="flex min-w-0 items-center gap-2.5 transition-opacity hover:opacity-90 sm:gap-3"
+            className="flex min-w-0 shrink-0 items-center transition-opacity hover:opacity-90"
             to="/portal"
           >
-            <div
-              className="bg-orange-600 p-2.5 text-white shadow-sm sm:p-3"
-              style={{
-                borderRadius: useFloatingHomeHeader ? "999px" : "0.75rem",
-              }}
-            >
-              <Stethoscope className="size-4 sm:size-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-[11px] font-extrabold tracking-tight text-slate-950 uppercase sm:text-sm">
-                {clinic.clinicName}
-              </p>
-              <p className="text-[10px] text-slate-500 uppercase tracking-[0.18em] font-semibold sm:text-xs">
-                Patient Portal
-              </p>
-            </div>
+            <img
+              src="/logo.png"
+              alt=""
+              width={248}
+              height={60}
+              decoding="async"
+              className="h-14 w-auto max-h-14 max-w-[220px] object-contain object-left sm:h-16 sm:max-w-[248px]"
+            />
+            <span className="sr-only">
+              {clinic.clinicName} patient portal — home
+            </span>
           </Link>
 
-          <nav className="hidden items-center gap-6 lg:flex">
-            {visiblePortalNavigation.map((item) => (
+          <nav className="hidden min-w-0 flex-1 items-center justify-center gap-5 lg:flex xl:gap-7">
+            {visiblePortalNavigation.map((item, navIndex) => (
               <NavLink
-                key={item.to}
+                key={`${item.to}::${item.label}::${navIndex}`}
                 className={({ isActive }) =>
                   `text-sm font-bold tracking-widest transition-all uppercase border-b-2 py-1 ${
                     isActive
-                      ? "border-orange-600 text-slate-950"
+                      ? "border-[var(--color-primary)] text-slate-950"
                       : "border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300"
                   }`
                 }
@@ -152,11 +134,15 @@ export function PublicLayout() {
             {isAuthenticated ? (
               <div className="relative" ref={desktopMenuRef}>
                 <button
-                  className="inline-flex items-center gap-2 rounded-none border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+                  className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold transition ${
+                    isPortalHome
+                      ? 'rounded-full border border-white/50 bg-white/25 text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-md hover:bg-white/40'
+                      : 'rounded-full border border-slate-200/90 bg-white text-slate-900 shadow-sm hover:bg-slate-50'
+                  }`}
                   onClick={() => setMenuOpen((value) => !value)}
                   type="button"
                 >
-                  <UserRound className="size-4 text-orange-600" />
+                  <UserRound className="size-4 text-[var(--color-primary)]" />
                   <span className="hidden md:inline">
                     {profile?.fullName ?? profile?.email ?? "Patient"}
                   </span>
@@ -164,7 +150,13 @@ export function PublicLayout() {
                 </button>
 
                 {menuOpen ? (
-                  <div className="absolute right-0 top-full z-50 mt-2 w-56 border border-slate-200 bg-white shadow-lg">
+                  <div
+                    className={`absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden shadow-lg ${
+                      isPortalHome
+                        ? 'rounded-2xl border border-white/50 bg-white/75 backdrop-blur-xl backdrop-saturate-150'
+                        : 'rounded-2xl border border-slate-200 bg-white'
+                    }`}
+                  >
                     <div className="border-b border-slate-100 px-4 py-3">
                       <p className="text-xs font-extrabold uppercase tracking-widest text-slate-400">
                         Patient account
@@ -176,13 +168,13 @@ export function PublicLayout() {
                     </div>
                     <div className="p-2">
                       <div className="border-b border-slate-100 pb-2 md:hidden">
-                        {visiblePortalNavigation.map((item) => (
+                        {visiblePortalNavigation.map((item, navIndex) => (
                           <NavLink
-                            key={item.to}
+                            key={`${item.to}::${item.label}::${navIndex}`}
                             className={({ isActive }) =>
                               `flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold transition ${
                                 isActive
-                                  ? "bg-orange-50 text-orange-700"
+                                  ? "bg-emerald-50 text-slate-900"
                                   : "text-slate-700 hover:bg-slate-50 hover:text-slate-950"
                               }`
                             }
@@ -198,7 +190,7 @@ export function PublicLayout() {
                         onClick={() => setMenuOpen(false)}
                         to="/portal/profile"
                       >
-                        <UserRound className="size-4 text-orange-600" />
+                        <UserRound className="size-4 text-[var(--color-primary)]" />
                         User profile
                       </Link>
                       <button
@@ -209,7 +201,7 @@ export function PublicLayout() {
                         }}
                         type="button"
                       >
-                        <LogOut className="size-4 text-orange-600" />
+                        <LogOut className="size-4 text-[var(--color-primary)]" />
                         Log out
                       </button>
                     </div>
@@ -220,8 +212,8 @@ export function PublicLayout() {
               <>
                 <Link
                   className={
-                    useFloatingHomeHeader
-                      ? "inline-flex items-center justify-center rounded-full bg-orange-600 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-white whitespace-nowrap shadow-sm shadow-orange-200/50 transition hover:bg-orange-700"
+                    isPortalHome
+                      ? "inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-slate-900 shadow-sm transition hover:bg-slate-50"
                       : "inline-flex items-center justify-center rounded-none bg-white px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-slate-900 ring-1 ring-slate-200 shadow-sm transition hover:bg-slate-50"
                   }
                   to="/login"
@@ -229,11 +221,9 @@ export function PublicLayout() {
                   Sign in
                 </Link>
                 <Link
-                  className={
-                    useFloatingHomeHeader
-                      ? "inline-flex items-center justify-center gap-2 rounded-full bg-orange-600 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-white whitespace-nowrap shadow-sm shadow-orange-200/50 transition hover:bg-orange-700"
-                      : "inline-flex items-center justify-center gap-2 rounded-none bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-white shadow-sm shadow-orange-200/50 transition hover:opacity-95"
-                  }
+                  className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-white shadow-sm shadow-green-900/10 transition hover:brightness-95 ${
+                    isPortalHome ? 'rounded-full bg-[var(--color-primary)]' : 'rounded-none bg-[var(--color-primary)]'
+                  }`}
                   to="/portal/register"
                 >
                   Register
@@ -252,9 +242,9 @@ export function PublicLayout() {
               aria-expanded={menuOpen}
             >
               {menuOpen ? (
-                <X className="size-5 text-orange-600" />
+                <X className="size-5 text-[var(--color-primary)]" />
               ) : (
-                <Menu className="size-5 text-orange-600" />
+                <Menu className="size-5 text-[var(--color-primary)]" />
               )}
             </button>
 
@@ -272,13 +262,13 @@ export function PublicLayout() {
                   </p>
                 </div>
                 <div className="p-2">
-                  {visiblePortalNavigation.map((item) => (
+                  {visiblePortalNavigation.map((item, navIndex) => (
                     <NavLink
-                      key={item.to}
+                      key={`${item.to}::${item.label}::${navIndex}`}
                       className={({ isActive }) =>
                         `flex w-full items-center rounded-2xl px-3 py-3 text-sm font-semibold transition ${
                           isActive
-                            ? "bg-orange-50 text-orange-700"
+                            ? "bg-emerald-50 text-slate-900"
                             : "text-slate-700 hover:bg-slate-50 hover:text-slate-950"
                         }`
                       }
@@ -297,7 +287,7 @@ export function PublicLayout() {
                         onClick={() => setMenuOpen(false)}
                         to="/portal/profile"
                       >
-                        <UserRound className="size-4 text-orange-600" />
+                        <UserRound className="size-4 text-[var(--color-primary)]" />
                         User profile
                       </Link>
                       <button
@@ -308,21 +298,21 @@ export function PublicLayout() {
                         }}
                         type="button"
                       >
-                        <LogOut className="size-4 text-orange-600" />
+                        <LogOut className="size-4 text-[var(--color-primary)]" />
                         Log out
                       </button>
                     </>
                   ) : (
                     <div className="flex gap-2">
                       <Link
-                        className="inline-flex flex-1 items-center justify-center rounded-full border border-orange-200 bg-white px-4 py-3 text-sm font-semibold uppercase tracking-wide text-slate-900 shadow-sm transition hover:bg-orange-50"
+                        className="inline-flex flex-1 items-center justify-center rounded-full border border-emerald-200/80 bg-white px-4 py-3 text-sm font-semibold uppercase tracking-wide text-slate-900 shadow-sm transition hover:bg-emerald-50/70"
                         onClick={() => setMenuOpen(false)}
                         to="/login"
                       >
                         Sign in
                       </Link>
                       <Link
-                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-orange-600 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-sm shadow-orange-200/50 transition hover:bg-orange-700"
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-sm shadow-green-900/10 transition hover:brightness-95"
                         onClick={() => setMenuOpen(false)}
                         to="/portal/register"
                       >
@@ -335,97 +325,145 @@ export function PublicLayout() {
               </div>
             ) : null}
           </div>
+          </div>
         </div>
       </header>
 
       <main
         className={
           isPortalHome
-            ? "flex-1"
+            ? "flex-1 w-full min-w-0"
             : "flex-1 w-full mx-auto max-w-7xl px-4 py-10 lg:px-8"
         }
       >
         <Outlet />
       </main>
 
-      <footer className="relative overflow-hidden border-t border-orange-100 bg-orange-50 py-14">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-orange-100/50" />
-          <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-orange-100/40" />
-        </div>
-        <div className="relative z-10 mx-auto max-w-7xl px-4 lg:px-8">
-          <div className="grid gap-10 md:grid-cols-[1fr_auto_auto]">
-
-            {/* Brand + tagline */}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-orange-600 p-2.5 text-white shadow-md">
-                  <Stethoscope className="size-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-extrabold uppercase tracking-widest text-slate-950">
-                    {clinic.clinicName}
-                  </p>
-                  {clinic.legalName && clinic.legalName !== clinic.clinicName ? (
-                    <p className="text-[10px] font-medium text-slate-400">{clinic.legalName}</p>
-                  ) : null}
-                </div>
+      <footer className="w-full min-w-0 shrink-0 border-t border-slate-200 bg-white text-slate-900">
+        {/*
+          Match #portal-hero horizontal inset (portal-section-shell PORTAL_SECTION_PX).
+          Inlined here so utilities are traced in this file; w-full avoids any shrinkwrapping.
+        */}
+        <div className="w-full max-w-none px-5 sm:px-8 lg:px-11 xl:px-14 2xl:px-20">
+          {/* Top: brand + intro row; contact aligns with description (same row on large screens) */}
+          <div className="py-12">
+            <div className="flex min-w-0 flex-col gap-6 sm:gap-7">
+              <Link className="inline-flex w-fit shrink-0 items-center" to="/portal">
+                <img
+                  src="/logo.png"
+                  alt=""
+                  width={400}
+                  height={97}
+                  decoding="async"
+                  className="h-20 w-auto max-w-[min(100%,22rem)] object-contain object-left sm:h-28 sm:max-w-none lg:h-32 xl:h-36"
+                />
+                <span className="sr-only">{clinic.clinicName} — home</span>
+              </Link>
+              <div className="grid min-w-0 gap-8 lg:grid-cols-2 lg:items-start lg:gap-x-16 xl:gap-x-24">
+                <p className="max-w-2xl text-[0.9375rem] leading-[1.65] text-slate-600 sm:max-w-none sm:text-[0.9625rem] lg:max-w-[44rem]">
+                  <span className="font-semibold text-slate-900">{clinic.clinicName}</span>
+                  {' '}
+                  {clinic.legalName && clinic.legalName !== clinic.clinicName ? `${clinic.legalName} ` : ''}
+                  offers patient scheduling, consultations, and medical records through this portal, with
+                  care anchored in clarity and trust.
+                </p>
+                {(clinic.contactNumber || clinic.email) ?
+                  <div className="min-w-0 text-right lg:justify-self-end">
+                    <div className="space-y-2 text-[0.9375rem] leading-[1.65] text-slate-600">
+                      {clinic.contactNumber && telHref ?
+                        <p className="flex items-center justify-end gap-2.5">
+                          <Phone aria-hidden className="size-4 shrink-0 text-slate-500" strokeWidth={2} />
+                          <a className="min-w-0 hover:underline" href={telHref}>
+                            {clinic.contactNumber}
+                          </a>
+                        </p>
+                      : null}
+                      {clinic.email ?
+                        <p className="flex items-center justify-end gap-2.5">
+                          <Mail aria-hidden className="size-4 shrink-0 text-slate-500" strokeWidth={2} />
+                          <a className="min-w-0 break-all hover:underline" href={`mailto:${clinic.email}`}>
+                            {clinic.email}
+                          </a>
+                        </p>
+                      : null}
+                    </div>
+                  </div>
+                : null}
               </div>
-              <p className="max-w-xs text-xs leading-relaxed text-slate-400">
-                Providing quality healthcare services to our community with
-                compassion and excellence.
-              </p>
-            </div>
-
-            {/* Contact info */}
-            <div className="flex flex-col gap-2">
-              <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Contact</p>
-              {clinic.address ? (
-                <p className="text-xs text-slate-500">{clinic.address}</p>
-              ) : null}
-              {clinic.contactNumber ? (
-                <a href={`tel:${clinic.contactNumber}`} className="text-xs font-semibold text-slate-600 transition hover:text-orange-600">
-                  {clinic.contactNumber}
-                </a>
-              ) : null}
-              {clinic.email ? (
-                <a href={`mailto:${clinic.email}`} className="text-xs font-semibold text-slate-600 transition hover:text-orange-600">
-                  {clinic.email}
-                </a>
-              ) : null}
-              {clinic.website ? (
-                <a href={clinic.website} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-slate-600 transition hover:text-orange-600">
-                  {clinic.website.replace(/^https?:\/\//, '')}
-                </a>
-              ) : null}
-            </div>
-
-            {/* Nav links */}
-            <div className="flex flex-col gap-2">
-              <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Navigation</p>
-              {visiblePortalNavigation.map((item) => (
-                <NavLink
-                  key={item.to}
-                  className={({ isActive }) =>
-                    `text-xs font-bold uppercase tracking-widest transition-colors ${
-                      isActive
-                        ? "text-orange-600"
-                        : "text-slate-500 hover:text-orange-600"
-                    }`
-                  }
-                  to={item.to}
-                >
-                  {item.label}
-                </NavLink>
-              ))}
             </div>
           </div>
 
-          <div className="mt-10 flex items-center justify-center border-t border-orange-200/60 pt-6">
-            <p className="text-xs font-medium text-slate-400">
-              &copy; {new Date().getFullYear()} {clinic.clinicName}. All rights
-              reserved.
+          <div className="border-t border-slate-200" />
+
+          {/* Middle: horizontal nav row */}
+          <nav
+            aria-label="Footer"
+            className="flex flex-col gap-4 py-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6 sm:gap-y-3 lg:gap-x-10"
+          >
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-x-8 lg:gap-x-10">
+              <NavLink
+                className={({ isActive }) =>
+                  `text-sm font-medium transition-colors ${
+                    isActive ? "text-[var(--color-accent)]" : "text-slate-900 hover:text-[var(--color-accent)]"
+                  }`
+                }
+                end
+                to="/portal"
+              >
+                Home
+              </NavLink>
+              {visiblePortalNavigation
+                .filter((item) => item.to !== "/portal")
+                .map((item, navIndex) => (
+                  <NavLink
+                    key={`${item.to}::foot::${navIndex}`}
+                    className={({ isActive }) =>
+                      `text-sm font-medium transition-colors ${
+                        isActive ? "text-[var(--color-accent)]" : "text-slate-900 hover:text-[var(--color-accent)]"
+                      }`
+                    }
+                    to={item.to}
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:justify-end sm:gap-x-8 lg:gap-x-10">
+              <a
+                className="text-sm font-medium text-slate-400 transition hover:text-slate-600"
+                href="#"
+                onClick={(e) => e.preventDefault()}
+              >
+                Terms
+              </a>
+              <a
+                className="text-sm font-medium text-slate-400 transition hover:text-slate-600"
+                href="#"
+                onClick={(e) => e.preventDefault()}
+              >
+                Privacy
+              </a>
+            </div>
+          </nav>
+
+          <div className="border-t border-slate-200" />
+
+          {/* Disclaimer + bottom line */}
+          <div className="space-y-6 py-8">
+            <p className="text-[0.8125rem] leading-relaxed text-slate-500 sm:text-[0.84375rem]">
+              This site is for information and appointment management at {clinic.clinicName}. It does
+              not replace professional medical advice, diagnosis, or treatment. In an emergency, contact
+              local emergency services. Use of this portal is subject to clinic policies and applicable
+              law. Content may change without notice.
             </p>
+            <div className="flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[0.8125rem] text-slate-500">
+                &copy; {new Date().getFullYear()} {clinic.clinicName}. All rights reserved.
+              </p>
+              <p className="text-[0.8125rem] text-slate-500">
+                Powered and Designed by Odyssey Solutions
+              </p>
+            </div>
           </div>
         </div>
       </footer>

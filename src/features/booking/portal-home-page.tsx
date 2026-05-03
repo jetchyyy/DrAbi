@@ -6,10 +6,13 @@ import { HeroSection } from './sections/hero-section';
 import { HowItWorksSection } from './sections/how-it-works-section';
 import { ServicesSection } from './sections/services-section';
 
+/** Set true to show meet-the-team (`DoctorsSection`) on portal home again. */
+const portalHomeShowMeetTheTeamSection = false;
+
 export function PortalHomePage() {
   return (
     <div className="pb-0">
-      <ScrollReveal yOffset={24}>
+      <ScrollReveal yOffset={24} className="w-full">
         <HeroSection />
       </ScrollReveal>
       <div className="w-full space-y-0 py-0">
@@ -22,9 +25,11 @@ export function PortalHomePage() {
         <ScrollReveal delayMs={140}>
           <FeaturesSection />
         </ScrollReveal>
-        <ScrollReveal delayMs={180}>
-          <DoctorsSection />
-        </ScrollReveal>
+        {portalHomeShowMeetTheTeamSection ? (
+          <ScrollReveal delayMs={180}>
+            <DoctorsSection />
+          </ScrollReveal>
+        ) : null}
         <ScrollReveal delayMs={260}>
           <FaqSection />
         </ScrollReveal>

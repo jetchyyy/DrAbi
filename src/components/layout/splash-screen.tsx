@@ -1,6 +1,6 @@
 function hexToRgb(hex: string): string {
   const clean = hex.replace('#', '');
-  if (clean.length !== 6) return '234 88 12'; // fallback orange
+  if (clean.length !== 6) return '125 212 83'; // fallback CPR primary
   const n = parseInt(clean, 16);
   return `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`;
 }
@@ -10,7 +10,7 @@ interface SplashScreenProps {
   primaryColor?: string;
 }
 
-export function SplashScreen({ clinicName, primaryColor = '#ea580c' }: SplashScreenProps) {
+export function SplashScreen({ clinicName, primaryColor = '#7dd453' }: SplashScreenProps) {
   const rgb = hexToRgb(primaryColor);
   const [r, g, b] = rgb.split(' ');
 
@@ -28,7 +28,7 @@ export function SplashScreen({ clinicName, primaryColor = '#ea580c' }: SplashScr
       <div className="splash-screen__glow splash-screen__glow--two" aria-hidden="true" />
 
       <div className="splash-screen__card">
-        <p className="splash-screen__eyebrow">Odyssey Clinic System</p>
+        <p className="splash-screen__eyebrow">CPR Med</p>
         <h1 className="splash-screen__title">{clinicName}</h1>
         <p className="splash-screen__subtitle">
           Preparing patient records, schedules, and secure access...
