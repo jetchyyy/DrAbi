@@ -1146,7 +1146,7 @@ export function createInvoice(
 export function updateInvoiceRecord(
   invoiceId: string,
   invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>,
-  item: Omit<InvoiceItem, 'id' | 'createdAt' | 'updatedAt' | 'invoiceId'>,
+  items: Array<Omit<InvoiceItem, 'id' | 'createdAt' | 'updatedAt' | 'invoiceId'>>,
 ) {
   const timestamp = new Date().toISOString();
 
@@ -1160,24 +1160,16 @@ export function updateInvoiceRecord(
       updatedAt: timestamp,
     });
 
-    const existingItems = draft.invoiceItems.filter((entry) => entry.invoiceId === invoiceId);
-    if (existingItems.length > 0) {
-      Object.assign(existingItems[0], item, {
-        updatedAt: timestamp,
-      });
-      if (existingItems.length > 1) {
-        const [firstItem] = existingItems;
-        draft.invoiceItems = draft.invoiceItems.filter((entry) => entry.invoiceId !== invoiceId || entry.id === firstItem.id);
-      }
-    } else {
-      draft.invoiceItems.unshift({
+    draft.invoiceItems = draft.invoiceItems.filter((entry) => entry.invoiceId !== invoiceId);
+    draft.invoiceItems.unshift(
+      ...items.map((item) => ({
         ...item,
         id: generateId('inv_item'),
         invoiceId,
         createdAt: timestamp,
         updatedAt: timestamp,
-      });
-    }
+      })),
+    );
   }).invoices.find((entry) => entry.id === invoiceId) ?? null;
 }
 

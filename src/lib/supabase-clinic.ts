@@ -1401,11 +1401,11 @@ export async function createInvoiceLiveOrDemo(
 export async function updateInvoiceLiveOrDemo(
   invoiceId: string,
   invoice: Omit<Invoice, "id" | "createdAt" | "updatedAt">,
-  item: Omit<InvoiceItem, "id" | "createdAt" | "updatedAt" | "invoiceId">,
+  items: Array<Omit<InvoiceItem, "id" | "createdAt" | "updatedAt" | "invoiceId">>,
 ) {
   if (!isSupabaseConfigured) {
     const { updateInvoiceRecord } = await import("./local-db");
-    return updateInvoiceRecord(invoiceId, invoice, item);
+    return updateInvoiceRecord(invoiceId, invoice, items);
   }
 
   const client = requireSupabase();
@@ -1429,56 +1429,25 @@ export async function updateInvoiceLiveOrDemo(
     throw error;
   }
 
-  const { data: existingItems, error: existingItemsError } = await client
+  const { error: deleteItemsError } = await client
     .from("invoice_items")
-    .select("id")
-    .eq("invoice_id", invoiceId)
-    .order("created_at", { ascending: true });
+    .delete()
+    .eq("invoice_id", invoiceId);
 
-  if (existingItemsError) {
-    throw existingItemsError;
+  if (deleteItemsError) {
+    throw deleteItemsError;
   }
 
-  const primaryItemId =
-    ((existingItems ?? []) as Array<{ id: string }>)[0]?.id ?? null;
-
-  if (primaryItemId) {
-    const { error: itemError } = await client
-      .from("invoice_items")
-      .update({
+  if (items.length > 0) {
+    const { error: itemError } = await client.from("invoice_items").insert(
+      items.map((item) => ({
+        invoice_id: invoiceId,
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unitPrice,
         category: item.category,
-      } as never)
-      .eq("id", primaryItemId);
-
-    if (itemError) {
-      throw itemError;
-    }
-
-    const extraItemIds = ((existingItems ?? []) as Array<{ id: string }>)
-      .slice(1)
-      .map((existingItem) => existingItem.id);
-
-    if (extraItemIds.length > 0) {
-      const { error: deleteExtraItemsError } = await client
-        .from("invoice_items")
-        .delete()
-        .in("id", extraItemIds);
-
-      if (deleteExtraItemsError) {
-        throw deleteExtraItemsError;
-      }
-    }
-  } else {
-    const { error: itemError } = await client.from("invoice_items").insert({
-      invoice_id: invoiceId,
-      description: item.description,
-      quantity: item.quantity,
-      unit_price: item.unitPrice,
-      category: item.category,
-    } as never);
+      })) as never,
+    );
 
     if (itemError) {
       throw itemError;
