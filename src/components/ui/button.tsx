@@ -17,7 +17,7 @@ export function Button({
 }: PropsWithChildren<ButtonProps>) {
   const variants: Record<ButtonVariant, string> = {
     primary:
-      'bg-[var(--color-primary)] text-white shadow-sm shadow-orange-200/50 hover:opacity-95',
+      'bg-[var(--color-primary)] text-white shadow-sm shadow-[0_1px_2px_rgba(15,23,42,0.06)] hover:opacity-95',
     secondary:
       'bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-slate-50 shadow-sm',
     ghost: 'bg-transparent text-slate-700 hover:bg-slate-100',

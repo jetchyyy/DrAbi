@@ -17,22 +17,24 @@ export default {
           900: '#172937', 
           950: '#0e1821'
         },
+        /* Secondary / info accent — CPR Med blue (replaces mistaken orange-as-blue mapping) */
         blue: {
-          50: '#fff7ed',
-          100: '#ffedd5',
-          200: '#fed7aa',
-          300: '#fdba74',
-          400: '#fb923c',
-          500: '#f97316',
-          600: '#ea580c',
-          700: '#c2410c',
-          800: '#9a3412',
-          900: '#7c2d12',
-          950: '#431407'
+          50: '#eff9ff',
+          100: '#dff3fd',
+          200: '#b8e8fb',
+          300: '#7dd4f7',
+          400: '#47c0f4',
+          500: '#34b2f9',
+          600: '#1d9ad9',
+          700: '#177bb3',
+          800: '#156293',
+          900: '#15527a',
+          950: '#0f3d5c'
         }
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'],
+        display: ['"Source Serif 4"', 'Georgia', 'serif'],
       },
       borderRadius: {
         'none': '0',

@@ -1,17 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,600;0,8..60,700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --color-primary: #ea580c;
-  --color-accent: #f97316;
+  --color-primary: #7dd453;
+  --color-accent: #34b2f9;
   --color-canvas: #ffffff;
   --color-surface: #ffffff;
-  --color-ink: #172937;
+  --color-ink: #0f172a;
   --color-muted: #5582a8;
-  --font-sans: 'Manrope', 'Segoe UI', sans-serif;
-  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Source Serif 4', Georgia, 'Times New Roman', serif;
 }
 
 * {
@@ -43,7 +43,7 @@ h3,
 h4 {
   margin: 0;
   font-family: var(--font-display);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
 
 p {
@@ -167,7 +167,7 @@ textarea {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #ea580c;
+  background: var(--color-primary);
   animation: typingBounce 1.2s ease-in-out infinite;
 }
 
@@ -397,9 +397,9 @@ textarea {
   overflow: hidden;
   padding: 24px;
   background:
-    radial-gradient(circle at 20% 20%, rgba(var(--splash-r), var(--splash-g), var(--splash-b), 0.22) 0%, transparent 40%),
-    radial-gradient(circle at 80% 0%, rgba(7, 89, 133, 0.18) 0%, transparent 35%),
-    linear-gradient(140deg, #fffaf3 0%, #fff 42%, #f8fbff 100%);
+    radial-gradient(circle at 20% 20%, rgba(var(--splash-r), var(--splash-g), var(--splash-b), 0.2) 0%, transparent 42%),
+    radial-gradient(circle at 82% 8%, rgba(52, 178, 249, 0.12) 0%, transparent 38%),
+    linear-gradient(140deg, #f8fdf6 0%, #ffffff 45%, #f5faff 100%);
 }
 
 .splash-screen__glow {
@@ -447,7 +447,7 @@ textarea {
   text-transform: uppercase;
   font-size: 0.76rem;
   font-weight: 700;
-  color: #0c4a6e;
+  color: #0369a1;
 }
 
 .splash-screen__title {
