@@ -32,6 +32,7 @@ import {
   useDeleteInvoice,
   usePayForService,
   useUpdatePayment,
+  usePaymentsForInvoice,
 } from './api/billing-mutations';
 
 import {
@@ -99,6 +100,8 @@ export function BillingPage() {
   const payForServiceMutation = usePayForService();
 
   const updatePaymentMutation = useUpdatePayment();
+
+  const { data: paymentsForViewedInvoice = [] } = usePaymentsForInvoice(invoiceViewState.invoiceId || '');
 
   const form = useForm<BillingFormValues>({
     resolver: zodResolver(billingSchema),
@@ -1050,6 +1053,38 @@ export function BillingPage() {
                 </div>
               </div>
 
+              {paymentsForViewedInvoice.length > 0 && (
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Payment Details</p>
+                  {paymentsForViewedInvoice.map((payment) => {
+                    const methodDisplayMap: Record<string, string> = {
+                      cash: 'Cash',
+                      gcash: 'GCash',
+                      bank_transfer: 'Bank Transfer',
+                      other: 'Other',
+                    };
+                    const displayMethod = methodDisplayMap[payment.method] || payment.method;
+
+                    return (
+                      <div key={payment.id} className="mt-3 grid gap-4 md:grid-cols-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Method</p>
+                          <p className="mt-1 font-semibold text-slate-950">{displayMethod}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Amount</p>
+                          <p className="mt-1 font-semibold text-slate-950">{formatCurrency(payment.amount)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Reference Number</p>
+                          <p className="mt-1 font-semibold text-slate-950">{payment.referenceNumber || 'N/A'}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Line Item</p>
                 {viewedInvoiceItem ? (
@@ -1114,6 +1149,7 @@ export function BillingPage() {
               invoiceId: updatingPaymentInvoiceId,
               paymentType,
               referenceNumber,
+              profile,
             });
           }
         }}

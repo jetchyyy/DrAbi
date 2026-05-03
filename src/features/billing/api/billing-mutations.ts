@@ -12,9 +12,27 @@ import {
   listPatientsLiveOrDemo,
   updateInvoiceLiveOrDemo,
 } from '../../../lib/supabase-clinic';
-import type { Invoice, InvoiceItem } from '../../../types/domain';
+import type { Invoice, InvoiceItem, Payment } from '../../../types/domain';
 import type { LabRequestRecord } from '../../lab-requests/types';
 import type { BillingFormValues, LabServiceOption, PayForServiceFormValues } from '../types/forms';
+
+// Helper function to generate invoice number in format INV-YYYY-MM-NNNN
+function generateInvoiceNumber(existingInvoices: Invoice[]): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const yearMonth = `${year}-${month}`;
+  
+  // Count invoices from the current month
+  const currentMonthInvoices = existingInvoices.filter((inv) => 
+    inv.invoiceNumber.startsWith(`INV-${yearMonth}`)
+  );
+  
+  // Generate sequential number (001, 002, etc.)
+  const sequence = String(currentMonthInvoices.length + 1).padStart(4, '0');
+  
+  return `INV-${yearMonth}-${sequence}`;
+}
 
 export function usePatients() {
   return useQuery({
@@ -41,6 +59,39 @@ export function useInvoiceItems() {
   return useQuery({
     queryKey: queryKeys.invoiceItems,
     queryFn: async () => listInvoiceItemsLiveOrDemo(),
+  });
+}
+
+export function usePaymentsForInvoice(invoiceId: string) {
+  return useQuery({
+    queryKey: ['payments', invoiceId],
+    queryFn: async () => {
+      if (!isSupabaseConfigured || !supabase) {
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('invoice_id', invoiceId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      return (data ?? []).map((payment: any) => ({
+        id: payment.id,
+        invoiceId: payment.invoice_id,
+        amount: Number(payment.amount),
+        method: payment.method,
+        referenceNumber: payment.reference_number,
+        receivedBy: payment.received_by,
+        createdAt: payment.created_at,
+        updatedAt: payment.updated_at,
+      })) satisfies Payment[];
+    },
+    enabled: !!invoiceId && isSupabaseConfigured,
   });
 }
 
@@ -99,11 +150,16 @@ export function useCreateInvoice() {
     mutationFn: async ({ values, bookings }: { values: BillingFormValues; bookings: any[] }) => {
       const total = values.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
       const taggedBooking = bookings.find((booking) => booking.id === values.bookingId) ?? null;
+      
+      // Get existing invoices to generate sequential invoice number
+      const existingInvoices = queryClient.getQueryData<Invoice[]>(queryKeys.invoices) ?? [];
+      const invoiceNumber = generateInvoiceNumber(existingInvoices);
+      
       return createInvoiceLiveOrDemo(
         {
           patientId: values.patientId,
           appointmentId: taggedBooking?.appointmentId ?? null,
-          invoiceNumber: `INV-${Date.now()}`,
+          invoiceNumber,
           paymentStatus: 'unpaid',
           subtotal: total,
           total,
@@ -130,12 +186,16 @@ export function useUpdateInvoice() {
     mutationFn: async ({ invoiceId, values, bookings, invoices }: { invoiceId: string; values: BillingFormValues; bookings: any[]; invoices: Invoice[] }) => {
       const total = values.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
       const taggedBooking = bookings.find((booking) => booking.id === values.bookingId) ?? null;
+      
+      // Keep existing invoice number or generate new one
+      const invoiceNumber = invoices.find((invoice) => invoice.id === invoiceId)?.invoiceNumber ?? generateInvoiceNumber(invoices);
+      
       return updateInvoiceLiveOrDemo(
         invoiceId,
         {
           patientId: values.patientId,
           appointmentId: taggedBooking?.appointmentId ?? null,
-          invoiceNumber: invoices.find((invoice) => invoice.id === invoiceId)?.invoiceNumber ?? `INV-${Date.now()}`,
+          invoiceNumber,
           paymentStatus: 'unpaid',
           subtotal: total,
           total,
@@ -190,11 +250,15 @@ export function usePayForService() {
       let createdInvoice: Invoice | null = null;
 
       try {
+        // Get existing invoices to generate sequential invoice number
+        const existingInvoices = queryClient.getQueryData<Invoice[]>(queryKeys.invoices) ?? [];
+        const invoiceNumber = generateInvoiceNumber(existingInvoices);
+
         createdInvoice = await createInvoiceLiveOrDemo(
           {
             patientId: values.patientId,
             appointmentId: null,
-            invoiceNumber: `INV-LAB-${Date.now()}`,
+            invoiceNumber,
             paymentStatus: 'paid',
             subtotal: amount,
             total: amount,
@@ -302,7 +366,12 @@ export function useUpdatePayment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ invoiceId, paymentType: _paymentType, referenceNumber: _referenceNumber }: { invoiceId: string; paymentType: string; referenceNumber: string }) => {
+    mutationFn: async ({ invoiceId, paymentType, referenceNumber, profile }: { 
+      invoiceId: string; 
+      paymentType: string; 
+      referenceNumber?: string;
+      profile: any;
+    }) => {
       // Get current invoice data
       const invoices = queryClient.getQueryData<Invoice[]>(queryKeys.invoices) ?? [];
       const invoiceItems = queryClient.getQueryData<InvoiceItem[]>(queryKeys.invoiceItems) ?? [];
@@ -327,7 +396,28 @@ export function useUpdatePayment() {
         unitPrice: item.unitPrice,
       }));
 
-      return updateInvoiceLiveOrDemo(invoiceId, updatedInvoice, updatedItems);
+      // Update the invoice status
+      await updateInvoiceLiveOrDemo(invoiceId, updatedInvoice, updatedItems);
+
+      // Create payment record if Supabase is configured
+      if (isSupabaseConfigured && supabase) {
+        const { error: paymentError } = await (supabase
+          .from('payments') as any)
+          .insert({
+            invoice_id: invoiceId,
+            amount: currentInvoice.total,
+            method: paymentType,
+            reference_number: referenceNumber || null,
+            received_by: profile?.id || null,
+          });
+
+        if (paymentError) {
+          console.error('Failed to create payment record:', paymentError);
+          // Don't throw here - invoice is already updated
+        }
+      }
+
+      return updatedInvoice;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
