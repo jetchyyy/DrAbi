@@ -1933,12 +1933,9 @@ export async function updateClinicSettingsLiveOrDemo(
   if (input.operatingHours !== undefined)
     payload.operating_hours = input.operatingHours;
 
-  type ClinicSettingsUpdate =
-    Database["public"]["Tables"]["clinic_settings"]["Update"];
-
   const { data, error } = await client
     .from("clinic_settings")
-    .update(payload)
+    .update(payload as Database["public"]["Tables"]["clinic_settings"]["Update"])
     .eq("id", existing.id)
     .select("*")
     .single();
