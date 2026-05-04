@@ -147,6 +147,7 @@ export interface AdminCreateUserInput {
   password: string;
   role: Exclude<Role, "patient">;
   permissions?: Permission[];
+  title?: string;
   prcLicenseNumber?: string;
   prcLicenseExpiry?: string;
   birNumber?: string;

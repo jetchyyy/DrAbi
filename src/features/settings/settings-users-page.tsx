@@ -36,6 +36,7 @@ const userSchema = z
     lastName: z.string().trim().min(1, 'Last name is required.'),
     contactNumber: z.string().trim().min(1, 'Contact number is required.'),
     email: z.string().email('Enter a valid email address.'),
+    title: z.string().optional(),
     password: z.string().optional(),
     confirmPassword: z.string().optional(),
     accessRoleId: z.string().min(1, 'Select an access role.'),
@@ -124,6 +125,7 @@ function buildCreateUserInput(values: UserFormValues, accessRole: AccessRoleTemp
     password: values.password ?? '',
     role: values.staffRole,
     permissions: accessRole.permissions,
+    title: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.title?.trim() ?? '' : undefined,
     prcLicenseNumber: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.prcLicenseNumber?.trim() ?? '' : undefined,
     prcLicenseExpiry: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.prcLicenseExpiry?.trim() ?? '' : undefined,
     birNumber: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.birNumber?.trim() ?? '' : undefined,
@@ -165,6 +167,7 @@ export function SettingsUsersPage() {
         email: values.email.trim().toLowerCase(),
         role: values.staffRole,
         permissions: accessRole.permissions,
+        title: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.title?.trim() ?? '' : null,
         prcLicenseNumber: values.prcLicenseNumber?.trim(),
         prcLicenseExpiry: values.prcLicenseExpiry?.trim(),
         birNumber: values.birNumber?.trim(),
@@ -199,6 +202,7 @@ export function SettingsUsersPage() {
       lastName: '',
       contactNumber: '',
       email: '',
+      title: '',
       password: '',
       confirmPassword: '',
       accessRoleId: '',
@@ -256,6 +260,7 @@ export function SettingsUsersPage() {
       lastName: '',
       contactNumber: '',
       email: '',
+      title: '',
       password: '',
       confirmPassword: '',
       accessRoleId: accessRoles[0]?.id ?? '',
@@ -282,6 +287,7 @@ export function SettingsUsersPage() {
       lastName,
       contactNumber: user.phone ?? '',
       email: user.email,
+      title: user.title ?? '',
       password: '',
       confirmPassword: '',
       accessRoleId: matchingAccessRole?.id ?? '',
@@ -565,6 +571,9 @@ export function SettingsUsersPage() {
                 {isDoctorRole ? (
                   <div className="space-y-4 rounded-2xl border border-orange-200 bg-orange-50/50 p-4">
                     <p className="text-sm font-semibold text-orange-900">Provider account fields</p>
+                    <FormField hint="Example: MD, FPCS, DPBO" label="Post-nominals">
+                      <Input placeholder="MD" {...form.register('title')} />
+                    </FormField>
                     {!isEditing ? (
                       <>
                         <div className="grid gap-4 md:grid-cols-2">

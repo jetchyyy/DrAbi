@@ -34,6 +34,7 @@ interface CreateUserPayload {
   email?: string;
   password?: string;
   role?: string;
+  title?: string;
   prcLicenseNumber?: string;
   prcLicenseExpiry?: string;
   birNumber?: string;
@@ -145,6 +146,7 @@ function validatePayload(body: CreateUserPayload) {
     email,
     password,
     role,
+    title: body.title?.trim() ?? '',
     prcLicenseNumber: body.prcLicenseNumber?.trim() ?? '',
     prcLicenseExpiry: body.prcLicenseExpiry?.trim() ?? '',
     birNumber: body.birNumber?.trim() ?? '',
@@ -238,6 +240,7 @@ Deno.serve(async (request) => {
           phone: payload.contactNumber,
           first_name: payload.firstName,
           last_name: payload.lastName,
+          title: payload.title || null,
         },
       });
 
@@ -254,7 +257,7 @@ Deno.serve(async (request) => {
           full_name: fullName,
           phone: payload.contactNumber,
           role: payload.role,
-          title: null,
+          title: payload.title || null,
           is_active: true,
         },
         { onConflict: 'id' },
