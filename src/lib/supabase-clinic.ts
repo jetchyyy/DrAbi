@@ -65,6 +65,7 @@ export interface DoctorDirectoryItem {
   id: string;
   profileId: string;
   fullName: string;
+  title?: string | null;
   role: Role;
   specialtyId: string | null;
   specialtyName: string | null;
@@ -2166,6 +2167,7 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
         id: user.id,
         profileId: user.id,
         fullName: user.fullName,
+        title: user.title ?? null,
         role: user.role,
         specialtyId: user.specialtyId ?? null,
         specialtyName:
@@ -2184,7 +2186,7 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
   const { data, error } = await client
     .from("doctors")
     .select(
-      "id, profile_id, specialty_id, license_number, bir_number, ptr_number, consultation_fee, follow_up_fee, profiles!inner(full_name, role, is_active), specialties(name)",
+      "id, profile_id, specialty_id, license_number, bir_number, ptr_number, consultation_fee, follow_up_fee, profiles!inner(full_name, role, is_active, title), specialties(name)",
     )
     .is("deleted_at", null)
     .order("created_at");
@@ -2204,8 +2206,18 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
       consultation_fee: number;
       follow_up_fee: number;
       profiles:
-        | { full_name: string; role: string; is_active: boolean | null }
-        | { full_name: string; role: string; is_active: boolean | null }[];
+        | {
+            full_name: string;
+            role: string;
+            is_active: boolean | null;
+            title: string | null;
+          }
+        | {
+            full_name: string;
+            role: string;
+            is_active: boolean | null;
+            title: string | null;
+          }[];
       specialties: { name: string } | { name: string }[] | null;
     }>
   )
@@ -2228,6 +2240,7 @@ export async function getDoctorDirectoryLiveOrDemo(): Promise<
         id: row.id,
         profileId: row.profile_id,
         fullName: profile?.full_name ?? "Doctor",
+        title: profile?.title ?? null,
         role: mapRole(profile?.role),
         specialtyId: row.specialty_id,
         specialtyName: Array.isArray(row.specialties)
@@ -2253,6 +2266,7 @@ export async function getGeneralistDirectoryLiveOrDemo(): Promise<
         id: user.id,
         profileId: user.id,
         fullName: user.fullName,
+        title: user.title ?? null,
         role: user.role,
         specialtyId: user.specialtyId ?? null,
         specialtyName:
@@ -3605,7 +3619,10 @@ export async function createAdminUserLiveOrDemo(input: AdminCreateUserInput) {
       fullName,
       role: input.role,
       phone: input.contactNumber,
-      title: null,
+      title:
+        input.role === "doctor" || input.role === "specialist"
+          ? (input.title?.trim() || null)
+          : null,
       specialtyId: null,
       consultationFee:
         input.role === "doctor" || input.role === "specialist"
@@ -3628,6 +3645,7 @@ export async function createAdminUserLiveOrDemo(input: AdminCreateUserInput) {
   };
 
   if (input.role === "doctor" || input.role === "specialist") {
+    payload.title = input.title?.trim() ?? "";
     payload.prcLicenseNumber = input.prcLicenseNumber?.trim() ?? "";
     payload.prcLicenseExpiry = input.prcLicenseExpiry?.trim() ?? "";
     payload.birNumber = input.birNumber?.trim() ?? "";
@@ -3677,6 +3695,7 @@ export interface AdminUpdateUserInput {
   email: string;
   role: Exclude<Role, "patient">;
   permissions?: AdminCreateUserInput["permissions"];
+  title?: string | null;
   prcLicenseNumber?: string;
   prcLicenseExpiry?: string;
   birNumber?: string;
@@ -3699,7 +3718,10 @@ export async function updateAdminUserLiveOrDemo(
       role: input.role,
       permissions: input.permissions,
       phone: input.contactNumber.trim(),
-      title: null,
+      title:
+        input.role === "doctor" || input.role === "specialist"
+          ? (input.title?.trim() || null)
+          : null,
       specialtyId: null,
       consultationFee:
         input.role === "doctor" || input.role === "specialist"
@@ -3735,6 +3757,10 @@ export async function updateAdminUserLiveOrDemo(
     .update({
       full_name: fullName,
       phone: input.contactNumber.trim() || null,
+      title:
+        input.role === "doctor" || input.role === "specialist"
+          ? (input.title?.trim() || null)
+          : null,
     } as never)
     .eq("id", userId);
 

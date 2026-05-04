@@ -48,7 +48,112 @@ function toDisplayDate(value: string) {
   }).format(date);
 }
 
+const MEDS_PER_PAGE = 7;
+
 export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentInput) {
+  const meds = input.medications ?? [];
+
+  // Chunk medications into pages of 10
+  const chunks: MedicationItem[][] = [];
+  for (let i = 0; i < meds.length; i += MEDS_PER_PAGE) {
+    chunks.push(meds.slice(i, i + MEDS_PER_PAGE));
+  }
+  if (chunks.length === 0) chunks.push([]);
+
+  const headerHtml = `
+      <section class="header">
+        <div class="header-logo-col">
+          <img class="logo" src="/cprmedlogotansparent.png" alt="Clinic logo" />
+        </div>
+        <div class="header-center-col clinic-center">
+          <h1 class="name"><span class="name-cpr">CPR</span><span class="name-med">MED</span></h1>
+          <p class="subtitle">CPR Medical Clinic &amp; Laboratory</p>
+          <p class="address">${escapeHtml(input.clinicAddress || 'Clinic address')}</p>
+          <p class="contact">${escapeHtml(input.clinicContactNumber || 'Not provided')}</p>
+          <p class="specialties-bar">General Surgery, Internal Medicine, OB-Gyne, Pediatrics, Family Medicine, Aesthetic Medicine, Addiction Medicine, Anesthesiologist, Cardiologist, Ophthalmologist, ENT, Diabetologist, Nephrologist.</p>
+        </div>
+        <div class="header-hours-col hours">
+          <p class="label">Clinic Hours:</p>
+          <p class="schedule">Monday-Sunday:<br/>10:00 AM - 10:00 PM</p>
+        </div>
+      </section>`;
+
+  const patientLinesHtml = `
+      <section class="patient-lines">
+        <div class="line-row">
+          <span class="line-label">Patient's Name:</span>
+          <span class="line-value">${escapeHtml(input.patientName)}</span>
+          <span class="line-label">Age:</span>
+          <span class="line-value sm">${escapeHtml(input.patientAge || '')}</span>
+          <span class="line-label">Sex:</span>
+          <span class="line-value sm">${escapeHtml(input.patientSex || '')}</span>
+          <span class="line-label">Date:</span>
+          <span class="line-value date">${escapeHtml(toDisplayDate(input.issuedDate))}</span>
+        </div>
+        <div class="line-row">
+          <span class="line-label">Address:</span>
+          <span class="line-value">${escapeHtml(input.patientAddress || '')}</span>
+          <span class="line-label">Civil Status:</span>
+          <span class="line-value md">${escapeHtml(input.patientCivilStatus || '')}</span>
+          <span class="line-label">Weight:</span>
+          <span class="line-value sm">${escapeHtml(input.patientWeight || '')}</span>
+        </div>
+      </section>`;
+
+  const signatureHtml = `
+        <aside class="signature-panel">
+          <div class="signature-row">
+            <span class="label">Doctor's Name and Signature</span>
+            <span class="line upper">${escapeHtml(input.doctorName || ' ')}</span>
+          </div>
+          <div class="signature-row">
+            <span class="label">License no.</span>
+            <span class="line">${escapeHtml(input.doctorLicenseNumber || ' ')}</span>
+          </div>
+          <div class="signature-row">
+            <span class="label">PTR no.</span>
+            <span class="line">${escapeHtml(input.doctorPtrNumber || ' ')}</span>
+          </div>
+          <div class="signature-row">
+            <span class="label">Tin no.</span>
+            <span class="line">${escapeHtml(input.doctorBirNumber || ' ')}</span>
+          </div>
+          <div class="signature-row">
+            <span class="label">S2 no.</span>
+            <span class="line"></span>
+          </div>
+          <p class="debug-note">${escapeHtml(input.doctorSpecialty || 'Physician')}</p>
+        </aside>`;
+
+  const pagesHtml = chunks.map((chunk, pageIndex) => {
+    const isLastPage = pageIndex === chunks.length - 1;
+    const globalStart = pageIndex * MEDS_PER_PAGE;
+
+    const medsHtml = chunk.map((med, i) => `
+        <div class="medication-item">
+          <p><strong>${globalStart + i + 1}.</strong> ${escapeHtml(med.name)}</p>
+          <p><strong>Dosage:</strong> ${escapeHtml(med.dosage)}</p>
+          <p><strong>Sig:</strong> ${escapeHtml(med.instruction)}</p>
+        </div>`).join('');
+
+    const footerHtml = isLastPage
+      ? `<p class="follow-up">Follow-up appointment: ${escapeHtml(input.nextAppointment || '________________')}</p>
+        <div class="signature-container">${signatureHtml}</div>`
+      : `<p class="continued-note">— continued on next page —</p>
+        <div class="signature-container">${signatureHtml}</div>`;
+
+    return `
+    <main class="page">
+      ${headerHtml}
+      ${patientLinesHtml}
+      <section class="prescription-area">
+        <p class="rx-mark">Rx</p>
+        <div class="meds-list">${medsHtml}</div>
+        <div class="prescription-footer">${footerHtml}</div>
+      </section>
+    </main>`;
+  }).join('\n');
+
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -119,6 +224,7 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
         color: #475569;
       }
 
+      /* ── Page ── */
       .page {
         width: 100%;
         max-width: 194mm;
@@ -129,7 +235,10 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
         border: 1px solid #d1d5db;
         display: flex;
         flex-direction: column;
-        position: relative;
+      }
+
+      .page + .page {
+        margin-top: 20px;
       }
 
       /* ── Header ── */
@@ -234,6 +343,7 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
         color: #111827;
       }
 
+      /* ── Patient info ── */
       .patient-lines {
         border-bottom: 1px solid #111827;
         padding: 7px 10px 8px;
@@ -276,11 +386,12 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
         flex: 0 0 110px;
       }
 
+      /* ── Prescription area ── */
       .prescription-area {
-        position: relative;
         flex: 1;
-        min-height: 742px;
-        padding: 16px 14px 148px;
+        padding: 16px 14px 16px;
+        display: flex;
+        flex-direction: column;
       }
 
       .rx-mark {
@@ -292,55 +403,57 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
         font-weight: 700;
       }
 
-      .medication {
-        margin-top: 8px;
-        padding-left: 2px;
-        max-width: 72%;
-      }
-
-      .medication p {
-        margin: 0;
-        font-size: 15px;
-        line-height: 1.55;
-      }
-
-      .medication p + p {
-        margin-top: 7px;
+      .meds-list {
+        flex: 1;
       }
 
       .medication-item {
-        margin-top: 10px;
-        padding: 8px 10px;
-        border-left: 3px solid #1a7fd4;
-        background: #f8fafc;
-        max-width: 72%;
+        margin-top: 6px;
+        max-width: 76%;
       }
 
       .medication-item + .medication-item {
-        margin-top: 8px;
+        margin-top: 6px;
       }
 
       .medication-item p {
         margin: 0;
-        font-size: 14px;
-        line-height: 1.55;
+        font-size: 16px;
+        line-height: 1.45;
       }
 
       .medication-item p + p {
-        margin-top: 5px;
+        margin-top: 1px;
+      }
+
+      /* ── Footer (follow-up + signature or continued note) ── */
+      .prescription-footer {
+        margin-top: 12px;
       }
 
       .follow-up {
-        margin-top: 16px;
+        margin: 0 0 16px;
         font-size: 13px;
         color: #1f2937;
         font-style: italic;
       }
 
+      .continued-note {
+        margin: 0;
+        font-size: 11px;
+        font-style: italic;
+        color: #64748b;
+        text-align: center;
+        padding: 6px 0;
+        border-top: 1px dashed #d1d5db;
+      }
+
+      .signature-container {
+        display: flex;
+        justify-content: flex-end;
+      }
+
       .signature-panel {
-        position: absolute;
-        right: 12px;
-        bottom: 12px;
         width: 320px;
         font-size: 13px;
       }
@@ -348,23 +461,23 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
       .signature-row {
         display: flex;
         align-items: flex-end;
-        gap: 8px;
-        min-height: 28px;
+        gap: 6px;
+        min-height: 22px;
       }
 
       .signature-row .label {
         width: 152px;
         font-weight: 700;
-        font-size: 13px;
+        font-size: 12px;
       }
 
       .signature-row .line {
         flex: 1;
         border-bottom: 1px solid #111827;
-        min-height: 17px;
+        min-height: 14px;
         padding: 0 2px;
         font-weight: 600;
-        font-size: 13px;
+        font-size: 12px;
       }
 
       .signature-row .line.upper {
@@ -372,7 +485,7 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
       }
 
       .signature-row + .signature-row {
-        margin-top: 2px;
+        margin-top: 1px;
       }
 
       .debug-note {
@@ -393,9 +506,13 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
 
         .page {
           max-width: none;
-          min-height: calc(297mm - 16mm);
           border: 0;
           padding: 0;
+        }
+
+        .page + .page {
+          margin-top: 0;
+          page-break-before: always;
         }
       }
     </style>
@@ -407,85 +524,7 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
     </section>
     <p class="viewer-note">Tip: click Save as PDF then choose <strong>Save as PDF</strong> in your browser print destination.</p>
 
-    <main class="page">
-      <section class="header">
-        <div class="header-logo-col">
-          <img class="logo" src="/cprmedlogotansparent.png" alt="Clinic logo" />
-        </div>
-
-        <div class="header-center-col clinic-center">
-          <h1 class="name"><span class="name-cpr">CPR</span><span class="name-med">MED</span></h1>
-          <p class="subtitle">CPR Medical Clinic &amp; Laboratory</p>
-          <p class="address">${escapeHtml(input.clinicAddress || 'Clinic address')}</p>
-          <p class="contact">${escapeHtml(input.clinicContactNumber || 'Not provided')}</p>
-          <p class="specialties-bar">General Surgery, Internal Medicine, OB-Gyne, Pediatrics, Family Medicine, Aesthetic Medicine, Addiction Medicine, Anesthesiologist, Cardiologist, Ophthalmologist, ENT, Diabetologist, Nephrologist.</p>
-        </div>
-
-        <div class="header-hours-col hours">
-          <p class="label">Clinic Hours:</p>
-          <p class="schedule">Monday-Sunday:<br/>10:00 AM - 10:00 PM</p>
-        </div>
-      </section>
-
-      <section class="patient-lines">
-        <div class="line-row">
-          <span class="line-label">Patient's Name:</span>
-          <span class="line-value">${escapeHtml(input.patientName)}</span>
-          <span class="line-label">Age:</span>
-          <span class="line-value sm">${escapeHtml(input.patientAge || '')}</span>
-          <span class="line-label">Sex:</span>
-          <span class="line-value sm">${escapeHtml(input.patientSex || '')}</span>
-          <span class="line-label">Date:</span>
-          <span class="line-value date">${escapeHtml(toDisplayDate(input.issuedDate))}</span>
-        </div>
-
-        <div class="line-row">
-          <span class="line-label">Address:</span>
-          <span class="line-value">${escapeHtml(input.patientAddress || '')}</span>
-          <span class="line-label">Civil Status:</span>
-          <span class="line-value md">${escapeHtml(input.patientCivilStatus || '')}</span>
-          <span class="line-label">Weight:</span>
-          <span class="line-value sm">${escapeHtml(input.patientWeight || '')}</span>
-        </div>
-      </section>
-
-      <section class="prescription-area">
-        <p class="rx-mark">Rx</p>
-
-        ${(input.medications ?? []).map((med, i) => `
-        <div class="medication-item">
-          <p><strong>${i + 1}.</strong> ${escapeHtml(med.name)}</p>
-          <p><strong>Dosage:</strong> ${escapeHtml(med.dosage)}</p>
-          <p><strong>Sig:</strong> ${escapeHtml(med.instruction)}</p>
-        </div>`).join('')}
-
-        <p class="follow-up">Follow-up appointment: ${escapeHtml(input.nextAppointment || '________________')}</p>
-
-        <aside class="signature-panel">
-          <div class="signature-row">
-            <span class="label">Doctor's Name and Signature</span>
-            <span class="line upper">${escapeHtml(input.doctorName || ' ')}</span>
-          </div>
-          <div class="signature-row">
-            <span class="label">License no.</span>
-            <span class="line">${escapeHtml(input.doctorLicenseNumber || ' ')}</span>
-          </div>
-          <div class="signature-row">
-            <span class="label">PTR no.</span>
-            <span class="line">${escapeHtml(input.doctorPtrNumber || ' ')}</span>
-          </div>
-          <div class="signature-row">
-            <span class="label">Tin no.</span>
-            <span class="line">${escapeHtml(input.doctorBirNumber || ' ')}</span>
-          </div>
-          <div class="signature-row">
-            <span class="label">S2 no.</span>
-            <span class="line"></span>
-          </div>
-          <p class="debug-note">${escapeHtml(input.doctorSpecialty || 'Physician')}</p>
-        </aside>
-      </section>
-    </main>
+    ${pagesHtml}
   </body>
 </html>`;
 }
