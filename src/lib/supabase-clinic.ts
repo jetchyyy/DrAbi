@@ -1905,7 +1905,7 @@ export async function updateClinicSettingsLiveOrDemo(
   if (fetchError) throw fetchError;
   if (!existing) throw new Error("Clinic settings row not found in Supabase.");
 
-  const payload: Record<string, unknown> = {};
+  const payload: Database["public"]["Tables"]["clinic_settings"]["Update"] = {};
   if (input.clinicName !== undefined) payload.clinic_name = input.clinicName;
   if (input.legalName !== undefined) payload.legal_name = input.legalName;
   if (input.shortCode !== undefined) payload.short_code = input.shortCode;
@@ -1935,7 +1935,7 @@ export async function updateClinicSettingsLiveOrDemo(
 
   const { data, error } = await client
     .from("clinic_settings")
-    .update(payload as any)
+    .update(payload as never)
     .eq("id", existing.id)
     .select("*")
     .single();
