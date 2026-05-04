@@ -1935,7 +1935,7 @@ export async function updateClinicSettingsLiveOrDemo(
 
   const { data, error } = await client
     .from("clinic_settings")
-    .update(payload as Database["public"]["Tables"]["clinic_settings"]["Update"])
+    .update(payload as any)
     .eq("id", existing.id)
     .select("*")
     .single();
