@@ -13,7 +13,7 @@ import {
   updateInvoiceLiveOrDemo,
 } from '../../../lib/supabase-clinic';
 import type { Invoice, InvoiceItem, Payment } from '../../../types/domain';
-import type { LabRequestRecord } from '../../lab-requests/types';
+import type { LabRequestRecord } from '../../lab-requests';
 import type { BillingFormValues, LabServiceOption, PayForServiceFormValues } from '../types/forms';
 
 // Helper function to generate invoice number in format INV-YYYY-MM-NNNN

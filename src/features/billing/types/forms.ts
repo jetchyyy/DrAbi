@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Invoice } from '../../../types/domain';
-import type { LabRequestRecord } from '../lab-requests/types';
+import type { LabRequestRecord } from '../lab-requests';
 
 export const invoiceItemSchema = z.object({
   description: z.string().min(2, 'Description must be at least 2 characters.'),
