@@ -1935,7 +1935,7 @@ export async function updateClinicSettingsLiveOrDemo(
 
   const { data, error } = await client
     .from("clinic_settings")
-    .update(payload as any)
+    .update(payload as Partial<Database["public"]["Tables"]["clinic_settings"]["Row"]>)
     .eq("id", existing.id)
     .select("*")
     .single();
