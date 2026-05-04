@@ -18,7 +18,7 @@ export const defaultClinicSettings: ClinicSettings = {
   address:
     'CPR Medical Clinic & Laboratory Bulacao, Cebu City',
   contactNumber: '+639623093577',
-  email: 'hello@cprmed.test',
+  email: 'cprmedicalclinic@gmail.com',
   website: 'https://cprmed.test',
   logoUrl: '',
   primaryColor: '#7dd453',
