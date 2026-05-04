@@ -1,5 +1,5 @@
-import { formatCurrency } from '../../lib/utils';
-import type { Invoice } from '../../types/domain';
+import { formatCurrency } from '../../../lib/utils';
+import type { Invoice } from '../../../types/domain';
 
 export function buildInvoicePrintDocument(input: {
   clinicName: string;

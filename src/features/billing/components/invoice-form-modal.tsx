@@ -1,4 +1,4 @@
-import { UseFormReturn } from 'react-hook-form';
+import type { UseFormReturn } from 'react-hook-form';
 import { X } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { FormField } from '../../../components/forms/form-field';

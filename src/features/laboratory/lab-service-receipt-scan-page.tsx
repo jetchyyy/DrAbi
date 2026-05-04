@@ -154,7 +154,7 @@ export function LabServiceReceiptScanPage() {
           .from('patients')
           .select('id')
           .eq('id', currentRequest.patientId)
-          .maybeSingle();
+          .maybeSingle() as { data: { id: string } | null; error: any };
 
         if (directPatientError) {
           throw directPatientError;
@@ -169,7 +169,7 @@ export function LabServiceReceiptScanPage() {
             .eq('user_id', currentRequest.patientId)
             .order('created_at', { ascending: false })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle() as { data: { id: string } | null; error: any };
 
           if (mappedPatientError) {
             throw mappedPatientError;
