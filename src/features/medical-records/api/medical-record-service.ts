@@ -1,6 +1,6 @@
 import { queryKeys } from '../../../lib/query-keys';
 import { labRequestService } from '../../lab-requests/api/lab-request-service';
-import type { PatientMedicalTimelineEntry } from '../../lab-requests';
+import type { PatientMedicalTimelineEntry } from '../../lab-requests/types.ts';
 
 export const medicalRecordService = {
   async getPatientMedicalTimeline(patientId: string): Promise<PatientMedicalTimelineEntry[]> {

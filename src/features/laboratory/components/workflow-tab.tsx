@@ -23,7 +23,7 @@ import {
   useUpdateLabRequestDetails,
 } from '../../lab-requests/hooks/use-lab-requests';
 import { labRequestService } from '../../lab-requests/api/lab-request-service';
-import type { LabRequestRecord } from '../../lab-requests';
+import type { LabRequestRecord } from '../../lab-requests/types.ts';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase';
 import { toLabRequestDisplayStatus } from './lab-request-status';
 import { LabStatusPill } from './lab-status-pill';

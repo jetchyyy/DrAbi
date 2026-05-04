@@ -8,7 +8,7 @@ import { Card, CardTitle } from '../../../components/ui/card';
 import { printHtmlDocument } from '../../../lib/print';
 import { formatCurrency } from '../../../lib/utils';
 import type { Invoice } from '../../../types/domain';
-import type { LabRequestRecord } from '../../lab-requests';
+import type { LabRequestRecord } from '../../lab-requests/types.ts';
 import { buildLabServiceReceiptLookupUrl } from '../lab-service-receipt';
 
 interface LabServiceReceiptCardProps {
