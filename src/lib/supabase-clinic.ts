@@ -31,6 +31,7 @@ import type {
   Consultation,
   DoctorAvailability,
   DoctorFeeSettings,
+  InventoryCategory,
   InventoryItem,
   BookingFeeType,
   BookingPaymentStatus,
@@ -1402,7 +1403,9 @@ export async function createInvoiceLiveOrDemo(
 export async function updateInvoiceLiveOrDemo(
   invoiceId: string,
   invoice: Omit<Invoice, "id" | "createdAt" | "updatedAt">,
-  items: Array<Omit<InvoiceItem, "id" | "createdAt" | "updatedAt" | "invoiceId">>,
+  items: Array<
+    Omit<InvoiceItem, "id" | "createdAt" | "updatedAt" | "invoiceId">
+  >,
 ) {
   if (!isSupabaseConfigured) {
     const { updateInvoiceRecord } = await import("./local-db");
@@ -1897,11 +1900,11 @@ export async function updateClinicSettingsLiveOrDemo(
   const client = requireSupabase();
 
   // Fetch the current row id (singleton — only one row exists)
-  const { data: existing, error: fetchError } = await client
+  const { data: existing, error: fetchError } = (await client
     .from("clinic_settings")
     .select("id")
     .limit(1)
-    .maybeSingle() as { data: { id: string } | null; error: any };
+    .maybeSingle()) as { data: { id: string } | null; error: any };
 
   if (fetchError) throw fetchError;
   if (!existing) throw new Error("Clinic settings row not found in Supabase.");
@@ -3128,9 +3131,12 @@ export async function listBlockedBookingSlotsLiveOrDemo(input: {
     throw error;
   }
 
-  return ((data ?? []) as Array<{ preferred_time: string }>).map((row) =>
-    row.preferred_time.slice(0, 5),
-  );
+  return (
+    (data ?? []) as Array<{
+      blocked_time?: string;
+      preferred_time?: string;
+    }>
+  ).map((row) => (row.blocked_time ?? row.preferred_time ?? "").slice(0, 5));
 }
 
 export async function getBookingByReceiptCodeLiveOrDemo(receiptCode: string) {
@@ -3621,7 +3627,7 @@ export async function createAdminUserLiveOrDemo(input: AdminCreateUserInput) {
       phone: input.contactNumber,
       title:
         input.role === "doctor" || input.role === "specialist"
-          ? (input.title?.trim() || null)
+          ? input.title?.trim() || null
           : null,
       specialtyId: null,
       consultationFee:
@@ -3720,7 +3726,7 @@ export async function updateAdminUserLiveOrDemo(
       phone: input.contactNumber.trim(),
       title:
         input.role === "doctor" || input.role === "specialist"
-          ? (input.title?.trim() || null)
+          ? input.title?.trim() || null
           : null,
       specialtyId: null,
       consultationFee:
@@ -3759,7 +3765,7 @@ export async function updateAdminUserLiveOrDemo(
       phone: input.contactNumber.trim() || null,
       title:
         input.role === "doctor" || input.role === "specialist"
-          ? (input.title?.trim() || null)
+          ? input.title?.trim() || null
           : null,
     } as never)
     .eq("id", userId);
@@ -4099,6 +4105,68 @@ export async function getCategories(): Promise<
   }
 
   return (data ?? []) as Array<{ id: string; name: string }>;
+}
+
+export async function createInventoryCategory(values: { name: string }) {
+  if (!isSupabaseConfigured) {
+    const { createInventoryCategory: createInventoryCategoryLocal } =
+      await import("./local-db");
+    return createInventoryCategoryLocal(values);
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("inventory_categories")
+    .insert({ name: values.name } as never)
+    .select("id,name,created_at,updated_at")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data as InventoryCategory;
+}
+
+export async function updateInventoryCategory(
+  id: string,
+  values: { name: string },
+) {
+  if (!isSupabaseConfigured) {
+    const { updateInventoryCategoryRecord } = await import("./local-db");
+    return updateInventoryCategoryRecord(id, values);
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("inventory_categories")
+    .update({ name: values.name } as never)
+    .eq("id", id)
+    .select("id,name,created_at,updated_at")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data as InventoryCategory;
+}
+
+export async function deleteInventoryCategory(id: string) {
+  if (!isSupabaseConfigured) {
+    const { deleteInventoryCategoryRecord } = await import("./local-db");
+    deleteInventoryCategoryRecord(id);
+    return;
+  }
+
+  const client = requireSupabase();
+  const { error } = await client
+    .from("inventory_categories")
+    .delete()
+    .eq("id", id);
+  if (error) {
+    throw error;
+  }
 }
 
 export async function listInventoryItemsLiveOrDemo(): Promise<InventoryItem[]> {

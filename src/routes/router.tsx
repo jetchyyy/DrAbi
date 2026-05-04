@@ -34,6 +34,7 @@ import { PatientQrLookupPage } from "../features/patients/patient-qr-lookup-page
 import { PatientsPage } from "../features/patients/patients-page";
 import { StaffProfilePage } from "../features/staff/staff-profile-page";
 import { SettingsClinicPage } from "../features/settings/settings-clinic-page";
+import { SettingsInventoryCatalogPage } from "../features/settings/settings-inventory-catalog-page.tsx";
 import { SettingsServicesPage } from "../features/settings/settings-services-page";
 import { SettingsSupportPage } from "../features/settings/settings-support-page";
 import { SettingsRolesPage } from "../features/settings/settings-roles-page";
@@ -376,10 +377,17 @@ export const router = createBrowserRouter([
                 children: [{ path: "clinic", element: <SettingsClinicPage /> }],
               },
               { path: "settings/catalog", element: <SettingsServicesPage /> },
+              {
+                path: "settings/inventory-catalog",
+                element: <SettingsInventoryCatalogPage />,
+              },
               { path: "settings/users", element: <SettingsUsersPage /> },
               { path: "settings/roles", element: <SettingsRolesPage /> },
               { path: "settings/support", element: <SettingsSupportPage /> },
-              { path: "settings/documents", element: <SettingsDocumentsPage /> },
+              {
+                path: "settings/documents",
+                element: <SettingsDocumentsPage />,
+              },
             ],
           },
         ],

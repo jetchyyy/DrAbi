@@ -35,6 +35,11 @@ function formatTime(timeStr: string) {
   return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
 }
 
+function normalizeBlockedSlotTime(value: unknown) {
+  if (typeof value !== "string") return "";
+  return value.slice(0, 5);
+}
+
 function feeTypeLabel(type: string) {
   switch (type) {
     case "consultation":
@@ -192,6 +197,14 @@ function EditModal({ booking, onClose }: EditModalProps) {
     booking.doctorId,
     booking.serviceId,
   );
+  const normalizedBlockedSlots = useMemo(
+    () => blockedSlots.map((slot) => normalizeBlockedSlotTime(slot)),
+    [blockedSlots],
+  );
+  const selectedRescheduleTimeIsBlocked =
+    status === "rescheduled" &&
+    Boolean(newTime) &&
+    normalizedBlockedSlots.includes(newTime);
 
   // Compute available time slots from doctor_availability for the selected date
   const selectedDayOfWeek = useMemo(() => {
@@ -220,12 +233,18 @@ function EditModal({ booking, onClose }: EditModalProps) {
         cur += step;
       }
     }
-    return slots.filter((s) => !blockedSlots.includes(s));
-  }, [availability, selectedDayOfWeek, blockedSlots, status]);
+    return slots.filter((s) => !normalizedBlockedSlots.includes(s));
+  }, [availability, normalizedBlockedSlots, selectedDayOfWeek, status]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (status === "rescheduled" && selectedRescheduleTimeIsBlocked) {
+      setError(
+        "The selected time is no longer available. Please choose another slot.",
+      );
+      return;
+    }
     try {
       await updateMutation.mutateAsync({
         bookingId: booking.id,
@@ -442,7 +461,9 @@ function EditModal({ booking, onClose }: EditModalProps) {
             </button>
             <button
               type="submit"
-              disabled={updateMutation.isPending}
+              disabled={
+                updateMutation.isPending || selectedRescheduleTimeIsBlocked
+              }
               className="bg-orange-600 px-4 py-2 text-sm font-extrabold uppercase tracking-widest text-white hover:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
               {updateMutation.isPending ? "Saving…" : "Save Changes"}

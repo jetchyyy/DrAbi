@@ -51,6 +51,7 @@ export const queryKeys = {
   invoiceItems: ["invoice-items"] as const,
   posSales: ["pos-sales"] as const,
   inventory: ["inventory"] as const,
+  inventoryCategories: ["inventory-categories"] as const,
   inventoryUsageLogs: ["inventory-usage-logs"] as const,
   laboratory: ["laboratory"] as const,
   labServices: ["lab-services"] as const,

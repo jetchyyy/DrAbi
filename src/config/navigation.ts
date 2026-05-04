@@ -168,6 +168,12 @@ export const appNavigation: NavItem[] = [
     permission: "settings.view",
   },
   {
+    label: "Inventory Catalog",
+    to: "/app/settings/inventory-catalog",
+    icon: Package2,
+    permission: "settings.view",
+  },
+  {
     label: "User Management",
     to: "/app/settings/users",
     icon: ShieldCheck,
@@ -256,6 +262,7 @@ export const portalNavigation: SimpleNavItem[] = [
 export const settingsNavigation = [
   { label: "Clinic Profile", to: "/app/settings/clinic" },
   { label: "Service Catalog", to: "/app/settings/catalog" },
+  { label: "Inventory Catalog", to: "/app/settings/inventory-catalog" },
   { label: "User Management", to: "/app/settings/users" },
   { label: "Role Management", to: "/app/settings/roles" },
   { label: "Supplier Management", to: "/app/settings/support" },

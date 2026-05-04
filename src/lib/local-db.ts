@@ -1,6 +1,6 @@
-﻿import { queryClient } from '../app/query-client';
-import { defaultClinicSettings } from '../config/clinic';
-import { createSeedDatabase } from '../data/seed';
+﻿import { queryClient } from "../app/query-client";
+import { defaultClinicSettings } from "../config/clinic";
+import { createSeedDatabase } from "../data/seed";
 import type {
   AccessRoleTemplate,
   AppDatabase,
@@ -11,6 +11,7 @@ import type {
   Consultation,
   DoctorFeeSettings,
   DoctorAvailability,
+  InventoryCategory,
   InventoryItem,
   InventoryUsageLog,
   Invoice,
@@ -34,16 +35,23 @@ import type {
   Specialty,
   Supplier,
   UserProfile,
-} from '../types/domain';
-import { generateBookingReceiptCode, generateId, generateInventoryQrCode, generatePatientQrCode } from './utils';
-import { hashSecret } from './utils';
+} from "../types/domain";
+import {
+  generateBookingReceiptCode,
+  generateId,
+  generateInventoryQrCode,
+  generatePatientQrCode,
+} from "./utils";
+import { hashSecret } from "./utils";
 
-const STORAGE_KEY = 'odyssey-clinic-demo-db-v2';
-const PATIENT_ACTION_LOGS_KEY = 'odyssey-clinic-patient-action-logs-v1';
-const USER_PERMISSION_OVERRIDES_KEY = 'odyssey-clinic-user-permission-overrides-v1';
-const ACCESS_ROLE_TEMPLATES_KEY = 'odyssey-clinic-access-role-templates-v1';
-const USER_ACCESS_ROLE_ASSIGNMENTS_KEY = 'odyssey-clinic-user-access-role-assignments-v1';
-const USER_PIN_CREDENTIALS_KEY = 'odyssey-clinic-user-pin-credentials-v1';
+const STORAGE_KEY = "odyssey-clinic-demo-db-v2";
+const PATIENT_ACTION_LOGS_KEY = "odyssey-clinic-patient-action-logs-v1";
+const USER_PERMISSION_OVERRIDES_KEY =
+  "odyssey-clinic-user-permission-overrides-v1";
+const ACCESS_ROLE_TEMPLATES_KEY = "odyssey-clinic-access-role-templates-v1";
+const USER_ACCESS_ROLE_ASSIGNMENTS_KEY =
+  "odyssey-clinic-user-access-role-assignments-v1";
+const USER_PIN_CREDENTIALS_KEY = "odyssey-clinic-user-pin-credentials-v1";
 
 interface UserPermissionOverride {
   userId?: string;
@@ -65,7 +73,9 @@ interface UserPinCredential {
 }
 
 function canUseStorage() {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+  return (
+    typeof window !== "undefined" && typeof window.localStorage !== "undefined"
+  );
 }
 
 export function getDatabase(): AppDatabase {
@@ -94,7 +104,10 @@ export function getDatabase(): AppDatabase {
     (parsed.inventoryItems ?? []).some((item) => !item.qrCode) ||
     parsed.inventoryUsageLogs == null ||
     (parsed.services ?? []).some(
-      (service) => service.deliveryMode == null || service.isBookable == null || service.durationMinutes == null,
+      (service) =>
+        service.deliveryMode == null ||
+        service.isBookable == null ||
+        service.durationMinutes == null,
     )
   ) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
@@ -149,9 +162,14 @@ function getUserPermissionOverridesStorage(): UserPermissionOverride[] {
   }
 }
 
-function saveUserPermissionOverridesStorage(overrides: UserPermissionOverride[]) {
+function saveUserPermissionOverridesStorage(
+  overrides: UserPermissionOverride[],
+) {
   if (canUseStorage()) {
-    window.localStorage.setItem(USER_PERMISSION_OVERRIDES_KEY, JSON.stringify(overrides));
+    window.localStorage.setItem(
+      USER_PERMISSION_OVERRIDES_KEY,
+      JSON.stringify(overrides),
+    );
   }
 }
 
@@ -159,86 +177,130 @@ function buildSystemAccessRoles(): AccessRoleTemplate[] {
   const timestamp = new Date().toISOString();
   return [
     {
-      id: 'access_owner_admin',
+      id: "access_owner_admin",
       createdAt: timestamp,
       updatedAt: timestamp,
-      name: 'Owner / Admin',
-      description: 'Full system access for the clinic owner or administrator.',
+      name: "Owner / Admin",
+      description: "Full system access for the clinic owner or administrator.",
       permissions: [
-        'dashboard.view',
-        'patients.view',
-        'patients.manage',
-        'appointments.view',
-        'appointments.manage',
-        'consultations.manage',
-        'billing.view',
-        'billing.manage',
-        'pos.view',
-        'pos.manage',
-        'inventory.view',
-        'inventory.manage',
-        'laboratory.view',
-        'laboratory.manage',
-        'settings.view',
-        'settings.manage',
-        'booking.view',
-        'booking.manage',
-        'users.manage',
+        "dashboard.view",
+        "patients.view",
+        "patients.manage",
+        "appointments.view",
+        "appointments.manage",
+        "consultations.manage",
+        "billing.view",
+        "billing.manage",
+        "pos.view",
+        "pos.manage",
+        "inventory.view",
+        "inventory.manage",
+        "laboratory.view",
+        "laboratory.manage",
+        "settings.view",
+        "settings.manage",
+        "booking.view",
+        "booking.manage",
+        "users.manage",
       ],
       isSystem: true,
     },
     {
-      id: 'access_doctor',
+      id: "access_doctor",
       createdAt: timestamp,
       updatedAt: timestamp,
-      name: 'Doctor',
-      description: 'Clinical access for providers handling consultations and patient review.',
-      permissions: ['dashboard.view', 'patients.view', 'appointments.view', 'consultations.manage', 'laboratory.view', 'booking.view'],
+      name: "Doctor",
+      description:
+        "Clinical access for providers handling consultations and patient review.",
+      permissions: [
+        "dashboard.view",
+        "patients.view",
+        "appointments.view",
+        "consultations.manage",
+        "laboratory.view",
+        "booking.view",
+      ],
       isSystem: true,
     },
     {
-      id: 'access_specialist',
+      id: "access_specialist",
       createdAt: timestamp,
       updatedAt: timestamp,
-      name: 'Specialist',
-      description: 'External specialist access for referrals, patient chart review, SOAP documentation, and schedule management.',
-      permissions: ['patients.view', 'appointments.view', 'consultations.manage', 'booking.view'],
+      name: "Specialist",
+      description:
+        "External specialist access for referrals, patient chart review, SOAP documentation, and schedule management.",
+      permissions: [
+        "patients.view",
+        "appointments.view",
+        "consultations.manage",
+        "booking.view",
+      ],
       isSystem: true,
     },
     {
-      id: 'access_nurse_staff',
+      id: "access_nurse_staff",
       createdAt: timestamp,
       updatedAt: timestamp,
-      name: 'Nurse / Staff',
-      description: 'Care-team access for patient intake, appointments, and consultation support.',
-      permissions: ['dashboard.view', 'patients.view', 'patients.manage', 'appointments.view', 'appointments.manage', 'consultations.manage', 'laboratory.view'],
+      name: "Nurse / Staff",
+      description:
+        "Care-team access for patient intake, appointments, and consultation support.",
+      permissions: [
+        "dashboard.view",
+        "patients.view",
+        "patients.manage",
+        "appointments.view",
+        "appointments.manage",
+        "consultations.manage",
+        "laboratory.view",
+      ],
       isSystem: true,
     },
     {
-      id: 'access_front_desk_cashier',
+      id: "access_front_desk_cashier",
       createdAt: timestamp,
       updatedAt: timestamp,
-      name: 'Front Desk / Cashier',
-      description: 'Reception and payment access for scheduling, billing, and bookings.',
-      permissions: ['dashboard.view', 'patients.view', 'patients.manage', 'appointments.view', 'appointments.manage', 'billing.view', 'billing.manage', 'pos.view', 'pos.manage', 'laboratory.view', 'booking.view', 'booking.manage'],
+      name: "Front Desk / Cashier",
+      description:
+        "Reception and payment access for scheduling, billing, and bookings.",
+      permissions: [
+        "dashboard.view",
+        "patients.view",
+        "patients.manage",
+        "appointments.view",
+        "appointments.manage",
+        "billing.view",
+        "billing.manage",
+        "pos.view",
+        "pos.manage",
+        "laboratory.view",
+        "booking.view",
+        "booking.manage",
+      ],
       isSystem: true,
     },
     {
-      id: 'access_lab_staff',
+      id: "access_lab_staff",
       createdAt: timestamp,
       updatedAt: timestamp,
-      name: 'Lab Staff',
-      description: 'Laboratory operations access for sample processing and result handling.',
-      permissions: ['dashboard.view', 'patients.view', 'laboratory.view', 'laboratory.manage'],
+      name: "Lab Staff",
+      description:
+        "Laboratory operations access for sample processing and result handling.",
+      permissions: [
+        "dashboard.view",
+        "patients.view",
+        "laboratory.view",
+        "laboratory.manage",
+      ],
       isSystem: true,
     },
     {
-      id: 'access_inventory_staff',
+      id: "access_inventory_staff",
       createdAt: timestamp,
       updatedAt: timestamp,
-      name: 'Inventory Staff',
-      description: 'Stock and supply access for inventory monitoring and updates.',
-      permissions: ['dashboard.view', 'inventory.view', 'inventory.manage'],
+      name: "Inventory Staff",
+      description:
+        "Stock and supply access for inventory monitoring and updates.",
+      permissions: ["dashboard.view", "inventory.view", "inventory.manage"],
       isSystem: true,
     },
   ];
@@ -252,7 +314,10 @@ function getAccessRoleTemplatesStorage(): AccessRoleTemplate[] {
   const stored = window.localStorage.getItem(ACCESS_ROLE_TEMPLATES_KEY);
   if (!stored) {
     const seeded = buildSystemAccessRoles();
-    window.localStorage.setItem(ACCESS_ROLE_TEMPLATES_KEY, JSON.stringify(seeded));
+    window.localStorage.setItem(
+      ACCESS_ROLE_TEMPLATES_KEY,
+      JSON.stringify(seeded),
+    );
     return seeded;
   }
 
@@ -263,14 +328,20 @@ function getAccessRoleTemplatesStorage(): AccessRoleTemplate[] {
     return [...systemRoles, ...customRoles];
   } catch {
     const seeded = buildSystemAccessRoles();
-    window.localStorage.setItem(ACCESS_ROLE_TEMPLATES_KEY, JSON.stringify(seeded));
+    window.localStorage.setItem(
+      ACCESS_ROLE_TEMPLATES_KEY,
+      JSON.stringify(seeded),
+    );
     return seeded;
   }
 }
 
 function saveAccessRoleTemplatesStorage(roles: AccessRoleTemplate[]) {
   if (canUseStorage()) {
-    window.localStorage.setItem(ACCESS_ROLE_TEMPLATES_KEY, JSON.stringify(roles));
+    window.localStorage.setItem(
+      ACCESS_ROLE_TEMPLATES_KEY,
+      JSON.stringify(roles),
+    );
   }
 }
 
@@ -291,9 +362,14 @@ function getUserAccessRoleAssignmentsStorage(): UserAccessRoleAssignment[] {
   }
 }
 
-function saveUserAccessRoleAssignmentsStorage(assignments: UserAccessRoleAssignment[]) {
+function saveUserAccessRoleAssignmentsStorage(
+  assignments: UserAccessRoleAssignment[],
+) {
   if (canUseStorage()) {
-    window.localStorage.setItem(USER_ACCESS_ROLE_ASSIGNMENTS_KEY, JSON.stringify(assignments));
+    window.localStorage.setItem(
+      USER_ACCESS_ROLE_ASSIGNMENTS_KEY,
+      JSON.stringify(assignments),
+    );
   }
 }
 
@@ -316,7 +392,10 @@ function getUserPinCredentialsStorage(): UserPinCredential[] {
 
 function saveUserPinCredentialsStorage(credentials: UserPinCredential[]) {
   if (canUseStorage()) {
-    window.localStorage.setItem(USER_PIN_CREDENTIALS_KEY, JSON.stringify(credentials));
+    window.localStorage.setItem(
+      USER_PIN_CREDENTIALS_KEY,
+      JSON.stringify(credentials),
+    );
   }
 }
 
@@ -350,36 +429,42 @@ export function updateClinicSettings(input: Partial<ClinicSettings>) {
 }
 
 export function listUsers() {
-  return getDatabase().users.map((profile) => applyUserPermissionOverride(applyUserAccessRoleAssignment(profile)));
+  return getDatabase().users.map((profile) =>
+    applyUserPermissionOverride(applyUserAccessRoleAssignment(profile)),
+  );
 }
 
-export function createUserProfile(input: Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'>) {
+export function createUserProfile(
+  input: Omit<UserProfile, "id" | "createdAt" | "updatedAt">,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.users.unshift({
       ...input,
-      id: generateId('user'),
+      id: generateId("user"),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
-    draft.auditLogs.unshift(createAuditLog('user_owner', 'create', 'profile'));
+    draft.auditLogs.unshift(createAuditLog("user_owner", "create", "profile"));
   }).users[0];
 }
 
 export function updateUserProfileRecord(
   id: string,
-  input: Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'>,
+  input: Omit<UserProfile, "id" | "createdAt" | "updatedAt">,
 ) {
-  return updateDatabase((draft) => {
-    const user = draft.users.find((item) => item.id === id);
-    if (!user) {
-      throw new Error('User not found.');
-    }
+  return (
+    updateDatabase((draft) => {
+      const user = draft.users.find((item) => item.id === id);
+      if (!user) {
+        throw new Error("User not found.");
+      }
 
-    Object.assign(user, input, {
-      updatedAt: new Date().toISOString(),
-    });
-  }).users.find((item) => item.id === id) ?? null;
+      Object.assign(user, input, {
+        updatedAt: new Date().toISOString(),
+      });
+    }).users.find((item) => item.id === id) ?? null
+  );
 }
 
 export function deleteUserProfileRecord(id: string) {
@@ -388,11 +473,17 @@ export function deleteUserProfileRecord(id: string) {
   }).users;
 }
 
-export function saveUserPermissionOverride(input: { userId?: string; email: string; permissions: Permission[] }) {
+export function saveUserPermissionOverride(input: {
+  userId?: string;
+  email: string;
+  permissions: Permission[];
+}) {
   const normalizedEmail = input.email.trim().toLowerCase();
   const existingOverrides = getUserPermissionOverridesStorage();
   const filteredOverrides = existingOverrides.filter(
-    (item) => item.email.toLowerCase() !== normalizedEmail && (!input.userId || item.userId !== input.userId),
+    (item) =>
+      item.email.toLowerCase() !== normalizedEmail &&
+      (!input.userId || item.userId !== input.userId),
   );
 
   filteredOverrides.unshift({
@@ -405,7 +496,10 @@ export function saveUserPermissionOverride(input: { userId?: string; email: stri
   void queryClient.invalidateQueries();
 }
 
-export function clearUserPermissionOverride(input: { userId?: string; email?: string }) {
+export function clearUserPermissionOverride(input: {
+  userId?: string;
+  email?: string;
+}) {
   const normalizedEmail = input.email?.trim().toLowerCase();
   const filteredOverrides = getUserPermissionOverridesStorage().filter(
     (item) =>
@@ -420,7 +514,8 @@ export function clearUserPermissionOverride(input: { userId?: string; email?: st
 export function applyUserPermissionOverride(profile: UserProfile): UserProfile {
   const override = getUserPermissionOverridesStorage().find(
     (item) =>
-      (item.userId && (item.userId === profile.id || item.userId === profile.authUserId)) ||
+      (item.userId &&
+        (item.userId === profile.id || item.userId === profile.authUserId)) ||
       item.email.toLowerCase() === profile.email.toLowerCase(),
   );
 
@@ -438,29 +533,43 @@ export function listAccessRoles() {
   return getAccessRoleTemplatesStorage();
 }
 
-export function createAccessRole(input: Omit<AccessRoleTemplate, 'id' | 'createdAt' | 'updatedAt' | 'isSystem'>) {
+export function createAccessRole(
+  input: Omit<
+    AccessRoleTemplate,
+    "id" | "createdAt" | "updatedAt" | "isSystem"
+  >,
+) {
   const timestamp = new Date().toISOString();
   const nextRole: AccessRoleTemplate = {
     ...input,
-    id: generateId('accessrole'),
+    id: generateId("accessrole"),
     createdAt: timestamp,
     updatedAt: timestamp,
     isSystem: false,
   };
 
-  saveAccessRoleTemplatesStorage([nextRole, ...getAccessRoleTemplatesStorage()]);
+  saveAccessRoleTemplatesStorage([
+    nextRole,
+    ...getAccessRoleTemplatesStorage(),
+  ]);
   void queryClient.invalidateQueries();
   return nextRole;
 }
 
-export function updateAccessRoleRecord(id: string, input: Omit<AccessRoleTemplate, 'id' | 'createdAt' | 'updatedAt' | 'isSystem'>) {
+export function updateAccessRoleRecord(
+  id: string,
+  input: Omit<
+    AccessRoleTemplate,
+    "id" | "createdAt" | "updatedAt" | "isSystem"
+  >,
+) {
   const nextRoles = getAccessRoleTemplatesStorage().map((role) => {
     if (role.id !== id) {
       return role;
     }
 
     if (role.isSystem) {
-      throw new Error('System roles cannot be edited here.');
+      throw new Error("System roles cannot be edited here.");
     }
 
     return {
@@ -476,20 +585,34 @@ export function updateAccessRoleRecord(id: string, input: Omit<AccessRoleTemplat
 }
 
 export function deleteAccessRoleRecord(id: string) {
-  const targetRole = getAccessRoleTemplatesStorage().find((role) => role.id === id);
+  const targetRole = getAccessRoleTemplatesStorage().find(
+    (role) => role.id === id,
+  );
   if (targetRole?.isSystem) {
-    throw new Error('System roles cannot be deleted.');
+    throw new Error("System roles cannot be deleted.");
   }
 
-  saveAccessRoleTemplatesStorage(getAccessRoleTemplatesStorage().filter((role) => role.id !== id));
-  saveUserAccessRoleAssignmentsStorage(getUserAccessRoleAssignmentsStorage().filter((assignment) => assignment.accessRoleId !== id));
+  saveAccessRoleTemplatesStorage(
+    getAccessRoleTemplatesStorage().filter((role) => role.id !== id),
+  );
+  saveUserAccessRoleAssignmentsStorage(
+    getUserAccessRoleAssignmentsStorage().filter(
+      (assignment) => assignment.accessRoleId !== id,
+    ),
+  );
   void queryClient.invalidateQueries();
 }
 
-export function saveUserAccessRoleAssignment(input: { userId?: string; email: string; accessRoleId: string }) {
+export function saveUserAccessRoleAssignment(input: {
+  userId?: string;
+  email: string;
+  accessRoleId: string;
+}) {
   const normalizedEmail = input.email.trim().toLowerCase();
   const filteredAssignments = getUserAccessRoleAssignmentsStorage().filter(
-    (item) => item.email.toLowerCase() !== normalizedEmail && (!input.userId || item.userId !== input.userId),
+    (item) =>
+      item.email.toLowerCase() !== normalizedEmail &&
+      (!input.userId || item.userId !== input.userId),
   );
 
   filteredAssignments.unshift({
@@ -502,7 +625,10 @@ export function saveUserAccessRoleAssignment(input: { userId?: string; email: st
   void queryClient.invalidateQueries();
 }
 
-export function clearUserAccessRoleAssignment(input: { userId?: string; email?: string }) {
+export function clearUserAccessRoleAssignment(input: {
+  userId?: string;
+  email?: string;
+}) {
   const normalizedEmail = input.email?.trim().toLowerCase();
   const filteredAssignments = getUserAccessRoleAssignmentsStorage().filter(
     (item) =>
@@ -514,10 +640,13 @@ export function clearUserAccessRoleAssignment(input: { userId?: string; email?: 
   void queryClient.invalidateQueries();
 }
 
-export function applyUserAccessRoleAssignment(profile: UserProfile): UserProfile {
+export function applyUserAccessRoleAssignment(
+  profile: UserProfile,
+): UserProfile {
   const assignment = getUserAccessRoleAssignmentsStorage().find(
     (item) =>
-      (item.userId && (item.userId === profile.id || item.userId === profile.authUserId)) ||
+      (item.userId &&
+        (item.userId === profile.id || item.userId === profile.authUserId)) ||
       item.email.toLowerCase() === profile.email.toLowerCase(),
   );
 
@@ -525,7 +654,9 @@ export function applyUserAccessRoleAssignment(profile: UserProfile): UserProfile
     return profile;
   }
 
-  const accessRole = getAccessRoleTemplatesStorage().find((role) => role.id === assignment.accessRoleId);
+  const accessRole = getAccessRoleTemplatesStorage().find(
+    (role) => role.id === assignment.accessRoleId,
+  );
   if (!accessRole) {
     return profile;
   }
@@ -538,17 +669,20 @@ export function applyUserAccessRoleAssignment(profile: UserProfile): UserProfile
   };
 }
 
-export async function hasUserPin(profile: Pick<UserProfile, 'id' | 'authUserId' | 'email'>) {
+export async function hasUserPin(
+  profile: Pick<UserProfile, "id" | "authUserId" | "email">,
+) {
   const normalizedEmail = profile.email.trim().toLowerCase();
   return getUserPinCredentialsStorage().some(
     (item) =>
-      (item.userId && (item.userId === profile.id || item.userId === profile.authUserId)) ||
+      (item.userId &&
+        (item.userId === profile.id || item.userId === profile.authUserId)) ||
       item.email.toLowerCase() === normalizedEmail,
   );
 }
 
 export async function saveUserPin(
-  profile: Pick<UserProfile, 'id' | 'authUserId' | 'email'>,
+  profile: Pick<UserProfile, "id" | "authUserId" | "email">,
   pin: string,
 ) {
   const normalizedEmail = profile.email.trim().toLowerCase();
@@ -573,7 +707,7 @@ export async function saveUserPin(
 }
 
 export async function verifyUserPin(
-  profile: Pick<UserProfile, 'id' | 'authUserId' | 'email'>,
+  profile: Pick<UserProfile, "id" | "authUserId" | "email">,
   pin: string,
 ) {
   const normalizedEmail = profile.email.trim().toLowerCase();
@@ -582,7 +716,8 @@ export async function verifyUserPin(
   return getUserPinCredentialsStorage().some(
     (item) =>
       item.pinHash === pinHash &&
-      ((item.userId && (item.userId === profile.id || item.userId === profile.authUserId)) ||
+      ((item.userId &&
+        (item.userId === profile.id || item.userId === profile.authUserId)) ||
         item.email.toLowerCase() === normalizedEmail),
   );
 }
@@ -591,29 +726,36 @@ export function listSpecialties() {
   return getDatabase().specialties;
 }
 
-export function createSpecialty(input: Omit<Specialty, 'id' | 'createdAt' | 'updatedAt'>) {
+export function createSpecialty(
+  input: Omit<Specialty, "id" | "createdAt" | "updatedAt">,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.specialties.unshift({
       ...input,
-      id: generateId('spec'),
+      id: generateId("spec"),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
   }).specialties[0];
 }
 
-export function updateSpecialtyRecord(id: string, input: Omit<Specialty, 'id' | 'createdAt' | 'updatedAt'>) {
-  return updateDatabase((draft) => {
-    const specialty = draft.specialties.find((item) => item.id === id);
-    if (!specialty) {
-      throw new Error('Specialty not found.');
-    }
+export function updateSpecialtyRecord(
+  id: string,
+  input: Omit<Specialty, "id" | "createdAt" | "updatedAt">,
+) {
+  return (
+    updateDatabase((draft) => {
+      const specialty = draft.specialties.find((item) => item.id === id);
+      if (!specialty) {
+        throw new Error("Specialty not found.");
+      }
 
-    Object.assign(specialty, input, {
-      updatedAt: new Date().toISOString(),
-    });
-  }).specialties.find((item) => item.id === id) ?? null;
+      Object.assign(specialty, input, {
+        updatedAt: new Date().toISOString(),
+      });
+    }).specialties.find((item) => item.id === id) ?? null
+  );
 }
 
 export function deleteSpecialtyRecord(id: string) {
@@ -627,72 +769,96 @@ export function listServices() {
 }
 
 export function listDoctorAvailabilityByDoctor(doctorId: string) {
-  return getDatabase().doctorAvailability
-    .filter((slot) => slot.doctorId === doctorId)
-    .sort((left, right) => left.dayOfWeek - right.dayOfWeek || left.startTime.localeCompare(right.startTime));
+  return getDatabase()
+    .doctorAvailability.filter((slot) => slot.doctorId === doctorId)
+    .sort(
+      (left, right) =>
+        left.dayOfWeek - right.dayOfWeek ||
+        left.startTime.localeCompare(right.startTime),
+    );
 }
 
-export function updateDoctorFeeSettings(doctorId: string, input: DoctorFeeSettings) {
-  return updateDatabase((draft) => {
-    const doctorUser = draft.users.find((item) => item.id === doctorId);
-    if (!doctorUser) {
-      throw new Error('Doctor record not found.');
-    }
+export function updateDoctorFeeSettings(
+  doctorId: string,
+  input: DoctorFeeSettings,
+) {
+  return (
+    updateDatabase((draft) => {
+      const doctorUser = draft.users.find((item) => item.id === doctorId);
+      if (!doctorUser) {
+        throw new Error("Doctor record not found.");
+      }
 
-    Object.assign(doctorUser, {
-      consultationFee: input.consultationFee,
-      followUpFee: input.followUpFee,
-      updatedAt: new Date().toISOString(),
-    });
-  }).users.find((item) => item.id === doctorId) ?? null;
+      Object.assign(doctorUser, {
+        consultationFee: input.consultationFee,
+        followUpFee: input.followUpFee,
+        updatedAt: new Date().toISOString(),
+      });
+    }).users.find((item) => item.id === doctorId) ?? null
+  );
 }
 
 export function replaceDoctorAvailability(
   doctorId: string,
-  slots: Array<Omit<DoctorAvailability, 'id' | 'createdAt' | 'updatedAt'>>,
+  slots: Array<Omit<DoctorAvailability, "id" | "createdAt" | "updatedAt">>,
 ) {
   const timestamp = new Date().toISOString();
 
   return updateDatabase((draft) => {
-    draft.doctorAvailability = draft.doctorAvailability.filter((item) => item.doctorId !== doctorId);
+    draft.doctorAvailability = draft.doctorAvailability.filter(
+      (item) => item.doctorId !== doctorId,
+    );
     draft.doctorAvailability.unshift(
       ...slots.map((slot) => ({
         ...slot,
-        id: generateId('avail'),
+        id: generateId("avail"),
         createdAt: timestamp,
         updatedAt: timestamp,
       })),
     );
-    draft.auditLogs.unshift(createAuditLog(doctorId, 'update', 'doctor_availability'));
-  }).doctorAvailability
-    .filter((item) => item.doctorId === doctorId)
-    .sort((left, right) => left.dayOfWeek - right.dayOfWeek || left.startTime.localeCompare(right.startTime));
+    draft.auditLogs.unshift(
+      createAuditLog(doctorId, "update", "doctor_availability"),
+    );
+  })
+    .doctorAvailability.filter((item) => item.doctorId === doctorId)
+    .sort(
+      (left, right) =>
+        left.dayOfWeek - right.dayOfWeek ||
+        left.startTime.localeCompare(right.startTime),
+    );
 }
 
-export function createService(input: Omit<Service, 'id' | 'createdAt' | 'updatedAt'>) {
+export function createService(
+  input: Omit<Service, "id" | "createdAt" | "updatedAt">,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.services.unshift({
       ...input,
-      serviceType: input.serviceType || 'medical_service',
-      id: generateId('svc'),
+      serviceType: input.serviceType || "medical_service",
+      id: generateId("svc"),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
   }).services[0];
 }
 
-export function updateServiceRecord(id: string, input: Omit<Service, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>) {
-  return updateDatabase((draft) => {
-    const service = draft.services.find((item) => item.id === id);
-    if (!service) {
-      throw new Error('Service not found.');
-    }
+export function updateServiceRecord(
+  id: string,
+  input: Omit<Service, "id" | "createdAt" | "updatedAt" | "deletedAt">,
+) {
+  return (
+    updateDatabase((draft) => {
+      const service = draft.services.find((item) => item.id === id);
+      if (!service) {
+        throw new Error("Service not found.");
+      }
 
-    Object.assign(service, input, {
-      updatedAt: new Date().toISOString(),
-    });
-  }).services.find((item) => item.id === id) ?? null;
+      Object.assign(service, input, {
+        updatedAt: new Date().toISOString(),
+      });
+    }).services.find((item) => item.id === id) ?? null
+  );
 }
 
 export function deleteServiceRecord(id: string) {
@@ -705,29 +871,36 @@ export function listSuppliers() {
   return getDatabase().suppliers;
 }
 
-export function createSupplier(input: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>) {
+export function createSupplier(
+  input: Omit<Supplier, "id" | "createdAt" | "updatedAt">,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.suppliers.unshift({
       ...input,
-      id: generateId('sup'),
+      id: generateId("sup"),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
   }).suppliers[0];
 }
 
-export function updateSupplierRecord(id: string, input: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>) {
-  return updateDatabase((draft) => {
-    const supplier = draft.suppliers.find((item) => item.id === id);
-    if (!supplier) {
-      throw new Error('Supplier not found.');
-    }
+export function updateSupplierRecord(
+  id: string,
+  input: Omit<Supplier, "id" | "createdAt" | "updatedAt">,
+) {
+  return (
+    updateDatabase((draft) => {
+      const supplier = draft.suppliers.find((item) => item.id === id);
+      if (!supplier) {
+        throw new Error("Supplier not found.");
+      }
 
-    Object.assign(supplier, input, {
-      updatedAt: new Date().toISOString(),
-    });
-  }).suppliers.find((item) => item.id === id) ?? null;
+      Object.assign(supplier, input, {
+        updatedAt: new Date().toISOString(),
+      });
+    }).suppliers.find((item) => item.id === id) ?? null
+  );
 }
 
 export function deleteSupplierRecord(id: string) {
@@ -736,37 +909,87 @@ export function deleteSupplierRecord(id: string) {
   }).suppliers;
 }
 
-export function upsertPatient(input: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'>) {
+export function createInventoryCategory(
+  input: Omit<InventoryCategory, "id" | "createdAt" | "updatedAt">,
+) {
+  const timestamp = new Date().toISOString();
+  return updateDatabase((draft) => {
+    draft.inventoryCategories.unshift({
+      ...input,
+      id: generateId("cat"),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }).inventoryCategories[0];
+}
+
+export function updateInventoryCategoryRecord(
+  id: string,
+  input: Omit<InventoryCategory, "id" | "createdAt" | "updatedAt">,
+) {
+  return (
+    updateDatabase((draft) => {
+      const category = draft.inventoryCategories.find((item) => item.id === id);
+      if (!category) {
+        throw new Error("Inventory category not found.");
+      }
+
+      Object.assign(category, input, {
+        updatedAt: new Date().toISOString(),
+      });
+    }).inventoryCategories.find((item) => item.id === id) ?? null
+  );
+}
+
+export function deleteInventoryCategoryRecord(id: string) {
+  return updateDatabase((draft) => {
+    if (draft.inventoryItems.some((item) => item.category_id === id)) {
+      throw new Error(
+        "Cannot delete a category that is already used by inventory items.",
+      );
+    }
+
+    draft.inventoryCategories = draft.inventoryCategories.filter(
+      (item) => item.id !== id,
+    );
+  }).inventoryCategories;
+}
+
+export function upsertPatient(
+  input: Omit<Patient, "id" | "createdAt" | "updatedAt">,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.patients.unshift({
       ...input,
       qrCode: input.qrCode || generatePatientQrCode(),
-      intakeSource: input.intakeSource ?? 'staff_walk_in',
-      visitStatus: input.visitStatus ?? 'visited_clinic',
+      intakeSource: input.intakeSource ?? "staff_walk_in",
+      visitStatus: input.visitStatus ?? "visited_clinic",
       lastClinicVisitAt: input.lastClinicVisitAt ?? null,
-      id: generateId('pat'),
+      id: generateId("pat"),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
-    draft.auditLogs.unshift(createAuditLog('user_owner', 'create', 'patient'));
+    draft.auditLogs.unshift(createAuditLog("user_owner", "create", "patient"));
   }).patients[0];
 }
 
 export function updatePatientRecord(
   patientId: string,
-  input: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'>,
+  input: Omit<Patient, "id" | "createdAt" | "updatedAt">,
 ) {
-  return updateDatabase((draft) => {
-    const patient = draft.patients.find((item) => item.id === patientId);
-    if (!patient) {
-      throw new Error('Patient record not found.');
-    }
+  return (
+    updateDatabase((draft) => {
+      const patient = draft.patients.find((item) => item.id === patientId);
+      if (!patient) {
+        throw new Error("Patient record not found.");
+      }
 
-    Object.assign(patient, input, {
-      updatedAt: new Date().toISOString(),
-    });
-  }).patients.find((item) => item.id === patientId) ?? null;
+      Object.assign(patient, input, {
+        updatedAt: new Date().toISOString(),
+      });
+    }).patients.find((item) => item.id === patientId) ?? null
+  );
 }
 
 export function deletePatientRecord(patientId: string) {
@@ -776,23 +999,25 @@ export function deletePatientRecord(patientId: string) {
 }
 
 export function listPatientActionLogs() {
-  return getPatientActionLogsStorage().sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  return getPatientActionLogsStorage().sort((left, right) =>
+    right.createdAt.localeCompare(left.createdAt),
+  );
 }
 
 export function createPatientActionLog(
-  input: Omit<PatientActionLog, 'id' | 'createdAt' | 'updatedAt'>,
+  input: Omit<PatientActionLog, "id" | "createdAt" | "updatedAt">,
 ) {
   const timestamp = new Date().toISOString();
   const nextLog: PatientActionLog = {
     ...input,
-    id: generateId('patientlog'),
+    id: generateId("patientlog"),
     createdAt: timestamp,
     updatedAt: timestamp,
   };
 
   const nextLogs = [nextLog, ...getPatientActionLogsStorage()];
   savePatientActionLogs(nextLogs);
-  void queryClient.invalidateQueries({ queryKey: ['patient-action-logs'] });
+  void queryClient.invalidateQueries({ queryKey: ["patient-action-logs"] });
 
   return nextLog;
 }
@@ -802,23 +1027,29 @@ export function listPatients() {
 }
 
 export function getPatientById(patientId: string) {
-  return getDatabase().patients.find((patient) => patient.id === patientId) ?? null;
+  return (
+    getDatabase().patients.find((patient) => patient.id === patientId) ?? null
+  );
 }
 
 export function getPatientByQrCode(qrCode: string) {
-  return getDatabase().patients.find((patient) => patient.qrCode === qrCode) ?? null;
+  return (
+    getDatabase().patients.find((patient) => patient.qrCode === qrCode) ?? null
+  );
 }
 
 export function listAppointments() {
   return getDatabase().appointments;
 }
 
-export function createAppointment(input: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>) {
+export function createAppointment(
+  input: Omit<Appointment, "id" | "createdAt" | "updatedAt">,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     const appointment = {
       ...input,
-      id: generateId('appt'),
+      id: generateId("appt"),
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -826,81 +1057,105 @@ export function createAppointment(input: Omit<Appointment, 'id' | 'createdAt' | 
     draft.appointments.unshift(appointment);
 
     if (appointment.bookingId) {
-      const booking = draft.bookings.find((item) => item.id === appointment.bookingId);
+      const booking = draft.bookings.find(
+        (item) => item.id === appointment.bookingId,
+      );
       if (booking) {
         booking.appointmentId = appointment.id;
         booking.updatedAt = timestamp;
       }
     }
 
-    draft.auditLogs.unshift(createAuditLog('user_owner', 'create', 'appointment'));
+    draft.auditLogs.unshift(
+      createAuditLog("user_owner", "create", "appointment"),
+    );
   }).appointments[0];
 }
 
 export function updateAppointmentRecord(
   appointmentId: string,
-  input: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>,
+  input: Omit<Appointment, "id" | "createdAt" | "updatedAt">,
 ) {
-  return updateDatabase((draft) => {
-    const appointment = draft.appointments.find((item) => item.id === appointmentId);
-    if (!appointment) {
-      throw new Error('Appointment record not found.');
-    }
+  return (
+    updateDatabase((draft) => {
+      const appointment = draft.appointments.find(
+        (item) => item.id === appointmentId,
+      );
+      if (!appointment) {
+        throw new Error("Appointment record not found.");
+      }
 
-    Object.assign(appointment, input, {
-      updatedAt: new Date().toISOString(),
-    });
-  }).appointments.find((item) => item.id === appointmentId) ?? null;
+      Object.assign(appointment, input, {
+        updatedAt: new Date().toISOString(),
+      });
+    }).appointments.find((item) => item.id === appointmentId) ?? null
+  );
 }
 
 export function deleteAppointmentRecord(appointmentId: string) {
   return updateDatabase((draft) => {
-    draft.appointments = draft.appointments.filter((item) => item.id !== appointmentId);
+    draft.appointments = draft.appointments.filter(
+      (item) => item.id !== appointmentId,
+    );
   }).appointments;
 }
 
-export function createConsultation(input: Omit<Consultation, 'id' | 'createdAt' | 'updatedAt'>) {
+export function createConsultation(
+  input: Omit<Consultation, "id" | "createdAt" | "updatedAt">,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.consultations.unshift({
       ...input,
-      id: generateId('consult'),
+      id: generateId("consult"),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
-    draft.auditLogs.unshift(createAuditLog(input.doctorId, 'create', 'consultation'));
+    draft.auditLogs.unshift(
+      createAuditLog(input.doctorId, "create", "consultation"),
+    );
   }).consultations[0];
 }
 
-export function createPrescription(input: Omit<Prescription, 'id' | 'createdAt' | 'updatedAt'>) {
+export function createPrescription(
+  input: Omit<Prescription, "id" | "createdAt" | "updatedAt">,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.prescriptions.unshift({
       ...input,
-      id: generateId('rx'),
+      id: generateId("rx"),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
-    draft.auditLogs.unshift(createAuditLog(input.patientId, 'create', 'prescription'));
+    draft.auditLogs.unshift(
+      createAuditLog(input.patientId, "create", "prescription"),
+    );
   }).prescriptions[0];
 }
 
-export function createMedicalCertificate(input: Omit<MedicalCertificate, 'id' | 'createdAt' | 'updatedAt'>) {
+export function createMedicalCertificate(
+  input: Omit<MedicalCertificate, "id" | "createdAt" | "updatedAt">,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.medicalCertificates.unshift({
       ...input,
-      id: generateId('medcert'),
+      id: generateId("medcert"),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
-    draft.auditLogs.unshift(createAuditLog(input.patientId, 'create', 'medical_certificate'));
+    draft.auditLogs.unshift(
+      createAuditLog(input.patientId, "create", "medical_certificate"),
+    );
   }).medicalCertificates[0];
 }
 
 export function listMedicalCertificatesByPatient(patientId: string) {
-  return getDatabase().medicalCertificates
-    .filter((certificate) => certificate.patientId === patientId)
+  return getDatabase()
+    .medicalCertificates.filter(
+      (certificate) => certificate.patientId === patientId,
+    )
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
@@ -909,79 +1164,109 @@ export function listBookings() {
 }
 
 export function listReferralsByPatient(patientId: string) {
-  return getDatabase().referrals
-    .filter((referral) => referral.patientId === patientId)
+  return getDatabase()
+    .referrals.filter((referral) => referral.patientId === patientId)
     .sort((left, right) => right.referredAt.localeCompare(left.referredAt));
 }
 
 export function listReferralsByTargetDoctor(targetDoctorId: string) {
-  return getDatabase().referrals
-    .filter((referral) => referral.targetDoctorId === targetDoctorId)
+  return getDatabase()
+    .referrals.filter((referral) => referral.targetDoctorId === targetDoctorId)
     .sort((left, right) => right.referredAt.localeCompare(left.referredAt));
 }
 
-export function createReferral(input: Omit<Referral, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>) {
+export function createReferral(
+  input: Omit<Referral, "id" | "createdAt" | "updatedAt" | "completedAt">,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.referrals.unshift({
       ...input,
-      id: generateId('ref'),
+      id: generateId("ref"),
       createdAt: timestamp,
       updatedAt: timestamp,
-      completedAt: input.status === 'completed' ? timestamp : null,
+      completedAt: input.status === "completed" ? timestamp : null,
     });
-    draft.auditLogs.unshift(createAuditLog(input.referringDoctorId, 'create', 'referral'));
+    draft.auditLogs.unshift(
+      createAuditLog(input.referringDoctorId, "create", "referral"),
+    );
   }).referrals[0];
 }
 
 export function updateReferralOutcome(
   referralId: string,
-  input: Pick<Referral, 'status' | 'specialistFindings' | 'specialistRecommendations' | 'specialistVisitedAt'>,
+  input: Pick<
+    Referral,
+    | "status"
+    | "specialistFindings"
+    | "specialistRecommendations"
+    | "specialistVisitedAt"
+  >,
 ) {
-  return updateDatabase((draft) => {
-    const referral = draft.referrals.find((item) => item.id === referralId);
-    if (!referral) {
-      return;
-    }
+  return (
+    updateDatabase((draft) => {
+      const referral = draft.referrals.find((item) => item.id === referralId);
+      if (!referral) {
+        return;
+      }
 
-    referral.status = input.status;
-    referral.specialistFindings = input.specialistFindings;
-    referral.specialistRecommendations = input.specialistRecommendations;
-    referral.specialistVisitedAt = input.specialistVisitedAt;
-    referral.completedAt = input.status === 'completed' ? new Date().toISOString() : null;
-    referral.updatedAt = new Date().toISOString();
-    draft.auditLogs.unshift(createAuditLog(referral.targetDoctorId ?? 'user_owner', 'update', 'referral'));
-  }).referrals.find((item) => item.id === referralId) ?? null;
+      referral.status = input.status;
+      referral.specialistFindings = input.specialistFindings;
+      referral.specialistRecommendations = input.specialistRecommendations;
+      referral.specialistVisitedAt = input.specialistVisitedAt;
+      referral.completedAt =
+        input.status === "completed" ? new Date().toISOString() : null;
+      referral.updatedAt = new Date().toISOString();
+      draft.auditLogs.unshift(
+        createAuditLog(
+          referral.targetDoctorId ?? "user_owner",
+          "update",
+          "referral",
+        ),
+      );
+    }).referrals.find((item) => item.id === referralId) ?? null
+  );
 }
 
 export function updateReferralStatus(
   referralId: string,
-  input: Pick<Referral, 'status' | 'referralNotes'>,
+  input: Pick<Referral, "status" | "referralNotes">,
 ) {
-  return updateDatabase((draft) => {
-    const referral = draft.referrals.find((item) => item.id === referralId);
-    if (!referral) {
-      return;
-    }
+  return (
+    updateDatabase((draft) => {
+      const referral = draft.referrals.find((item) => item.id === referralId);
+      if (!referral) {
+        return;
+      }
 
-    referral.status = input.status;
-    referral.referralNotes = input.referralNotes;
-    referral.completedAt = input.status === 'completed' ? new Date().toISOString() : null;
-    referral.updatedAt = new Date().toISOString();
-    draft.auditLogs.unshift(createAuditLog(referral.targetDoctorId ?? 'user_owner', 'update', 'referral'));
-  }).referrals.find((item) => item.id === referralId) ?? null;
+      referral.status = input.status;
+      referral.referralNotes = input.referralNotes;
+      referral.completedAt =
+        input.status === "completed" ? new Date().toISOString() : null;
+      referral.updatedAt = new Date().toISOString();
+      draft.auditLogs.unshift(
+        createAuditLog(
+          referral.targetDoctorId ?? "user_owner",
+          "update",
+          "referral",
+        ),
+      );
+    }).referrals.find((item) => item.id === referralId) ?? null
+  );
 }
 
-export function createBooking(input: Omit<Booking, 'id' | 'createdAt' | 'updatedAt' | 'status'>) {
+export function createBooking(
+  input: Omit<Booking, "id" | "createdAt" | "updatedAt" | "status">,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.bookings.unshift({
       ...input,
       appointmentId: input.appointmentId ?? null,
-      id: generateId('book'),
-      status: 'pending',
+      id: generateId("book"),
+      status: "pending",
       receiptCode: input.receiptCode || generateBookingReceiptCode(),
-      paymentStatus: input.paymentStatus || 'pending_cashier',
+      paymentStatus: input.paymentStatus || "pending_cashier",
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -989,7 +1274,11 @@ export function createBooking(input: Omit<Booking, 'id' | 'createdAt' | 'updated
 }
 
 export function getBookingByReceiptCode(receiptCode: string) {
-  return getDatabase().bookings.find((booking) => booking.receiptCode === receiptCode) ?? null;
+  return (
+    getDatabase().bookings.find(
+      (booking) => booking.receiptCode === receiptCode,
+    ) ?? null
+  );
 }
 
 function resolveBookingScheduledAtIso(input: {
@@ -997,15 +1286,15 @@ function resolveBookingScheduledAtIso(input: {
   preferredTime: string | null | undefined;
   fallbackIso?: string | null;
 }) {
-  const dateValue = input.preferredDate?.trim() ?? '';
-  const timeValue = input.preferredTime?.trim() ?? '';
+  const dateValue = input.preferredDate?.trim() ?? "";
+  const timeValue = input.preferredTime?.trim() ?? "";
 
   if (dateValue && timeValue) {
     const timeMatch = timeValue.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
     if (timeMatch) {
       const hour = Number(timeMatch[1]);
       const minute = Number(timeMatch[2]);
-      const second = Number(timeMatch[3] ?? '0');
+      const second = Number(timeMatch[3] ?? "0");
 
       if (
         Number.isInteger(hour) &&
@@ -1018,7 +1307,7 @@ function resolveBookingScheduledAtIso(input: {
         second >= 0 &&
         second <= 59
       ) {
-        const normalizedTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
+        const normalizedTime = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:${String(second).padStart(2, "0")}`;
         const candidate = new Date(`${dateValue}T${normalizedTime}`);
         if (!Number.isNaN(candidate.getTime())) {
           return candidate.toISOString();
@@ -1044,50 +1333,67 @@ function resolveBookingScheduledAtIso(input: {
 
 export function markBookingPaidAndCreateInvoice(receiptCode: string) {
   const database = getDatabase();
-  const booking = database.bookings.find((item) => item.receiptCode === receiptCode);
+  const booking = database.bookings.find(
+    (item) => item.receiptCode === receiptCode,
+  );
   if (!booking) {
-    throw new Error('Booking receipt not found.');
+    throw new Error("Booking receipt not found.");
   }
 
-  if (booking.paymentStatus === 'paid') {
-    return { booking, invoice: database.invoices.find((invoice) => invoice.patientId === booking.patientId) ?? null };
+  if (booking.paymentStatus === "paid") {
+    return {
+      booking,
+      invoice:
+        database.invoices.find(
+          (invoice) => invoice.patientId === booking.patientId,
+        ) ?? null,
+    };
   }
 
   const invoiceNumber = `INV-${Date.now()}`;
-  const description = booking.feeType === 'follow_up' ? 'Follow-up Fee' : booking.feeType === 'consultation' ? 'Consultation Fee' : 'Medical Service Fee';
+  const description =
+    booking.feeType === "follow_up"
+      ? "Follow-up Fee"
+      : booking.feeType === "consultation"
+        ? "Consultation Fee"
+        : "Medical Service Fee";
   const existingAppointment = booking.appointmentId
-    ? database.appointments.find((item) => item.id === booking.appointmentId) ?? null
+    ? (database.appointments.find(
+        (item) => item.id === booking.appointmentId,
+      ) ?? null)
     : null;
-  const appointment = existingAppointment ?? createAppointment({
-    patientId: booking.patientId,
-    doctorId: booking.doctorId || 'user_owner',
-    specialtyId: '',
-    serviceId: booking.serviceId,
-    bookingId: booking.id,
-    scheduledAt: resolveBookingScheduledAtIso({
-      preferredDate: booking.preferredDate,
-      preferredTime: booking.preferredTime,
-      fallbackIso: booking.createdAt,
-    }),
-    status: 'scheduled',
-    source: 'internal',
-    visitType: 'in_person',
-    reason: description,
-    notes: booking.intakeNotes,
-    teleconsultationPlatform: null,
-    teleconsultationUrl: null,
-    teleconsultationAccessInstructions: null,
-    consultationId: null,
-    completedBy: null,
-    completedAt: null,
-    deletedAt: null,
-  });
+  const appointment =
+    existingAppointment ??
+    createAppointment({
+      patientId: booking.patientId,
+      doctorId: booking.doctorId || "user_owner",
+      specialtyId: "",
+      serviceId: booking.serviceId,
+      bookingId: booking.id,
+      scheduledAt: resolveBookingScheduledAtIso({
+        preferredDate: booking.preferredDate,
+        preferredTime: booking.preferredTime,
+        fallbackIso: booking.createdAt,
+      }),
+      status: "scheduled",
+      source: "internal",
+      visitType: "in_person",
+      reason: description,
+      notes: booking.intakeNotes,
+      teleconsultationPlatform: null,
+      teleconsultationUrl: null,
+      teleconsultationAccessInstructions: null,
+      consultationId: null,
+      completedBy: null,
+      completedAt: null,
+      deletedAt: null,
+    });
   const invoice = createInvoice(
     {
       patientId: booking.patientId,
       appointmentId: appointment.id,
       invoiceNumber,
-      paymentStatus: 'paid',
+      paymentStatus: "paid",
       subtotal: booking.feeAmount,
       total: booking.feeAmount,
     },
@@ -1096,20 +1402,23 @@ export function markBookingPaidAndCreateInvoice(receiptCode: string) {
         description,
         quantity: 1,
         unitPrice: booking.feeAmount,
-        category: 'consultation',
+        category: "consultation",
       },
     ],
   );
 
-  const updatedBooking = updateDatabase((draft) => {
-    const target = draft.bookings.find((item) => item.receiptCode === receiptCode);
-    if (!target) {
-      return;
-    }
-    target.paymentStatus = 'paid';
-    target.appointmentId = appointment.id;
-    target.updatedAt = new Date().toISOString();
-  }).bookings.find((item) => item.receiptCode === receiptCode) ?? null;
+  const updatedBooking =
+    updateDatabase((draft) => {
+      const target = draft.bookings.find(
+        (item) => item.receiptCode === receiptCode,
+      );
+      if (!target) {
+        return;
+      }
+      target.paymentStatus = "paid";
+      target.appointmentId = appointment.id;
+      target.updatedAt = new Date().toISOString();
+    }).bookings.find((item) => item.receiptCode === receiptCode) ?? null;
 
   return { booking: updatedBooking, invoice };
 }
@@ -1119,12 +1428,14 @@ export function listInvoices() {
 }
 
 export function createInvoice(
-  invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>,
-  items: Array<Omit<InvoiceItem, 'id' | 'createdAt' | 'updatedAt' | 'invoiceId'>>,
+  invoice: Omit<Invoice, "id" | "createdAt" | "updatedAt">,
+  items: Array<
+    Omit<InvoiceItem, "id" | "createdAt" | "updatedAt" | "invoiceId">
+  >,
 ) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
-    const invoiceId = generateId('inv');
+    const invoiceId = generateId("inv");
     draft.invoices.unshift({
       ...invoice,
       id: invoiceId,
@@ -1134,7 +1445,7 @@ export function createInvoice(
     draft.invoiceItems.unshift(
       ...items.map((item) => ({
         ...item,
-        id: generateId('inv_item'),
+        id: generateId("inv_item"),
         invoiceId,
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -1145,54 +1456,66 @@ export function createInvoice(
 
 export function updateInvoiceRecord(
   invoiceId: string,
-  invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>,
-  items: Array<Omit<InvoiceItem, 'id' | 'createdAt' | 'updatedAt' | 'invoiceId'>>,
+  invoice: Omit<Invoice, "id" | "createdAt" | "updatedAt">,
+  items: Array<
+    Omit<InvoiceItem, "id" | "createdAt" | "updatedAt" | "invoiceId">
+  >,
 ) {
   const timestamp = new Date().toISOString();
 
-  return updateDatabase((draft) => {
-    const targetInvoice = draft.invoices.find((entry) => entry.id === invoiceId);
-    if (!targetInvoice) {
-      throw new Error('Invoice record not found.');
-    }
+  return (
+    updateDatabase((draft) => {
+      const targetInvoice = draft.invoices.find(
+        (entry) => entry.id === invoiceId,
+      );
+      if (!targetInvoice) {
+        throw new Error("Invoice record not found.");
+      }
 
-    Object.assign(targetInvoice, invoice, {
-      updatedAt: timestamp,
-    });
-
-    draft.invoiceItems = draft.invoiceItems.filter((entry) => entry.invoiceId !== invoiceId);
-    draft.invoiceItems.unshift(
-      ...items.map((item) => ({
-        ...item,
-        id: generateId('inv_item'),
-        invoiceId,
-        createdAt: timestamp,
+      Object.assign(targetInvoice, invoice, {
         updatedAt: timestamp,
-      })),
-    );
-  }).invoices.find((entry) => entry.id === invoiceId) ?? null;
+      });
+
+      draft.invoiceItems = draft.invoiceItems.filter(
+        (entry) => entry.invoiceId !== invoiceId,
+      );
+      draft.invoiceItems.unshift(
+        ...items.map((item) => ({
+          ...item,
+          id: generateId("inv_item"),
+          invoiceId,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        })),
+      );
+    }).invoices.find((entry) => entry.id === invoiceId) ?? null
+  );
 }
 
 export function deleteInvoiceRecord(invoiceId: string) {
   return updateDatabase((draft) => {
     draft.invoices = draft.invoices.filter((entry) => entry.id !== invoiceId);
-    draft.invoiceItems = draft.invoiceItems.filter((entry) => entry.invoiceId !== invoiceId);
+    draft.invoiceItems = draft.invoiceItems.filter(
+      (entry) => entry.invoiceId !== invoiceId,
+    );
   }).invoices;
 }
 
 export function listInventoryItems() {
-  return getDatabase().inventoryItems;  
+  return getDatabase().inventoryItems;
 }
 
 export function createInventoryItem(
-  input: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt' | 'qrCode'> & { qrCode?: string },
+  input: Omit<InventoryItem, "id" | "createdAt" | "updatedAt" | "qrCode"> & {
+    qrCode?: string;
+  },
 ) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.inventoryItems.unshift({
       ...input,
       qrCode: input.qrCode || generateInventoryQrCode(),
-      id: generateId('item'),
+      id: generateId("item"),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -1201,31 +1524,43 @@ export function createInventoryItem(
 
 export function updateInventoryItemRecord(
   itemId: string,
-  input: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt' | 'qrCode'> & { qrCode?: string },
+  input: Omit<InventoryItem, "id" | "createdAt" | "updatedAt" | "qrCode"> & {
+    qrCode?: string;
+  },
 ) {
-  return updateDatabase((draft) => {
-    const item = draft.inventoryItems.find((entry) => entry.id === itemId);
-    if (!item) {
-      throw new Error('Inventory item not found.');
-    }
+  return (
+    updateDatabase((draft) => {
+      const item = draft.inventoryItems.find((entry) => entry.id === itemId);
+      if (!item) {
+        throw new Error("Inventory item not found.");
+      }
 
-    Object.assign(item, {
-      ...input,
-      qrCode: input.qrCode || item.qrCode,
-      updatedAt: new Date().toISOString(),
-    });
-  }).inventoryItems.find((entry) => entry.id === itemId) ?? null;
+      Object.assign(item, {
+        ...input,
+        qrCode: input.qrCode || item.qrCode,
+        updatedAt: new Date().toISOString(),
+      });
+    }).inventoryItems.find((entry) => entry.id === itemId) ?? null
+  );
 }
 
 export function deleteInventoryItemRecord(itemId: string) {
   return updateDatabase((draft) => {
-    draft.inventoryItems = draft.inventoryItems.filter((entry) => entry.id !== itemId);
+    draft.inventoryItems = draft.inventoryItems.filter(
+      (entry) => entry.id !== itemId,
+    );
   }).inventoryItems;
 }
 
 export function getInventoryItemByQrCode(qrCode: string) {
   const normalizedCode = qrCode.trim().toUpperCase();
-  return getDatabase().inventoryItems.find((item) => item.qrCode === normalizedCode || item.sku.trim().toUpperCase() === normalizedCode) ?? null;
+  return (
+    getDatabase().inventoryItems.find(
+      (item) =>
+        item.qrCode === normalizedCode ||
+        item.sku.trim().toUpperCase() === normalizedCode,
+    ) ?? null
+  );
 }
 
 export function listPosSales() {
@@ -1236,24 +1571,28 @@ export function listPosSaleItems() {
   return getDatabase().posSaleItems;
 }
 
-export function createPosSaleRecord(input: Omit<PosSale, 'id' | 'createdAt' | 'updatedAt'>) {
+export function createPosSaleRecord(
+  input: Omit<PosSale, "id" | "createdAt" | "updatedAt">,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.posSales.unshift({
       ...input,
-      id: generateId('possale'),
+      id: generateId("possale"),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
   }).posSales[0];
 }
 
-export function createPosSaleItemRecord(input: Omit<PosSaleItem, 'id' | 'createdAt' | 'updatedAt'>) {
+export function createPosSaleItemRecord(
+  input: Omit<PosSaleItem, "id" | "createdAt" | "updatedAt">,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.posSaleItems.unshift({
       ...input,
-      id: generateId('positem'),
+      id: generateId("positem"),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -1273,7 +1612,7 @@ export function checkoutPosSale(input: {
   }>;
 }) {
   if (input.items.length === 0) {
-    throw new Error('Add at least one inventory item before checkout.');
+    throw new Error("Add at least one inventory item before checkout.");
   }
 
   const timestamp = new Date().toISOString();
@@ -1281,9 +1620,11 @@ export function checkoutPosSale(input: {
 
   const nextDatabase = updateDatabase((draft) => {
     const saleItems = input.items.map((entry) => {
-      const item = draft.inventoryItems.find((inventoryItem) => inventoryItem.id === entry.inventoryItemId);
+      const item = draft.inventoryItems.find(
+        (inventoryItem) => inventoryItem.id === entry.inventoryItemId,
+      );
       if (!item) {
-        throw new Error('Inventory item not found.');
+        throw new Error("Inventory item not found.");
       }
 
       if (entry.quantity <= 0) {
@@ -1291,7 +1632,9 @@ export function checkoutPosSale(input: {
       }
 
       if (item.stockOnHand < entry.quantity) {
-        throw new Error(`Only ${item.stockOnHand} ${item.unit} remaining for ${item.name}.`);
+        throw new Error(
+          `Only ${item.stockOnHand} ${item.unit} remaining for ${item.name}.`,
+        );
       }
 
       const unitPrice = Number(entry.unitPrice ?? item.sellingPrice ?? 0);
@@ -1306,7 +1649,7 @@ export function checkoutPosSale(input: {
     });
 
     const subtotal = saleItems.reduce((sum, entry) => sum + entry.lineTotal, 0);
-    const saleId = generateId('possale');
+    const saleId = generateId("possale");
 
     draft.posSales.unshift({
       id: saleId,
@@ -1327,7 +1670,7 @@ export function checkoutPosSale(input: {
       entry.item.updatedAt = timestamp;
 
       draft.posSaleItems.unshift({
-        id: generateId('positem'),
+        id: generateId("positem"),
         saleId,
         inventoryItemId: entry.item.id,
         itemName: entry.item.name,
@@ -1341,9 +1684,9 @@ export function checkoutPosSale(input: {
       });
 
       draft.stockTransactions.unshift({
-        id: generateId('stock'),
+        id: generateId("stock"),
         itemId: entry.item.id,
-        type: 'sale',
+        type: "sale",
         quantity: entry.quantity,
         remarks: `POS sale ${saleNumber}`,
         createdAt: timestamp,
@@ -1351,11 +1694,17 @@ export function checkoutPosSale(input: {
       });
     }
 
-    draft.auditLogs.unshift(createAuditLog(input.cashierId, 'create', 'pos_sale'));
+    draft.auditLogs.unshift(
+      createAuditLog(input.cashierId, "create", "pos_sale"),
+    );
   });
 
-  const sale = nextDatabase.posSales.find((entry) => entry.saleNumber === saleNumber) ?? null;
-  const items = sale ? nextDatabase.posSaleItems.filter((entry) => entry.saleId === sale.id) : [];
+  const sale =
+    nextDatabase.posSales.find((entry) => entry.saleNumber === saleNumber) ??
+    null;
+  const items = sale
+    ? nextDatabase.posSaleItems.filter((entry) => entry.saleId === sale.id)
+    : [];
 
   return {
     sale,
@@ -1364,37 +1713,41 @@ export function checkoutPosSale(input: {
 }
 
 export function listInventoryUsageLogsByPatient(patientId: string) {
-  return getDatabase().inventoryUsageLogs
-    .filter((log) => log.patientId === patientId)
+  return getDatabase()
+    .inventoryUsageLogs.filter((log) => log.patientId === patientId)
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
 export function recordInventoryUsage(
-  input: Omit<InventoryUsageLog, 'id' | 'createdAt' | 'updatedAt'>,
+  input: Omit<InventoryUsageLog, "id" | "createdAt" | "updatedAt">,
 ) {
   const timestamp = new Date().toISOString();
 
   return updateDatabase((draft) => {
-    const item = draft.inventoryItems.find((inventoryItem) => inventoryItem.id === input.itemId);
+    const item = draft.inventoryItems.find(
+      (inventoryItem) => inventoryItem.id === input.itemId,
+    );
     if (!item) {
-      throw new Error('Inventory item not found.');
+      throw new Error("Inventory item not found.");
     }
 
     if (input.quantity <= 0) {
-      throw new Error('Quantity used must be at least 1.');
+      throw new Error("Quantity used must be at least 1.");
     }
 
     if (item.stockOnHand < input.quantity) {
-      throw new Error(`Only ${item.stockOnHand} ${item.unit} remaining for ${item.name}.`);
+      throw new Error(
+        `Only ${item.stockOnHand} ${item.unit} remaining for ${item.name}.`,
+      );
     }
 
     item.stockOnHand -= input.quantity;
     item.updatedAt = timestamp;
 
     draft.stockTransactions.unshift({
-      id: generateId('stock'),
+      id: generateId("stock"),
       itemId: item.id,
-      type: 'stock_out',
+      type: "stock_out",
       quantity: input.quantity,
       remarks: `Used for patient ${input.patientId}. ${input.notes}`.trim(),
       createdAt: timestamp,
@@ -1403,12 +1756,14 @@ export function recordInventoryUsage(
 
     draft.inventoryUsageLogs.unshift({
       ...input,
-      id: generateId('invuse'),
+      id: generateId("invuse"),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
 
-    draft.auditLogs.unshift(createAuditLog(input.recordedBy, 'create', 'inventory_usage'));
+    draft.auditLogs.unshift(
+      createAuditLog(input.recordedBy, "create", "inventory_usage"),
+    );
   }).inventoryUsageLogs[0];
 }
 
@@ -1416,10 +1771,13 @@ export function listLabOrders() {
   return getDatabase().labOrders;
 }
 
-export function createLabOrder(order: Omit<LabOrder, 'id' | 'createdAt' | 'updatedAt'>, resultSummary?: string) {
+export function createLabOrder(
+  order: Omit<LabOrder, "id" | "createdAt" | "updatedAt">,
+  resultSummary?: string,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
-    const orderId = generateId('laborder');
+    const orderId = generateId("laborder");
     draft.labOrders.unshift({
       ...order,
       id: orderId,
@@ -1428,12 +1786,12 @@ export function createLabOrder(order: Omit<LabOrder, 'id' | 'createdAt' | 'updat
     });
     if (resultSummary) {
       const result: LabResult = {
-        id: generateId('labresult'),
+        id: generateId("labresult"),
         createdAt: timestamp,
         updatedAt: timestamp,
         labOrderId: orderId,
         resultSummary,
-        releasedAt: order.status === 'released' ? timestamp : null,
+        releasedAt: order.status === "released" ? timestamp : null,
         attachmentName: null,
       };
       draft.labResults.unshift(result);
@@ -1443,61 +1801,75 @@ export function createLabOrder(order: Omit<LabOrder, 'id' | 'createdAt' | 'updat
 
 export function updateLabOrder(
   id: string,
-  order: Omit<LabOrder, 'id' | 'createdAt' | 'updatedAt'>,
+  order: Omit<LabOrder, "id" | "createdAt" | "updatedAt">,
   resultSummary?: string,
 ) {
   const timestamp = new Date().toISOString();
 
-  return updateDatabase((draft) => {
-    const existingOrder = draft.labOrders.find((entry) => entry.id === id);
-    if (!existingOrder) {
-      throw new Error('Lab order not found.');
-    }
-
-    Object.assign(existingOrder, order, {
-      updatedAt: timestamp,
-    });
-
-    const existingResult = draft.labResults.find((entry) => entry.labOrderId === id);
-    if (resultSummary && resultSummary.trim()) {
-      if (existingResult) {
-        existingResult.resultSummary = resultSummary;
-        existingResult.releasedAt = order.status === 'released' ? timestamp : existingResult.releasedAt;
-        existingResult.updatedAt = timestamp;
-      } else {
-        draft.labResults.unshift({
-          id: generateId('labresult'),
-          createdAt: timestamp,
-          updatedAt: timestamp,
-          labOrderId: id,
-          resultSummary,
-          releasedAt: order.status === 'released' ? timestamp : null,
-          attachmentName: null,
-        });
+  return (
+    updateDatabase((draft) => {
+      const existingOrder = draft.labOrders.find((entry) => entry.id === id);
+      if (!existingOrder) {
+        throw new Error("Lab order not found.");
       }
-    }
-  }).labOrders.find((entry) => entry.id === id) ?? null;
+
+      Object.assign(existingOrder, order, {
+        updatedAt: timestamp,
+      });
+
+      const existingResult = draft.labResults.find(
+        (entry) => entry.labOrderId === id,
+      );
+      if (resultSummary && resultSummary.trim()) {
+        if (existingResult) {
+          existingResult.resultSummary = resultSummary;
+          existingResult.releasedAt =
+            order.status === "released" ? timestamp : existingResult.releasedAt;
+          existingResult.updatedAt = timestamp;
+        } else {
+          draft.labResults.unshift({
+            id: generateId("labresult"),
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            labOrderId: id,
+            resultSummary,
+            releasedAt: order.status === "released" ? timestamp : null,
+            attachmentName: null,
+          });
+        }
+      }
+    }).labOrders.find((entry) => entry.id === id) ?? null
+  );
 }
 
 export function deleteLabOrder(id: string) {
   return updateDatabase((draft) => {
     draft.labOrders = draft.labOrders.filter((entry) => entry.id !== id);
-    draft.labResults = draft.labResults.filter((entry) => entry.labOrderId !== id);
+    draft.labResults = draft.labResults.filter(
+      (entry) => entry.labOrderId !== id,
+    );
   }).labOrders;
 }
 
 export function getDashboardSnapshot() {
   const database = getDatabase();
-  const today = '2026-03-25';
+  const today = "2026-03-25";
   const todaysAppointments = database.appointments.filter((appointment) =>
     appointment.scheduledAt.startsWith(today),
   );
-  const revenue = database.payments.reduce((sum, payment) => sum + payment.amount, 0);
+  const revenue = database.payments.reduce(
+    (sum, payment) => sum + payment.amount,
+    0,
+  );
   const pendingConsultations = database.appointments.filter((appointment) =>
-    ['scheduled', 'confirmed', 'in_progress'].includes(appointment.status),
+    ["scheduled", "confirmed", "in_progress"].includes(appointment.status),
   ).length;
-  const labWorkload = database.labOrders.filter((order) => order.status !== 'released').length;
-  const lowStock = database.inventoryItems.filter((item) => item.stockOnHand <= item.reorderLevel).length;
+  const labWorkload = database.labOrders.filter(
+    (order) => order.status !== "released",
+  ).length;
+  const lowStock = database.inventoryItems.filter(
+    (item) => item.stockOnHand <= item.reorderLevel,
+  ).length;
 
   return {
     appointmentsToday: todaysAppointments.length,
@@ -1509,21 +1881,30 @@ export function getDashboardSnapshot() {
   };
 }
 
-function createAuditLog(actorId: string, action: string, entityType: string): AuditLog {
+function createAuditLog(
+  actorId: string,
+  action: string,
+  entityType: string,
+): AuditLog {
   const timestamp = new Date().toISOString();
   return {
-    id: generateId('audit'),
+    id: generateId("audit"),
     actorId,
     action,
     entityType,
-    entityId: generateId('entity'),
+    entityId: generateId("entity"),
     details: `${action} ${entityType}`,
     createdAt: timestamp,
     updatedAt: timestamp,
   };
 }
 
-export function updateLabService(id: string, input: Partial<Pick<LabService, 'name' | 'description' | 'price' | 'category'>>) {
+export function updateLabService(
+  id: string,
+  input: Partial<
+    Pick<LabService, "name" | "description" | "price" | "category">
+  >,
+) {
   return updateDatabase((draft) => {
     const svc = draft.labServices.find((s) => s.id === id);
     if (!svc) return;
@@ -1537,39 +1918,55 @@ export function deleteLabService(id: string) {
   });
 }
 
-export function createLabService(input: { name: string; description: string; price: number; category: LabServiceCategory }) {
+export function createLabService(input: {
+  name: string;
+  description: string;
+  price: number;
+  category: LabServiceCategory;
+}) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.labServices.unshift({
       ...input,
-      id: generateId('labsvc'),
+      id: generateId("labsvc"),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
   }).labServices[0];
 }
 
-export function updateLabOrderSchedule(id: string, schedDate: string, schedTime: string) {
-  return updateDatabase((draft) => {
-    const order = draft.labOrders.find((o) => o.id === id);
-    if (!order) return;
-    order.schedDate = schedDate;
-    order.schedTime = schedTime;
-    order.updatedAt = new Date().toISOString();
-  }).labOrders.find((o) => o.id === id) ?? null;
+export function updateLabOrderSchedule(
+  id: string,
+  schedDate: string,
+  schedTime: string,
+) {
+  return (
+    updateDatabase((draft) => {
+      const order = draft.labOrders.find((o) => o.id === id);
+      if (!order) return;
+      order.schedDate = schedDate;
+      order.schedTime = schedTime;
+      order.updatedAt = new Date().toISOString();
+    }).labOrders.find((o) => o.id === id) ?? null
+  );
 }
 
 export function listLabBookingRequests() {
   return getDatabase().labBookingRequests;
 }
 
-export function createLabBookingRequest(input: Omit<LabBookingRequest, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'confirmedAt'>) {
+export function createLabBookingRequest(
+  input: Omit<
+    LabBookingRequest,
+    "id" | "createdAt" | "updatedAt" | "status" | "confirmedAt"
+  >,
+) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.labBookingRequests.unshift({
       ...input,
-      id: generateId('labreq'),
-      status: 'Pending',
+      id: generateId("labreq"),
+      status: "Pending",
       confirmedAt: null,
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -1577,31 +1974,38 @@ export function createLabBookingRequest(input: Omit<LabBookingRequest, 'id' | 'c
   }).labBookingRequests[0];
 }
 
-export function updateLabBookingRequestStatus(id: string, status: LabBookingStatus) {
-  return updateDatabase((draft) => {
-    const req = draft.labBookingRequests.find((r) => r.id === id);
-    if (!req) return;
-    req.status = status;
-    req.updatedAt = new Date().toISOString();
-    if (status === 'Confirmed') {
-      req.confirmedAt = new Date().toISOString();
-    }
-  }).labBookingRequests.find((r) => r.id === id) ?? null;
+export function updateLabBookingRequestStatus(
+  id: string,
+  status: LabBookingStatus,
+) {
+  return (
+    updateDatabase((draft) => {
+      const req = draft.labBookingRequests.find((r) => r.id === id);
+      if (!req) return;
+      req.status = status;
+      req.updatedAt = new Date().toISOString();
+      if (status === "Confirmed") {
+        req.confirmedAt = new Date().toISOString();
+      }
+    }).labBookingRequests.find((r) => r.id === id) ?? null
+  );
 }
 
 export function deleteLabBookingRequest(id: string) {
   return updateDatabase((draft) => {
-    draft.labBookingRequests = draft.labBookingRequests.filter((r) => r.id !== id);
+    draft.labBookingRequests = draft.labBookingRequests.filter(
+      (r) => r.id !== id,
+    );
   });
 }
 
 export function createPatientProfileAccount(
-  user: Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'>,
-  patient: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'>,
+  user: Omit<UserProfile, "id" | "createdAt" | "updatedAt">,
+  patient: Omit<Patient, "id" | "createdAt" | "updatedAt">,
 ) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
-    const userId = generateId('user');
+    const userId = generateId("user");
     draft.users.unshift({
       ...user,
       id: userId,
@@ -1611,10 +2015,10 @@ export function createPatientProfileAccount(
     draft.patients.unshift({
       ...patient,
       qrCode: patient.qrCode || generatePatientQrCode(),
-      intakeSource: patient.intakeSource ?? 'online_registration',
-      visitStatus: patient.visitStatus ?? 'registered_no_visit',
+      intakeSource: patient.intakeSource ?? "online_registration",
+      visitStatus: patient.visitStatus ?? "registered_no_visit",
       lastClinicVisitAt: patient.lastClinicVisitAt ?? null,
-      id: generateId('pat'),
+      id: generateId("pat"),
       userId,
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -1624,28 +2028,40 @@ export function createPatientProfileAccount(
 
 export function updatePatientProfileAccount(
   userId: string,
-  input: Pick<Patient, 'mobileNumber' | 'address' | 'allergies' | 'medicalHistory' | 'emergencyContactName' | 'emergencyContactPhone'>,
+  input: Pick<
+    Patient,
+    | "mobileNumber"
+    | "address"
+    | "allergies"
+    | "medicalHistory"
+    | "emergencyContactName"
+    | "emergencyContactPhone"
+  >,
 ) {
-  return updateDatabase((draft) => {
-    const user = draft.users.find((item) => item.id === userId || item.authUserId === userId);
-    if (user) {
-      user.phone = input.mobileNumber;
-      user.updatedAt = new Date().toISOString();
-    }
+  return (
+    updateDatabase((draft) => {
+      const user = draft.users.find(
+        (item) => item.id === userId || item.authUserId === userId,
+      );
+      if (user) {
+        user.phone = input.mobileNumber;
+        user.updatedAt = new Date().toISOString();
+      }
 
-    const patient = draft.patients.find((item) => item.userId === userId);
-    if (!patient) {
-      throw new Error('Patient profile not found.');
-    }
+      const patient = draft.patients.find((item) => item.userId === userId);
+      if (!patient) {
+        throw new Error("Patient profile not found.");
+      }
 
-    patient.mobileNumber = input.mobileNumber;
-    patient.address = input.address;
-    patient.allergies = input.allergies;
-    patient.medicalHistory = input.medicalHistory;
-    patient.emergencyContactName = input.emergencyContactName;
-    patient.emergencyContactPhone = input.emergencyContactPhone;
-    patient.updatedAt = new Date().toISOString();
-  }).patients.find((item) => item.userId === userId) ?? null;
+      patient.mobileNumber = input.mobileNumber;
+      patient.address = input.address;
+      patient.allergies = input.allergies;
+      patient.medicalHistory = input.medicalHistory;
+      patient.emergencyContactName = input.emergencyContactName;
+      patient.emergencyContactPhone = input.emergencyContactPhone;
+      patient.updatedAt = new Date().toISOString();
+    }).patients.find((item) => item.userId === userId) ?? null
+  );
 }
 
 function normalizeDatabase(database: AppDatabase) {
@@ -1653,10 +2069,10 @@ function normalizeDatabase(database: AppDatabase) {
     ...database,
     services: database.services.map((service) => ({
       ...service,
-      serviceType: service.serviceType ?? 'medical_service',
+      serviceType: service.serviceType ?? "medical_service",
       durationMinutes: service.durationMinutes ?? 30,
       isBookable: service.isBookable ?? true,
-      deliveryMode: service.deliveryMode ?? 'hybrid',
+      deliveryMode: service.deliveryMode ?? "hybrid",
     })),
     users: database.users.map((user) => ({
       ...user,
@@ -1669,16 +2085,20 @@ function normalizeDatabase(database: AppDatabase) {
     })),
     bookings: database.bookings.map((booking) => ({
       ...booking,
-      feeType: booking.feeType ?? 'consultation',
+      feeType: booking.feeType ?? "consultation",
       feeAmount: booking.feeAmount ?? 0,
       receiptCode: booking.receiptCode ?? generateBookingReceiptCode(),
-      paymentStatus: booking.paymentStatus ?? 'pending_cashier',
+      paymentStatus: booking.paymentStatus ?? "pending_cashier",
     })),
     patients: database.patients.map((patient) => ({
       ...patient,
       qrCode: patient.qrCode || generatePatientQrCode(),
-      intakeSource: patient.intakeSource ?? (patient.userId ? 'online_registration' : 'staff_walk_in'),
-      visitStatus: patient.visitStatus ?? (patient.userId ? 'registered_no_visit' : 'visited_clinic'),
+      intakeSource:
+        patient.intakeSource ??
+        (patient.userId ? "online_registration" : "staff_walk_in"),
+      visitStatus:
+        patient.visitStatus ??
+        (patient.userId ? "registered_no_visit" : "visited_clinic"),
       lastClinicVisitAt: patient.lastClinicVisitAt ?? null,
     })),
     inventoryItems: database.inventoryItems.map((item) => ({
@@ -1692,4 +2112,3 @@ function normalizeDatabase(database: AppDatabase) {
     posSaleItems: database.posSaleItems ?? [],
   };
 }
-

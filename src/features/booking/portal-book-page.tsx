@@ -85,6 +85,11 @@ function getTimeSessionLabel(session: TimeSession) {
   return "Evening";
 }
 
+function normalizeBlockedSlotTime(value: unknown) {
+  if (typeof value !== "string") return "";
+  return value.slice(0, 5);
+}
+
 export function PortalBookPage() {
   const { profile, session } = useAuth();
   const [submittedBooking, setSubmittedBooking] =
@@ -153,6 +158,13 @@ export function PortalBookPage() {
     doctorId: requiresDoctor ? selectedDoctorId || null : null,
     serviceId: !requiresDoctor ? selectedServiceId || null : null,
   });
+  const normalizedBlockedSlots = useMemo(
+    () => blockedSlots.map((slot) => normalizeBlockedSlotTime(slot)),
+    [blockedSlots],
+  );
+  const selectedTimeIsBlocked =
+    Boolean(selectedPreferredTime) &&
+    normalizedBlockedSlots.includes(selectedPreferredTime);
   const unfinishedBooking = useMemo(
     () =>
       existingBookings.find(
@@ -187,10 +199,10 @@ export function PortalBookPage() {
   const availableTimeSlots = useMemo(
     () =>
       filterPastTimeSlots(
-        allTimeSlots.filter((time) => !blockedSlots.includes(time)),
+        allTimeSlots.filter((time) => !normalizedBlockedSlots.includes(time)),
         selectedDate,
       ),
-    [allTimeSlots, blockedSlots, selectedDate],
+    [allTimeSlots, normalizedBlockedSlots, selectedDate],
   );
 
   const timeSessionOptions = useMemo(() => {
@@ -227,7 +239,7 @@ export function PortalBookPage() {
       .filter((time) => getTimeSession(time) === selectedTimeSession)
       .map((time) => {
         const isPast = isToday && timeToMinutes(time) <= currentMinutes;
-        const isBooked = blockedSlots.includes(time) || isPast;
+        const isBooked = normalizedBlockedSlots.includes(time) || isPast;
         return {
           time,
           isBooked,
@@ -235,7 +247,7 @@ export function PortalBookPage() {
           isPast,
         };
       });
-  }, [allTimeSlots, blockedSlots, selectedDate, selectedTimeSession]);
+  }, [allTimeSlots, normalizedBlockedSlots, selectedDate, selectedTimeSession]);
 
   useEffect(() => {
     if (services[0] && !form.getValues("serviceId")) {
@@ -317,6 +329,13 @@ export function PortalBookPage() {
 
     if (values.preferredDate < today) {
       toast.error("Please select today or a future date for your booking.");
+      return;
+    }
+
+    if (selectedTimeIsBlocked) {
+      toast.error(
+        "The selected time is no longer available. Please choose another slot.",
+      );
       return;
     }
 
@@ -646,7 +665,7 @@ export function PortalBookPage() {
               !currentPatient ||
               Boolean(unfinishedBooking) ||
               !selectedPreferredTime ||
-              blockedSlots.includes(selectedPreferredTime) ||
+              selectedTimeIsBlocked ||
               (requiresDoctor && !selectedDoctorId) ||
               !availableTimeSlots.includes(selectedPreferredTime)
             }
