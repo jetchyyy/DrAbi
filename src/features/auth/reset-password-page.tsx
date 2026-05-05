@@ -37,10 +37,23 @@ export function ResetPasswordPage() {
     defaultValues: { password: '', confirmPassword: '' },
   });
 
-  // Listen for the PASSWORD_RECOVERY event from Supabase which is fired
-  // when the user arrives from the password reset email link.
+  // Two-pronged approach to detect the recovery session:
+  // 1. getSession() — catches cases where Supabase already processed the URL
+  //    hash token before our listener was registered (common in SPAs).
+  // 2. onAuthStateChange — catches cases where the event fires after mount.
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
+
+    let active = true;
+
+    // Check if there is already an active session (Supabase may have already
+    // exchanged the URL hash token before this component mounted).
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      if (data.session?.user) {
+        setPageState('ready');
+      }
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
@@ -48,7 +61,10 @@ export function ResetPasswordPage() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const onSubmit = form.handleSubmit(async (values) => {
