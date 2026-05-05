@@ -1,4 +1,4 @@
-import { LockKeyhole, ShieldAlert, Wrench } from 'lucide-react';
+import { ShieldAlert, Wrench } from 'lucide-react';
 
 import { defaultClinicSettings } from '../../config/clinic';
 import { useClinicSettingsData } from '../../hooks/use-clinic-data';
