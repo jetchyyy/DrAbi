@@ -10,6 +10,7 @@ import {
   ShieldEllipsis,
   Terminal,
   Unlock,
+  Wrench,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -33,6 +34,7 @@ const recoverySchema = z.object({
 const controlSchema = z.object({
   systemEnabled: z.boolean(),
   systemMessage: z.string().min(10),
+  systemStatusType: z.enum(['maintenance', 'restricted']),
   enabledModules: z.object({
     dashboard: z.boolean(),
     patient_management: z.boolean(),
@@ -61,7 +63,7 @@ async function extractAccessKeyFromFile(file: File) {
 
 export function OdcPage() {
   const { data: clinic = defaultClinicSettings } = useClinicSettingsData();
-  const { unlocked, unlock, lock, setSystemState, systemEnabled, systemMessage, enabledModules, updating } = useSystemControl();
+  const { unlocked, unlock, lock, setSystemState, systemEnabled, systemMessage, systemStatusType, enabledModules, updating } = useSystemControl();
   const [unlockingFile, setUnlockingFile] = useState(false);
   const [unlockingPassword, setUnlockingPassword] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState('');
@@ -73,7 +75,12 @@ export function OdcPage() {
 
   const controlForm = useForm<ControlValues>({
     resolver: zodResolver(controlSchema),
-    values: { systemEnabled, systemMessage, enabledModules },
+    values: { 
+      systemEnabled, 
+      systemMessage, 
+      systemStatusType: systemStatusType as 'maintenance' | 'restricted', 
+      enabledModules 
+    },
   });
 
   const enabledSelection = useWatch({ control: controlForm.control, name: 'systemEnabled' });
@@ -341,7 +348,34 @@ export function OdcPage() {
                 </div>
               </div>
 
-              <FormField label="System-wide maintenance message">
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-3">Display Mode</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => controlForm.setValue('systemStatusType', 'maintenance')}
+                    className={`flex items-center gap-2.5 px-4 py-3.5 border text-sm font-extrabold uppercase tracking-wide transition-colors ${controlForm.watch('systemStatusType') === 'maintenance' ? 'bg-orange-600 border-orange-600 text-white' : 'border-slate-200 text-slate-600 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-700'}`}
+                  >
+                    <Wrench className="size-4 shrink-0" />
+                    Maintenance Mode
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => controlForm.setValue('systemStatusType', 'restricted')}
+                    className={`flex items-center gap-2.5 px-4 py-3.5 border text-sm font-extrabold uppercase tracking-wide transition-colors ${controlForm.watch('systemStatusType') === 'restricted' ? 'bg-rose-600 border-rose-600 text-white' : 'border-slate-200 text-slate-600 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700'}`}
+                  >
+                    <ShieldAlert className="size-4 shrink-0" />
+                    Restricted Access
+                  </button>
+                </div>
+                <p className="mt-2 text-[10px] text-slate-500 italic">
+                  {controlForm.watch('systemStatusType') === 'maintenance' 
+                    ? 'Shows "Scheduled Maintenance" with a wrench icon.' 
+                    : 'Shows "Access Restricted" with a warning icon.'}
+                </p>
+              </div>
+
+              <FormField label="System-wide message">
                 <Textarea
                   className="min-h-[100px] resize-none"
                   placeholder="Enter the message users will see during downtime..."

@@ -3941,6 +3941,7 @@ export async function updateSystemControlLiveOrDemo(
   input: OdcCredentialInput & {
     systemEnabled: boolean;
     systemMessage: string;
+    systemStatusType: ClinicSettings["systemStatusType"];
     enabledModules: ClinicSettings["enabledModules"];
   },
 ) {
@@ -3955,6 +3956,7 @@ export async function updateSystemControlLiveOrDemo(
     return updateClinicSettings({
       systemEnabled: input.systemEnabled,
       systemMessage: input.systemMessage,
+      systemStatusType: input.systemStatusType,
       enabledModules: input.enabledModules,
     });
   }
@@ -3964,6 +3966,7 @@ export async function updateSystemControlLiveOrDemo(
     ...normalized,
     systemEnabled: input.systemEnabled,
     systemMessage: input.systemMessage,
+    systemStatusType: input.systemStatusType,
     enabledModules: input.enabledModules,
   });
 

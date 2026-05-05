@@ -1,4 +1,4 @@
-﻿import { useMutation } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { createContext, useContext, useMemo, useState, type PropsWithChildren } from 'react';
 
 import { queryClient } from '../../app/query-client';
@@ -13,10 +13,11 @@ interface SystemControlContextValue {
   clinicReady: boolean;
   systemEnabled: boolean;
   systemMessage: string;
+  systemStatusType: 'maintenance' | 'restricted';
   enabledModules: typeof defaultEnabledModules;
   unlock: (credential: OdcCredentialInput) => Promise<boolean>;
   lock: () => void;
-  setSystemState: (input: { systemEnabled: boolean; systemMessage: string; enabledModules: typeof defaultEnabledModules }) => Promise<void>;
+  setSystemState: (input: { systemEnabled: boolean; systemMessage: string; systemStatusType: 'maintenance' | 'restricted'; enabledModules: typeof defaultEnabledModules }) => Promise<void>;
   updating: boolean;
 }
 
@@ -68,6 +69,7 @@ export function SystemControlProvider({ children }: PropsWithChildren) {
     systemEnabled: clinicSettings?.systemEnabled ?? true,
     systemMessage:
       clinicSettings?.systemMessage ?? 'Contact your System Administrator to continue using the System',
+    systemStatusType: clinicSettings?.systemStatusType ?? 'maintenance',
     enabledModules: clinicSettings?.enabledModules ?? defaultEnabledModules,
     async unlock(nextCredential) {
       const isValid = await verifyOdcCredentialLiveOrDemo(nextCredential);
@@ -90,11 +92,12 @@ export function SystemControlProvider({ children }: PropsWithChildren) {
         ...credential,
         systemEnabled: input.systemEnabled,
         systemMessage: input.systemMessage,
+        systemStatusType: input.systemStatusType,
         enabledModules: input.enabledModules,
       });
     },
     updating: mutation.isPending,
-  }), [clinicSettings?.enabledModules, clinicSettings?.systemEnabled, clinicSettings?.systemMessage, credential, isLoading, mutation]);
+  }), [clinicSettings?.enabledModules, clinicSettings?.systemEnabled, clinicSettings?.systemMessage, clinicSettings?.systemStatusType, credential, isLoading, mutation]);
 
   return <SystemControlContext.Provider value={value}>{children}</SystemControlContext.Provider>;
 }

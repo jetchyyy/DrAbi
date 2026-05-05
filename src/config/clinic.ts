@@ -19,7 +19,7 @@ export const defaultClinicSettings: ClinicSettings = {
     'CPR Medical Clinic & Laboratory Bulacao, Cebu City',
   contactNumber: '+639623093577',
   email: 'cprmedicalclinic@gmail.com',
-  website: 'https://cprmed.test',
+  website: 'https://cprmedph.com',
   logoUrl: '',
   primaryColor: '#7dd453',
   accentColor: '#34b2f9',
@@ -28,6 +28,7 @@ export const defaultClinicSettings: ClinicSettings = {
   appointmentSlotMinutes: 30,
   systemEnabled: true,
   systemMessage: 'Contact your System Administrator to continue using the System',
+  systemStatusType: 'maintenance',
   enabledModules: defaultEnabledModules,
   operatingHours: [
     { day: 'Monday', open: '10:00', close: '22:00', enabled: true },
