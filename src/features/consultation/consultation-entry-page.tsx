@@ -1,81 +1,111 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, Camera, ChevronLeft, ChevronRight, CheckCircle2, ImagePlus, StopCircle, Trash2, Upload } from 'lucide-react';
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { useForm } from 'react-hook-form';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { z } from 'zod';
-import { toast } from 'sonner';
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  AlertCircle,
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  ImagePlus,
+  StopCircle,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useForm } from "react-hook-form";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { z } from "zod";
+import { toast } from "sonner";
 
-import { FormField } from '../../components/forms/form-field';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
-import { Card, CardTitle } from '../../components/ui/card';
-import { FeedbackModal } from '../../components/ui/feedback-modal';
-import { Select } from '../../components/ui/select';
-import { Textarea } from '../../components/ui/textarea';
-import { useProviderDirectory } from '../../hooks/use-clinic-data';
-import { formatDateLabel, formatDateTimeLabel } from '../../lib/utils';
-import { getHomePathForRole } from '../../lib/role-routing';
-import type { Booking } from '../../types/domain';
-import { useAuth } from '../auth/auth-context';
-import { useCreateReferral } from '../referrals/hooks/use-referrals';
-import { validatePatientConsultationAccess } from './services/consultation-access-service';
-import { serializeLabResultsContent, type LabResultImageRecord } from './lab-results-media';
-import { AppointmentLabRequestsCard } from '../lab-requests/components/appointment-lab-requests-card';
-import { 
-  useCreateConsultation, 
-  usePatientAppointments, 
+import { FormField } from "../../components/forms/form-field";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Card, CardTitle } from "../../components/ui/card";
+import { FeedbackModal } from "../../components/ui/feedback-modal";
+import { Select } from "../../components/ui/select";
+import { Textarea } from "../../components/ui/textarea";
+import { useProviderDirectory } from "../../hooks/use-clinic-data";
+import { formatDateLabel, formatDateTimeLabel } from "../../lib/utils";
+import { getHomePathForRole } from "../../lib/role-routing";
+import type { Booking } from "../../types/domain";
+import { useAuth } from "../auth/auth-context";
+import { useCreateReferral } from "../referrals/hooks/use-referrals";
+import { validatePatientConsultationAccess } from "./services/consultation-access-service";
+import {
+  serializeLabResultsContent,
+  type LabResultImageRecord,
+} from "./lab-results-media";
+import { AppointmentLabRequestsCard } from "../lab-requests/components/appointment-lab-requests-card";
+import {
+  useCreateConsultation,
+  usePatientAppointments,
   usePatientBookings,
-  usePatientConsultations, 
-  usePatientDetail 
-} from '../patients/hooks/use-patients';
+  usePatientConsultations,
+  usePatientDetail,
+} from "../patients/hooks/use-patients";
 
-const consultationSchema = z.object({
-  appointmentId: z.string().optional(),
-  consultationType: z.string().min(2, 'Consultation type is required'),
-  consultationDate: z.string().min(1, 'Consultation date is required'),
-  consultationTime: z.string().min(1, 'Consultation time is required'),
-  providerName: z.string().min(2, 'Provider name is required'),
-  
-  // Step 1: Patient History
-  presentIllnessHistory: z.string().min(4, 'Present illness history is required'),
-  reviewOfSymptoms: z.string().optional(),
-  allergies: z.string().optional(),
-  referToSpecialist: z.boolean(),
-  specialistDoctorId: z.string().optional(),
-  specialistReason: z.string().optional(),
-  specialistNotes: z.string().optional(),
-  
-  // Step 2: Findings
-  vitals: z.string().optional(),
-  medications: z.string().optional(),
-  labResults: z.string().optional(),
-  
-  // Step 3: Diagnoses
-  diagnosis: z.string().optional(),
-  differentialDiagnosis: z.string().optional(),
-  
-  // Step 4: Clinical Assessment (SOAP)
-  subjective: z.string().optional(),
-  objective: z.string().optional(),
-  assessment: z.string().optional(),
-  plan: z.string().optional(),
-  
-  // Step 5: Treatment & Summary
-  clinicalSummary: z.string().min(4, 'Clinical summary is required'),
-  treatmentPlan: z.string().optional(),
-  outcome: z.string().optional(),
-}).superRefine((values, context) => {
-  if (values.referToSpecialist && !values.specialistDoctorId) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['specialistDoctorId'],
-      message: 'Please choose a specialist to refer this patient to.',
-    });
-  }
-});
+const consultationSchema = z
+  .object({
+    appointmentId: z.string().optional(),
+    consultationType: z.string().min(2, "Consultation type is required"),
+    consultationDate: z.string().min(1, "Consultation date is required"),
+    consultationTime: z.string().min(1, "Consultation time is required"),
+    providerName: z.string().min(2, "Provider name is required"),
+
+    // Step 1: Patient History
+    presentIllnessHistory: z
+      .string()
+      .min(4, "Present illness history is required"),
+    reviewOfSymptoms: z.string().optional(),
+    allergies: z.string().optional(),
+    referToSpecialist: z.boolean(),
+    specialistDoctorId: z.string().optional(),
+    specialistReason: z.string().optional(),
+    specialistNotes: z.string().optional(),
+
+    // Step 2: Findings
+    vitals: z.string().optional(),
+    medications: z.string().optional(),
+    labResults: z.string().optional(),
+
+    // Step 3: Diagnoses
+    diagnosis: z.string().optional(),
+    differentialDiagnosis: z.string().optional(),
+
+    // Step 4: Clinical Assessment (SOAP)
+    subjective: z.string().optional(),
+    objective: z.string().optional(),
+    assessment: z.string().optional(),
+    plan: z.string().optional(),
+
+    // Step 5: Treatment & Summary
+    clinicalSummary: z.string().min(4, "Clinical summary is required"),
+    treatmentPlan: z.string().optional(),
+    outcome: z.string().optional(),
+  })
+  .superRefine((values, context) => {
+    if (values.referToSpecialist && !values.specialistDoctorId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["specialistDoctorId"],
+        message: "Please choose a specialist to refer this patient to.",
+      });
+    }
+  });
 
 type ConsultationFormData = z.infer<typeof consultationSchema>;
+
+const MANILA_TIME_ZONE = "Asia/Manila";
+
+function getManilaTimeValue(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: MANILA_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  return formatter.format(date);
+}
 
 interface Step {
   id: string;
@@ -86,122 +116,143 @@ interface Step {
 
 const CONSULTATION_STEPS: Step[] = [
   {
-    id: 'appointment',
-    title: 'Appointment & Consultation Info',
-    description: 'Select appointment and start consultation details',
-    fields: ['consultationType', 'consultationDate', 'consultationTime', 'providerName'],
+    id: "appointment",
+    title: "Appointment & Consultation Info",
+    description: "Select appointment and start consultation details",
+    fields: [
+      "consultationType",
+      "consultationDate",
+      "consultationTime",
+      "providerName",
+    ],
   },
   {
-    id: 'history',
-    title: 'Patient History',
-    description: 'Document present illness, symptoms, and allergies',
-    fields: ['presentIllnessHistory', 'reviewOfSymptoms', 'allergies'],
+    id: "history",
+    title: "Patient History",
+    description: "Document present illness, symptoms, and allergies",
+    fields: ["presentIllnessHistory", "reviewOfSymptoms", "allergies"],
   },
   {
-    id: 'findings',
-    title: 'Clinical Findings',
-    description: 'Record vitals, medications, and lab results',
-    fields: ['vitals', 'medications', 'labResults'],
+    id: "findings",
+    title: "Clinical Findings",
+    description: "Record vitals, medications, and lab results",
+    fields: ["vitals", "medications", "labResults"],
   },
   {
-    id: 'diagnoses',
-    title: 'Diagnoses',
-    description: 'Primary and differential diagnoses',
-    fields: ['diagnosis', 'differentialDiagnosis'],
+    id: "diagnoses",
+    title: "Diagnoses",
+    description: "Primary and differential diagnoses",
+    fields: ["diagnosis", "differentialDiagnosis"],
   },
   {
-    id: 'assessment',
-    title: 'Clinical Assessment',
-    description: 'SOAP notes: Subjective, Objective, Assessment, Plan',
-    fields: ['subjective', 'objective', 'assessment', 'plan'],
+    id: "assessment",
+    title: "Clinical Assessment",
+    description: "SOAP notes: Subjective, Objective, Assessment, Plan",
+    fields: ["subjective", "objective", "assessment", "plan"],
   },
   {
-    id: 'summary',
-    title: 'Treatment & Summary',
-    description: 'Clinical summary, treatment plan, and outcome',
-    fields: ['clinicalSummary', 'treatmentPlan', 'outcome'],
+    id: "summary",
+    title: "Treatment & Summary",
+    description: "Clinical summary, treatment plan, and outcome",
+    fields: ["clinicalSummary", "treatmentPlan", "outcome"],
   },
 ];
 
 export function ConsultationEntryPage() {
-  const { patientId = '' } = useParams();
+  const { patientId = "" } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { data: providers = [] } = useProviderDirectory();
-  
+
   const patientQuery = usePatientDetail(patientId || null);
   const { data: patient } = patientQuery;
   const { data: visits = [] } = usePatientAppointments(patientId || null);
   const { data: bookings = [] } = usePatientBookings(patientId || null);
-  const { data: consultations = [] } = usePatientConsultations(patientId || null);
-  
+  const { data: consultations = [] } = usePatientConsultations(
+    patientId || null,
+  );
+
   const createConsultation = useCreateConsultation();
   const createReferral = useCreateReferral(patientId || null);
-  const currentDoctor = providers.find((doctor) => doctor.profileId === profile?.id);
+  const currentDoctor = providers.find(
+    (doctor) => doctor.profileId === profile?.id,
+  );
   const assignableDoctors = providers.filter(
     (doctor) =>
-      doctor.role === 'specialist' &&
+      doctor.role === "specialist" &&
       doctor.id !== currentDoctor?.id &&
       doctor.profileId !== profile?.id,
   );
-  
+
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [accessState, setAccessState] = useState<'checking' | 'allowed' | 'blocked' | 'error'>('checking');
-  const [accessError, setAccessError] = useState('');
+  const [accessState, setAccessState] = useState<
+    "checking" | "allowed" | "blocked" | "error"
+  >("checking");
+  const [accessError, setAccessError] = useState("");
   const [retryToken, setRetryToken] = useState(0);
-  const [labResultImages, setLabResultImages] = useState<LabResultImageRecord[]>([]);
-  const [cameraState, setCameraState] = useState<'idle' | 'requesting' | 'active' | 'unsupported' | 'denied'>('idle');
-  const [cameraMessage, setCameraMessage] = useState('');
+  const [labResultImages, setLabResultImages] = useState<
+    LabResultImageRecord[]
+  >([]);
+  const [cameraState, setCameraState] = useState<
+    "idle" | "requesting" | "active" | "unsupported" | "denied"
+  >("idle");
+  const [cameraMessage, setCameraMessage] = useState("");
   const [blockingAlert, setBlockingAlert] = useState<{
     open: boolean;
     title: string;
     message: string;
-  }>({ open: false, title: '', message: '' });
+  }>({ open: false, title: "", message: "" });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const currentStep = CONSULTATION_STEPS[currentStepIndex];
-  
-  const consultationAppointmentIds = new Set(consultations.map((consultation: any) => consultation.appointmentId));
-  const pendingSoapVisits = visits.filter((visit: any) => !consultationAppointmentIds.has(visit.id));
-  const activeConsultationBookings = bookings.filter((booking: any) => booking.status !== 'cancelled');
-  
+
+  const consultationAppointmentIds = new Set(
+    consultations.map((consultation: any) => consultation.appointmentId),
+  );
+  const pendingSoapVisits = visits.filter(
+    (visit: any) => !consultationAppointmentIds.has(visit.id),
+  );
+  const activeConsultationBookings = bookings.filter(
+    (booking: any) => booking.status !== "cancelled",
+  );
+
   const form = useForm<ConsultationFormData>({
     resolver: zodResolver(consultationSchema),
-    mode: 'onBlur',
+    mode: "onBlur",
     defaultValues: {
-      appointmentId: '',
-      consultationType: 'Initial Consultation',
+      appointmentId: "",
+      consultationType: "Initial Consultation",
       consultationDate: new Date().toISOString().slice(0, 10),
-      consultationTime: new Date().toISOString().slice(11, 16),
-      providerName: profile?.fullName ?? '',
-      presentIllnessHistory: '',
-      reviewOfSymptoms: '',
-      allergies: patient?.allergies ?? '',
+      consultationTime: getManilaTimeValue(),
+      providerName: profile?.fullName ?? "",
+      presentIllnessHistory: "",
+      reviewOfSymptoms: "",
+      allergies: patient?.allergies ?? "",
       referToSpecialist: false,
-      specialistDoctorId: '',
-      specialistReason: '',
-      specialistNotes: '',
-      vitals: '',
-      medications: '',
-      labResults: '',
-      diagnosis: '',
-      differentialDiagnosis: '',
-      subjective: '',
-      objective: '',
-      assessment: '',
-      plan: '',
-      clinicalSummary: '',
-      treatmentPlan: '',
-      outcome: 'For follow-up monitoring.',
+      specialistDoctorId: "",
+      specialistReason: "",
+      specialistNotes: "",
+      vitals: "",
+      medications: "",
+      labResults: "",
+      diagnosis: "",
+      differentialDiagnosis: "",
+      subjective: "",
+      objective: "",
+      assessment: "",
+      plan: "",
+      clinicalSummary: "",
+      treatmentPlan: "",
+      outcome: "For follow-up monitoring.",
     },
   });
 
   useEffect(() => {
-    if (patient?.allergies && !form.getValues('allergies')) {
-      form.setValue('allergies', patient.allergies);
+    if (patient?.allergies && !form.getValues("allergies")) {
+      form.setValue("allergies", patient.allergies);
     }
   }, [patient, form]);
 
@@ -212,14 +263,14 @@ export function ConsultationEntryPage() {
       videoRef.current.pause();
       videoRef.current.srcObject = null;
     }
-    setCameraState((current) => (current === 'unsupported' ? current : 'idle'));
-    setCameraMessage('');
+    setCameraState((current) => (current === "unsupported" ? current : "idle"));
+    setCameraMessage("");
   };
 
   useEffect(() => () => stopCamera(), []);
 
   useEffect(() => {
-    if (cameraState !== 'requesting' && cameraState !== 'active') {
+    if (cameraState !== "requesting" && cameraState !== "active") {
       return;
     }
 
@@ -231,7 +282,9 @@ export function ConsultationEntryPage() {
 
     video.srcObject = stream;
     void video.play().catch(() => {
-      setCameraMessage('Camera is ready. Tap Start camera again if preview does not appear.');
+      setCameraMessage(
+        "Camera is ready. Tap Start camera again if preview does not appear.",
+      );
     });
   }, [cameraState]);
 
@@ -240,17 +293,17 @@ export function ConsultationEntryPage() {
       return;
     }
 
-    if (profile?.role === 'specialist') {
-      setAccessState('allowed');
-      setAccessError('');
+    if (profile?.role === "specialist") {
+      setAccessState("allowed");
+      setAccessError("");
       return;
     }
 
     let isCancelled = false;
 
     void (async () => {
-      setAccessState('checking');
-      setAccessError('');
+      setAccessState("checking");
+      setAccessError("");
 
       const access = await validatePatientConsultationAccess(patientId);
       if (isCancelled) {
@@ -258,28 +311,31 @@ export function ConsultationEntryPage() {
       }
 
       if (!access.allowed) {
-        if (access.reason === 'unpaid_balance' || access.reason === 'no_invoice') {
+        if (
+          access.reason === "unpaid_balance" ||
+          access.reason === "no_invoice"
+        ) {
           setBlockingAlert({
             open: true,
-            title: 'Unpaid Balance',
+            title: "Unpaid Balance",
             message: access.message,
           });
-          setAccessState('blocked');
+          setAccessState("blocked");
           return;
         }
 
-        setAccessState('error');
+        setAccessState("error");
         setAccessError(access.message);
         return;
       }
 
-      const requestedAppointmentId = searchParams.get('appointmentId');
+      const requestedAppointmentId = searchParams.get("appointmentId");
       const nextAppointmentId = requestedAppointmentId || access.appointmentId;
-      if (nextAppointmentId && !form.getValues('appointmentId')) {
-        form.setValue('appointmentId', nextAppointmentId);
+      if (nextAppointmentId && !form.getValues("appointmentId")) {
+        form.setValue("appointmentId", nextAppointmentId);
       }
 
-      setAccessState('allowed');
+      setAccessState("allowed");
     })();
 
     return () => {
@@ -303,27 +359,35 @@ export function ConsultationEntryPage() {
     );
   }
 
-  if (accessState === 'checking') {
+  if (accessState === "checking") {
     return (
       <Card>
         <CardTitle>Validating latest payment status...</CardTitle>
         <p className="mt-2 text-sm text-slate-500">
-          Please wait while we verify the latest invoice and prepare the appointment for consultation.
+          Please wait while we verify the latest invoice and prepare the
+          appointment for consultation.
         </p>
       </Card>
     );
   }
 
-  if (accessState === 'error') {
+  if (accessState === "error") {
     return (
       <Card>
         <CardTitle>Payment validation unavailable</CardTitle>
         <p className="mt-2 text-sm text-rose-600">{accessError}</p>
         <div className="mt-4 flex gap-3">
-          <Button type="button" onClick={() => setRetryToken((value) => value + 1)}>
+          <Button
+            type="button"
+            onClick={() => setRetryToken((value) => value + 1)}
+          >
             Retry validation
           </Button>
-          <Button type="button" variant="secondary" onClick={() => navigate(getHomePathForRole(profile?.role))}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate(getHomePathForRole(profile?.role))}
+          >
             Back to appointment queue
           </Button>
         </div>
@@ -331,7 +395,7 @@ export function ConsultationEntryPage() {
     );
   }
 
-  if (accessState === 'blocked') {
+  if (accessState === "blocked") {
     return (
       <>
         <FeedbackModal
@@ -341,7 +405,7 @@ export function ConsultationEntryPage() {
           variant="error"
           autoCloseMs={120000}
           onClose={() => {
-            setBlockingAlert({ open: false, title: '', message: '' });
+            setBlockingAlert({ open: false, title: "", message: "" });
             void navigate(getHomePathForRole(profile?.role));
           }}
         />
@@ -355,11 +419,19 @@ export function ConsultationEntryPage() {
     );
   }
 
-  const selectedAppointmentId = form.watch('appointmentId');
-  const selectedAppointment = visits.find((visit: any) => visit.id === selectedAppointmentId) ?? null;
-  const latestBookingWithDoctor = activeConsultationBookings.find((booking: any) => Boolean(booking.doctorId));
-  
-  const soapDoctorId = currentDoctor?.id ?? selectedAppointment?.doctorId ?? latestBookingWithDoctor?.doctorId ?? profile?.id ?? 'user_owner';
+  const selectedAppointmentId = form.watch("appointmentId");
+  const selectedAppointment =
+    visits.find((visit: any) => visit.id === selectedAppointmentId) ?? null;
+  const latestBookingWithDoctor = activeConsultationBookings.find(
+    (booking: any) => Boolean(booking.doctorId),
+  );
+
+  const soapDoctorId =
+    currentDoctor?.id ??
+    selectedAppointment?.doctorId ??
+    latestBookingWithDoctor?.doctorId ??
+    profile?.id ??
+    "user_owner";
 
   const canProceedToNext = async () => {
     const fieldsToValidate = currentStep.fields as string[];
@@ -371,14 +443,14 @@ export function ConsultationEntryPage() {
     const canProceed = await canProceedToNext();
     if (canProceed && currentStepIndex < CONSULTATION_STEPS.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
   const handlePrevious = () => {
     if (currentStepIndex > 0) {
       setCurrentStepIndex(currentStepIndex - 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -402,7 +474,7 @@ export function ConsultationEntryPage() {
         treatmentPlan: values.treatmentPlan,
         medications: values.medications,
         labResults: serializeLabResultsContent({
-          summary: values.labResults ?? '',
+          summary: values.labResults ?? "",
           images: labResultImages,
         }),
         differentialDiagnosis: values.differentialDiagnosis,
@@ -413,7 +485,7 @@ export function ConsultationEntryPage() {
         outcome: values.outcome,
       });
 
-      toast.success('Consultation saved successfully!');
+      toast.success("Consultation saved successfully!");
 
       if (values.referToSpecialist && values.specialistDoctorId) {
         await createReferral.mutateAsync({
@@ -421,148 +493,164 @@ export function ConsultationEntryPage() {
           appointmentId: consultation.appointmentId,
           referringDoctorId: soapDoctorId,
           targetDoctorId: values.specialistDoctorId,
-          targetSpecialtyId: providers.find((doctor) => doctor.id === values.specialistDoctorId)?.specialtyId ?? null,
-          reason: values.specialistReason?.trim() || values.diagnosis || values.consultationType,
+          targetSpecialtyId:
+            providers.find((doctor) => doctor.id === values.specialistDoctorId)
+              ?.specialtyId ?? null,
+          reason:
+            values.specialistReason?.trim() ||
+            values.diagnosis ||
+            values.consultationType,
           clinicalSummary: values.clinicalSummary,
-          referralNotes: values.specialistNotes?.trim() || values.outcome || '',
+          referralNotes: values.specialistNotes?.trim() || values.outcome || "",
         });
 
-        toast.success('Specialist referral created.');
+        toast.success("Specialist referral created.");
       }
 
       setTimeout(() => {
-        const patientRoutePrefix = profile?.role === 'specialist' ? '/specialist/patients' : '/app/patients';
+        const patientRoutePrefix =
+          profile?.role === "specialist"
+            ? "/specialist/patients"
+            : "/app/patients";
         navigate(`${patientRoutePrefix}/${patientId}`);
       }, 1500);
     } catch (error) {
-      console.error('Consultation submission error:', error);
-      if (error instanceof Error && error.message.includes('incomplete')) {
-        toast.error('Please complete all required fields in each step.');
+      console.error("Consultation submission error:", error);
+      if (error instanceof Error && error.message.includes("incomplete")) {
+        toast.error("Please complete all required fields in each step.");
       } else {
-        toast.error(error instanceof Error ? error.message : 'Failed to save consultation.');
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to save consultation.",
+        );
       }
     }
   });
 
-  const stepFields: Record<string, { label: string; placeholder: string; required: boolean }> = {
+  const stepFields: Record<
+    string,
+    { label: string; placeholder: string; required: boolean }
+  > = {
     appointmentId: {
-      label: 'Select Appointment',
-      placeholder: 'Optional: choose a pending appointment',
+      label: "Select Appointment",
+      placeholder: "Optional: choose a pending appointment",
       required: false,
     },
     consultationType: {
-      label: 'Consultation Type',
-      placeholder: 'e.g., Initial Consultation, Follow-up',
+      label: "Consultation Type",
+      placeholder: "e.g., Initial Consultation, Follow-up",
       required: true,
     },
     consultationDate: {
-      label: 'Consultation Date',
-      placeholder: 'YYYY-MM-DD',
+      label: "Consultation Date",
+      placeholder: "YYYY-MM-DD",
       required: true,
     },
     consultationTime: {
-      label: 'Consultation Time',
-      placeholder: 'HH:MM',
+      label: "Consultation Time",
+      placeholder: "HH:MM",
       required: true,
     },
     providerName: {
-      label: 'Provider Name',
-      placeholder: 'Your full name',
+      label: "Provider Name",
+      placeholder: "Your full name",
       required: true,
     },
     presentIllnessHistory: {
-      label: 'Present Illness History',
-      placeholder: 'Describe the patient\'s current illness, onset, and progression...',
+      label: "Present Illness History",
+      placeholder:
+        "Describe the patient's current illness, onset, and progression...",
       required: true,
     },
     reviewOfSymptoms: {
-      label: 'Review of Symptoms',
-      placeholder: 'Document symptoms review...',
+      label: "Review of Symptoms",
+      placeholder: "Document symptoms review...",
       required: false,
     },
     allergies: {
-      label: 'Allergies',
-      placeholder: 'Known allergies and reactions...',
+      label: "Allergies",
+      placeholder: "Known allergies and reactions...",
       required: false,
     },
     referToSpecialist: {
-      label: 'Refer to Specialist',
-      placeholder: '',
+      label: "Refer to Specialist",
+      placeholder: "",
       required: false,
     },
     specialistDoctorId: {
-      label: 'Specialist',
-      placeholder: 'Choose a specialist',
+      label: "Specialist",
+      placeholder: "Choose a specialist",
       required: false,
     },
     specialistReason: {
-      label: 'Referral Reason',
-      placeholder: 'Why is the patient being referred?',
+      label: "Referral Reason",
+      placeholder: "Why is the patient being referred?",
       required: false,
     },
     specialistNotes: {
-      label: 'Referral Notes',
-      placeholder: 'Additional notes for the specialist...',
+      label: "Referral Notes",
+      placeholder: "Additional notes for the specialist...",
       required: false,
     },
     vitals: {
-      label: 'Vitals',
-      placeholder: 'BP, HR, RR, Temperature, O2 sat, etc.',
+      label: "Vitals",
+      placeholder: "BP, HR, RR, Temperature, O2 sat, etc.",
       required: false,
     },
     medications: {
-      label: 'Current Medications',
-      placeholder: 'List current medications...',
+      label: "Current Medications",
+      placeholder: "List current medications...",
       required: false,
     },
     labResults: {
-      label: 'Lab Results',
-      placeholder: 'Recent relevant lab findings...',
+      label: "Lab Results",
+      placeholder: "Recent relevant lab findings...",
       required: false,
     },
     diagnosis: {
-      label: 'Primary Diagnosis',
-      placeholder: 'Main diagnosis...',
+      label: "Primary Diagnosis",
+      placeholder: "Main diagnosis...",
       required: false,
     },
     differentialDiagnosis: {
-      label: 'Differential Diagnosis',
-      placeholder: 'Other diagnostic considerations...',
+      label: "Differential Diagnosis",
+      placeholder: "Other diagnostic considerations...",
       required: false,
     },
     subjective: {
-      label: 'Subjective (S)',
-      placeholder: 'Patient\'s report of symptoms and concerns...',
+      label: "Subjective (S)",
+      placeholder: "Patient's report of symptoms and concerns...",
       required: false,
     },
     objective: {
-      label: 'Objective (O)',
-      placeholder: 'Measurable findings, vitals, exam results...',
+      label: "Objective (O)",
+      placeholder: "Measurable findings, vitals, exam results...",
       required: false,
     },
     assessment: {
-      label: 'Assessment (A)',
-      placeholder: 'Clinical impression and interpretation...',
+      label: "Assessment (A)",
+      placeholder: "Clinical impression and interpretation...",
       required: false,
     },
     plan: {
-      label: 'Plan (P)',
-      placeholder: 'Treatment plan and next steps...',
+      label: "Plan (P)",
+      placeholder: "Treatment plan and next steps...",
       required: false,
     },
     clinicalSummary: {
-      label: 'Clinical Summary',
-      placeholder: 'Provide a comprehensive summary of the consultation...',
+      label: "Clinical Summary",
+      placeholder: "Provide a comprehensive summary of the consultation...",
       required: true,
     },
     treatmentPlan: {
-      label: 'Treatment Plan',
-      placeholder: 'Detailed treatment recommendations...',
+      label: "Treatment Plan",
+      placeholder: "Detailed treatment recommendations...",
       required: false,
     },
     outcome: {
-      label: 'Consultation Outcome',
-      placeholder: 'Expected outcome and follow-up notes...',
+      label: "Consultation Outcome",
+      placeholder: "Expected outcome and follow-up notes...",
       required: false,
     },
   };
@@ -570,7 +658,7 @@ export function ConsultationEntryPage() {
   const isLastStep = currentStepIndex === CONSULTATION_STEPS.length - 1;
   const isFirstStep = currentStepIndex === 0;
 
-  const addImageAttachment = (image: Omit<LabResultImageRecord, 'id'>) => {
+  const addImageAttachment = (image: Omit<LabResultImageRecord, "id">) => {
     setLabResultImages((current) => [
       ...current,
       {
@@ -582,54 +670,65 @@ export function ConsultationEntryPage() {
 
   const startCamera = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraState('unsupported');
-      setCameraMessage('This device or browser does not support camera access.');
+      setCameraState("unsupported");
+      setCameraMessage(
+        "This device or browser does not support camera access.",
+      );
       return;
     }
 
     stopCamera();
-    setCameraState('requesting');
-    setCameraMessage('Requesting camera permission...');
+    setCameraState("requesting");
+    setCameraMessage("Requesting camera permission...");
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
+        video: { facingMode: { ideal: "environment" } },
         audio: false,
       });
 
       streamRef.current = stream;
-      setCameraState('active');
-      setCameraMessage('Camera ready. Position the lab result document inside the frame.');
+      setCameraState("active");
+      setCameraMessage(
+        "Camera ready. Position the lab result document inside the frame.",
+      );
     } catch {
-      setCameraState('denied');
-      setCameraMessage('Camera permission was denied. You can still upload an image file instead.');
+      setCameraState("denied");
+      setCameraMessage(
+        "Camera permission was denied. You can still upload an image file instead.",
+      );
     }
   };
 
   const captureCameraImage = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas || video.videoWidth === 0 || video.videoHeight === 0) {
-      toast.error('Camera preview is not ready yet.');
+    if (
+      !video ||
+      !canvas ||
+      video.videoWidth === 0 ||
+      video.videoHeight === 0
+    ) {
+      toast.error("Camera preview is not ready yet.");
       return;
     }
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    const context = canvas.getContext('2d');
+    const context = canvas.getContext("2d");
     if (!context) {
-      toast.error('Unable to capture the camera image.');
+      toast.error("Unable to capture the camera image.");
       return;
     }
 
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
     addImageAttachment({
       name: `Lab result capture ${labResultImages.length + 1}.jpg`,
       dataUrl,
-      mimeType: 'image/jpeg',
+      mimeType: "image/jpeg",
     });
-    toast.success('Lab result image captured.');
+    toast.success("Lab result image captured.");
   };
 
   const handleLabImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -641,31 +740,34 @@ export function ConsultationEntryPage() {
     try {
       const images = await Promise.all(
         files
-          .filter((file) => file.type.startsWith('image/'))
+          .filter((file) => file.type.startsWith("image/"))
           .map(
             (file) =>
-              new Promise<Omit<LabResultImageRecord, 'id'>>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                  if (typeof reader.result !== 'string') {
-                    reject(new Error('Unable to read the selected file.'));
-                    return;
-                  }
+              new Promise<Omit<LabResultImageRecord, "id">>(
+                (resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    if (typeof reader.result !== "string") {
+                      reject(new Error("Unable to read the selected file."));
+                      return;
+                    }
 
-                  resolve({
-                    name: file.name,
-                    dataUrl: reader.result,
-                    mimeType: file.type || 'image/*',
-                  });
-                };
-                reader.onerror = () => reject(new Error('Unable to read the selected file.'));
-                reader.readAsDataURL(file);
-              }),
+                    resolve({
+                      name: file.name,
+                      dataUrl: reader.result,
+                      mimeType: file.type || "image/*",
+                    });
+                  };
+                  reader.onerror = () =>
+                    reject(new Error("Unable to read the selected file."));
+                  reader.readAsDataURL(file);
+                },
+              ),
           ),
       );
 
       if (images.length === 0) {
-        toast.error('Please choose an image file.');
+        toast.error("Please choose an image file.");
         return;
       }
 
@@ -676,16 +778,24 @@ export function ConsultationEntryPage() {
           id: `${Date.now()}-${index}-${crypto.randomUUID().slice(0, 8)}`,
         })),
       ]);
-      toast.success(`${images.length} lab result image${images.length > 1 ? 's' : ''} added.`);
+      toast.success(
+        `${images.length} lab result image${images.length > 1 ? "s" : ""} added.`,
+      );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to upload the selected image.');
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to upload the selected image.",
+      );
     } finally {
-      event.target.value = '';
+      event.target.value = "";
     }
   };
 
   const removeLabImage = (imageId: string) => {
-    setLabResultImages((current) => current.filter((image) => image.id !== imageId));
+    setLabResultImages((current) =>
+      current.filter((image) => image.id !== imageId),
+    );
   };
 
   return (
@@ -694,7 +804,9 @@ export function ConsultationEntryPage() {
       <Card>
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Patient Record</p>
+            <p className="text-sm uppercase tracking-[0.18em] text-slate-400">
+              Patient Record
+            </p>
             <CardTitle className="mt-2 text-3xl">
               {patient.firstName} {patient.lastName}
             </CardTitle>
@@ -726,10 +838,10 @@ export function ConsultationEntryPage() {
                   key={step.id}
                   className={`h-2 flex-1 rounded-full transition-colors ${
                     index < currentStepIndex
-                      ? 'bg-emerald-500'
+                      ? "bg-emerald-500"
                       : index === currentStepIndex
-                        ? 'bg-blue-500'
-                        : 'bg-slate-200'
+                        ? "bg-blue-500"
+                        : "bg-slate-200"
                   }`}
                 />
               ))}
@@ -737,8 +849,12 @@ export function ConsultationEntryPage() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">{currentStep.title}</h2>
-            <p className="mt-1 text-sm text-slate-600">{currentStep.description}</p>
+            <h2 className="text-2xl font-bold text-slate-900">
+              {currentStep.title}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              {currentStep.description}
+            </p>
           </div>
         </div>
       </Card>
@@ -746,7 +862,7 @@ export function ConsultationEntryPage() {
       {/* Form Content */}
       <Card>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {currentStep.id === 'appointment' && (
+          {currentStep.id === "appointment" && (
             <div className="space-y-4">
               {/* Appointment Selection */}
               <FormField
@@ -754,7 +870,7 @@ export function ConsultationEntryPage() {
                 error={form.formState.errors.appointmentId?.message}
               >
                 <select
-                  {...form.register('appointmentId')}
+                  {...form.register("appointmentId")}
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
                 >
                   <option value="">No appointment linked</option>
@@ -764,16 +880,22 @@ export function ConsultationEntryPage() {
                     </option>
                   ))}
                 </select>
-                <p className="mt-1 text-xs text-slate-500">You can save this consultation without linking it to an appointment.</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  You can save this consultation without linking it to an
+                  appointment.
+                </p>
               </FormField>
 
               {activeConsultationBookings.length > 0 && (
                 <div className="rounded-lg border border-sky-200 bg-sky-50 p-3">
-                  <p className="text-sm font-medium text-sky-900">Active booking requests</p>
+                  <p className="text-sm font-medium text-sky-900">
+                    Active booking requests
+                  </p>
                   <ul className="mt-2 space-y-1">
                     {activeConsultationBookings.map((booking: Booking) => (
                       <li key={booking.id} className="text-xs text-sky-700">
-                        {booking.preferredDate} at {booking.preferredTime} — {booking.intakeNotes || 'General consultation'}
+                        {booking.preferredDate} at {booking.preferredTime} —{" "}
+                        {booking.intakeNotes || "General consultation"}
                       </li>
                     ))}
                   </ul>
@@ -786,7 +908,7 @@ export function ConsultationEntryPage() {
               >
                 <input
                   type="text"
-                  {...form.register('consultationType')}
+                  {...form.register("consultationType")}
                   placeholder={stepFields.consultationType.placeholder}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
                 />
@@ -799,7 +921,7 @@ export function ConsultationEntryPage() {
                 >
                   <input
                     type="date"
-                    {...form.register('consultationDate')}
+                    {...form.register("consultationDate")}
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
                   />
                 </FormField>
@@ -810,7 +932,7 @@ export function ConsultationEntryPage() {
                 >
                   <input
                     type="time"
-                    {...form.register('consultationTime')}
+                    {...form.register("consultationTime")}
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
                   />
                 </FormField>
@@ -822,7 +944,7 @@ export function ConsultationEntryPage() {
               >
                 <input
                   type="text"
-                  {...form.register('providerName')}
+                  {...form.register("providerName")}
                   placeholder={stepFields.providerName.placeholder}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
                 />
@@ -830,14 +952,14 @@ export function ConsultationEntryPage() {
             </div>
           )}
 
-          {currentStep.id === 'history' && (
+          {currentStep.id === "history" && (
             <div className="space-y-4">
               <FormField
                 label={`${stepFields.presentIllnessHistory.label} *`}
                 error={form.formState.errors.presentIllnessHistory?.message}
               >
                 <Textarea
-                  {...form.register('presentIllnessHistory')}
+                  {...form.register("presentIllnessHistory")}
                   placeholder={stepFields.presentIllnessHistory.placeholder}
                   rows={5}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -849,7 +971,7 @@ export function ConsultationEntryPage() {
                 error={form.formState.errors.reviewOfSymptoms?.message}
               >
                 <Textarea
-                  {...form.register('reviewOfSymptoms')}
+                  {...form.register("reviewOfSymptoms")}
                   placeholder={stepFields.reviewOfSymptoms.placeholder}
                   rows={4}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -861,7 +983,7 @@ export function ConsultationEntryPage() {
                 error={form.formState.errors.allergies?.message}
               >
                 <Textarea
-                  {...form.register('allergies')}
+                  {...form.register("allergies")}
                   placeholder={stepFields.allergies.placeholder}
                   rows={3}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -870,12 +992,15 @@ export function ConsultationEntryPage() {
             </div>
           )}
 
-          {currentStep.id === 'findings' && (
+          {currentStep.id === "findings" && (
             <div className="space-y-4">
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <div className="flex gap-2">
                   <AlertCircle className="h-5 w-5 flex-shrink-0 text-amber-600" />
-                  <p className="text-sm text-amber-700">At least one finding (vitals, medications, or lab results) is required.</p>
+                  <p className="text-sm text-amber-700">
+                    At least one finding (vitals, medications, or lab results)
+                    is required.
+                  </p>
                 </div>
               </div>
 
@@ -884,7 +1009,7 @@ export function ConsultationEntryPage() {
                 error={form.formState.errors.vitals?.message}
               >
                 <Textarea
-                  {...form.register('vitals')}
+                  {...form.register("vitals")}
                   placeholder={stepFields.vitals.placeholder}
                   rows={4}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -896,7 +1021,7 @@ export function ConsultationEntryPage() {
                 error={form.formState.errors.medications?.message}
               >
                 <Textarea
-                  {...form.register('medications')}
+                  {...form.register("medications")}
                   placeholder={stepFields.medications.placeholder}
                   rows={4}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -909,7 +1034,7 @@ export function ConsultationEntryPage() {
               >
                 <div className="space-y-4">
                   <Textarea
-                    {...form.register('labResults')}
+                    {...form.register("labResults")}
                     placeholder={stepFields.labResults.placeholder}
                     rows={4}
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -918,29 +1043,53 @@ export function ConsultationEntryPage() {
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">Attach lab result image</p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          Attach lab result image
+                        </p>
                         <p className="mt-1 text-xs text-slate-500">
-                          Capture from camera or upload an image file. Saved images will also be visible in the patient history.
+                          Capture from camera or upload an image file. Saved
+                          images will also be visible in the patient history.
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Button className="gap-2" onClick={() => void startCamera()} type="button" variant="secondary">
+                        <Button
+                          className="gap-2"
+                          onClick={() => void startCamera()}
+                          type="button"
+                          variant="secondary"
+                        >
                           <Camera className="size-4" />
-                          {cameraState === 'active' ? 'Restart camera' : 'Start camera'}
+                          {cameraState === "active"
+                            ? "Restart camera"
+                            : "Start camera"}
                         </Button>
-                        {cameraState === 'active' ? (
+                        {cameraState === "active" ? (
                           <>
-                            <Button className="gap-2" onClick={captureCameraImage} type="button">
+                            <Button
+                              className="gap-2"
+                              onClick={captureCameraImage}
+                              type="button"
+                            >
                               <ImagePlus className="size-4" />
                               Capture image
                             </Button>
-                            <Button className="gap-2" onClick={stopCamera} type="button" variant="secondary">
+                            <Button
+                              className="gap-2"
+                              onClick={stopCamera}
+                              type="button"
+                              variant="secondary"
+                            >
                               <StopCircle className="size-4" />
                               Stop camera
                             </Button>
                           </>
                         ) : null}
-                        <Button className="gap-2" onClick={() => fileInputRef.current?.click()} type="button" variant="secondary">
+                        <Button
+                          className="gap-2"
+                          onClick={() => fileInputRef.current?.click()}
+                          type="button"
+                          variant="secondary"
+                        >
                           <Upload className="size-4" />
                           Upload file
                         </Button>
@@ -957,12 +1106,20 @@ export function ConsultationEntryPage() {
                     />
 
                     {cameraMessage ? (
-                      <p className="mt-3 text-sm text-slate-600">{cameraMessage}</p>
+                      <p className="mt-3 text-sm text-slate-600">
+                        {cameraMessage}
+                      </p>
                     ) : null}
 
-                    {cameraState === 'requesting' || cameraState === 'active' ? (
+                    {cameraState === "requesting" ||
+                    cameraState === "active" ? (
                       <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-black">
-                        <video className="aspect-video w-full object-cover" muted playsInline ref={videoRef} />
+                        <video
+                          className="aspect-video w-full object-cover"
+                          muted
+                          playsInline
+                          ref={videoRef}
+                        />
                         <canvas className="hidden" ref={canvasRef} />
                       </div>
                     ) : null}
@@ -970,10 +1127,19 @@ export function ConsultationEntryPage() {
                     {labResultImages.length > 0 ? (
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
                         {labResultImages.map((image) => (
-                          <div key={image.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                            <img alt={image.name} className="aspect-[4/3] w-full object-cover" src={image.dataUrl} />
+                          <div
+                            key={image.id}
+                            className="overflow-hidden rounded-2xl border border-slate-200 bg-white"
+                          >
+                            <img
+                              alt={image.name}
+                              className="aspect-[4/3] w-full object-cover"
+                              src={image.dataUrl}
+                            />
                             <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-3 py-2">
-                              <p className="min-w-0 flex-1 truncate text-xs font-medium text-slate-600">{image.name}</p>
+                              <p className="min-w-0 flex-1 truncate text-xs font-medium text-slate-600">
+                                {image.name}
+                              </p>
                               <button
                                 className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 transition hover:text-rose-700"
                                 onClick={() => removeLabImage(image.id)}
@@ -993,12 +1159,15 @@ export function ConsultationEntryPage() {
             </div>
           )}
 
-          {currentStep.id === 'diagnoses' && (
+          {currentStep.id === "diagnoses" && (
             <div className="space-y-4">
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <div className="flex gap-2">
                   <AlertCircle className="h-5 w-5 flex-shrink-0 text-amber-600" />
-                  <p className="text-sm text-amber-700">At least one diagnosis type (primary or differential) is required.</p>
+                  <p className="text-sm text-amber-700">
+                    At least one diagnosis type (primary or differential) is
+                    required.
+                  </p>
                 </div>
               </div>
 
@@ -1007,7 +1176,7 @@ export function ConsultationEntryPage() {
                 error={form.formState.errors.diagnosis?.message}
               >
                 <Textarea
-                  {...form.register('diagnosis')}
+                  {...form.register("diagnosis")}
                   placeholder={stepFields.diagnosis.placeholder}
                   rows={4}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -1019,7 +1188,7 @@ export function ConsultationEntryPage() {
                 error={form.formState.errors.differentialDiagnosis?.message}
               >
                 <Textarea
-                  {...form.register('differentialDiagnosis')}
+                  {...form.register("differentialDiagnosis")}
                   placeholder={stepFields.differentialDiagnosis.placeholder}
                   rows={4}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -1028,7 +1197,7 @@ export function ConsultationEntryPage() {
             </div>
           )}
 
-          {currentStep.id === 'assessment' && (
+          {currentStep.id === "assessment" && (
             <div className="space-y-4">
               <p className="text-sm text-slate-600">
                 Complete the SOAP notes structure for clinical documentation.
@@ -1039,7 +1208,7 @@ export function ConsultationEntryPage() {
                 error={form.formState.errors.subjective?.message}
               >
                 <Textarea
-                  {...form.register('subjective')}
+                  {...form.register("subjective")}
                   placeholder={stepFields.subjective.placeholder}
                   rows={4}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -1051,7 +1220,7 @@ export function ConsultationEntryPage() {
                 error={form.formState.errors.objective?.message}
               >
                 <Textarea
-                  {...form.register('objective')}
+                  {...form.register("objective")}
                   placeholder={stepFields.objective.placeholder}
                   rows={4}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -1063,7 +1232,7 @@ export function ConsultationEntryPage() {
                 error={form.formState.errors.assessment?.message}
               >
                 <Textarea
-                  {...form.register('assessment')}
+                  {...form.register("assessment")}
                   placeholder={stepFields.assessment.placeholder}
                   rows={4}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -1075,7 +1244,7 @@ export function ConsultationEntryPage() {
                 error={form.formState.errors.plan?.message}
               >
                 <Textarea
-                  {...form.register('plan')}
+                  {...form.register("plan")}
                   placeholder={stepFields.plan.placeholder}
                   rows={4}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -1084,14 +1253,14 @@ export function ConsultationEntryPage() {
             </div>
           )}
 
-          {currentStep.id === 'summary' && (
+          {currentStep.id === "summary" && (
             <div className="space-y-4">
               <FormField
                 label={`${stepFields.clinicalSummary.label} *`}
                 error={form.formState.errors.clinicalSummary?.message}
               >
                 <Textarea
-                  {...form.register('clinicalSummary')}
+                  {...form.register("clinicalSummary")}
                   placeholder={stepFields.clinicalSummary.placeholder}
                   rows={5}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -1103,7 +1272,7 @@ export function ConsultationEntryPage() {
                 error={form.formState.errors.treatmentPlan?.message}
               >
                 <Textarea
-                  {...form.register('treatmentPlan')}
+                  {...form.register("treatmentPlan")}
                   placeholder={stepFields.treatmentPlan.placeholder}
                   rows={4}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -1115,7 +1284,7 @@ export function ConsultationEntryPage() {
                 error={form.formState.errors.outcome?.message}
               >
                 <Textarea
-                  {...form.register('outcome')}
+                  {...form.register("outcome")}
                   placeholder={stepFields.outcome.placeholder}
                   rows={3}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -1126,28 +1295,36 @@ export function ConsultationEntryPage() {
                 <div className="flex items-start gap-3">
                   <input
                     type="checkbox"
-                    {...form.register('referToSpecialist')}
+                    {...form.register("referToSpecialist")}
                     className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
                   <div className="min-w-0 flex-1 space-y-4">
                     <div>
-                      <p className="text-sm font-medium text-slate-900">Refer to specialist after saving</p>
+                      <p className="text-sm font-medium text-slate-900">
+                        Refer to specialist after saving
+                      </p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Create a referral from this consultation before returning to the patient chart.
+                        Create a referral from this consultation before
+                        returning to the patient chart.
                       </p>
                     </div>
 
-                    {form.watch('referToSpecialist') ? (
+                    {form.watch("referToSpecialist") ? (
                       <>
                         <FormField
                           label={stepFields.specialistDoctorId.label}
-                          error={form.formState.errors.specialistDoctorId?.message}
+                          error={
+                            form.formState.errors.specialistDoctorId?.message
+                          }
                         >
-                          <Select {...form.register('specialistDoctorId')}>
+                          <Select {...form.register("specialistDoctorId")}>
                             <option value="">Select specialist</option>
                             {assignableDoctors.map((doctor) => (
                               <option key={doctor.id} value={doctor.id}>
-                                {doctor.fullName}{doctor.specialtyName ? ` (${doctor.specialtyName})` : ''}
+                                {doctor.fullName}
+                                {doctor.specialtyName
+                                  ? ` (${doctor.specialtyName})`
+                                  : ""}
                               </option>
                             ))}
                           </Select>
@@ -1155,11 +1332,15 @@ export function ConsultationEntryPage() {
 
                         <FormField
                           label={stepFields.specialistReason.label}
-                          error={form.formState.errors.specialistReason?.message}
+                          error={
+                            form.formState.errors.specialistReason?.message
+                          }
                         >
                           <Textarea
-                            {...form.register('specialistReason')}
-                            placeholder={stepFields.specialistReason.placeholder}
+                            {...form.register("specialistReason")}
+                            placeholder={
+                              stepFields.specialistReason.placeholder
+                            }
                             rows={3}
                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
                           />
@@ -1170,7 +1351,7 @@ export function ConsultationEntryPage() {
                           error={form.formState.errors.specialistNotes?.message}
                         >
                           <Textarea
-                            {...form.register('specialistNotes')}
+                            {...form.register("specialistNotes")}
                             placeholder={stepFields.specialistNotes.placeholder}
                             rows={3}
                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
@@ -1204,7 +1385,9 @@ export function ConsultationEntryPage() {
                 className="ml-auto flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                {createConsultation.isPending ? 'Submitting...' : 'Save Consultation'}
+                {createConsultation.isPending
+                  ? "Submitting..."
+                  : "Save Consultation"}
               </Button>
             ) : (
               <Button
@@ -1222,7 +1405,10 @@ export function ConsultationEntryPage() {
 
       <AppointmentLabRequestsCard
         appointmentId={selectedAppointmentId || null}
-        canCreate={Boolean(selectedAppointmentId && (profile?.role === 'doctor' || profile?.role === 'owner_admin'))}
+        canCreate={Boolean(
+          selectedAppointmentId &&
+          (profile?.role === "doctor" || profile?.role === "owner_admin"),
+        )}
         patientId={patient.id}
         requestedBy={profile?.id ?? soapDoctorId}
         title="Appointment lab requests"
