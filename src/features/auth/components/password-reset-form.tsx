@@ -23,7 +23,7 @@ export function PasswordResetForm() {
   const form = useForm<ResetValues>({
     resolver: zodResolver(resetSchema),
     defaultValues: {
-      email: 'owner@odysseyclinic.test',
+      email: '',
     },
   });
 
@@ -95,9 +95,7 @@ export function PasswordResetForm() {
         {submitting ? 'Sending…' : 'Send Reset Link'}
       </Button>
 
-      <p className="text-[11px] text-slate-400 text-center leading-relaxed">
-        Uses Supabase Auth when configured. Falls back to demo behavior in local mode.
-      </p>
+
     </form>
   );
 }

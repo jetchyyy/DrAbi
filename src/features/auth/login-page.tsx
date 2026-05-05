@@ -24,9 +24,9 @@ const features = [
 
 export function LoginPage() {
   const { data: clinic } = useClinicSettingsData();
-  const clinicName   = clinic?.clinicName   ?? defaultClinicSettings.clinicName;
-  const legalName    = clinic?.legalName    ?? defaultClinicSettings.legalName;
-  const year         = new Date().getFullYear();
+  const clinicName = clinic?.clinicName ?? defaultClinicSettings.clinicName;
+  const legalName = clinic?.legalName ?? defaultClinicSettings.legalName;
+  const year = new Date().getFullYear();
 
   return (
     <div className="min-h-screen flex">
@@ -102,12 +102,10 @@ export function LoginPage() {
           <div className="mt-auto">
             <div className="mb-6 inline-flex items-center gap-2 border border-white/15 bg-white/10 px-4 py-2 text-sm text-white/80 animate-fade-in delay-100">
               <Shield className="size-4 text-orange-400" />
-              Secure staff access portal
+              Secure Login portal
             </div>
 
-            <p className="text-lg font-semibold text-white leading-relaxed max-w-md animate-slide-left delay-200">
-              Staff workflows, patient booking, and billing operations — built for single-clinic today, white-label ready tomorrow.
-            </p>
+
 
             {/* Feature list */}
             <div className="mt-10 space-y-5 animate-fade-up delay-300">
