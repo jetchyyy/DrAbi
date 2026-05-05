@@ -43,7 +43,11 @@ const bookingSchema = z.object({
   doctorId: z.string().optional(),
   preferredDate: z.string().min(1),
   preferredTime: z.string().min(1),
-  intakeNotes: z.string().min(3),
+  intakeNotes: z
+    .string()
+    .trim()
+    .min(10, "Please provide at least 10 characters for your reason or intake notes.")
+    .max(500, "Reason or intake notes must not exceed 500 characters."),
 });
 
 type BookingFormValues = z.infer<typeof bookingSchema>;
@@ -552,7 +556,7 @@ export function PortalBookPage() {
               {selectedDate &&
               requiresDoctor &&
               unavailableTimeSessions.length > 0 ? (
-                <p className="mt-3 text-xs text-slate-500">
+                <p className="mt-3 rounded-sm border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
                   Doctor not available during{" "}
                   {unavailableTimeSessions
                     .map((sessionValue) =>
@@ -655,8 +659,15 @@ export function PortalBookPage() {
             </p>
           ) : null}
 
-          <FormField label="Reason or intake notes">
-            <Textarea {...form.register("intakeNotes")} />
+          <FormField
+            label="Reason or intake notes"
+            hint="Include your symptoms or concern, how long you have had it, and any key history (allergies, maintenance medicines, or recent tests)."
+            error={form.formState.errors.intakeNotes?.message}
+          >
+            <Textarea
+              placeholder="Example: 3 days of dry cough with mild fever at night. No known drug allergies. Taking paracetamol 500 mg as needed."
+              {...form.register("intakeNotes")}
+            />
           </FormField>
           <Button
             className="w-full"

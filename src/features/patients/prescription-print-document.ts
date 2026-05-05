@@ -137,8 +137,7 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
         </div>`).join('');
 
     const footerHtml = isLastPage
-      ? `<p class="follow-up">Follow-up appointment: ${escapeHtml(input.nextAppointment || '________________')}</p>
-        <div class="signature-container">${signatureHtml}</div>`
+      ? `<div class="signature-container">${signatureHtml}</div>`
       : `<p class="continued-note">— continued on next page —</p>
         <div class="signature-container">${signatureHtml}</div>`;
 
