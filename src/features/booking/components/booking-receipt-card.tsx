@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 import { toast } from "sonner";
 
 import { Button } from "../../../components/ui/button";
-import { Card, CardTitle } from "../../../components/ui/card";
+import { Card } from "../../../components/ui/card";
 import { formatCurrency, formatDateLabel } from "../../../lib/utils";
 import type { BookingListItem } from "../../../lib/supabase-clinic";
 import { buildBookingReceiptLookupUrl } from "../booking-receipt";
@@ -407,7 +407,7 @@ export function BookingReceiptCard({ booking }: BookingReceiptCardProps) {
       errorCorrectionLevel: "M",
       margin: 1,
       type: "svg",
-      width: 220,
+      width: 140,
     }).then((svg: string) => {
       if (active) {
         setSvgMarkup(svg);
@@ -474,92 +474,100 @@ export function BookingReceiptCard({ booking }: BookingReceiptCardProps) {
 
   return (
     <Card className="h-full">
-      <p className="text-sm uppercase tracking-[0.18em] text-slate-400">
-        Booking Receipt
-      </p>
-      <CardTitle className="mt-2">Present this at cashier</CardTitle>
-      <p className="mt-2 text-sm text-slate-500">
-        Cashier and staff can scan this receipt QR to verify the booking and
-        payment status before the patient proceeds.
-      </p>
-      <div className="mt-5 flex justify-center rounded-[28px] bg-slate-50 p-5">
-        {svgMarkup ? (
-          <div
-            aria-label={`Receipt QR for ${booking.serviceName}`}
-            className="size-[220px]"
-            dangerouslySetInnerHTML={{ __html: svgMarkup }}
-          />
-        ) : (
-          <div className="flex size-[220px] items-center justify-center rounded-3xl bg-white text-sm text-slate-400">
-            Generating QR...
+      {/* Mobile: stacked. Desktop (sm+): QR left, info right */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
+        {/* QR code — centred on mobile, left-aligned on desktop */}
+        <div className="flex shrink-0 items-center justify-center self-start rounded-2xl bg-slate-50 p-3 sm:self-auto">
+          {svgMarkup ? (
+            <div
+              aria-label={`Receipt QR for ${booking.serviceName}`}
+              className="size-[140px] overflow-hidden [&>svg]:size-full"
+              dangerouslySetInnerHTML={{ __html: svgMarkup }}
+            />
+          ) : (
+            <div className="flex size-[140px] items-center justify-center rounded-xl bg-white text-xs text-slate-400">
+              Generating QR...
+            </div>
+          )}
+        </div>
+
+        {/* Right side: label, details, buttons */}
+        <div className="flex min-w-0 flex-1 flex-col justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+              Booking Receipt · Present this at cashier
+            </p>
+            {/* 1-col on mobile, 3-col on sm+ */}
+            <div className="mt-2 grid grid-cols-1 gap-y-3 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-2">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-slate-400">
+                  Receipt code
+                </p>
+                <p className="mt-0.5 break-all font-mono text-xs font-bold text-slate-950">
+                  {booking.receiptCode}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-slate-400">
+                  Charge
+                </p>
+                <p className="mt-0.5 text-xs font-bold text-slate-950">
+                  {formatFeeLabel(booking.feeType)}
+                </p>
+                <p className="text-xs font-semibold text-slate-500">
+                  {formatCurrency(booking.feeAmount)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-slate-400">
+                  Payment
+                </p>
+                <p className="mt-0.5 text-xs font-bold text-slate-950">
+                  {booking.paymentStatus === "paid" ? "Paid" : "Pending Cashier"}
+                </p>
+              </div>
+            </div>
           </div>
-        )}
-      </div>
-      <div className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-        <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
-            Receipt code
-          </p>
-          <p className="mt-1 break-all font-mono font-semibold text-slate-950">
-            {booking.receiptCode}
-          </p>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              className="gap-1.5 text-xs"
+              disabled={isSavingImage}
+              onClick={() => void handleSaveImage()}
+              type="button"
+              variant="secondary"
+            >
+              {isSavingImage ? (
+                "Preparing..."
+              ) : (
+                <>
+                  <ImageDown className="size-3.5" />
+                  Save as Image
+                </>
+              )}
+            </Button>
+            <Button
+              className="gap-1.5 text-xs"
+              disabled={isSavingPdf}
+              onClick={() => void handleSavePdf()}
+              type="button"
+            >
+              {isSavingPdf ? (
+                "Opening PDF..."
+              ) : (
+                <>
+                  <FileText className="size-3.5" />
+                  Save as PDF
+                </>
+              )}
+            </Button>
+            <p className="flex items-center gap-1.5 text-[10px] text-slate-400">
+              <Download className="size-3 text-orange-500" />
+              Uses device share/download when supported.
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
-            Charge
-          </p>
-          <p className="mt-1 font-semibold text-slate-950">
-            {formatFeeLabel(booking.feeType)} -{" "}
-            {formatCurrency(booking.feeAmount)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
-            Payment status
-          </p>
-          <p className="mt-1 font-semibold text-slate-950">
-            {booking.paymentStatus === "paid" ? "Paid" : "Pending Cashier"}
-          </p>
-        </div>
       </div>
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <Button
-          className="w-full gap-2"
-          disabled={isSavingImage}
-          onClick={() => void handleSaveImage()}
-          type="button"
-          variant="secondary"
-        >
-          {isSavingImage ? (
-            "Preparing image..."
-          ) : (
-            <>
-              <ImageDown className="size-4" />
-              Save as Image
-            </>
-          )}
-        </Button>
-        <Button
-          className="w-full gap-2"
-          disabled={isSavingPdf}
-          onClick={() => void handleSavePdf()}
-          type="button"
-        >
-          {isSavingPdf ? (
-            "Opening PDF..."
-          ) : (
-            <>
-              <FileText className="size-4" />
-              Save as PDF
-            </>
-          )}
-        </Button>
-      </div>
-      <p className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-        <Download className="size-3.5 text-orange-500" />
-        Image export uses your device share or download flow when supported,
-        including modern Android and iPhone browsers.
-      </p>
     </Card>
   );
 }

@@ -1,6 +1,8 @@
+import { useState } from "react";
 import {
   CalendarClock,
   CheckCircle,
+  ChevronDown,
   Clock,
   Clock4,
   Plus,
@@ -35,19 +37,38 @@ export function MyBookingsPage() {
     session?.user.id ?? profile?.email ?? null,
   );
   const { data: teleconsultAppointments = [] } = useMyTeleconsultAppointments();
+  const [expandedPastId, setExpandedPastId] = useState<string | null>(null);
+  const [openReceiptId, setOpenReceiptId] = useState<string | null>(null);
+
+  const activeBookings = bookings.filter(
+    (b) => b.status !== "cancelled" && b.status !== "completed",
+  );
+  const pastBookings = bookings.filter(
+    (b) => b.status === "cancelled" || b.status === "completed",
+  );
 
   const getStatusColor = (status: string) => {
     if (status === "confirmed") return "border-l-emerald-500 bg-white";
     if (status === "cancelled") return "border-l-rose-500 bg-white";
+    if (status === "completed") return "border-l-slate-400 bg-white";
     return "border-l-orange-500 bg-white";
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string, size = "size-5") => {
     if (status === "confirmed")
-      return <CheckCircle className="size-5 text-emerald-600" />;
+      return <CheckCircle className={`${size} text-emerald-600`} />;
     if (status === "cancelled")
-      return <XCircle className="size-5 text-rose-600" />;
-    return <Clock4 className="size-5 text-orange-600" />;
+      return <XCircle className={`${size} text-rose-600`} />;
+    if (status === "completed")
+      return <CheckCircle className={`${size} text-slate-400`} />;
+    return <Clock4 className={`${size} text-orange-600`} />;
+  };
+
+  const getStatusBadgeIntent = (status: string) => {
+    if (status === "confirmed") return "success" as const;
+    if (status === "cancelled") return "danger" as const;
+    if (status === "completed") return "neutral" as const;
+    return "warning" as const;
   };
 
   return (
@@ -71,7 +92,7 @@ export function MyBookingsPage() {
       </div>
 
       {teleconsultAppointments.length > 0 ? (
-        <Card>
+        <Card className="mb-6">
           <CardTitle>My teleconsult rooms</CardTitle>
           <div className="mt-5 space-y-4">
             {teleconsultAppointments.map((appointment) => (
@@ -132,94 +153,260 @@ export function MyBookingsPage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-6">
-          {bookings.map((booking, index) => (
-            <div
-              key={booking.id}
-              className={`animate-fade-up border border-slate-200 border-l-[5px] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${getStatusColor(booking.status)}`}
-              style={{ animationDelay: `${0.05 * index}s` }}
-            >
-              <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-5">
-                <div className="flex min-w-0 items-start gap-4">
-                  <div className="mt-0.5 shrink-0 border border-slate-100 bg-slate-50 p-2.5">
-                    {getStatusIcon(booking.status)}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="truncate text-lg font-extrabold uppercase leading-tight tracking-tight text-slate-950">
-                      {booking.serviceName}
-                    </h3>
-                    <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-slate-500">
-                      <Stethoscope className="size-3.5 shrink-0 text-orange-600" />
-                      {booking.doctorName ?? "Clinic medical service"}
-                    </p>
-                  </div>
-                </div>
-                <Badge
-                  className="shrink-0 whitespace-nowrap rounded-full text-[10px] font-extrabold uppercase tracking-widest"
-                  intent={
-                    booking.status === "confirmed"
-                      ? "success"
-                      : booking.status === "cancelled"
-                        ? "danger"
-                        : "info"
-                  }
-                >
-                  {booking.status}
-                </Badge>
-              </div>
+        <div className="space-y-10">
+          {/* ── Active bookings: pending / confirmed / rescheduled ── */}
+          {activeBookings.length > 0 && (
+            <div className="space-y-4">
+              {activeBookings.map((booking, index) => {
+                const receiptOpen = openReceiptId === booking.id;
+                return (
+                  <div
+                    key={booking.id}
+                    className={`animate-fade-up border border-slate-200 border-l-[5px] shadow-sm transition-shadow duration-200 hover:shadow-md ${getStatusColor(booking.status)}`}
+                    style={{ animationDelay: `${0.05 * index}s` }}
+                  >
+                    {/* Card header */}
+                    <div className="flex items-center justify-between gap-4 px-5 py-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="shrink-0 border border-slate-100 bg-slate-50 p-2">
+                          {getStatusIcon(booking.status)}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="truncate text-base font-extrabold uppercase leading-tight tracking-tight text-slate-950">
+                            {booking.serviceName}
+                          </h3>
+                          <p className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            <Stethoscope className="size-3 shrink-0 text-orange-600" />
+                            {booking.doctorName ?? "Clinic medical service"}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge
+                        className="shrink-0 whitespace-nowrap rounded-full text-[10px] font-extrabold uppercase tracking-widest"
+                        intent={getStatusBadgeIntent(booking.status)}
+                      >
+                        {booking.status}
+                      </Badge>
+                    </div>
 
-              <div className="mx-6 mb-5 grid gap-4 border-t border-slate-100 pt-4 md:grid-cols-2">
-                <div>
-                  <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                    Schedule
-                  </p>
-                  <p className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                    <Clock className="size-3.5 text-orange-600" />
-                    {formatDateLabel(booking.preferredDate)} at{" "}
-                    {formatTimeLabel(
-                      `${booking.preferredDate} ${booking.preferredTime}`,
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                    Booking charge
-                  </p>
-                  <p className="text-sm font-bold text-slate-900">
-                    {formatFeeLabel(booking.feeType)} -{" "}
-                    {formatCurrency(booking.feeAmount)}
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                    Receipt / Payment
-                  </p>
-                  <p className="text-sm font-bold text-slate-900">
-                    {booking.receiptCode}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {booking.paymentStatus === "paid"
-                      ? "Paid at cashier"
-                      : "Pending cashier payment"}
-                  </p>
-                </div>
-                {booking.intakeNotes ? (
-                  <div>
-                    <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                      Reason / Notes
-                    </p>
-                    <p className="line-clamp-2 border-l-2 border-slate-200 pl-2 text-sm italic leading-relaxed text-slate-600">
-                      {booking.intakeNotes}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
+                    {/* Detail strip – 4 cells in a row on desktop */}
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-slate-100 px-5 py-4 lg:grid-cols-4">
+                      <div>
+                        <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                          Schedule
+                        </p>
+                        <p className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+                          <Clock className="size-3 shrink-0 text-orange-600" />
+                          {formatDateLabel(booking.preferredDate)}
+                        </p>
+                        <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                          {formatTimeLabel(
+                            `${booking.preferredDate} ${booking.preferredTime}`,
+                          )}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                          Booking charge
+                        </p>
+                        <p className="text-sm font-bold text-slate-900">
+                          {formatFeeLabel(booking.feeType)}
+                        </p>
+                        <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                          {formatCurrency(booking.feeAmount)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                          Receipt code
+                        </p>
+                        <p className="font-mono text-sm font-bold text-slate-900">
+                          {booking.receiptCode}
+                        </p>
+                        <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {booking.paymentStatus === "paid"
+                            ? "Paid at cashier"
+                            : "Pending cashier payment"}
+                        </p>
+                      </div>
+                      {booking.intakeNotes ? (
+                        <div>
+                          <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                            Reason / Notes
+                          </p>
+                          <p className="line-clamp-2 border-l-2 border-slate-200 pl-2 text-xs italic leading-relaxed text-slate-600">
+                            {booking.intakeNotes}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="hidden lg:block" />
+                      )}
+                    </div>
 
-              <div className="mx-6 mb-6 border-t border-slate-100 pt-4">
-                <BookingReceiptCard booking={booking} />
+                    {/* Receipt toggle footer */}
+                    <div className="border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenReceiptId(receiptOpen ? null : booking.id)
+                        }
+                        className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-widest text-orange-600 transition-colors hover:bg-orange-50"
+                        aria-expanded={receiptOpen}
+                      >
+                        <span>
+                          {receiptOpen ? "Hide Receipt QR" : "Show Receipt QR & Download"}
+                        </span>
+                        <ChevronDown
+                          className={`size-4 shrink-0 transition-transform duration-200 ${receiptOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+
+                      {receiptOpen && (
+                        <div className="border-t border-slate-100 px-5 pb-5 pt-4">
+                          <BookingReceiptCard booking={booking} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Past bookings: completed / cancelled – compact accordion ── */}
+          {pastBookings.length > 0 && (
+            <div>
+              <p className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-slate-400">
+                Completed &amp; Cancelled ({pastBookings.length})
+              </p>
+              <div className="divide-y divide-slate-100 border border-slate-200 bg-white shadow-sm">
+                {pastBookings.map((booking) => {
+                  const isOpen = expandedPastId === booking.id;
+                  const receiptOpen = openReceiptId === booking.id;
+                  return (
+                    <div key={booking.id}>
+                      {/* Accordion trigger row */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedPastId(isOpen ? null : booking.id)
+                        }
+                        className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-slate-50"
+                        aria-expanded={isOpen}
+                      >
+                        <span className="shrink-0">
+                          {getStatusIcon(booking.status, "size-4")}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold text-slate-900">
+                            {booking.serviceName}
+                          </span>
+                          <span className="mt-0.5 block truncate text-xs text-slate-500">
+                            {booking.doctorName ?? "Clinic medical service"}
+                            {" · "}
+                            {formatDateLabel(booking.preferredDate)}
+                          </span>
+                        </div>
+                        <Badge
+                          className="shrink-0 text-[10px] font-extrabold uppercase tracking-widest"
+                          intent={getStatusBadgeIntent(booking.status)}
+                        >
+                          {booking.status}
+                        </Badge>
+                        <span className="hidden shrink-0 text-xs font-semibold text-slate-500 sm:block">
+                          {formatCurrency(booking.feeAmount)}
+                        </span>
+                        <ChevronDown
+                          className={`size-4 shrink-0 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+
+                      {/* Expanded detail panel */}
+                      {isOpen && (
+                        <div className={`border-t border-slate-100 ${getStatusColor(booking.status)}`}>
+                          {/* 4-col detail strip */}
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-5 py-4 lg:grid-cols-4">
+                            <div>
+                              <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                                Schedule
+                              </p>
+                              <p className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+                                <Clock className="size-3 shrink-0 text-orange-600" />
+                                {formatDateLabel(booking.preferredDate)}
+                              </p>
+                              <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                                {formatTimeLabel(
+                                  `${booking.preferredDate} ${booking.preferredTime}`,
+                                )}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                                Booking charge
+                              </p>
+                              <p className="text-sm font-bold text-slate-900">
+                                {formatFeeLabel(booking.feeType)}
+                              </p>
+                              <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                                {formatCurrency(booking.feeAmount)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                                Receipt code
+                              </p>
+                              <p className="font-mono text-sm font-bold text-slate-900">
+                                {booking.receiptCode}
+                              </p>
+                              <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                {booking.paymentStatus === "paid"
+                                  ? "Paid at cashier"
+                                  : "Pending cashier payment"}
+                              </p>
+                            </div>
+                            {booking.intakeNotes ? (
+                              <div>
+                                <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                                  Reason / Notes
+                                </p>
+                                <p className="line-clamp-2 border-l-2 border-slate-200 pl-2 text-xs italic leading-relaxed text-slate-600">
+                                  {booking.intakeNotes}
+                                </p>
+                              </div>
+                            ) : null}
+                          </div>
+
+                          {/* Receipt toggle */}
+                          <div className="border-t border-slate-100">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setOpenReceiptId(receiptOpen ? null : booking.id)
+                              }
+                              className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-widest text-slate-500 transition-colors hover:bg-slate-50"
+                              aria-expanded={receiptOpen}
+                            >
+                              <span>
+                                {receiptOpen ? "Hide Receipt QR" : "Show Receipt QR & Download"}
+                              </span>
+                              <ChevronDown
+                                className={`size-4 shrink-0 transition-transform duration-200 ${receiptOpen ? "rotate-180" : ""}`}
+                              />
+                            </button>
+                            {receiptOpen && (
+                              <div className="border-t border-slate-100 px-5 pb-5 pt-4">
+                                <BookingReceiptCard booking={booking} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
