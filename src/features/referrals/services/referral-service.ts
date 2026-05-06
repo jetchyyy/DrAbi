@@ -36,6 +36,8 @@ function mapReferralRowToDomain(row: {
   id: string;
   patient_id: string;
   appointment_id: string | null;
+  appointment_date: string | null;
+  appointment_time: string | null;
   referring_doctor_id: string;
   target_doctor_id: string | null;
   target_specialty_id: string | null;
@@ -55,6 +57,8 @@ function mapReferralRowToDomain(row: {
     id: row.id,
     patientId: row.patient_id,
     appointmentId: row.appointment_id,
+    appointmentDate: row.appointment_date,
+    appointmentTime: row.appointment_time,
     referringDoctorId: row.referring_doctor_id,
     targetDoctorId: row.target_doctor_id,
     targetSpecialtyId: row.target_specialty_id,
@@ -97,6 +101,8 @@ export const referralService = {
       id: string;
       patient_id: string;
       appointment_id: string | null;
+      appointment_date: string | null;
+      appointment_time: string | null;
       referring_doctor_id: string;
       target_doctor_id: string | null;
       target_specialty_id: string | null;
@@ -140,6 +146,8 @@ export const referralService = {
       id: string;
       patient_id: string;
       appointment_id: string | null;
+      appointment_date: string | null;
+      appointment_time: string | null;
       referring_doctor_id: string;
       target_doctor_id: string | null;
       target_specialty_id: string | null;
@@ -223,6 +231,8 @@ export const referralService = {
       id: string;
       patient_id: string;
       appointment_id: string | null;
+      appointment_date: string | null;
+      appointment_time: string | null;
       referring_doctor_id: string;
       target_doctor_id: string | null;
       target_specialty_id: string | null;
@@ -300,6 +310,8 @@ export const referralService = {
       id: string;
       patient_id: string;
       appointment_id: string | null;
+      appointment_date: string | null;
+      appointment_time: string | null;
       referring_doctor_id: string;
       target_doctor_id: string | null;
       target_specialty_id: string | null;
@@ -348,6 +360,8 @@ export const referralService = {
       id: string;
       patient_id: string;
       appointment_id: string | null;
+      appointment_date: string | null;
+      appointment_time: string | null;
       referring_doctor_id: string;
       target_doctor_id: string | null;
       target_specialty_id: string | null;

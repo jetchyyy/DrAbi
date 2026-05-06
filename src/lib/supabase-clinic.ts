@@ -3114,7 +3114,24 @@ export async function listBlockedBookingSlotsLiveOrDemo(input: {
       })
       .map((appointment) => appointment.scheduledAt.slice(11, 16));
 
-    return [...new Set([...bookingTimes, ...appointmentTimes])].sort();
+    const referralTimes = input.doctorId
+      ? database.referrals
+          .filter((referral) => {
+            if (
+              referral.appointmentDate !== input.date ||
+              !referral.appointmentTime ||
+              referral.status === "cancelled" ||
+              referral.status === "declined"
+            ) {
+              return false;
+            }
+
+            return referral.targetDoctorId === input.doctorId;
+          })
+            .map((referral) => referral.appointmentTime?.slice(0, 5) ?? "")
+      : [];
+
+    return [...new Set([...bookingTimes, ...appointmentTimes, ...referralTimes])].sort();
   }
 
   const client = requireSupabase();
@@ -3131,12 +3148,42 @@ export async function listBlockedBookingSlotsLiveOrDemo(input: {
     throw error;
   }
 
+  let referralTimes: string[] = [];
+  if (input.doctorId) {
+    const { data: referralData, error: referralError } = await client
+      .from("referrals")
+      .select("appointment_time, status")
+      .eq("appointment_date", input.date)
+      .or(
+        `assigned_specialist_id.eq.${input.doctorId},target_doctor_id.eq.${input.doctorId}`,
+      );
+
+    if (referralError) {
+      throw referralError;
+    }
+
+    referralTimes = ((referralData ?? []) as Array<{
+      appointment_time: string | null;
+      status: string;
+    }>)
+      .filter(
+        (referral) =>
+          !!referral.appointment_time &&
+          referral.status !== "cancelled" &&
+          referral.status !== "declined",
+      )
+        .map((referral) => referral.appointment_time?.slice(0, 5) ?? "");
+  }
+
   return (
     (data ?? []) as Array<{
       blocked_time?: string;
       preferred_time?: string;
     }>
-  ).map((row) => (row.blocked_time ?? row.preferred_time ?? "").slice(0, 5));
+  )
+    .map((row) => (row.blocked_time ?? row.preferred_time ?? "").slice(0, 5))
+    .concat(referralTimes)
+    .filter(Boolean);
 }
 
 export async function getBookingByReceiptCodeLiveOrDemo(receiptCode: string) {
