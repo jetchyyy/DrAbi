@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Search, ShieldCheck, Trash2, X } from 'lucide-react';
+import { Eye, EyeOff, Pencil, Plus, Search, ShieldCheck, Trash2, X } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
@@ -224,6 +224,8 @@ export function SettingsUsersPage() {
   const isDoctorRole = selectedStaffRole === 'doctor' || selectedStaffRole === 'specialist';
   const isEditing = formMode === 'edit';
   const isLiveEdit = isEditing && isSupabaseConfigured;
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const filteredUsers = useMemo(
     () =>
@@ -531,10 +533,32 @@ export function SettingsUsersPage() {
                 {!isEditing ? (
                   <div className="grid gap-4 md:grid-cols-2">
                     <FormField error={form.formState.errors.password?.message} hint={PASSWORD_RULES_HINT} label="Password">
-                      <Input type="password" {...form.register('password')} />
+                      <div className="relative">
+                        <Input type={showCreatePassword ? 'text' : 'password'} className="pr-10" {...form.register('password')} />
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={() => setShowCreatePassword((value) => !value)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-700"
+                          aria-label={showCreatePassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showCreatePassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </button>
+                      </div>
                     </FormField>
                     <FormField error={form.formState.errors.confirmPassword?.message} label="Confirm password">
-                      <Input type="password" {...form.register('confirmPassword')} />
+                      <div className="relative">
+                        <Input type={showConfirmPassword ? 'text' : 'password'} className="pr-10" {...form.register('confirmPassword')} />
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={() => setShowConfirmPassword((value) => !value)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-700"
+                          aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                        >
+                          {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </button>
+                      </div>
                     </FormField>
                   </div>
                 ) : null}
