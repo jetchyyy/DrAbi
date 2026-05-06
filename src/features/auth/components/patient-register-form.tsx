@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { parse } from 'date-fns';
-import { Loader2Icon } from 'lucide-react';
-import { useState, type LabelHTMLAttributes, type ReactNode } from 'react';
+import { Eye, EyeOff, Loader2Icon } from 'lucide-react';
+import { useEffect, useState, type LabelHTMLAttributes, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -13,12 +13,29 @@ import { Select } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
 import { useAuth } from '../auth-context';
 
+const REGISTER_DRAFT_KEY = 'patient-register-draft-v1';
+const bloodTypeOptions = ['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const;
+const allergyOptions = [
+  '',
+  'None',
+  'Penicillin',
+  'Sulfa drugs',
+  'Aspirin',
+  'Ibuprofen',
+  'Latex',
+  'Peanuts',
+  'Seafood',
+  'Dust mites',
+  'Other',
+] as const;
+
 const registerSchema = z.object({
   fullName: z.string().min(1, 'Full name is required'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   phone: z.string().min(1, 'Phone number is required'),
   sex: z.union([z.literal('MALE'), z.literal('FEMALE')]),
+  bloodType: z.string().optional(),
   birthDate: z.string().min(1, 'Birth date is required'),
   address: z.string().min(1, 'Address is required'),
   allergies: z.string().optional(),
@@ -43,7 +60,7 @@ const stepConfigs: ReadonlyArray<{
   {
     title: 'Contact & demographics',
     description: 'So we can reach you and tailor care.',
-    fields: ['phone', 'sex', 'birthDate', 'address'],
+    fields: ['phone', 'sex', 'bloodType', 'birthDate', 'address'],
   },
   {
     title: 'Health snapshot',
@@ -61,6 +78,7 @@ export function PatientRegisterForm() {
   const navigate = useNavigate();
   const { signUpPatient } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -69,6 +87,7 @@ export function PatientRegisterForm() {
       password: '',
       phone: '',
       sex: 'MALE',
+      bloodType: '',
       birthDate: '',
       address: '',
       allergies: '',
@@ -78,8 +97,36 @@ export function PatientRegisterForm() {
     },
   });
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem(REGISTER_DRAFT_KEY);
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored) as { values?: Partial<RegisterFormValues>; currentStep?: number };
+      if (parsed.values) {
+        form.reset({ ...form.getValues(), ...parsed.values });
+      }
+      if (typeof parsed.currentStep === 'number') {
+        setCurrentStep(Math.min(Math.max(parsed.currentStep, 0), stepConfigs.length - 1));
+      }
+    } catch {
+      window.localStorage.removeItem(REGISTER_DRAFT_KEY);
+    }
+  }, [form]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const subscription = form.watch((values) => {
+      window.localStorage.setItem(REGISTER_DRAFT_KEY, JSON.stringify({ values, currentStep }));
+    });
+    return () => subscription.unsubscribe();
+  }, [form, currentStep]);
+
   const onSubmit = form.handleSubmit(async (values) => {
     try {
+      const computedMedicalHistory = values.bloodType
+        ? `Blood type: ${values.bloodType}${values.medicalHistory ? `\n${values.medicalHistory}` : ''}`
+        : values.medicalHistory ?? '';
       await signUpPatient({
         fullName: values.fullName,
         email: values.email,
@@ -89,10 +136,13 @@ export function PatientRegisterForm() {
         birthDate: parse(values.birthDate, 'yyyy-MM-dd', new Date()).toISOString(),
         address: values.address,
         allergies: values.allergies ?? '',
-        medicalHistory: values.medicalHistory ?? '',
+        medicalHistory: computedMedicalHistory,
         emergencyContactName: values.emergencyContactName,
         emergencyContactPhone: values.emergencyContactPhone,
       });
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(REGISTER_DRAFT_KEY);
+      }
       toast.success('Account created', {
         description: 'You can sign in with your new credentials.',
       });
@@ -164,7 +214,26 @@ export function PatientRegisterForm() {
               <div className="sm:col-span-2">
                 <FormField error={form.formState.errors.password?.message}>
                   <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" autoComplete="new-password" {...form.register('password')} placeholder="Minimum 8 characters" />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      className="pr-10"
+                      {...form.register('password')}
+                      placeholder="Minimum 8 characters"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword((value) => !value)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-700"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500">Use 8+ chars with uppercase, lowercase, number, and symbol.</p>
                 </FormField>
               </div>
             </div>
@@ -187,6 +256,16 @@ export function PatientRegisterForm() {
                 <Select id="sex" {...form.register('sex')}>
                   <option value="MALE">Male</option>
                   <option value="FEMALE">Female</option>
+                </Select>
+              </FormField>
+              <FormField error={form.formState.errors.bloodType?.message}>
+                <Label htmlFor="bloodType">Blood type</Label>
+                <Select id="bloodType" {...form.register('bloodType')}>
+                  {bloodTypeOptions.map((option) => (
+                    <option key={option || 'unknown-blood-type'} value={option}>
+                      {option || 'Select blood type'}
+                    </option>
+                  ))}
                 </Select>
               </FormField>
               <div className="sm:col-span-2 max-w-[11.5rem]">
@@ -214,7 +293,13 @@ export function PatientRegisterForm() {
             <div className="space-y-4">
               <FormField error={undefined}>
                 <Label htmlFor="allergies">Allergies</Label>
-                <Input id="allergies" {...form.register('allergies')} placeholder="e.g. penicillin — or &quot;None reported&quot;" />
+                <Select id="allergies" {...form.register('allergies')}>
+                  {allergyOptions.map((option) => (
+                    <option key={option || 'allergy-unset'} value={option}>
+                      {option || 'Select allergy status'}
+                    </option>
+                  ))}
+                </Select>
               </FormField>
               <FormField error={undefined}>
                 <Label htmlFor="medicalHistory">Medical history</Label>
