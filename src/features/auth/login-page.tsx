@@ -1,25 +1,16 @@
-import { CalendarCheck2, Shield, Users } from 'lucide-react';
+import { CalendarCheck2, FileText, Receipt, ShieldCheck, Users } from 'lucide-react';
 
 import { useClinicSettingsData } from '../../hooks/use-clinic-data';
 import { defaultClinicSettings } from '../../config/clinic';
 import { LoginForm } from './components/login-form';
 
-const features = [
-  {
-    icon: CalendarCheck2,
-    title: 'Smart Scheduling',
-    desc: 'Portal & internal appointment booking with teleconsultation support.',
-  },
-  {
-    icon: Shield,
-    title: 'Role-Based Access',
-    desc: 'Granular permissions for doctors, front desk, lab, and admin staff.',
-  },
-  {
-    icon: Users,
-    title: 'Unified Patient Records',
-    desc: 'Medical history, billing, and lab results all in one place.',
-  },
+/** Two calm proof points aligned with CPR Med portal; no long marketing copy on the panel. */
+const highlights = [
+  { icon: CalendarCheck2, label: 'Smart scheduling' },
+  { icon: Users, label: 'Unified patient records' },
+  { icon: Receipt, label: 'Billing and invoice tracking' },
+  { icon: FileText, label: 'Clinical notes documentation' },
+  { icon: ShieldCheck, label: 'Secure role-based access' },
 ];
 
 export function LoginPage() {
@@ -29,130 +20,102 @@ export function LoginPage() {
   const year = new Date().getFullYear();
 
   return (
-    <div className="min-h-screen flex">
+    <div className="flex min-h-screen">
+      {/* Left: light brand calm — matches portal whites + soft wash */}
+      <div className="relative hidden overflow-hidden lg:flex lg:w-1/2 xl:w-[52%] lg:flex-col lg:border-r lg:border-slate-200/70">
+        <div className="absolute inset-0 bg-white" aria-hidden />
 
-      {/* ── Left branding panel ──────────────────────── */}
-      <div
-        className="hidden lg:flex lg:w-[55%] xl:w-[60%] flex-col relative overflow-hidden"
-        style={{ background: 'var(--color-panel-bg, #172937)' }}
-      >
-
-        {/* Animated aurora background */}
+        {/* Soft medical wash (portal-adjacent) */}
         <div
-          className="absolute inset-0 animate-aurora opacity-70"
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(165deg,#ffffff_0%,rgba(240,251,237,0.55)_42%,rgba(236,251,246,0.75)_68%,#ffffff_100%)]"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top_left,rgba(52,178,249,0.07)_0%,transparent_50%)]"
+        />
+        {/* Very soft primary halo */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute bottom-[-20%] left-[-14%] h-[52%] w-[72%] rounded-full opacity-[0.2]"
           style={{
             background:
-              'linear-gradient(135deg, var(--color-panel-bg, #172937) 0%, color-mix(in srgb, var(--color-panel-bg, #172937) 60%, #2d5a7b) 25%, color-mix(in srgb, var(--color-panel-bg, #172937) 40%, #2d5a7b) 45%, var(--color-panel-bg, #172937) 60%, color-mix(in srgb, var(--color-panel-bg, #172937) 70%, #1a2f45) 80%, var(--color-panel-bg, #172937) 100%)',
-            backgroundSize: '400% 400%',
+              'radial-gradient(ellipse closest-side, color-mix(in srgb, var(--color-primary) 32%, transparent) 0%, transparent 70%)',
           }}
         />
 
-        {/* Floating orbs — use primary color */}
+        {/* Low-contrast grid (mirror portal column rhythm, subdued) */}
         <div
-          className="pointer-events-none absolute animate-orb-1"
-          style={{
-            top: '-80px', right: '-60px', width: '420px', height: '420px',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.25) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.08) 60%, transparent 80%)',
-          }}
-        />
-        <div
-          className="pointer-events-none absolute animate-orb-2"
-          style={{
-            bottom: '-60px', left: '8%', width: '300px', height: '300px',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.18) 0%, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.06) 65%, transparent 85%)',
-          }}
-        />
-        <div
-          className="pointer-events-none absolute animate-orb-3"
-          style={{
-            top: '40%', left: '15%', width: '180px', height: '180px',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(var(--primary-r),var(--primary-g),var(--primary-b),0.12) 0%, transparent 70%)',
-          }}
-        />
-
-        {/* Subtle grid texture */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
+          aria-hidden
+          className="absolute inset-0 opacity-[1]"
           style={{
             backgroundImage:
-              'repeating-linear-gradient(0deg, transparent, transparent 39px, #fff 39px, #fff 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #fff 39px, #fff 40px)',
+              'repeating-linear-gradient(90deg,transparent,transparent 76px,rgba(148,163,184,0.045) 76px,rgba(148,163,184,0.045) 77px)',
           }}
         />
 
-        {/* Primary-color accent strip at top */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-orange-600" />
+        <div className="h-1 w-full shrink-0 bg-[var(--color-primary)]" aria-hidden />
 
-        <div className="relative z-10 flex flex-col h-full px-14 py-12">
+        <div className="relative z-[1] flex min-h-0 flex-1 flex-col px-11 py-12 xl:px-16 xl:py-14">
+          <div>
+            <img
+              alt={`${clinicName} logo`}
+              className="h-[3.25rem] w-auto max-w-[13rem] object-contain object-left opacity-98 sm:h-14 xl:h-[3.625rem]"
+              decoding="async"
+              height={90}
+              src="/logo.png"
+              width={248}
+            />
 
-          {/* Logo + clinic badge */}
-          <div className="animate-slide-left">
-            <img src="/odc.jpg" alt={`${clinicName} Logo`} className="h-20 w-20 object-contain" />
-            <div className="mt-4">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-orange-400">Clinic Management Platform</p>
-              <h1 className="mt-1.5 text-3xl font-extrabold text-white leading-tight tracking-tight">
-                {clinicName}<br />Operations System
-              </h1>
-            </div>
+            <p className="mt-10 text-[11px] font-semibold uppercase leading-none tracking-[0.22em] text-[var(--color-accent)] sm:tracking-[0.26em]">
+              Clinical operations
+            </p>
+            <h1 className="mt-4 font-display text-[2.125rem] font-semibold leading-[1.12] tracking-[-0.03em] text-slate-900 xl:text-[2.35rem]">
+              CPR Med Operations System
+            </h1>
+            <p className="mt-8 max-w-md text-[1.0625rem] leading-relaxed tracking-tight text-slate-600">
+              Manage bookings, patient records, billing, and clinic workflows in one secure workspace.
+            </p>
+
+            <ul className="mt-14 max-w-md list-none space-y-5 p-0" role="list">
+              {highlights.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <li key={item.label} className="flex items-center gap-3.5">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-200/55 bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] text-[var(--color-primary)] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                      <Icon className="size-[1.125rem]" strokeWidth={2} aria-hidden />
+                    </span>
+                    <span className="text-[0.9375rem] font-medium tracking-tight text-slate-800">{item.label}</span>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
 
-          {/* Hero text */}
-          <div className="mt-auto">
-            <div className="mb-6 inline-flex items-center gap-2 border border-white/15 bg-white/10 px-4 py-2 text-sm text-white/80 animate-fade-in delay-100">
-              <Shield className="size-4 text-orange-400" />
-              Secure Login portal
-            </div>
-
-
-
-            {/* Feature list */}
-            <div className="mt-10 space-y-5 animate-fade-up delay-300">
-              {features.map((f) => (
-                <div key={f.title} className="flex items-start gap-4">
-                  <div className="p-2 bg-orange-600 text-white shrink-0 mt-0.5">
-                    <f.icon className="size-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-extrabold text-white uppercase tracking-wide">{f.title}</p>
-                    <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{f.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Footer badge */}
-            <div className="mt-12 pt-8 border-t border-white/10 animate-fade-in delay-400">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
-                © {year} {legalName} · All rights reserved
-              </p>
-            </div>
-          </div>
+          <footer className="mt-auto shrink-0 border-t border-slate-200/80 pt-10">
+            <p className="text-xs font-medium tracking-tight text-slate-500">
+              © {year} {legalName}. All rights reserved.
+            </p>
+            <p className="mt-2 text-[11px] leading-relaxed text-slate-400">Powered by Odyssey Solutions</p>
+          </footer>
         </div>
       </div>
 
-      {/* ── Right login form panel ───────────────────────────── */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-white px-6 py-12 relative">
-
-        {/* Mobile-only logo */}
-        <div className="lg:hidden absolute top-6 left-6 flex items-center gap-3">
-          <img src="/odc.jpg" alt="Logo" className="h-10 w-10 object-contain" />
-          <p className="text-sm font-extrabold text-slate-950 uppercase tracking-widest">{clinicName}</p>
+      {/* Right: Sign-in focus */}
+      <div className="relative flex flex-1 flex-col items-center justify-center bg-white px-6 py-12 sm:py-14 lg:px-10 xl:px-12">
+        <div className="absolute left-6 top-6 flex items-center gap-3 lg:hidden">
+          <img alt={`${clinicName} logo`} className="h-9 w-auto object-contain" decoding="async" src="/logo.png" width={200} />
+          <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">{clinicName}</span>
         </div>
+        <div aria-hidden className="fixed inset-x-0 top-0 z-10 h-1 shrink-0 bg-[var(--color-primary)] lg:hidden" />
 
-        {/* Primary top accent on mobile */}
-        <div className="lg:hidden absolute top-0 left-0 right-0 h-1 bg-orange-600" />
-
-        <div className="w-full max-w-sm animate-fade-up">
-          {/* Panel heading */}
-          <div className="mb-8">
-            <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">Clinic OS Access</p>
-            <h2 className="mt-2 text-3xl font-extrabold text-slate-950 tracking-tight">Sign in</h2>
-            <p className="mt-2 text-sm text-slate-500">
-              Enter your credentials to access the clinic management system.
-            </p>
-          </div>
+        <div className="animate-fade-up w-full max-w-[22rem] pt-14 lg:pt-0 lg:max-w-[24rem]">
+          <header className="mb-10">
+            <h2 className="mt-4 font-display text-[1.875rem] font-semibold tracking-[-0.03em] text-slate-900 sm:text-[2rem]">
+              Sign in
+            </h2>
+            <p className="mt-2.5 text-sm leading-relaxed text-slate-500">Access your clinic workspace securely.</p>
+          </header>
 
           <LoginForm />
         </div>
@@ -160,3 +123,5 @@ export function LoginPage() {
     </div>
   );
 }
+
+
