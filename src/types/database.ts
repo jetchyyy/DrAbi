@@ -283,6 +283,13 @@ export interface Database {
           medical_history: string;
           emergency_contact_name: string | null;
           emergency_contact_phone: string | null;
+          temperature: string | null;
+          blood_pressure: string | null;
+          heart_rate: string | null;
+          respiratory_rate: string | null;
+          weight: string | null;
+          height: string | null;
+          vitals_recorded_at: string | null;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -305,6 +312,13 @@ export interface Database {
           medical_history?: string;
           emergency_contact_name?: string | null;
           emergency_contact_phone?: string | null;
+          temperature?: string | null;
+          blood_pressure?: string | null;
+          heart_rate?: string | null;
+          respiratory_rate?: string | null;
+          weight?: string | null;
+          height?: string | null;
+          vitals_recorded_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["patients"]["Insert"]>;
       };

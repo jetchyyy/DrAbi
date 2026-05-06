@@ -1,5 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarCheck2, Search, Loader2, AlertCircle } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CalendarCheck2, Search, Loader2, AlertCircle, Activity, X } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { updatePatientLiveOrDemo } from "../../lib/supabase-clinic";
+import { usePatientDetail } from "../patients/hooks/use-patients";
 
 import {
   usePatientBookings,
@@ -643,6 +646,8 @@ export function PatientBookingPageList() {
     useState<PatientBookingRow | null>(null);
   const [deletingBooking, setDeletingBooking] =
     useState<PatientBookingRow | null>(null);
+  const [vitalsBooking, setVitalsBooking] =
+    useState<PatientBookingRow | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Search & filter state
@@ -782,6 +787,7 @@ export function PatientBookingPageList() {
                       booking={booking}
                       onEdit={() => setEditingBooking(booking)}
                       onDelete={() => setDeletingBooking(booking)}
+                      onRecordVitals={() => setVitalsBooking(booking)}
                     />
                   ))
                 )}
@@ -842,6 +848,14 @@ export function PatientBookingPageList() {
           isLoading={deleteMutation.isPending}
         />
       )}
+
+      {/* Record Vitals modal */}
+      {vitalsBooking && (
+        <VitalsModal
+          booking={vitalsBooking}
+          onClose={() => setVitalsBooking(null)}
+        />
+      )}
     </div>
   );
 }
@@ -854,9 +868,10 @@ interface BookingTableRowProps {
   booking: PatientBookingRow;
   onEdit: () => void;
   onDelete: () => void;
+  onRecordVitals: () => void;
 }
 
-function BookingTableRow({ booking, onEdit, onDelete }: BookingTableRowProps) {
+function BookingTableRow({ booking, onEdit, onDelete, onRecordVitals }: BookingTableRowProps) {
   return (
     <tr className="group hover:bg-slate-50 transition-colors">
       {/* Patient */}
@@ -930,7 +945,18 @@ function BookingTableRow({ booking, onEdit, onDelete }: BookingTableRowProps) {
 
       {/* Actions */}
       <td className="px-4 py-3 align-top">
-        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+          {booking.paymentStatus === "paid" && (
+            <button
+              type="button"
+              onClick={onRecordVitals}
+              title="Record vitals for this patient"
+              className="inline-flex h-7 items-center gap-1.5 border border-blue-300 bg-blue-600 px-2.5 text-[10px] font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-blue-700"
+            >
+              <Activity className="size-3" />
+              Vitals
+            </button>
+          )}
           <button
             type="button"
             onClick={onEdit}
@@ -978,5 +1004,142 @@ function BookingTableRow({ booking, onEdit, onDelete }: BookingTableRowProps) {
         </div>
       </td>
     </tr>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Vitals Modal
+// ---------------------------------------------------------------------------
+
+interface VitalsModalProps {
+  booking: PatientBookingRow;
+  onClose: () => void;
+}
+
+function VitalsModal({ booking, onClose }: VitalsModalProps) {
+  const { data: patient } = usePatientDetail(booking.patientId);
+  const [fields, setFields] = useState({
+    temperature: "",
+    bloodPressure: "",
+    heartRate: "",
+    respiratoryRate: "",
+    weight: "",
+    height: "",
+  });
+  const [error, setError] = useState("");
+
+  // Pre-fill with existing patient vitals
+  useEffect(() => {
+    if (patient) {
+      setFields({
+        temperature: patient.temperature || "",
+        bloodPressure: patient.bloodPressure || "",
+        heartRate: patient.heartRate || "",
+        respiratoryRate: patient.respiratoryRate || "",
+        weight: patient.weight || "",
+        height: patient.height || "",
+      });
+    }
+  }, [patient]);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!patient) throw new Error("Patient not loaded");
+      const hasAny = Object.values(fields).some((v) => v.trim());
+      if (!hasAny) throw new Error("At least one vital must be recorded");
+      return updatePatientLiveOrDemo(booking.patientId, {
+        ...patient,
+        temperature: fields.temperature || undefined,
+        bloodPressure: fields.bloodPressure || undefined,
+        heartRate: fields.heartRate || undefined,
+        respiratoryRate: fields.respiratoryRate || undefined,
+        weight: fields.weight || undefined,
+        height: fields.height || undefined,
+        vitalsRecordedAt: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => onClose(),
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4 sm:p-6"
+      onClick={onClose}
+      role="dialog"
+    >
+      <div
+        className="my-auto flex w-full max-w-2xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 bg-blue-600 px-4 py-4 sm:px-6">
+          <div className="min-w-0">
+            <p className="text-xs font-extrabold uppercase tracking-widest text-blue-100">Patient Booking</p>
+            <p className="mt-0.5 text-sm font-bold text-white">Record Vitals — {booking.patientFullName}</p>
+            <p className="mt-2 max-w-2xl text-sm text-blue-50">
+              Record the patient's current vital signs. These will be stored in the patient record and auto-populated in the next consultation.
+            </p>
+          </div>
+          <button
+            aria-label="Close vitals modal"
+            className="inline-flex shrink-0 items-center justify-center border border-blue-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+            onClick={onClose}
+            type="button"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="space-y-4 px-4 py-5 sm:px-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                { key: "temperature", label: "Temperature (°C)", placeholder: "e.g., 37.5", type: "number", step: "0.1" },
+                { key: "bloodPressure", label: "Blood Pressure (mmHg)", placeholder: "e.g., 120/80", type: "text" },
+                { key: "heartRate", label: "Heart Rate (bpm)", placeholder: "e.g., 72", type: "number" },
+                { key: "respiratoryRate", label: "Respiratory Rate (breaths/min)", placeholder: "e.g., 16", type: "number" },
+                { key: "weight", label: "Weight (kg)", placeholder: "e.g., 70.5", type: "number", step: "0.1" },
+                { key: "height", label: "Height (cm)", placeholder: "e.g., 170", type: "number", step: "0.1" },
+              ].map(({ key, label, placeholder, type, step }) => (
+                <div key={key}>
+                  <label className="mb-1 block text-xs font-bold text-slate-700">{label}</label>
+                  <input
+                    className="w-full border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    placeholder={placeholder}
+                    type={type}
+                    step={step}
+                    value={fields[key as keyof typeof fields]}
+                    onChange={(e) => setFields((prev) => ({ ...prev, [key]: e.target.value }))}
+                  />
+                </div>
+              ))}
+            </div>
+            {error && (
+              <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
+          <button
+            className="w-full border border-slate-200 px-4 py-2.5 text-sm font-bold uppercase tracking-widest text-slate-600 hover:bg-slate-100 sm:w-auto"
+            onClick={onClose}
+            type="button"
+          >
+            Cancel
+          </button>
+          <button
+            className="inline-flex w-full items-center justify-center gap-2 bg-blue-600 px-5 py-2.5 text-sm font-extrabold uppercase tracking-widest text-white hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
+            disabled={mutation.isPending}
+            onClick={() => mutation.mutate()}
+            type="button"
+          >
+            {mutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
+            {mutation.isPending ? "Saving..." : "Save Vitals"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

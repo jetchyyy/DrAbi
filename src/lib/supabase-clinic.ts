@@ -498,6 +498,13 @@ export function mapPatient(row: PatientRow): Patient {
     medicalHistory: row.medical_history,
     emergencyContactName: row.emergency_contact_name ?? "",
     emergencyContactPhone: row.emergency_contact_phone ?? "",
+      temperature: row.temperature,
+      bloodPressure: row.blood_pressure,
+      heartRate: row.heart_rate,
+      respiratoryRate: row.respiratory_rate,
+      weight: row.weight,
+      height: row.height,
+    vitalsRecordedAt: row.vitals_recorded_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
@@ -1090,6 +1097,13 @@ export async function createPatientLiveOrDemo(
     medical_history: input.medicalHistory,
     emergency_contact_name: input.emergencyContactName || null,
     emergency_contact_phone: input.emergencyContactPhone || null,
+    temperature: input.temperature || null,
+    blood_pressure: input.bloodPressure || null,
+    heart_rate: input.heartRate || null,
+    respiratory_rate: input.respiratoryRate || null,
+    weight: input.weight || null,
+    height: input.height || null,
+    vitals_recorded_at: input.vitalsRecordedAt ?? null,
   };
 
   const { data, error } = await client
@@ -1134,6 +1148,13 @@ export async function updatePatientLiveOrDemo(
     medical_history: input.medicalHistory,
     emergency_contact_name: input.emergencyContactName || null,
     emergency_contact_phone: input.emergencyContactPhone || null,
+    temperature: input.temperature || null,
+    blood_pressure: input.bloodPressure || null,
+    heart_rate: input.heartRate || null,
+    respiratory_rate: input.respiratoryRate || null,
+    weight: input.weight || null,
+    height: input.height || null,
+    vitals_recorded_at: input.vitalsRecordedAt ?? null,
   };
 
   const { data, error } = await client

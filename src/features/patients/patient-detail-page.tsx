@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronDown, Eye, FileText, FlaskConical, Pill, Plus, QrCode, ScanLine, TestTubeDiagonal, Trash2, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ChevronDown, Eye, FileText, FlaskConical, Pill, Plus, QrCode, ScanLine, TestTubeDiagonal, Trash2, X, Activity } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -32,6 +32,7 @@ import {
   usePatientMedicalCertificates,
   usePatientPrescriptions,
   useRecordInventoryUsage,
+  useUpdatePatient,
 } from './hooks/use-patients';
 import { buildMedicalCertificatePrintDocument } from './medical-certificate-print-document';
 import { buildPrescriptionPrintDocument } from './prescription-print-document';
@@ -79,9 +80,95 @@ const inventoryUsageSchema = z.object({
   notes: z.string().min(4, 'Add a short note about how the item was used.'),
 });
 
+const vitalsSchema = z.object({
+  temperature: z.string().optional(),
+  bloodPressure: z.string().optional(),
+  heartRate: z.string().optional(),
+  respiratoryRate: z.string().optional(),
+  weight: z.string().optional(),
+  height: z.string().optional(),
+}).refine(
+  (data) => Object.values(data).some(v => v && v.trim()),
+  { message: 'At least one vital must be recorded' }
+);
+
 function formatConsultationText(value: string | null | undefined) {
   const text = (value ?? '').trim();
   return text.length > 0 ? text : 'Not provided';
+}
+
+interface VitalsData {
+  temperature?: string;
+  bloodPressure?: string;
+  heartRate?: string;
+  respiratoryRate?: string;
+  weight?: string;
+  height?: string;
+  vitalsRecordedAt?: string | null;
+}
+
+function parseVitalsFromText(text: string): VitalsData {
+  const vitals: VitalsData = {};
+  const lines = text.split('\n');
+  
+  for (const line of lines) {
+    if (line.includes('Temperature:')) {
+      vitals.temperature = line.replace('Temperature:', '').trim().replace(' C', '');
+    } else if (line.includes('Blood Pressure:')) {
+      vitals.bloodPressure = line.replace('Blood Pressure:', '').trim().replace(' mmHg', '');
+    } else if (line.includes('Heart Rate:')) {
+      vitals.heartRate = line.replace('Heart Rate:', '').trim().replace(' bpm', '');
+    } else if (line.includes('Respiratory Rate:')) {
+      vitals.respiratoryRate = line.replace('Respiratory Rate:', '').trim().replace(' breaths/min', '');
+    } else if (line.includes('Weight:')) {
+      vitals.weight = line.replace('Weight:', '').trim().replace(' kg', '');
+    } else if (line.includes('Height:')) {
+      vitals.height = line.replace('Height:', '').trim().replace(' cm', '');
+    } else if (line.includes('Recorded at intake:')) {
+      vitals.vitalsRecordedAt = line.replace('Recorded at intake:', '').trim();
+    }
+  }
+  
+  return vitals;
+}
+
+function buildPatientVitalsText(patient: {
+  temperature?: string;
+  bloodPressure?: string;
+  heartRate?: string;
+  respiratoryRate?: string;
+  weight?: string;
+  height?: string;
+  vitalsRecordedAt?: string | null;
+} | null | undefined) {
+  if (!patient) {
+    return '';
+  }
+
+  const lines: string[] = [];
+  if (patient.temperature) {
+    lines.push(`Temperature: ${patient.temperature} C`);
+  }
+  if (patient.bloodPressure) {
+    lines.push(`Blood Pressure: ${patient.bloodPressure} mmHg`);
+  }
+  if (patient.heartRate) {
+    lines.push(`Heart Rate: ${patient.heartRate} bpm`);
+  }
+  if (patient.respiratoryRate) {
+    lines.push(`Respiratory Rate: ${patient.respiratoryRate} breaths/min`);
+  }
+  if (patient.weight) {
+    lines.push(`Weight: ${patient.weight} kg`);
+  }
+  if (patient.height) {
+    lines.push(`Height: ${patient.height} cm`);
+  }
+  if (patient.vitalsRecordedAt) {
+    lines.push(`Recorded at intake: ${formatDateTimeLabel(patient.vitalsRecordedAt)}`);
+  }
+
+  return lines.join('\n');
 }
 
 function truncateText(value: string | null | undefined, maxLength = 120) {
@@ -353,6 +440,27 @@ export function PatientDetailPage() {
   const [expandedMedicalCertificateId, setExpandedMedicalCertificateId] = useState<string | null | undefined>(undefined);
   const [expandedReferralId, setExpandedReferralId] = useState<string | null | undefined>(undefined);
   const [expandedLabOrderId, setExpandedLabOrderId] = useState<string | null | undefined>(undefined);
+  const [showVitalsModal, setShowVitalsModal] = useState(false);
+
+  const updatePatient = useUpdatePatient();
+  const vitalsForm = useForm<z.infer<typeof vitalsSchema>>({
+    resolver: zodResolver(vitalsSchema),
+    defaultValues: {
+      temperature: patient?.temperature || '',
+      bloodPressure: patient?.bloodPressure || '',
+      heartRate: patient?.heartRate || '',
+      respiratoryRate: patient?.respiratoryRate || '',
+      weight: patient?.weight || '',
+      height: patient?.height || '',
+    },
+  });
+
+  // Auto-open vitals modal when navigated with ?recordVitals=1
+  useEffect(() => {
+    if (searchParams.get('recordVitals') === '1') {
+      setShowVitalsModal(true);
+    }
+  }, [searchParams]);
 
   const pendingSpecialistReferral =
     currentDoctor
@@ -1070,6 +1178,13 @@ export function PatientDetailPage() {
                   Start Consultation
                 </Link>
               ) : null}
+              <button
+                onClick={() => setShowVitalsModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-white shadow-sm transition hover:opacity-90 active:scale-95"
+              >
+                <Activity className="size-4" />
+                Record Vitals
+              </button>
               <Badge>{patient.bloodType || 'Blood type pending'}</Badge>
               <Badge intent="warning">{patient.allergies}</Badge>
             </div>
@@ -1221,6 +1336,10 @@ export function PatientDetailPage() {
               consultationTimeline.map(({ consultation, appointment }) => {
                 const isExpanded = activeConsultationId === consultation.id;
                 const trayContentId = `consultation-tray-${consultation.id}`;
+                const consultationVitalsText =
+                  consultation.vitals?.trim() ||
+                  buildPatientVitalsText(patient) ||
+                  'Not provided';
 
                 return (
                 <div
@@ -1316,9 +1435,63 @@ export function PatientDetailPage() {
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
                           <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Vitals</p>
-                          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
-                            {formatConsultationText(consultation.vitals)}
-                          </p>
+                          <div className="mt-3">
+                            {(() => {
+                              const vitals = parseVitalsFromText(consultationVitalsText);
+                              const hasAnyVitals = Object.values(vitals).some(v => v && v !== 'Not provided');
+                              
+                              if (!hasAnyVitals) {
+                                return <p className="text-sm text-slate-600">Not provided</p>;
+                              }
+                              
+                              return (
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                  {vitals.temperature && (
+                                    <div className="text-sm">
+                                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Temperature</p>
+                                      <p className="mt-0.5 font-semibold text-slate-900">{vitals.temperature} °C</p>
+                                    </div>
+                                  )}
+                                  {vitals.bloodPressure && (
+                                    <div className="text-sm">
+                                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Blood Pressure</p>
+                                      <p className="mt-0.5 font-semibold text-slate-900">{vitals.bloodPressure} mmHg</p>
+                                    </div>
+                                  )}
+                                  {vitals.heartRate && (
+                                    <div className="text-sm">
+                                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Heart Rate</p>
+                                      <p className="mt-0.5 font-semibold text-slate-900">{vitals.heartRate} bpm</p>
+                                    </div>
+                                  )}
+                                  {vitals.respiratoryRate && (
+                                    <div className="text-sm">
+                                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Respiratory Rate</p>
+                                      <p className="mt-0.5 font-semibold text-slate-900">{vitals.respiratoryRate} breaths/min</p>
+                                    </div>
+                                  )}
+                                  {vitals.weight && (
+                                    <div className="text-sm">
+                                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Weight</p>
+                                      <p className="mt-0.5 font-semibold text-slate-900">{vitals.weight} kg</p>
+                                    </div>
+                                  )}
+                                  {vitals.height && (
+                                    <div className="text-sm">
+                                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Height</p>
+                                      <p className="mt-0.5 font-semibold text-slate-900">{vitals.height} cm</p>
+                                    </div>
+                                  )}
+                                  {vitals.vitalsRecordedAt && (
+                                    <div className="col-span-full text-sm">
+                                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Recorded at Intake</p>
+                                      <p className="mt-0.5 text-slate-600">{vitals.vitalsRecordedAt}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </div>
                         </div>
                       </div>
 
@@ -2252,6 +2425,110 @@ export function PatientDetailPage() {
           </button>
         )}
       </Card>
+        </div>
+      )}
+
+      {showVitalsModal && (
+        <div
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4 sm:p-6"
+          onClick={() => { setShowVitalsModal(false); vitalsForm.reset(); }}
+          role="dialog"
+        >
+          <div
+            className="my-auto flex w-full max-w-2xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 bg-blue-600 px-4 py-4 sm:px-6">
+              <div className="min-w-0">
+                <p className="text-xs font-extrabold uppercase tracking-widest text-blue-100">Patient Chart</p>
+                <p className="mt-0.5 text-sm font-bold text-white">Record Vitals</p>
+                <p className="mt-2 max-w-2xl text-sm text-blue-50">
+                  Record the patient's current vital signs. These will be stored in the patient record and auto-populated in the next consultation.
+                </p>
+              </div>
+              <button
+                aria-label="Close vitals modal"
+                className="inline-flex shrink-0 items-center justify-center border border-blue-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                onClick={() => { setShowVitalsModal(false); vitalsForm.reset(); }}
+                type="button"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={vitalsForm.handleSubmit(async (values) => {
+                try {
+                  await updatePatient.mutateAsync({
+                    patientId: patient?.id || '',
+                    updates: {
+                      temperature: values.temperature || undefined,
+                      bloodPressure: values.bloodPressure || undefined,
+                      heartRate: values.heartRate || undefined,
+                      respiratoryRate: values.respiratoryRate || undefined,
+                      weight: values.weight || undefined,
+                      height: values.height || undefined,
+                      vitalsRecordedAt: new Date().toISOString(),
+                    },
+                  });
+                  toast.success('Vitals recorded successfully');
+                  setShowVitalsModal(false);
+                  vitalsForm.reset();
+                } catch {
+                  toast.error('Failed to record vitals');
+                }
+              })}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <div className="space-y-4 px-4 py-5 sm:px-6">
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <FormField error={vitalsForm.formState.errors.temperature?.message} label="Temperature (°C)">
+                      <Input type="number" step="0.1" placeholder="e.g., 37.5" {...vitalsForm.register('temperature')} />
+                    </FormField>
+                    <FormField error={vitalsForm.formState.errors.bloodPressure?.message} label="Blood Pressure (mmHg)">
+                      <Input type="text" placeholder="e.g., 120/80" {...vitalsForm.register('bloodPressure')} />
+                    </FormField>
+                  </div>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <FormField error={vitalsForm.formState.errors.heartRate?.message} label="Heart Rate (bpm)">
+                      <Input type="number" step="1" placeholder="e.g., 72" {...vitalsForm.register('heartRate')} />
+                    </FormField>
+                    <FormField error={vitalsForm.formState.errors.respiratoryRate?.message} label="Respiratory Rate (breaths/min)">
+                      <Input type="number" step="1" placeholder="e.g., 16" {...vitalsForm.register('respiratoryRate')} />
+                    </FormField>
+                  </div>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <FormField error={vitalsForm.formState.errors.weight?.message} label="Weight (kg)">
+                      <Input type="number" step="0.1" placeholder="e.g., 70.5" {...vitalsForm.register('weight')} />
+                    </FormField>
+                    <FormField error={vitalsForm.formState.errors.height?.message} label="Height (cm)">
+                      <Input type="number" step="0.1" placeholder="e.g., 170" {...vitalsForm.register('height')} />
+                    </FormField>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
+                <Button
+                  className="w-full rounded-none sm:w-auto"
+                  onClick={() => { setShowVitalsModal(false); vitalsForm.reset(); }}
+                  type="button"
+                  variant="secondary"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="w-full rounded-none bg-blue-600 px-5 py-3 text-sm font-extrabold uppercase tracking-widest hover:bg-blue-700 sm:w-auto"
+                  disabled={updatePatient.isPending}
+                  type="submit"
+                >
+                  {updatePatient.isPending ? 'Saving...' : 'Save Vitals'}
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

@@ -197,6 +197,13 @@ export interface Patient extends BaseRecord {
   medicalHistory: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
+  temperature?: string;
+  bloodPressure?: string;
+  heartRate?: string;
+  respiratoryRate?: string;
+  weight?: string;
+  height?: string;
+  vitalsRecordedAt?: string | null;
 }
 
 export interface Appointment extends BaseRecord {

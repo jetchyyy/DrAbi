@@ -107,6 +107,45 @@ function getManilaTimeValue(date = new Date()) {
   return formatter.format(date);
 }
 
+function buildPatientVitalsSnapshot(patient: {
+  temperature?: string;
+  bloodPressure?: string;
+  heartRate?: string;
+  respiratoryRate?: string;
+  weight?: string;
+  height?: string;
+  vitalsRecordedAt?: string | null;
+} | null | undefined) {
+  if (!patient) {
+    return "";
+  }
+
+  const lines: string[] = [];
+  if (patient.temperature) {
+    lines.push(`Temperature: ${patient.temperature} C`);
+  }
+  if (patient.bloodPressure) {
+    lines.push(`Blood Pressure: ${patient.bloodPressure} mmHg`);
+  }
+  if (patient.heartRate) {
+    lines.push(`Heart Rate: ${patient.heartRate} bpm`);
+  }
+  if (patient.respiratoryRate) {
+    lines.push(`Respiratory Rate: ${patient.respiratoryRate} breaths/min`);
+  }
+  if (patient.weight) {
+    lines.push(`Weight: ${patient.weight} kg`);
+  }
+  if (patient.height) {
+    lines.push(`Height: ${patient.height} cm`);
+  }
+  if (patient.vitalsRecordedAt) {
+    lines.push(`Recorded at intake: ${formatDateTimeLabel(patient.vitalsRecordedAt)}`);
+  }
+
+  return lines.join("\n");
+}
+
 interface Step {
   id: string;
   title: string;
@@ -253,6 +292,13 @@ export function ConsultationEntryPage() {
   useEffect(() => {
     if (patient?.allergies && !form.getValues("allergies")) {
       form.setValue("allergies", patient.allergies);
+    }
+  }, [patient, form]);
+
+  useEffect(() => {
+    const intakeVitalsSnapshot = buildPatientVitalsSnapshot(patient);
+    if (intakeVitalsSnapshot && !form.getValues("vitals")?.trim()) {
+      form.setValue("vitals", intakeVitalsSnapshot);
     }
   }, [patient, form]);
 
@@ -432,6 +478,7 @@ export function ConsultationEntryPage() {
     latestBookingWithDoctor?.doctorId ??
     profile?.id ??
     "user_owner";
+  const intakeVitalsSnapshot = buildPatientVitalsSnapshot(patient);
 
   const canProceedToNext = async () => {
     const fieldsToValidate = currentStep.fields as string[];
@@ -456,6 +503,8 @@ export function ConsultationEntryPage() {
 
   const handleSubmit = form.handleSubmit(async (values) => {
     try {
+      const normalizedVitals = values.vitals?.trim() || intakeVitalsSnapshot;
+
       const consultation = await createConsultation.mutateAsync({
         appointmentId: selectedAppointmentId || null,
         patientId: patient.id,
@@ -470,7 +519,7 @@ export function ConsultationEntryPage() {
         presentIllnessHistory: values.presentIllnessHistory,
         reviewOfSymptoms: values.reviewOfSymptoms,
         allergies: values.allergies,
-        vitals: values.vitals,
+        vitals: normalizedVitals,
         treatmentPlan: values.treatmentPlan,
         medications: values.medications,
         labResults: serializeLabResultsContent({
@@ -825,6 +874,60 @@ export function ConsultationEntryPage() {
         </div>
       </Card>
 
+      {/* Patient Vitals Card */}
+        {(patient?.temperature || patient?.bloodPressure || patient?.heartRate || patient?.respiratoryRate || patient?.weight || patient?.height) && (
+        <Card>
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-semibold text-slate-900">Recorded Vitals</h3>
+              {patient.vitalsRecordedAt && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Recorded: {formatDateTimeLabel(patient.vitalsRecordedAt)}
+                </p>
+              )}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {patient.temperature && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-medium text-slate-600">Temperature</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{patient.temperature}°C</p>
+                </div>
+              )}
+              {patient.bloodPressure && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-medium text-slate-600">Blood Pressure</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{patient.bloodPressure} mmHg</p>
+                </div>
+              )}
+              {patient.heartRate && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-medium text-slate-600">Heart Rate</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{patient.heartRate} bpm</p>
+                </div>
+              )}
+              {patient.respiratoryRate && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-medium text-slate-600">Respiratory Rate</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{patient.respiratoryRate} breaths/min</p>
+                </div>
+              )}
+              {patient.weight && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-medium text-slate-600">Weight</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{patient.weight} kg</p>
+                </div>
+              )}
+              {patient.height && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-medium text-slate-600">Height</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{patient.height} cm</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Progress Indicator */}
       <Card>
         <div className="space-y-4">
@@ -1003,18 +1106,6 @@ export function ConsultationEntryPage() {
                   </p>
                 </div>
               </div>
-
-              <FormField
-                label={stepFields.vitals.label}
-                error={form.formState.errors.vitals?.message}
-              >
-                <Textarea
-                  {...form.register("vitals")}
-                  placeholder={stepFields.vitals.placeholder}
-                  rows={4}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
-                />
-              </FormField>
 
               <FormField
                 label={stepFields.medications.label}
