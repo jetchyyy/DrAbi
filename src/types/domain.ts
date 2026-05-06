@@ -346,6 +346,7 @@ export interface InventoryCategory extends BaseRecord {
 export interface InventoryItem extends BaseRecord {
   category_id: string;
   supplier_id?: string | null;
+  brandName?: string | null;
   qrCode: string;
   name: string;
   sku: string;

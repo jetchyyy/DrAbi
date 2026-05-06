@@ -1,82 +1,110 @@
-import { useEffect, useState } from 'react';
-import { Bell, LogOut, Menu, Search, ShieldEllipsis, Stethoscope, X } from 'lucide-react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from "react";
+import {
+  Bell,
+  LogOut,
+  Menu,
+  Search,
+  ShieldEllipsis,
+  Stethoscope,
+  X,
+} from "lucide-react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 
-import { useAuth } from '../../features/auth/auth-context';
-import { useClinicSettingsData } from '../../hooks/use-clinic-data';
-import { appNavigation, type NavItem } from '../../config/navigation';
-import { defaultClinicSettings } from '../../config/clinic';
-import { isModuleEnabled } from '../../config/modules';
-import { roleLabels } from '../../config/permissions';
-import { Button } from '../ui/button';
-import { cn, getInitials } from '../../lib/utils';
+import { useAuth } from "../../features/auth/auth-context";
+import { useClinicSettingsData } from "../../hooks/use-clinic-data";
+import { appNavigation, type NavItem } from "../../config/navigation";
+import { defaultClinicSettings } from "../../config/clinic";
+import { isModuleEnabled } from "../../config/modules";
+import { roleLabels } from "../../config/permissions";
+import { Button } from "../ui/button";
+import { cn, getInitials } from "../../lib/utils";
 
 type NavigationSection =
-  | 'Overview'
-  | 'Patient Care'
-  | 'Appointments & Queue'
-  | 'Finance'
-  | 'Operations'
-  | 'Administration'
-  | 'Account'
-  | 'General';
+  | "Overview"
+  | "Patient Care"
+  | "Appointments & Queue"
+  | "Finance"
+  | "Operations"
+  | "Administration"
+  | "Account"
+  | "General";
 
 const navigationSectionOrder: NavigationSection[] = [
-  'Overview',
-  'General',
-  'Patient Care',
-  'Appointments & Queue',
-  'Finance',
-  'Operations',
-  'Administration',
-  'Account',
+  "Overview",
+  "General",
+  "Patient Care",
+  "Appointments & Queue",
+  "Finance",
+  "Operations",
+  "Administration",
+  "Account",
 ];
 
 function getNavigationSection(item: NavItem): NavigationSection {
-  if (item.to.startsWith('/app/settings')) {
-    return 'Administration';
+  if (item.to.startsWith("/app/settings")) {
+    return "Administration";
   }
-  if (item.to === '/app/profile') {
-    return 'Account';
+  if (item.to === "/app/profile") {
+    return "Account";
   }
-  if (item.moduleKey === 'dashboard') {
-    return 'Overview';
+  if (item.moduleKey === "dashboard") {
+    return "Overview";
   }
-  if (item.moduleKey === 'patient_management') {
-    return 'Patient Care';
+  if (item.moduleKey === "patient_management") {
+    return "Patient Care";
   }
-  if (item.moduleKey === 'booking_appointments') {
-    return 'Appointments & Queue';
+  if (item.moduleKey === "booking_appointments") {
+    return "Appointments & Queue";
   }
-  if (item.moduleKey === 'billing' || item.moduleKey === 'pos') {
-    return 'Finance';
+  if (item.moduleKey === "billing" || item.moduleKey === "pos") {
+    return "Finance";
   }
-  if (item.moduleKey === 'inventory' || item.moduleKey === 'laboratory') {
-    return 'Operations';
+  if (item.moduleKey === "inventory" || item.moduleKey === "laboratory") {
+    return "Operations";
   }
-  return 'General';
+  return "General";
 }
 
 export function AppShell() {
-  const { profile, can, pinSetupRequired, pinVerificationRequired, setSecurityPin, verifySecurityPin, signOut } = useAuth();
+  const {
+    profile,
+    can,
+    pinSetupRequired,
+    pinVerificationRequired,
+    setSecurityPin,
+    verifySecurityPin,
+    signOut,
+  } = useAuth();
   const { data: clinic = defaultClinicSettings } = useClinicSettingsData();
   const location = useLocation();
-  const profileRoleLabel = profile?.accessRoleName ?? (profile ? roleLabels[profile.role] : 'Unknown role');
+  const profileRoleLabel =
+    profile?.accessRoleName ??
+    (profile ? roleLabels[profile.role] : "Unknown role");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [pin, setPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
-  const [activePinField, setActivePinField] = useState<'pin' | 'confirm'>('pin');
-  const [pinError, setPinError] = useState('');
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [activePinField, setActivePinField] = useState<"pin" | "confirm">(
+    "pin",
+  );
+  const [pinError, setPinError] = useState("");
   const [savingPin, setSavingPin] = useState(false);
+  const pinInputRef = useRef<HTMLInputElement>(null);
+  const isPinGateOpen = pinSetupRequired || pinVerificationRequired;
 
   useEffect(() => {
     if (!pinSetupRequired && !pinVerificationRequired) {
-      setPin('');
-      setConfirmPin('');
-      setActivePinField('pin');
-      setPinError('');
+      setPin("");
+      setConfirmPin("");
+      setActivePinField("pin");
+      setPinError("");
     }
   }, [pinSetupRequired, pinVerificationRequired]);
+
+  useEffect(() => {
+    if (isPinGateOpen) {
+      pinInputRef.current?.focus();
+    }
+  }, [activePinField, isPinGateOpen]);
 
   useEffect(() => {
     setMobileSidebarOpen(false);
@@ -84,14 +112,17 @@ export function AppShell() {
 
   const visibleNavigation = appNavigation.filter(
     (item) =>
-      can(item.permission)
-      && (!item.roles || (profile ? item.roles.includes(profile.role) : false))
-      && (!item.moduleKey || isModuleEnabled(item.moduleKey, clinic.enabledModules)),
+      can(item.permission) &&
+      (!item.roles || (profile ? item.roles.includes(profile.role) : false)) &&
+      (!item.moduleKey ||
+        isModuleEnabled(item.moduleKey, clinic.enabledModules)),
   );
   const navigationGroups = navigationSectionOrder
     .map((section) => ({
       section,
-      items: visibleNavigation.filter((item) => getNavigationSection(item) === section),
+      items: visibleNavigation.filter(
+        (item) => getNavigationSection(item) === section,
+      ),
     }))
     .filter((group) => group.items.length > 0);
 
@@ -100,10 +131,10 @@ export function AppShell() {
       key={item.to}
       className={({ isActive }) =>
         cn(
-          'flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-md px-3 py-2.5 text-sm font-semibold transition-all duration-150',
+          "flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-md px-3 py-2.5 text-sm font-semibold transition-all duration-150",
           isActive
-            ? 'bg-orange-50 text-orange-700 ring-1 ring-orange-200'
-            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+            ? "bg-orange-50 text-orange-700 ring-1 ring-orange-200"
+            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
         )
       }
       onClick={() => setMobileSidebarOpen(false)}
@@ -112,16 +143,31 @@ export function AppShell() {
       <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600">
         <item.icon className="size-4 shrink-0" />
       </span>
-      <span className="min-w-0 flex-1 break-words text-[13px] leading-snug">{item.label}</span>
+      <span className="min-w-0 flex-1 break-words text-[13px] leading-snug">
+        {item.label}
+      </span>
     </NavLink>
   );
 
-  const pinPadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] as const;
+  const pinPadKeys = [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+  ] as const;
+  const sanitizePinInput = (value: string) =>
+    value.replace(/\D/g, "").slice(0, 6);
 
   const handlePinDigit = (digit: string) => {
-    if (pinError) setPinError('');
+    if (pinError) setPinError("");
 
-    if (activePinField === 'pin') {
+    if (activePinField === "pin") {
       if (pin.length >= 6) {
         return;
       }
@@ -129,7 +175,12 @@ export function AppShell() {
       const nextPin = `${pin}${digit}`;
       setPin(nextPin);
       if (pinSetupRequired && nextPin.length === 6) {
-        setActivePinField('confirm');
+        setActivePinField("confirm");
+        pinInputRef.current?.focus();
+      }
+
+      if (pinVerificationRequired && nextPin.length === 6) {
+        void handleSavePin({ pinValue: nextPin });
       }
       return;
     }
@@ -138,19 +189,48 @@ export function AppShell() {
       return;
     }
 
-    setConfirmPin(`${confirmPin}${digit}`);
+    const nextConfirmPin = `${confirmPin}${digit}`;
+    setConfirmPin(nextConfirmPin);
+
+    if (pinSetupRequired && pin.length === 6 && nextConfirmPin.length === 6) {
+      void handleSavePin({ pinValue: pin, confirmValue: nextConfirmPin });
+    }
+  };
+
+  const handlePinFieldChange = (field: "pin" | "confirm", value: string) => {
+    if (pinError) setPinError("");
+
+    const nextValue = sanitizePinInput(value);
+    if (field === "pin") {
+      setPin(nextValue);
+      if (pinSetupRequired && nextValue.length === 6) {
+        setActivePinField("confirm");
+        pinInputRef.current?.focus();
+      }
+
+      if (pinVerificationRequired && nextValue.length === 6) {
+        void handleSavePin({ pinValue: nextValue });
+      }
+      return;
+    }
+
+    setConfirmPin(nextValue);
+
+    if (pinSetupRequired && pin.length === 6 && nextValue.length === 6) {
+      void handleSavePin({ pinValue: pin, confirmValue: nextValue });
+    }
   };
 
   const handlePinBackspace = () => {
-    if (pinError) setPinError('');
+    if (pinError) setPinError("");
 
-    if (activePinField === 'confirm') {
+    if (activePinField === "confirm") {
       if (confirmPin.length > 0) {
         setConfirmPin(confirmPin.slice(0, -1));
         return;
       }
 
-      setActivePinField('pin');
+      setActivePinField("pin");
     }
 
     if (pin.length > 0) {
@@ -158,49 +238,58 @@ export function AppShell() {
     }
   };
 
-  const handleSavePin = async () => {
+  async function handleSavePin(input?: {
+    pinValue?: string;
+    confirmValue?: string;
+  }) {
+    const pinValue = input?.pinValue ?? pin;
+    const confirmValue = input?.confirmValue ?? confirmPin;
+
     if (pinVerificationRequired) {
-      if (!/^\d{6}$/.test(pin)) {
-        setPinError('PIN must be exactly 6 digits.');
+      if (!/^\d{6}$/.test(pinValue)) {
+        setPinError("PIN must be exactly 6 digits.");
         return;
       }
 
       try {
         setSavingPin(true);
-        setPinError('');
-        await verifySecurityPin(pin);
-      } catch (error) {
-        setPinError(error instanceof Error ? error.message : 'Unable to verify your PIN.');
+        setPinError("");
+        await verifySecurityPin(pinValue);
+      } catch (error: unknown) {
+        setPinError(
+          error instanceof Error ? error.message : "Unable to verify your PIN.",
+        );
       } finally {
         setSavingPin(false);
       }
       return;
     }
 
-    if (!/^\d{6}$/.test(pin)) {
-      setPinError('PIN must be exactly 6 digits.');
+    if (!/^\d{6}$/.test(pinValue)) {
+      setPinError("PIN must be exactly 6 digits.");
       return;
     }
 
-    if (pin !== confirmPin) {
-      setPinError('PIN entries do not match.');
+    if (pinValue !== confirmValue) {
+      setPinError("PIN entries do not match.");
       return;
     }
 
     try {
       setSavingPin(true);
-      setPinError('');
-      await setSecurityPin(pin);
-    } catch (error) {
-      setPinError(error instanceof Error ? error.message : 'Unable to save your PIN.');
+      setPinError("");
+      await setSecurityPin(pinValue);
+    } catch (error: unknown) {
+      setPinError(
+        error instanceof Error ? error.message : "Unable to save your PIN.",
+      );
     } finally {
       setSavingPin(false);
     }
-  };
+  }
 
   return (
     <div className="flex min-h-screen bg-slate-100">
-
       {mobileSidebarOpen ? (
         <button
           aria-label="Close navigation menu"
@@ -212,23 +301,27 @@ export function AppShell() {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-80 max-w-[85vw] shrink-0 flex-col border-r border-slate-200 bg-white shadow-2xl transition-transform duration-200 ease-out lg:hidden',
-          mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full',
+          "fixed inset-y-0 left-0 z-50 flex w-80 max-w-[85vw] shrink-0 flex-col border-r border-slate-200 bg-white shadow-2xl transition-transform duration-200 ease-out lg:hidden",
+          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 pb-5 pt-6">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 bg-orange-600 p-2 text-white">
-              <Stethoscope className="size-4" />
+            <div className="flex size-11 items-center justify-center bg-orange-600 text-white">
+              <Stethoscope className="size-5" />
             </div>
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-orange-600">{clinic.shortCode || 'Clinic OS'}</p>
-              <h1 className="text-sm font-extrabold leading-tight text-slate-950">{clinic.clinicName}</h1>
+              <p className="text-sm font-bold text-slate-900">
+                {clinic.clinicName ?? "CPRMED Clinic"}
+              </p>
+              <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
+                Navigation
+              </p>
             </div>
           </div>
           <button
             aria-label="Close navigation menu"
-            className="rounded-md border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
+            className="inline-flex size-10 items-center justify-center border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50"
             onClick={() => setMobileSidebarOpen(false)}
             type="button"
           >
@@ -236,23 +329,29 @@ export function AppShell() {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 pb-2 pt-4">
+        <nav className="flex-1 space-y-5 overflow-y-auto px-4 py-5">
           {navigationGroups.map((group) => (
-            <div className="mb-4 space-y-1" key={group.section}>
-              <p className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{group.section}</p>
+            <div key={group.section} className="space-y-2">
+              <p className="px-3 text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">
+                {group.section}
+              </p>
               {group.items.map((item) => renderNavigationItem(item))}
             </div>
           ))}
         </nav>
 
-        <div className="space-y-2 border-t border-slate-100 px-4 py-4">
+        <div className="border-t border-slate-100 px-4 py-4 space-y-2">
           <div className="flex items-center gap-3 px-1">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-orange-600 text-xs font-extrabold text-white">
-              {getInitials(profile?.fullName ?? 'Guest User')}
+            <div className="flex size-8 items-center justify-center bg-orange-600 text-xs font-extrabold text-white">
+              {getInitials(profile?.fullName ?? "Guest User")}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold leading-tight text-slate-950">{profile?.fullName ?? 'Guest'}</p>
-              <p className="truncate text-[11px] font-medium text-slate-400">{profileRoleLabel}</p>
+              <p className="truncate text-sm font-bold leading-tight text-slate-950">
+                {profile?.fullName ?? "Guest"}
+              </p>
+              <p className="truncate text-[11px] font-medium text-slate-400">
+                {profileRoleLabel}
+              </p>
             </div>
           </div>
           <button
@@ -266,46 +365,50 @@ export function AppShell() {
         </div>
       </aside>
 
-      {/* ── White Sidebar ────────────────────────────────────── */}
-      <aside className="sticky top-0 hidden h-screen w-72 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white lg:flex xl:w-80">
-
-        {/* Brand */}
-        <div className="px-5 pt-6 pb-5 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-600 text-white shrink-0">
-              <Stethoscope className="size-4" />
-            </div>
-            <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-orange-600">{clinic.shortCode || 'Clinic OS'}</p>
-              <h1 className="text-sm font-extrabold leading-tight text-slate-950">{clinic.clinicName}</h1>
-            </div>
+      <aside className="hidden w-80 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
+        <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-5">
+          <div className="flex size-11 items-center justify-center bg-orange-600 text-white">
+            <Stethoscope className="size-5" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-slate-900">
+              {clinic.clinicName ?? "CPRMED Clinic"}
+            </p>
+            <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
+              Operations Hub
+            </p>
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 pb-2 pt-4">
+        <nav className="flex-1 space-y-5 overflow-y-auto px-4 py-5">
           {navigationGroups.map((group) => (
-            <div className="mb-4 space-y-1" key={group.section}>
-              <p className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{group.section}</p>
+            <div key={group.section} className="space-y-2">
+              <p className="px-3 text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">
+                {group.section}
+              </p>
               {group.items.map((item) => renderNavigationItem(item))}
             </div>
           ))}
         </nav>
 
-        {/* User profile footer */}
         <div className="border-t border-slate-100 px-4 py-4 space-y-2">
           <div className="flex items-center gap-3 px-1">
-            <div className="flex h-8 w-8 items-center justify-center bg-orange-600 text-white text-xs font-extrabold shrink-0">
-              {getInitials(profile?.fullName ?? 'Guest User')}
+            <div className="flex size-8 items-center justify-center bg-orange-600 text-xs font-extrabold text-white">
+              {getInitials(profile?.fullName ?? "Guest User")}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-slate-950 truncate leading-tight">{profile?.fullName ?? 'Guest'}</p>
-              <p className="text-[11px] text-slate-400 font-medium truncate">{profileRoleLabel}</p>
+              <p className="truncate text-sm font-bold leading-tight text-slate-950">
+                {profile?.fullName ?? "Guest"}
+              </p>
+              <p className="truncate text-[11px] font-medium text-slate-400">
+                {profileRoleLabel}
+              </p>
             </div>
           </div>
           <button
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-widest text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
             onClick={() => void signOut()}
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors"
+            type="button"
           >
             <LogOut className="size-3.5" />
             Sign out
@@ -313,9 +416,8 @@ export function AppShell() {
         </div>
       </aside>
 
-      {/* ── Main Content ──────────────────────────────────────── */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white px-6 py-3.5 shadow-sm flex items-center justify-between gap-4">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3.5 shadow-sm">
           <div className="flex items-center gap-3">
             <button
               aria-label="Open navigation menu"
@@ -327,79 +429,109 @@ export function AppShell() {
             </button>
             <div className="hidden items-center gap-2.5 border border-slate-200 bg-slate-50 px-4 py-2 md:flex">
               <Search className="size-4 text-slate-400" />
-              <span className="text-sm text-slate-400">Search patients, appointments, invoices…</span>
+              <span className="text-sm text-slate-400">
+                Search patients, appointments, invoices…
+              </span>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {profile?.role === 'owner_admin' ? (
+            {profile?.role === "owner_admin" ? (
               <NavLink
-                className="border border-slate-200 p-2.5 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors"
+                className="border border-slate-200 p-2.5 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
                 title="Super Admin Console"
                 to="/odc"
               >
                 <ShieldEllipsis className="size-4" />
               </NavLink>
             ) : null}
-            <button className="border border-slate-200 p-2.5 text-slate-500 hover:bg-slate-50 transition-colors" type="button">
+            <button
+              className="border border-slate-200 p-2.5 text-slate-500 transition-colors hover:bg-slate-50"
+              type="button"
+            >
               <Bell className="size-4" />
             </button>
-            <div className="hidden md:flex items-center gap-2.5 border border-slate-200 bg-white px-3 py-2">
-              <div className="flex h-8 w-8 items-center justify-center bg-orange-600 text-white text-xs font-extrabold shrink-0">
-                {getInitials(profile?.fullName ?? 'Guest User')}
+            <div className="hidden items-center gap-2.5 border border-slate-200 bg-white px-3 py-2 md:flex">
+              <div className="flex size-8 items-center justify-center bg-orange-600 text-xs font-extrabold text-white">
+                {getInitials(profile?.fullName ?? "Guest User")}
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-900 leading-none">{profile?.fullName}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{profile?.accessRoleName ?? (profile ? roleLabels[profile.role] : 'Guest')}</p>
+                <p className="text-sm font-semibold leading-none text-slate-900">
+                  {profile?.fullName}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  {profile?.accessRoleName ??
+                    (profile ? roleLabels[profile.role] : "Guest")}
+                </p>
               </div>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 p-6 lg:p-8 w-full max-w-[1600px] mx-auto">
+        <main className="mx-auto w-full max-w-[1600px] flex-1 p-6 lg:p-8">
           <Outlet />
         </main>
       </div>
 
-      {pinSetupRequired || pinVerificationRequired ? (
+      {isPinGateOpen ? (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-4">
-          <div className="w-full max-w-md overflow-hidden border border-slate-200 bg-white shadow-2xl">
+          <div className="relative w-full max-w-md overflow-hidden border border-slate-200 bg-white shadow-2xl">
             <div className="bg-orange-600 px-6 py-4 text-white">
               <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">
-                {pinVerificationRequired ? 'Security PIN Verification' : 'Security PIN Required'}
+                {pinVerificationRequired
+                  ? "Security PIN Verification"
+                  : "Security PIN Required"}
               </p>
               <h2 className="mt-1 text-lg font-extrabold tracking-tight">
-                {pinVerificationRequired ? 'Enter your 6-digit PIN to continue' : 'Set your 6-digit PIN to continue'}
+                {pinVerificationRequired
+                  ? "Enter your 6-digit PIN to continue"
+                  : "Set your 6-digit PIN to continue"}
               </h2>
               <p className="mt-2 text-sm text-orange-50">
                 {pinVerificationRequired
-                  ? 'Your password was accepted. Enter your security PIN to unlock the system.'
-                  : 'Your account needs a security PIN before you can continue using the system.'}
+                  ? "Your password was accepted. Type your security PIN to unlock the system."
+                  : "Your account needs a security PIN before you can continue using the system."}
               </p>
             </div>
 
             <div className="space-y-4 px-6 py-5">
               <div className="space-y-3">
-                <div className={cn('grid gap-3', pinSetupRequired ? 'sm:grid-cols-2' : 'sm:grid-cols-1')}>
+                <div
+                  className={cn(
+                    "grid gap-3",
+                    pinSetupRequired ? "sm:grid-cols-2" : "sm:grid-cols-1",
+                  )}
+                >
                   <button
                     className={cn(
-                      'rounded-2xl border px-4 py-3 text-left transition-colors',
-                      activePinField === 'pin' ? 'border-orange-500 bg-orange-50' : 'border-slate-200 bg-slate-50',
+                      "rounded-2xl border px-4 py-3 text-left transition-colors",
+                      activePinField === "pin"
+                        ? pinVerificationRequired
+                          ? "border-emerald-500 bg-emerald-50"
+                          : "border-orange-500 bg-orange-50"
+                        : "border-slate-200 bg-slate-50",
                     )}
-                    onClick={() => setActivePinField('pin')}
+                    onClick={() => {
+                      setActivePinField("pin");
+                      pinInputRef.current?.focus();
+                    }}
                     type="button"
                   >
                     <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">
-                      {pinVerificationRequired ? 'Security PIN' : 'PIN'}
+                      {pinVerificationRequired ? "Security PIN" : "PIN"}
                     </p>
                     <div className="mt-3 flex gap-2">
                       {Array.from({ length: 6 }).map((_, index) => (
                         <span
-                          className={cn(
-                            'size-3 rounded-full border',
-                            index < pin.length ? 'border-orange-600 bg-orange-600' : 'border-slate-300 bg-white',
-                          )}
                           key={`pin-dot-${index}`}
+                          className={cn(
+                            "size-3 rounded-full border",
+                            index < pin.length
+                              ? pinVerificationRequired
+                                ? "border-emerald-600 bg-emerald-600"
+                                : "border-orange-600 bg-orange-600"
+                              : "border-slate-300 bg-white",
+                          )}
                         />
                       ))}
                     </div>
@@ -408,21 +540,30 @@ export function AppShell() {
                   {pinSetupRequired ? (
                     <button
                       className={cn(
-                        'rounded-2xl border px-4 py-3 text-left transition-colors',
-                        activePinField === 'confirm' ? 'border-orange-500 bg-orange-50' : 'border-slate-200 bg-slate-50',
+                        "rounded-2xl border px-4 py-3 text-left transition-colors",
+                        activePinField === "confirm"
+                          ? "border-orange-500 bg-orange-50"
+                          : "border-slate-200 bg-slate-50",
                       )}
-                      onClick={() => setActivePinField('confirm')}
+                      onClick={() => {
+                        setActivePinField("confirm");
+                        pinInputRef.current?.focus();
+                      }}
                       type="button"
                     >
-                      <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">Confirm PIN</p>
+                      <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">
+                        Confirm PIN
+                      </p>
                       <div className="mt-3 flex gap-2">
                         {Array.from({ length: 6 }).map((_, index) => (
                           <span
-                            className={cn(
-                              'size-3 rounded-full border',
-                              index < confirmPin.length ? 'border-orange-600 bg-orange-600' : 'border-slate-300 bg-white',
-                            )}
                             key={`confirm-pin-dot-${index}`}
+                            className={cn(
+                              "size-3 rounded-full border",
+                              index < confirmPin.length
+                                ? "border-orange-600 bg-orange-600"
+                                : "border-slate-300 bg-white",
+                            )}
                           />
                         ))}
                       </div>
@@ -430,20 +571,34 @@ export function AppShell() {
                   ) : null}
                 </div>
 
+                <input
+                  ref={pinInputRef}
+                  autoComplete="one-time-code"
+                  aria-label="Security PIN entry"
+                  className="absolute h-px w-px opacity-0 pointer-events-none"
+                  inputMode="numeric"
+                  maxLength={6}
+                  onChange={(event) =>
+                    handlePinFieldChange(activePinField, event.target.value)
+                  }
+                  type="password"
+                  value={activePinField === "pin" ? pin : confirmPin}
+                />
+
                 <p className="text-xs font-medium uppercase tracking-widest text-slate-400">
                   {pinVerificationRequired
-                    ? 'Enter your 6-digit security PIN'
-                    : activePinField === 'pin'
-                      ? 'Enter your 6-digit PIN'
-                      : 'Re-enter your PIN to confirm'}
+                    ? "Type your 6-digit security PIN"
+                    : activePinField === "pin"
+                      ? "Type your 6-digit PIN"
+                      : "Re-enter your PIN to confirm"}
                 </p>
               </div>
 
               <div className="mx-auto grid w-full max-w-[280px] grid-cols-3 justify-items-center gap-3">
                 {pinPadKeys.slice(0, 9).map((digit) => (
                   <button
-                    className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-extrabold text-slate-900 shadow-sm transition hover:border-orange-300 hover:bg-orange-50"
                     key={digit}
+                    className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-extrabold text-slate-900 shadow-sm transition hover:border-orange-300 hover:bg-orange-50"
                     onClick={() => handlePinDigit(digit)}
                     type="button"
                   >
@@ -453,7 +608,7 @@ export function AppShell() {
                 <div className="size-16" />
                 <button
                   className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-extrabold text-slate-900 shadow-sm transition hover:border-orange-300 hover:bg-orange-50"
-                  onClick={() => handlePinDigit('0')}
+                  onClick={() => handlePinDigit("0")}
                   type="button"
                 >
                   0
@@ -467,14 +622,32 @@ export function AppShell() {
                 </button>
               </div>
 
-              {pinError ? <p className="text-sm font-medium text-rose-600">{pinError}</p> : null}
+              {pinError ? (
+                <p className="text-sm font-medium text-rose-600">{pinError}</p>
+              ) : null}
 
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <Button className="w-full rounded-none sm:w-auto" onClick={() => void signOut()} type="button" variant="secondary">
+                <Button
+                  className="w-full rounded-none sm:w-auto"
+                  onClick={() => void signOut()}
+                  type="button"
+                  variant="secondary"
+                >
                   Sign out
                 </Button>
-                <Button className="w-full rounded-none bg-orange-600 hover:bg-orange-700 sm:w-auto" disabled={savingPin} onClick={() => void handleSavePin()} type="button">
-                  {savingPin ? (pinVerificationRequired ? 'Verifying...' : 'Saving...') : pinVerificationRequired ? 'Verify PIN' : 'Save PIN'}
+                <Button
+                  className="w-full rounded-none bg-orange-600 hover:bg-orange-700 sm:w-auto"
+                  disabled={savingPin}
+                  onClick={() => void handleSavePin()}
+                  type="button"
+                >
+                  {savingPin
+                    ? pinVerificationRequired
+                      ? "Verifying..."
+                      : "Saving..."
+                    : pinVerificationRequired
+                      ? "Verify PIN"
+                      : "Save PIN"}
                 </Button>
               </div>
             </div>
