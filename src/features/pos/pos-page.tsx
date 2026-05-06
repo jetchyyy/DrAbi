@@ -84,6 +84,45 @@ const paymentOptions: Array<{ value: PosPaymentMethod; label: string }> = [
   { value: "card", label: "Card" },
 ];
 
+function normalizeInventoryLookupQuery(query: string) {
+  const trimmed = query.trim();
+  const extracted = extractInventoryItemQrCode(trimmed);
+
+  return {
+    trimmed,
+    exactCode: (extracted || trimmed).trim().toUpperCase(),
+    searchTerm: trimmed.toLowerCase(),
+  };
+}
+
+function findInventoryLookupMatches(items: InventoryItem[], query: string) {
+  const { trimmed, exactCode, searchTerm } =
+    normalizeInventoryLookupQuery(query);
+
+  if (!trimmed) {
+    return [];
+  }
+
+  const exactMatches = items.filter((item) => {
+    return (
+      item.qrCode.trim().toUpperCase() === exactCode ||
+      item.sku.trim().toUpperCase() === exactCode ||
+      item.name.trim().toLowerCase() === searchTerm
+    );
+  });
+
+  if (exactMatches.length > 0) {
+    return exactMatches;
+  }
+
+  return items.filter((item) => {
+    return [item.name, item.sku, item.unit, item.qrCode]
+      .join(" ")
+      .toLowerCase()
+      .includes(searchTerm);
+  });
+}
+
 export function PosPage() {
   const queryClient = useQueryClient();
   const { profile } = useAuth();
@@ -119,15 +158,18 @@ export function PosPage() {
     queryFn: () => listPosSalesLiveOrDemo(),
   });
 
+  const lookupMatches = useMemo(
+    () => findInventoryLookupMatches(items, lookupValue),
+    [items, lookupValue],
+  );
+
+  const hasLookupMatches =
+    lookupValue.trim().length > 0 && lookupMatches.length > 0;
+
   const recentSale = useMemo(
     () => sales.find((sale) => sale.id === lastReceiptId) ?? null,
     [lastReceiptId, sales],
   );
-
-  const normalizedLookupCode = useMemo(() => {
-    const extracted = extractInventoryItemQrCode(lookupValue);
-    return (extracted || lookupValue).trim().toUpperCase();
-  }, [lookupValue]);
 
   const cartSubtotal = useMemo(
     () =>
@@ -310,23 +352,7 @@ export function PosPage() {
     },
   });
 
-  function handleAddByCode(codeOverride?: string) {
-    const code = (codeOverride ?? normalizedLookupCode).trim().toUpperCase();
-    if (!code) {
-      setLookupError("Type an item SKU or scan an inventory QR code.");
-      return;
-    }
-
-    const matchedItem =
-      items.find(
-        (item) =>
-          item.qrCode === code || item.sku.trim().toUpperCase() === code,
-      ) ?? null;
-    if (!matchedItem) {
-      setLookupError("No inventory item matched that SKU or QR code.");
-      return;
-    }
-
+  function addItemToCart(matchedItem: InventoryItem) {
     setCart((currentCart) => {
       const existingEntry = currentCart.find(
         (entry) => entry.item.id === matchedItem.id,
@@ -351,6 +377,30 @@ export function PosPage() {
 
     setLookupError("");
     setLookupValue("");
+  }
+
+  function handleAddByCode(codeOverride?: string) {
+    const query = codeOverride ?? lookupValue;
+    const matches = findInventoryLookupMatches(items, query);
+
+    if (!query.trim()) {
+      setLookupError("Type an item name, SKU, or scan an inventory QR code.");
+      return;
+    }
+
+    if (matches.length === 0) {
+      setLookupError("No inventory item matched that name, SKU, or QR code.");
+      return;
+    }
+
+    if (matches.length > 1) {
+      setLookupError(
+        "Multiple inventory items match that search. Use a more specific name, SKU, or QR code.",
+      );
+      return;
+    }
+
+    addItemToCart(matches[0]);
   }
 
   function updateCartQuantity(itemId: string, nextQuantity: number) {
@@ -574,7 +624,7 @@ export function PosPage() {
 
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-slate-700">
-                SKU or QR code
+                Search item, SKU, or QR code
               </span>
               <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:flex-row">
                 <div className="flex flex-1 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
@@ -582,7 +632,7 @@ export function PosPage() {
                   <Input
                     className="border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0"
                     onChange={(event) => setLookupValue(event.target.value)}
-                    placeholder="Scan from external device or type SKU / QR value"
+                    placeholder="Scan from external device or type item name, SKU, or QR value"
                     value={lookupValue}
                   />
                 </div>
@@ -603,6 +653,36 @@ export function PosPage() {
                 </Button>
               </div>
             </label>
+
+            {hasLookupMatches ? (
+              <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  {lookupMatches.length === 1
+                    ? "Matching inventory item"
+                    : "Matching inventory items"}
+                </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {lookupMatches.slice(0, 6).map((item) => (
+                    <button
+                      key={item.id}
+                      className="rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:border-emerald-500 hover:bg-emerald-50"
+                      onClick={() => addItemToCart(item)}
+                      type="button"
+                    >
+                      <p className="font-semibold text-slate-950">
+                        {item.name}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        SKU {item.sku} · QR {item.qrCode}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  Narrow the search if you want a different item.
+                </p>
+              </div>
+            ) : null}
 
             {lookupError ? (
               <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
