@@ -29,6 +29,12 @@ const patientSchema = z.object({
   medicalHistory: z.string().min(1, 'Medical history field is required.'),
   emergencyContactName: z.string().min(2, 'Emergency contact name must be at least 2 characters.'),
   emergencyContactPhone: z.string().min(5, 'Emergency contact phone must be at least 5 digits.'),
+  temperature: z.string().optional(),
+  bloodPressure: z.string().optional(),
+  heartRate: z.string().optional(),
+  respiratoryRate: z.string().optional(),
+  weight: z.string().optional(),
+  height: z.string().optional(),
 });
 
 type PatientFormValues = z.infer<typeof patientSchema>;
@@ -53,6 +59,12 @@ const patientFieldLabels: Record<keyof PatientFormValues, string> = {
   medicalHistory: 'Medical history',
   emergencyContactName: 'Emergency contact name',
   emergencyContactPhone: 'Emergency contact phone',
+  temperature: 'Temperature (°C)',
+  bloodPressure: 'Blood Pressure (mmHg)',
+  heartRate: 'Heart Rate (bpm)',
+  respiratoryRate: 'Respiratory Rate (breaths/min)',
+  weight: 'Weight (kg)',
+  height: 'Height (cm)',
 };
 
 const walkInSteps = [
@@ -73,6 +85,12 @@ const walkInSteps = [
     title: 'Medical Info',
     description: 'Core medical notes for intake.',
     fields: ['bloodType', 'allergies', 'medicalHistory'] as const,
+  },
+  {
+    id: 'vitals',
+    title: 'Vitals',
+    description: 'Record patient vital signs at time of intake.',
+    fields: ['temperature', 'bloodPressure', 'heartRate', 'respiratoryRate', 'weight', 'height'] as const,
   },
   {
     id: 'emergency',
@@ -130,6 +148,12 @@ export function PatientsPage() {
       medicalHistory: 'No significant medical history yet',
       emergencyContactName: '',
       emergencyContactPhone: '',
+      temperature: '',
+      bloodPressure: '',
+      heartRate: '',
+      respiratoryRate: '',
+      weight: '',
+      height: '',
     },
   });
 
@@ -189,6 +213,12 @@ export function PatientsPage() {
       medicalHistory: patient.medicalHistory,
       emergencyContactName: patient.emergencyContactName,
       emergencyContactPhone: patient.emergencyContactPhone,
+      temperature: patient.temperature ?? '',
+      bloodPressure: patient.bloodPressure ?? '',
+      heartRate: patient.heartRate ?? '',
+      respiratoryRate: patient.respiratoryRate ?? '',
+      weight: patient.weight ?? '',
+      height: patient.height ?? '',
     });
     setEditingPatient(patient);
     setWalkInStepIndex(0);
@@ -228,6 +258,15 @@ export function PatientsPage() {
             medicalHistory: payload.medicalHistory,
             emergencyContactName: payload.emergencyContactName,
             emergencyContactPhone: payload.emergencyContactPhone,
+            temperature: payload.temperature,
+            bloodPressure: payload.bloodPressure,
+            heartRate: payload.heartRate,
+            respiratoryRate: payload.respiratoryRate,
+            weight: payload.weight,
+            height: payload.height,
+            vitalsRecordedAt: payload.temperature || payload.bloodPressure || payload.heartRate || payload.respiratoryRate || payload.weight || payload.height 
+              ? new Date().toISOString() 
+              : editingPatient.vitalsRecordedAt ?? null,
           },
         });
 
@@ -255,12 +294,17 @@ export function PatientsPage() {
           variant: 'success',
         });
       } else {
+        const vitalsRecordedAt = values.temperature || values.bloodPressure || values.heartRate || values.respiratoryRate || values.weight || values.height 
+          ? new Date().toISOString() 
+          : null;
+
         await createPatient.mutateAsync({
           ...values,
           userId: null,
           qrCode: '',
           intakeSource: 'staff_walk_in',
           visitStatus: 'visited_clinic',
+          vitalsRecordedAt,
         });
         setFeedbackModal({
           open: true,
@@ -435,9 +479,12 @@ export function PatientsPage() {
                       <tr className="transition-colors hover:bg-slate-50" key={patient.id}>
                         <td className="px-6 py-4 align-top">
                           <div className="space-y-1">
-                            <p className="font-bold text-slate-950">
+                            <Link
+                              to={`/app/patients/${patient.id}`}
+                              className="font-bold text-slate-950 hover:text-orange-600 hover:underline"
+                            >
                               {patient.firstName} {patient.lastName}
-                            </p>
+                            </Link>
                             <div className="flex flex-wrap items-center gap-2">
                               <Badge className="rounded-none text-[10px] font-bold uppercase tracking-widest">
                                 {patient.bloodType || 'Unspecified'}
@@ -632,7 +679,17 @@ export function PatientsPage() {
                   <div className="space-y-4 px-4 py-5 sm:px-6">
                     <div className="grid gap-4 lg:grid-cols-2">
                       <FormField error={form.formState.errors.bloodType?.message} label="Blood type">
-                        <Input {...form.register('bloodType')} />
+                        <select className="w-full border border-slate-200 bg-white px-3 py-2.5 text-sm" {...form.register('bloodType')}>
+                          <option value="">Select blood type</option>
+                          <option value="O+">O+</option>
+                          <option value="O-">O-</option>
+                          <option value="A+">A+</option>
+                          <option value="A-">A-</option>
+                          <option value="B+">B+</option>
+                          <option value="B-">B-</option>
+                          <option value="AB+">AB+</option>
+                          <option value="AB-">AB-</option>
+                        </select>
                       </FormField>
                       <FormField error={form.formState.errors.allergies?.message} label="Allergies">
                         <Input {...form.register('allergies')} />
@@ -641,6 +698,35 @@ export function PatientsPage() {
                     <FormField error={form.formState.errors.medicalHistory?.message} label="Medical history">
                       <Textarea {...form.register('medicalHistory')} />
                     </FormField>
+                  </div>
+                ) : null}
+
+                {currentStep.id === 'vitals' ? (
+                  <div className="space-y-4 px-4 py-5 sm:px-6">
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <FormField error={form.formState.errors.temperature?.message} label="Temperature (°C)">
+                        <Input type="number" step="0.1" placeholder="e.g., 37.5" {...form.register('temperature')} />
+                      </FormField>
+                      <FormField error={form.formState.errors.bloodPressure?.message} label="Blood Pressure (mmHg)">
+                        <Input type="text" placeholder="e.g., 120/80" {...form.register('bloodPressure')} />
+                      </FormField>
+                    </div>
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <FormField error={form.formState.errors.heartRate?.message} label="Heart Rate (bpm)">
+                        <Input type="number" step="1" placeholder="e.g., 72" {...form.register('heartRate')} />
+                      </FormField>
+                      <FormField error={form.formState.errors.respiratoryRate?.message} label="Respiratory Rate (breaths/min)">
+                        <Input type="number" step="1" placeholder="e.g., 16" {...form.register('respiratoryRate')} />
+                      </FormField>
+                    </div>
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <FormField error={form.formState.errors.weight?.message} label="Weight (kg)">
+                        <Input type="number" step="0.1" placeholder="e.g., 70.5" {...form.register('weight')} />
+                      </FormField>
+                      <FormField error={form.formState.errors.height?.message} label="Height (cm)">
+                        <Input type="number" step="0.1" placeholder="e.g., 170" {...form.register('height')} />
+                      </FormField>
+                    </div>
                   </div>
                 ) : null}
 
