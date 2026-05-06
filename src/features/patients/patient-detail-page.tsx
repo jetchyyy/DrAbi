@@ -1,6 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, Eye, FileText, FlaskConical, Pill, Plus, QrCode, ScanLine, TestTubeDiagonal, Trash2, X, Activity } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import QRCode from 'qrcode';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -16,6 +18,8 @@ import { Textarea } from '../../components/ui/textarea';
 import { useClinicSettingsData, useProviderDirectory } from '../../hooks/use-clinic-data';
 import { getDatabase } from '../../lib/local-db';
 import { printHtmlDocument } from '../../lib/print';
+import { queryKeys } from '../../lib/query-keys';
+import { listInventoryItemsLiveOrDemo } from '../../lib/supabase-clinic';
 import { formatDateLabel, formatDateTimeLabel } from '../../lib/utils';
 import type { MedicalCertificate, Prescription } from '../../types/domain';
 import { useAuth } from '../auth/auth-context';
@@ -26,16 +30,20 @@ import { PatientQrCard } from './components/patient-qr-card';
 import {
   useCreateMedicalCertificate,
   useCreatePrescription,
+  useCreateLabRequestDocument,
   usePatientAppointments,
   usePatientConsultations,
   usePatientDetail,
+  usePatientLabRequestDocuments,
   usePatientMedicalCertificates,
   usePatientPrescriptions,
   useRecordInventoryUsage,
   useUpdatePatient,
+  useUpdatePrescription,
 } from './hooks/use-patients';
 import { buildMedicalCertificatePrintDocument } from './medical-certificate-print-document';
 import { buildPrescriptionPrintDocument } from './prescription-print-document';
+import { buildLabRequestPrintDocument } from '../lab-requests/lab-request-print-document';
 import { useCreateReferral, useReferrals, useUpdateReferralOutcome, useUpdateReferralStatus } from '../referrals/hooks/use-referrals';
 
 const referralSchema = z.object({
@@ -180,6 +188,33 @@ function truncateText(value: string | null | undefined, maxLength = 120) {
   return `${text.slice(0, maxLength).trimEnd()}...`;
 }
 
+function getPrescriptionBatchKey(prescription: Prescription) {
+  return `${prescription.consultationId}::${prescription.createdAt.substring(0, 16)}`;
+}
+
+function parsePrescriptionDisplayName(value: string) {
+  const text = (value ?? '').trim();
+  const match = text.match(/^(.*?)(?:\s*\(Brand:\s*(.*?)\))?$/i);
+  if (!match) {
+    return { genericName: text, brandName: '' };
+  }
+
+  return {
+    genericName: (match[1] ?? '').trim(),
+    brandName: (match[2] ?? '').trim(),
+  };
+}
+
+function getPrescriptionNames(prescription: Prescription) {
+  const parsed = parsePrescriptionDisplayName(prescription.prescriptionName);
+  return {
+    genericName: parsed.genericName || prescription.prescriptionName,
+    brandName: (prescription.brandName ?? '').trim() || parsed.brandName,
+  };
+}
+
+const HISTORY_PAGE_SIZE = 5;
+
 function buildSavedPrescriptionDocument(input: {
   patientName: string;
   patientAge?: string;
@@ -220,9 +255,16 @@ function buildSavedPrescriptionDocument(input: {
     patientCivilStatus: input.patientCivilStatus,
     issuedDate: input.issuedDate,
     medications: input.prescriptions.map((p) => ({
-      name: p.prescriptionName,
+      name: parsePrescriptionDisplayName(p.prescriptionName).genericName || p.prescriptionName,
+      brandName:
+        (p.brandName ?? '').trim() ||
+        parsePrescriptionDisplayName(p.prescriptionName).brandName,
       dosage: p.dosage,
       instruction: p.instruction,
+      numberOfMedications:
+        p.numberOfMedications === null || p.numberOfMedications === undefined
+          ? undefined
+          : `${p.numberOfMedications}`,
     })),
     nextAppointment: input.nextAppointment,
   });
@@ -255,11 +297,31 @@ function formatDoctorDisplayName(name: string | null | undefined, postNominals?:
   return suffix ? `Dr. ${baseName} ${suffix}` : `Dr. ${baseName}`;
 }
 
-function buildSavedMedicalCertificateDocument(input: {
+async function buildPatientQrSvgMarkup(value: string) {
+  const normalizedValue = value.trim();
+  if (!normalizedValue) {
+    return '';
+  }
+
+  try {
+    return await QRCode.toString(normalizedValue, {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      type: 'svg',
+      width: 120,
+    });
+  } catch {
+    return '';
+  }
+}
+
+async function buildSavedMedicalCertificateDocument(input: {
   patientName: string;
   patientAge: string;
   patientSex: string;
   patientAddress: string;
+  patientQrCode: string;
+  patientReferenceCode: string;
   doctorName: string;
   doctorSpecialty: string;
   doctorLicenseNumber: string;
@@ -275,7 +337,16 @@ function buildSavedMedicalCertificateDocument(input: {
   checkSchool: boolean;
   checkWork: boolean;
 }) {
+  const patientQrSvg = await buildPatientQrSvgMarkup(input.patientQrCode);
+
   return buildMedicalCertificatePrintDocument({
+    certificateNumber:
+      input.medicalCertificate.certificateNumber != null
+        ? String(input.medicalCertificate.certificateNumber)
+        : '',
+    patientQrSvg,
+    patientQrCode: input.patientQrCode,
+    patientReferenceCode: input.patientReferenceCode,
     clinicName: input.clinicName,
     clinicAddress: input.clinicAddress,
     clinicContactNumber: input.clinicContactNumber,
@@ -314,14 +385,22 @@ export function PatientDetailPage() {
   const updateReferralStatus = useUpdateReferralStatus(patientId || null);
   const createMedicalCertificate = useCreateMedicalCertificate();
   const createPrescription = useCreatePrescription();
+  const createLabRequestDocument = useCreateLabRequestDocument();
+  const updatePrescription = useUpdatePrescription();
   const recordInventoryUsage = useRecordInventoryUsage();
   const patientQuery = usePatientDetail(patientId || null);
   const { data: patient } = patientQuery;
+  const { data: inventoryItemsData = [] } = useQuery({
+    queryKey: [queryKeys.inventory, 'patient-prescription-lookup'],
+    queryFn: () => listInventoryItemsLiveOrDemo(),
+  });
   const { data: visits = [] } = usePatientAppointments(patientId || null);
   const { data: consultations = [] } = usePatientConsultations(patientId || null);
   const { data: medicalCertificates = [] } = usePatientMedicalCertificates(patientId || null);
   const { data: prescriptions = [] } = usePatientPrescriptions(patientId || null);
+  const { data: labRequestDocuments = [] } = usePatientLabRequestDocuments(patientId || null);
   const database = getDatabase();
+  const inventoryItems = inventoryItemsData.length > 0 ? inventoryItemsData : database.inventoryItems;
 
   const currentDoctor = providers.find((doctor) => doctor.profileId === profile?.id);
   const assignableDoctors = providers.filter(
@@ -397,6 +476,11 @@ export function PatientDetailPage() {
   const [labSearch, setLabSearch] = useState('');
   const [labStatusFilter, setLabStatusFilter] = useState('all');
   const [labExpanded, setLabExpanded] = useState(false);
+  const [consultationHistoryPage, setConsultationHistoryPage] = useState(1);
+  const [prescriptionHistoryPage, setPrescriptionHistoryPage] = useState(1);
+  const [certificateHistoryPage, setCertificateHistoryPage] = useState(1);
+  const [inventoryHistoryPage, setInventoryHistoryPage] = useState(1);
+  const [labDocumentHistoryPage, setLabDocumentHistoryPage] = useState(1);
 
   const filteredLabOrders = useMemo(() => {
     return labOrders.filter((o) => {
@@ -409,18 +493,25 @@ export function PatientDetailPage() {
   const consultationAppointmentIds = new Set(consultations.map((consultation) => consultation.appointmentId));
   const openedFromQr = searchParams.get('source') === 'qr';
   const scannedInventoryCode = extractInventoryItemQrCode(inventoryUsageForm.watch('scannedCode'));
-  const scannedInventoryItem = database.inventoryItems.find((item) => item.qrCode === scannedInventoryCode) ?? null;
+  const scannedInventoryItem = inventoryItems.find((item) => item.qrCode === scannedInventoryCode) ?? null;
   const [showPrescriptionStatusModal, setShowPrescriptionStatusModal] = useState(false);
   const [savedPrescription, setSavedPrescription] = useState<Prescription | null>(null);
+  const [savedPrescriptionIds, setSavedPrescriptionIds] = useState<string[]>([]);
   const [showMedicalCertificateStatusModal, setShowMedicalCertificateStatusModal] = useState(false);
   const [savedMedicalCertificate, setSavedMedicalCertificate] = useState<MedicalCertificate | null>(null);
-  const [savedMedicalCertificateCheckboxes, setSavedMedicalCertificateCheckboxes] = useState({ checkFinancial: false, checkSchool: false, checkWork: false });
   const [isViewingLatestMedicalCertificateFile, setIsViewingLatestMedicalCertificateFile] = useState(false);
   const [isPrintingMedicalCertificate, setIsPrintingMedicalCertificate] = useState(false);
   const [isSavingMedicalCertificatePdf, setIsSavingMedicalCertificatePdf] = useState(false);
   const [isViewingLatestPrescriptionFile, setIsViewingLatestPrescriptionFile] = useState(false);
   const [isPrintingPrescription, setIsPrintingPrescription] = useState(false);
   const [isSavingPrescriptionPdf, setIsSavingPrescriptionPdf] = useState(false);
+  const [showLabRequestDocumentStatusModal, setShowLabRequestDocumentStatusModal] = useState(false);
+  const [savedLabRequestDocumentHtml, setSavedLabRequestDocumentHtml] = useState('');
+  const [pendingLabTests, setPendingLabTests] = useState<Array<{ id: string; testName: string; instruction: string }>>([]);
+  const [draftLabTest, setDraftLabTest] = useState({ testName: '', instruction: '' });
+  const [isViewingLatestLabRequestDocumentFile, setIsViewingLatestLabRequestDocumentFile] = useState(false);
+  const [isPrintingLabRequestDocument, setIsPrintingLabRequestDocument] = useState(false);
+  const [isSavingLabRequestDocumentPdf, setIsSavingLabRequestDocumentPdf] = useState(false);
   const [previewModal, setPreviewModal] = useState<{
     open: boolean;
     title: string;
@@ -434,13 +525,191 @@ export function PatientDetailPage() {
   const [isSavingPreviewDocumentPdf, setIsSavingPreviewDocumentPdf] = useState(false);
   const [expandedConsultationId, setExpandedConsultationId] = useState<string | null | undefined>(undefined);
   const [expandedPrescriptionId, setExpandedPrescriptionId] = useState<string | null | undefined>(undefined);
-  const [pendingMedications, setPendingMedications] = useState<Array<{ id: string; name: string; dosage: string; instruction: string }>>([]);
-  const [draftMedication, setDraftMedication] = useState({ name: '', dosage: '', instruction: '' });
-  const [draftMedicationErrors, setDraftMedicationErrors] = useState({ name: '', dosage: '', instruction: '' });
+  const [pendingMedications, setPendingMedications] = useState<Array<{ id: string; genericName: string; brandName: string; dosage: string; instruction: string; numberOfMedications: string }>>([]);
+  const [draftMedication, setDraftMedication] = useState({ genericName: '', brandName: '', dosage: '', instruction: '', numberOfMedications: '' });
+  const [draftMedicationErrors, setDraftMedicationErrors] = useState({ genericName: '', dosage: '', instruction: '', numberOfMedications: '' });
   const [expandedMedicalCertificateId, setExpandedMedicalCertificateId] = useState<string | null | undefined>(undefined);
   const [expandedReferralId, setExpandedReferralId] = useState<string | null | undefined>(undefined);
   const [expandedLabOrderId, setExpandedLabOrderId] = useState<string | null | undefined>(undefined);
   const [showVitalsModal, setShowVitalsModal] = useState(false);
+  const [isEditPrescriptionModalOpen, setIsEditPrescriptionModalOpen] = useState(false);
+  const [editingPrescriptionGroup, setEditingPrescriptionGroup] = useState<Prescription[]>([]);
+  const [editPrescriptionRows, setEditPrescriptionRows] = useState<Array<{
+    prescriptionId: string;
+    genericName: string;
+    brandName: string;
+    dosage: string;
+    instruction: string;
+    numberOfMedications: string;
+  }>>([]);
+  const [editPrescriptionRowErrors, setEditPrescriptionRowErrors] = useState<Array<{
+    genericName: string;
+    dosage: string;
+    instruction: string;
+    numberOfMedications: string;
+  }>>([]);
+  const [activeInventoryLookup, setActiveInventoryLookup] = useState<null | {
+    scope: 'draft' | 'edit';
+    field: 'genericName' | 'brandName';
+    rowIndex?: number;
+  }>(null);
+  const inventoryLookupHideTimerRef = useRef<number | null>(null);
+
+  const getGenericInventorySuggestions = useCallback((query: string) => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return [...inventoryItems]
+      .filter((item) => item.name.trim().length > 0)
+      .filter((item) =>
+        normalizedQuery.length === 0
+          ? true
+          : item.name.toLowerCase().includes(normalizedQuery) ||
+            (item.brandName ?? '').toLowerCase().includes(normalizedQuery),
+      )
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .slice(0, 8);
+  }, [inventoryItems]);
+
+  const getBrandInventorySuggestions = useCallback((query: string, genericName: string) => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedGeneric = genericName.trim().toLowerCase();
+    const seen = new Set<string>();
+
+    return [...inventoryItems]
+      .filter((item) => (item.brandName ?? '').trim().length > 0)
+      .filter((item) => {
+        const brand = (item.brandName ?? '').toLowerCase();
+        if (normalizedQuery.length > 0 && !brand.includes(normalizedQuery)) {
+          return false;
+        }
+        if (normalizedGeneric.length > 0 && !item.name.toLowerCase().includes(normalizedGeneric)) {
+          return false;
+        }
+        return true;
+      })
+      .filter((item) => {
+        const key = `${item.name.toLowerCase()}::${(item.brandName ?? '').toLowerCase()}`;
+        if (seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      })
+      .sort((left, right) => (left.brandName ?? '').localeCompare(right.brandName ?? ''))
+      .slice(0, 8);
+  }, [inventoryItems]);
+
+  const draftGenericSuggestions = useMemo(
+    () => getGenericInventorySuggestions(draftMedication.genericName),
+    [draftMedication.genericName, getGenericInventorySuggestions],
+  );
+  const draftBrandSuggestions = useMemo(
+    () => getBrandInventorySuggestions(draftMedication.brandName, draftMedication.genericName),
+    [draftMedication.brandName, draftMedication.genericName, getBrandInventorySuggestions],
+  );
+  const activeEditLookupRow =
+    activeInventoryLookup?.scope === 'edit' && activeInventoryLookup.rowIndex !== undefined
+      ? editPrescriptionRows[activeInventoryLookup.rowIndex] ?? null
+      : null;
+  const editGenericSuggestions = useMemo(() => {
+    if (activeInventoryLookup?.scope !== 'edit' || activeInventoryLookup.field !== 'genericName') {
+      return [];
+    }
+    return getGenericInventorySuggestions(activeEditLookupRow?.genericName ?? '');
+  }, [activeInventoryLookup, activeEditLookupRow, getGenericInventorySuggestions]);
+  const editBrandSuggestions = useMemo(() => {
+    if (activeInventoryLookup?.scope !== 'edit' || activeInventoryLookup.field !== 'brandName') {
+      return [];
+    }
+    return getBrandInventorySuggestions(
+      activeEditLookupRow?.brandName ?? '',
+      activeEditLookupRow?.genericName ?? '',
+    );
+  }, [activeInventoryLookup, activeEditLookupRow, getBrandInventorySuggestions]);
+
+  const hideInventoryLookup = useCallback(() => {
+    if (inventoryLookupHideTimerRef.current !== null) {
+      window.clearTimeout(inventoryLookupHideTimerRef.current);
+    }
+    inventoryLookupHideTimerRef.current = window.setTimeout(() => {
+      setActiveInventoryLookup(null);
+      inventoryLookupHideTimerRef.current = null;
+    }, 120);
+  }, []);
+
+  const showInventoryLookup = useCallback((lookup: {
+    scope: 'draft' | 'edit';
+    field: 'genericName' | 'brandName';
+    rowIndex?: number;
+  }) => {
+    if (inventoryLookupHideTimerRef.current !== null) {
+      window.clearTimeout(inventoryLookupHideTimerRef.current);
+      inventoryLookupHideTimerRef.current = null;
+    }
+    setActiveInventoryLookup(lookup);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (inventoryLookupHideTimerRef.current !== null) {
+        window.clearTimeout(inventoryLookupHideTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleSelectInventorySuggestion = (input: {
+    scope: 'draft' | 'edit';
+    field: 'genericName' | 'brandName';
+    itemName: string;
+    itemBrandName?: string | null;
+    rowIndex?: number;
+  }) => {
+    if (input.scope === 'draft') {
+      setDraftMedication((current) => {
+        if (input.field === 'genericName') {
+          return {
+            ...current,
+            genericName: input.itemName,
+            brandName: current.brandName.trim().length > 0 ? current.brandName : (input.itemBrandName ?? ''),
+          };
+        }
+
+        return {
+          ...current,
+          brandName: input.itemBrandName ?? '',
+          genericName: current.genericName.trim().length > 0 ? current.genericName : input.itemName,
+        };
+      });
+      setActiveInventoryLookup(null);
+      return;
+    }
+
+    if (input.rowIndex === undefined) {
+      return;
+    }
+
+    setEditPrescriptionRows((rows) =>
+      rows.map((row, rowIndex) => {
+        if (rowIndex !== input.rowIndex) {
+          return row;
+        }
+
+        if (input.field === 'genericName') {
+          return {
+            ...row,
+            genericName: input.itemName,
+            brandName: row.brandName.trim().length > 0 ? row.brandName : (input.itemBrandName ?? ''),
+          };
+        }
+
+        return {
+          ...row,
+          brandName: input.itemBrandName ?? '',
+          genericName: row.genericName.trim().length > 0 ? row.genericName : input.itemName,
+        };
+      }),
+    );
+    setActiveInventoryLookup(null);
+  };
 
   const updatePatient = useUpdatePatient();
   const vitalsForm = useForm<z.infer<typeof vitalsSchema>>({
@@ -491,6 +760,96 @@ export function PatientDetailPage() {
       })),
     [consultations, visits],
   );
+  const consultationHistoryTotalPages = Math.max(1, Math.ceil(consultationTimeline.length / HISTORY_PAGE_SIZE));
+  const paginatedConsultationTimeline = useMemo(() => {
+    const start = (consultationHistoryPage - 1) * HISTORY_PAGE_SIZE;
+    return consultationTimeline.slice(start, start + HISTORY_PAGE_SIZE);
+  }, [consultationTimeline, consultationHistoryPage]);
+  const inventoryHistoryTotalPages = Math.max(1, Math.ceil(inventoryUsageLogs.length / HISTORY_PAGE_SIZE));
+  const paginatedInventoryUsageLogs = useMemo(() => {
+    const start = (inventoryHistoryPage - 1) * HISTORY_PAGE_SIZE;
+    return inventoryUsageLogs.slice(start, start + HISTORY_PAGE_SIZE);
+  }, [inventoryUsageLogs, inventoryHistoryPage]);
+  const prescriptionHistoryGroups = useMemo(
+    () =>
+      Array.from(
+        prescriptions.reduce((map, prescription) => {
+          const key = getPrescriptionBatchKey(prescription);
+          if (!map.has(key)) {
+            map.set(key, []);
+          }
+          map.get(key)!.push(prescription);
+          return map;
+        }, new Map<string, Prescription[]>()),
+      ),
+    [prescriptions],
+  );
+  const prescriptionHistoryTotalPages = Math.max(1, Math.ceil(prescriptionHistoryGroups.length / HISTORY_PAGE_SIZE));
+  const paginatedPrescriptionHistoryGroups = useMemo(() => {
+    const start = (prescriptionHistoryPage - 1) * HISTORY_PAGE_SIZE;
+    return prescriptionHistoryGroups.slice(start, start + HISTORY_PAGE_SIZE);
+  }, [prescriptionHistoryGroups, prescriptionHistoryPage]);
+  const certificateHistoryTotalPages = Math.max(1, Math.ceil(medicalCertificates.length / HISTORY_PAGE_SIZE));
+  const paginatedMedicalCertificates = useMemo(() => {
+    const start = (certificateHistoryPage - 1) * HISTORY_PAGE_SIZE;
+    return medicalCertificates.slice(start, start + HISTORY_PAGE_SIZE);
+  }, [medicalCertificates, certificateHistoryPage]);
+  const labDocumentHistoryTotalPages = Math.max(1, Math.ceil(labRequestDocuments.length / HISTORY_PAGE_SIZE));
+  const paginatedLabRequestDocuments = useMemo(() => {
+    const start = (labDocumentHistoryPage - 1) * HISTORY_PAGE_SIZE;
+    return labRequestDocuments.slice(start, start + HISTORY_PAGE_SIZE);
+  }, [labRequestDocuments, labDocumentHistoryPage]);
+
+  useEffect(() => {
+    if (consultationHistoryPage > consultationHistoryTotalPages) {
+      setConsultationHistoryPage(consultationHistoryTotalPages);
+    }
+  }, [consultationHistoryPage, consultationHistoryTotalPages]);
+
+  useEffect(() => {
+    if (inventoryHistoryPage > inventoryHistoryTotalPages) {
+      setInventoryHistoryPage(inventoryHistoryTotalPages);
+    }
+  }, [inventoryHistoryPage, inventoryHistoryTotalPages]);
+
+  useEffect(() => {
+    if (prescriptionHistoryPage > prescriptionHistoryTotalPages) {
+      setPrescriptionHistoryPage(prescriptionHistoryTotalPages);
+    }
+  }, [prescriptionHistoryPage, prescriptionHistoryTotalPages]);
+
+  useEffect(() => {
+    if (certificateHistoryPage > certificateHistoryTotalPages) {
+      setCertificateHistoryPage(certificateHistoryTotalPages);
+    }
+  }, [certificateHistoryPage, certificateHistoryTotalPages]);
+
+  useEffect(() => {
+    if (labDocumentHistoryPage > labDocumentHistoryTotalPages) {
+      setLabDocumentHistoryPage(labDocumentHistoryTotalPages);
+    }
+  }, [labDocumentHistoryPage, labDocumentHistoryTotalPages]);
+
+  useEffect(() => {
+    setConsultationHistoryPage(1);
+  }, [patientId]);
+
+  useEffect(() => {
+    setPrescriptionHistoryPage(1);
+  }, [patientId]);
+
+  useEffect(() => {
+    setCertificateHistoryPage(1);
+  }, [patientId]);
+
+  useEffect(() => {
+    setInventoryHistoryPage(1);
+  }, [patientId]);
+
+  useEffect(() => {
+    setLabDocumentHistoryPage(1);
+  }, [patientId]);
+
   const latestPrescription = useMemo(
     () =>
       prescriptions.reduce<Prescription | null>((latest, item) => {
@@ -521,7 +880,7 @@ export function PatientDetailPage() {
       : expandedConsultationId;
   const activePrescriptionId =
     expandedPrescriptionId === undefined
-      ? (prescriptions[0] ? `${prescriptions[0].consultationId}::${prescriptions[0].createdAt.substring(0, 16)}` : null)
+      ? (prescriptions[0] ? getPrescriptionBatchKey(prescriptions[0]) : null)
       : expandedPrescriptionId;
   const activeMedicalCertificateId =
     expandedMedicalCertificateId === undefined
@@ -633,26 +992,35 @@ export function PatientDetailPage() {
     }
 
     let lastCreated: typeof savedPrescription = null;
+    const createdPrescriptionIds: string[] = [];
     for (const med of pendingMedications) {
-      lastCreated = await createPrescription.mutateAsync({
+      const createdPrescription = await createPrescription.mutateAsync({
         consultationId: values.consultationId,
         patientId: patient.id,
-        prescriptionName: med.name,
+        prescriptionName: med.genericName.trim(),
+        brandName: med.brandName.trim() || null,
         dosage: med.dosage,
         instruction: med.instruction,
+        numberOfMedications: Number.parseInt(med.numberOfMedications.trim(), 10),
       });
+      lastCreated = createdPrescription;
+      createdPrescriptionIds.push(createdPrescription.id);
     }
 
     setSavedPrescription(lastCreated);
+    setSavedPrescriptionIds(createdPrescriptionIds);
     setShowPrescriptionStatusModal(true);
     setPendingMedications([]);
-    setDraftMedication({ name: '', dosage: '', instruction: '' });
+    setDraftMedication({ genericName: '', brandName: '', dosage: '', instruction: '', numberOfMedications: '' });
   });
 
   const handleCreateMedicalCertificate = medicalCertificateForm.handleSubmit(async (values) => {
     const createdMedicalCertificate = await createMedicalCertificate.mutateAsync({
       consultationId: values.consultationId,
       patientId: patient.id,
+      checkFinancial: values.checkFinancial ?? false,
+      checkSchool: values.checkSchool ?? false,
+      checkWork: values.checkWork ?? false,
       certificatePurpose: values.certificatePurpose,
       diagnosis: values.diagnosis,
       recommendation: values.recommendation,
@@ -661,11 +1029,6 @@ export function PatientDetailPage() {
     });
 
     setSavedMedicalCertificate(createdMedicalCertificate);
-    setSavedMedicalCertificateCheckboxes({
-      checkFinancial: values.checkFinancial ?? false,
-      checkSchool: values.checkSchool ?? false,
-      checkWork: values.checkWork ?? false,
-    });
     setShowMedicalCertificateStatusModal(true);
 
     medicalCertificateForm.reset({
@@ -681,18 +1044,12 @@ export function PatientDetailPage() {
     });
   });
 
-  const buildPrescriptionDocumentFor = (consultationId: string | null) => {
-    if (!consultationId) {
+  const buildPrescriptionDocumentFromList = (selectedPrescriptions: Prescription[]) => {
+    if (selectedPrescriptions.length === 0) {
       return null;
     }
 
-    const consultationPrescriptions = prescriptions.filter(
-      (p) => p.consultationId === consultationId,
-    );
-    if (consultationPrescriptions.length === 0) {
-      return null;
-    }
-
+    const consultationId = selectedPrescriptions[0].consultationId;
     const linkedConsultation = consultations.find((consultation) => consultation.id === consultationId) ?? null;
     const linkedDoctor = linkedConsultation
       ? providers.find((provider) => provider.id === linkedConsultation.doctorId) ?? null
@@ -736,13 +1093,24 @@ export function PatientDetailPage() {
       clinicAddress: clinicSettings?.address ?? 'Address not configured',
       clinicContactNumber: clinicSettings?.contactNumber ?? 'Contact not configured',
       clinicEmail: clinicSettings?.email ?? 'Email not configured',
-      prescriptions: consultationPrescriptions,
-      issuedDate: consultationPrescriptions[0].createdAt,
+      prescriptions: selectedPrescriptions,
+      issuedDate: selectedPrescriptions[0].createdAt,
       nextAppointment,
     });
   };
 
-  const buildMedicalCertificateDocumentFor = (medicalCertificate: MedicalCertificate | null, checkboxes = savedMedicalCertificateCheckboxes) => {
+  const buildPrescriptionDocumentFor = (consultationId: string | null) => {
+    if (!consultationId) {
+      return null;
+    }
+
+    const consultationPrescriptions = prescriptions.filter(
+      (p) => p.consultationId === consultationId,
+    );
+    return buildPrescriptionDocumentFromList(consultationPrescriptions);
+  };
+
+  const buildMedicalCertificateDocumentFor = async (medicalCertificate: MedicalCertificate | null) => {
     if (!medicalCertificate) {
       return null;
     }
@@ -766,11 +1134,13 @@ export function PatientDetailPage() {
       : '';
     const patientSex = patient.sex === 'male' ? 'Male' : patient.sex === 'female' ? 'Female' : 'Other';
 
-    return buildSavedMedicalCertificateDocument({
+    return await buildSavedMedicalCertificateDocument({
       patientName: `${patient.firstName} ${patient.lastName}`,
       patientAge,
       patientSex,
       patientAddress: patient.address ?? '',
+      patientQrCode: patient.qrCode ?? '',
+      patientReferenceCode: patient.id ?? '',
       doctorName,
       doctorSpecialty,
       doctorLicenseNumber,
@@ -788,15 +1158,70 @@ export function PatientDetailPage() {
       clinicContactNumber: clinicSettings?.contactNumber ?? 'Contact not configured',
       clinicEmail: clinicSettings?.email ?? 'Email not configured',
       medicalCertificate,
-      checkFinancial: checkboxes.checkFinancial,
-      checkSchool: checkboxes.checkSchool,
-      checkWork: checkboxes.checkWork,
+      checkFinancial: medicalCertificate.checkFinancial ?? false,
+      checkSchool: medicalCertificate.checkSchool ?? false,
+      checkWork: medicalCertificate.checkWork ?? false,
     });
   };
 
-  const getSavedPrescriptionDocument = () => buildPrescriptionDocumentFor(savedPrescription?.consultationId ?? null);
+  const getSavedPrescriptionDocument = () => {
+    if (savedPrescriptionIds.length > 0) {
+      const savedBatch = prescriptions.filter((p) => savedPrescriptionIds.includes(p.id));
+      const batchDocument = buildPrescriptionDocumentFromList(savedBatch);
+      if (batchDocument) {
+        return batchDocument;
+      }
+    }
+
+    return buildPrescriptionDocumentFor(savedPrescription?.consultationId ?? null);
+  };
 
   const getSavedMedicalCertificateDocument = () => buildMedicalCertificateDocumentFor(savedMedicalCertificate);
+
+  const buildLabRequestDocumentForExternalLab = (input: {
+    requests: Array<{ testName: string; instruction: string }>;
+  }) => {
+    const doctorNameRaw = currentDoctor?.fullName ?? profile?.fullName ?? 'Attending Physician';
+    const doctorPostNominals = currentDoctor?.title ?? profile?.title ?? '';
+    const doctorName = formatDoctorDisplayName(doctorNameRaw, doctorPostNominals);
+    const doctorSpecialty = currentDoctor?.specialtyName ?? 'Physician';
+    const doctorLicenseNumber = currentDoctor?.licenseNumber ?? '';
+    const doctorBirNumber = currentDoctor?.birNumber ?? '';
+    const doctorPtrNumber = currentDoctor?.ptrNumber ?? '';
+
+    const patientAge = patient.birthDate
+      ? String(new Date().getFullYear() - new Date(patient.birthDate).getFullYear() - (
+          new Date() < new Date(new Date(patient.birthDate).setFullYear(new Date().getFullYear())) ? 1 : 0
+        ))
+      : '';
+    const patientSex = patient.sex === 'male' ? 'Male' : patient.sex === 'female' ? 'Female' : 'Other';
+
+    const requestItems = input.requests.map((item) => ({
+      name: item.testName,
+      instruction: item.instruction,
+    }));
+
+    return buildLabRequestPrintDocument({
+      clinicName: clinicSettings?.clinicName ?? 'Clinic',
+      clinicAddress: clinicSettings?.address ?? 'Address not configured',
+      clinicContactNumber: clinicSettings?.contactNumber ?? 'Contact not configured',
+      clinicEmail: clinicSettings?.email ?? 'Email not configured',
+      doctorName,
+      doctorSpecialty,
+      doctorLicenseNumber,
+      doctorBirNumber,
+      doctorPtrNumber,
+      patientName: `${patient.firstName} ${patient.lastName}`,
+      patientAge,
+      patientSex,
+      patientAddress: patient.address ?? '',
+      issuedDate: new Date().toISOString(),
+      requests: requestItems,
+    });
+  };
+
+  const getSavedLabRequestDocument = () =>
+    labRequestDocuments[0]?.documentHtml || savedLabRequestDocumentHtml || null;
 
   const openDocumentPreviewInModal = (documentHtml: string, title: string) => {
     setPreviewModal({
@@ -874,14 +1299,17 @@ export function PatientDetailPage() {
   };
 
   const handleViewLatestPrescriptionFromChart = () => {
-    const consultationId = latestPrescription?.consultationId ?? null;
-    const documentHtml = buildPrescriptionDocumentFor(consultationId);
+    const latestBatch = latestPrescription
+      ? prescriptions.filter((p) => getPrescriptionBatchKey(p) === getPrescriptionBatchKey(latestPrescription))
+      : [];
+    const documentHtml = buildPrescriptionDocumentFromList(latestBatch);
     if (!documentHtml) {
       toast.error('No prescription is available yet for this patient.');
       return;
     }
 
     setSavedPrescription(latestPrescription);
+    setSavedPrescriptionIds(latestBatch.map((p) => p.id));
     setIsViewingLatestPrescriptionFile(true);
     try {
       openDocumentPreviewInModal(documentHtml, 'Latest prescription');
@@ -892,21 +1320,127 @@ export function PatientDetailPage() {
     }
   };
 
-  const handleViewPrescriptionFromHistory = (prescription: Prescription) => {
-    const documentHtml = buildPrescriptionDocumentFor(prescription.consultationId);
+  const handleViewPrescriptionFromHistory = (group: Prescription[]) => {
+    const firstPrescription = group[0] ?? null;
+    const documentHtml = buildPrescriptionDocumentFromList(group);
     if (!documentHtml) {
       toast.error('Unable to open this prescription file.');
       return;
     }
 
-    setSavedPrescription(prescription);
+    setSavedPrescription(firstPrescription);
+    setSavedPrescriptionIds(group.map((p) => p.id));
     setIsViewingLatestPrescriptionFile(true);
     try {
-      openDocumentPreviewInModal(documentHtml, `${prescription.prescriptionName} prescription`);
+      openDocumentPreviewInModal(
+        documentHtml,
+        `${firstPrescription ? getPrescriptionNames(firstPrescription).genericName : 'Prescription'} prescription`,
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to open this prescription file.');
     } finally {
       setIsViewingLatestPrescriptionFile(false);
+    }
+  };
+
+  const openEditPrescriptionModal = (group: Prescription[]) => {
+    setEditingPrescriptionGroup(group);
+    setEditPrescriptionRows(
+      group.map((prescription) => ({
+        prescriptionId: prescription.id,
+        genericName: parsePrescriptionDisplayName(prescription.prescriptionName).genericName,
+        brandName: parsePrescriptionDisplayName(prescription.prescriptionName).brandName,
+        dosage: prescription.dosage,
+        instruction: prescription.instruction,
+        numberOfMedications:
+          prescription.numberOfMedications === null ||
+          prescription.numberOfMedications === undefined
+            ? ''
+            : `${prescription.numberOfMedications}`,
+      })),
+    );
+    setEditPrescriptionRowErrors(
+      group.map(() => ({
+        genericName: '',
+        dosage: '',
+        instruction: '',
+        numberOfMedications: '',
+      })),
+    );
+    setIsEditPrescriptionModalOpen(true);
+  };
+
+  const closeEditPrescriptionModal = () => {
+    if (updatePrescription.isPending) {
+      return;
+    }
+    setIsEditPrescriptionModalOpen(false);
+    setEditingPrescriptionGroup([]);
+    setEditPrescriptionRows([]);
+    setEditPrescriptionRowErrors([]);
+  };
+
+  const handleSaveEditedPrescription = async () => {
+    if (editingPrescriptionGroup.length === 0 || editPrescriptionRows.length === 0) {
+      return;
+    }
+
+    const nextErrors = editPrescriptionRows.map((row) => {
+      const trimmedGenericName = row.genericName.trim();
+      const trimmedDosage = row.dosage.trim();
+      const trimmedInstruction = row.instruction.trim();
+      const trimmedMedicationCount = row.numberOfMedications.trim();
+      return {
+        genericName:
+          trimmedGenericName.length < 2 ? 'Generic name is required.' : '',
+        dosage: trimmedDosage.length < 2 ? 'Dosage is required.' : '',
+        instruction:
+          trimmedInstruction.length < 2 ? 'Instruction is required.' : '',
+        numberOfMedications:
+          trimmedMedicationCount.length === 0
+            ? 'Number of medications is required.'
+            : !/^\d+$/.test(trimmedMedicationCount)
+              ? 'Number of medications must be a whole number.'
+              : '',
+      };
+    });
+
+    setEditPrescriptionRowErrors(nextErrors);
+    if (
+      nextErrors.some(
+        (error) =>
+          error.genericName ||
+          error.dosage ||
+          error.instruction ||
+          error.numberOfMedications,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      for (const row of editPrescriptionRows) {
+        await updatePrescription.mutateAsync({
+          patientId: patient.id,
+          prescriptionId: row.prescriptionId,
+          prescriptionName: row.genericName.trim(),
+          brandName: row.brandName.trim() || null,
+          dosage: row.dosage.trim(),
+          instruction: row.instruction.trim(),
+          numberOfMedications: Number.parseInt(
+            row.numberOfMedications.trim(),
+            10,
+          ),
+        });
+      }
+      toast.success('Prescription tray updated successfully.');
+      closeEditPrescriptionModal();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Unable to update prescription.',
+      );
     }
   };
 
@@ -929,7 +1463,7 @@ export function PatientDetailPage() {
   };
 
   const handlePrintSavedMedicalCertificate = async () => {
-    const documentHtml = getSavedMedicalCertificateDocument();
+    const documentHtml = await getSavedMedicalCertificateDocument();
     if (!documentHtml) {
       toast.error('Save a medical certificate first before printing.');
       return;
@@ -945,8 +1479,8 @@ export function PatientDetailPage() {
     }
   };
 
-  const handleViewLatestMedicalCertificateFile = () => {
-    const documentHtml = getSavedMedicalCertificateDocument();
+  const handleViewLatestMedicalCertificateFile = async () => {
+    const documentHtml = await getSavedMedicalCertificateDocument();
     if (!documentHtml) {
       toast.error('Save a medical certificate first before viewing the latest file.');
       return;
@@ -962,8 +1496,8 @@ export function PatientDetailPage() {
     }
   };
 
-  const handleViewLatestMedicalCertificateFromChart = () => {
-    const documentHtml = buildMedicalCertificateDocumentFor(latestMedicalCertificate);
+  const handleViewLatestMedicalCertificateFromChart = async () => {
+    const documentHtml = await buildMedicalCertificateDocumentFor(latestMedicalCertificate);
     if (!documentHtml) {
       toast.error('No medical certificate is available yet for this patient.');
       return;
@@ -980,8 +1514,8 @@ export function PatientDetailPage() {
     }
   };
 
-  const handleViewMedicalCertificateFromHistory = (medicalCertificate: MedicalCertificate) => {
-    const documentHtml = buildMedicalCertificateDocumentFor(medicalCertificate);
+  const handleViewMedicalCertificateFromHistory = async (medicalCertificate: MedicalCertificate) => {
+    const documentHtml = await buildMedicalCertificateDocumentFor(medicalCertificate);
     if (!documentHtml) {
       toast.error('Unable to open this medical certificate file.');
       return;
@@ -999,7 +1533,7 @@ export function PatientDetailPage() {
   };
 
   const handleSaveMedicalCertificateAsPdf = async () => {
-    const documentHtml = getSavedMedicalCertificateDocument();
+    const documentHtml = await getSavedMedicalCertificateDocument();
     if (!documentHtml) {
       toast.error('Save a medical certificate first before exporting as PDF.');
       return;
@@ -1016,9 +1550,98 @@ export function PatientDetailPage() {
     }
   };
 
+  const handleCreateLabRequestDocument = async () => {
+    if (!patient) return;
+
+    if (pendingLabTests.length === 0) {
+      toast.error('Add at least one test to the list.');
+      return;
+    }
+
+    const documentHtml = buildLabRequestDocumentForExternalLab({
+      requests: pendingLabTests,
+    });
+
+    const requestedTestsText = pendingLabTests
+      .map((t) => t.instruction ? `${t.testName} — ${t.instruction}` : t.testName)
+      .join('\n');
+
+    try {
+      await createLabRequestDocument.mutateAsync({
+        patientId: patient.id,
+        consultationId: null,
+        requestedBy: profile?.id ?? null,
+        targetLaboratory: '',
+        requestedTests: requestedTestsText,
+        clinicalNotes: '',
+        documentHtml,
+      });
+    } catch {
+      toast.error('Failed to save the lab request document.');
+      return;
+    }
+
+    setSavedLabRequestDocumentHtml(documentHtml);
+    setShowLabRequestDocumentStatusModal(true);
+    setPendingLabTests([]);
+    setDraftLabTest({ testName: '', instruction: '' });
+  };
+
+  const handleViewLatestLabRequestDocumentFile = () => {
+    const documentHtml = getSavedLabRequestDocument();
+    if (!documentHtml) {
+      toast.error('Create a lab request document first before viewing the latest file.');
+      return;
+    }
+
+    setIsViewingLatestLabRequestDocumentFile(true);
+    try {
+      openDocumentPreviewInModal(documentHtml, 'Lab request document');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to open the latest lab request document.');
+    } finally {
+      setIsViewingLatestLabRequestDocumentFile(false);
+    }
+  };
+
+  const handlePrintSavedLabRequestDocument = async () => {
+    const documentHtml = getSavedLabRequestDocument();
+    if (!documentHtml) {
+      toast.error('Create a lab request document first before printing.');
+      return;
+    }
+
+    setIsPrintingLabRequestDocument(true);
+    try {
+      await printHtmlDocument(documentHtml);
+    } catch {
+      toast.error('The lab request document could not be sent to the printer.');
+    } finally {
+      setIsPrintingLabRequestDocument(false);
+    }
+  };
+
+  const handleSaveLabRequestDocumentAsPdf = async () => {
+    const documentHtml = getSavedLabRequestDocument();
+    if (!documentHtml) {
+      toast.error('Create a lab request document first before exporting as PDF.');
+      return;
+    }
+
+    setIsSavingLabRequestDocumentPdf(true);
+    toast.message('When the print dialog opens, choose "Save as PDF" as the destination.');
+    try {
+      await printHtmlDocument(documentHtml);
+    } catch {
+      toast.error('The lab request document could not be prepared for PDF export.');
+    } finally {
+      setIsSavingLabRequestDocumentPdf(false);
+    }
+  };
+
   const handleRecordInventoryUsage = inventoryUsageForm.handleSubmit(async (values) => {
     const normalizedCode = extractInventoryItemQrCode(values.scannedCode);
-    const item = database.inventoryItems.find((inventoryItem) => inventoryItem.qrCode === normalizedCode);
+    const item = inventoryItems.find((inventoryItem) => inventoryItem.qrCode === normalizedCode);
 
     if (!item) {
       toast.error('That QR code is not linked to an inventory item yet.');
@@ -1140,6 +1763,254 @@ export function PatientDetailPage() {
         open={showMedicalCertificateStatusModal}
         title="Medical certificate ready for printing"
       />
+
+      <DocumentStatusModal
+        eyebrowLabel="Lab request document created"
+        isViewingLatestFile={isViewingLatestLabRequestDocumentFile}
+        isPrinting={isPrintingLabRequestDocument}
+        isSavingPdf={isSavingLabRequestDocumentPdf}
+        message="Lab request document was created successfully. You can now review, print, or save the document as a PDF."
+        onClose={() => setShowLabRequestDocumentStatusModal(false)}
+        onPrint={() => {
+          void handlePrintSavedLabRequestDocument();
+        }}
+        onSavePdf={() => {
+          void handleSaveLabRequestDocumentAsPdf();
+        }}
+        onViewLatestFile={handleViewLatestLabRequestDocumentFile}
+        open={showLabRequestDocumentStatusModal}
+        title="Lab request document ready"
+      />
+
+      {isEditPrescriptionModalOpen ? (
+        <div
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4 sm:p-6"
+          onClick={closeEditPrescriptionModal}
+          role="dialog"
+        >
+          <div
+            className="my-auto flex w-full max-w-5xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 bg-orange-600 px-4 py-4 sm:px-6">
+              <div className="min-w-0">
+                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">Prescription History</p>
+                <p className="mt-0.5 text-sm font-bold text-white">Edit Prescription Tray</p>
+                <p className="mt-2 max-w-2xl text-sm text-orange-50">
+                  Update all medications in this selected tray. Changes are saved to the same historical records.
+                </p>
+              </div>
+              <button
+                aria-label="Close edit prescription modal"
+                className="inline-flex shrink-0 items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                onClick={closeEditPrescriptionModal}
+                type="button"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="border-b border-slate-100 bg-slate-50 px-4 py-2 sm:px-6">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+                  Vertical scroll with horizontal card layout
+                </p>
+              </div>
+              <div className="px-4 py-5 sm:px-6">
+                <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {editPrescriptionRows.map((row, index) => (
+                    <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3" key={row.prescriptionId}>
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                        Medication #{index + 1}
+                      </p>
+                    <FormField label="Brand name">
+                      <div className="relative">
+                        <Input
+                          placeholder="e.g., Biogesic, Medicol, RiteMED (optional)"
+                          onBlur={hideInventoryLookup}
+                          onChange={(event) =>
+                            setEditPrescriptionRows((current) =>
+                              current.map((item, itemIndex) =>
+                                itemIndex === index
+                                  ? { ...item, brandName: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                          onFocus={() => showInventoryLookup({ scope: 'edit', field: 'brandName', rowIndex: index })}
+                          value={row.brandName}
+                        />
+                        {activeInventoryLookup?.scope === 'edit' &&
+                        activeInventoryLookup.field === 'brandName' &&
+                        activeInventoryLookup.rowIndex === index ? (
+                          <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+                            {editBrandSuggestions.length === 0 ? (
+                              <p className="px-3 py-2 text-xs text-slate-500">No matching inventory brand.</p>
+                            ) : (
+                              editBrandSuggestions.map((item) => (
+                                <button
+                                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-100"
+                                  key={`${item.id}-edit-brand-${index}`}
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    handleSelectInventorySuggestion({
+                                      scope: 'edit',
+                                      field: 'brandName',
+                                      itemName: item.name,
+                                      itemBrandName: item.brandName,
+                                      rowIndex: index,
+                                    });
+                                  }}
+                                  type="button"
+                                >
+                                  <span className="min-w-0">
+                                    <span className="block truncate text-sm font-medium text-slate-800">{item.brandName}</span>
+                                    <span className="block truncate text-xs text-slate-500">{item.name}</span>
+                                  </span>
+                                  <span className={`ml-3 shrink-0 text-xs font-semibold ${item.stockOnHand > 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                    {item.stockOnHand > 0 ? `${item.stockOnHand} ${item.unit}` : 'Out of stock'}
+                                  </span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    </FormField>
+
+                    <FormField error={editPrescriptionRowErrors[index]?.genericName} label="Generic name">
+                      <div className="relative">
+                        <Input
+                          placeholder="e.g., Paracetamol"
+                          onBlur={hideInventoryLookup}
+                          onChange={(event) =>
+                            setEditPrescriptionRows((current) =>
+                              current.map((item, itemIndex) =>
+                                itemIndex === index ? { ...item, genericName: event.target.value } : item,
+                              ),
+                            )
+                          }
+                          onFocus={() => showInventoryLookup({ scope: 'edit', field: 'genericName', rowIndex: index })}
+                          value={row.genericName}
+                        />
+                        {activeInventoryLookup?.scope === 'edit' &&
+                        activeInventoryLookup.field === 'genericName' &&
+                        activeInventoryLookup.rowIndex === index ? (
+                          <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+                            {editGenericSuggestions.length === 0 ? (
+                              <p className="px-3 py-2 text-xs text-slate-500">No matching inventory item.</p>
+                            ) : (
+                              editGenericSuggestions.map((item) => (
+                                <button
+                                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-100"
+                                  key={`${item.id}-edit-generic-${index}`}
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    handleSelectInventorySuggestion({
+                                      scope: 'edit',
+                                      field: 'genericName',
+                                      itemName: item.name,
+                                      itemBrandName: item.brandName,
+                                      rowIndex: index,
+                                    });
+                                  }}
+                                  type="button"
+                                >
+                                  <span className="min-w-0">
+                                    <span className="block truncate text-sm font-medium text-slate-800">{item.name}</span>
+                                    {(item.brandName ?? '').trim().length > 0 ? (
+                                      <span className="block truncate text-xs text-slate-500">{item.brandName}</span>
+                                    ) : null}
+                                  </span>
+                                  <span className={`ml-3 shrink-0 text-xs font-semibold ${item.stockOnHand > 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                    {item.stockOnHand > 0 ? `${item.stockOnHand} ${item.unit}` : 'Out of stock'}
+                                  </span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    </FormField>
+
+                    <FormField error={editPrescriptionRowErrors[index]?.dosage} label="Dosage">
+                      <Input
+                        placeholder="e.g., 500 mg, 1 tablet"
+                        onChange={(event) =>
+                          setEditPrescriptionRows((current) =>
+                            current.map((item, itemIndex) =>
+                                itemIndex === index ? { ...item, dosage: event.target.value } : item,
+                              ),
+                            )
+                          }
+                          value={row.dosage}
+                        />
+                      </FormField>
+
+                    <FormField error={editPrescriptionRowErrors[index]?.instruction} label="Instruction / Sig.">
+                      <Textarea
+                        placeholder="e.g., 1 capsule every 8 hours after meals"
+                        onChange={(event) =>
+                          setEditPrescriptionRows((current) =>
+                            current.map((item, itemIndex) =>
+                                itemIndex === index
+                                  ? { ...item, instruction: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                          rows={2}
+                          value={row.instruction}
+                        />
+                      </FormField>
+
+                    <FormField error={editPrescriptionRowErrors[index]?.numberOfMedications} label="#">
+                      <Input
+                        inputMode="numeric"
+                        placeholder="e.g., 50"
+                        onChange={(event) =>
+                          setEditPrescriptionRows((current) =>
+                            current.map((item, itemIndex) =>
+                                itemIndex === index
+                                  ? { ...item, numberOfMedications: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                          value={row.numberOfMedications}
+                        />
+                      </FormField>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
+              <Button
+                className="w-full rounded-none sm:w-auto"
+                disabled={updatePrescription.isPending}
+                onClick={closeEditPrescriptionModal}
+                type="button"
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+              <Button
+                className="w-full rounded-none bg-orange-600 px-5 py-3 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700 sm:w-auto"
+                disabled={updatePrescription.isPending}
+                onClick={() => {
+                  void handleSaveEditedPrescription();
+                }}
+                type="button"
+              >
+                {updatePrescription.isPending ? 'Saving...' : 'Save Prescription Changes'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {openedFromQr ? (
         <Card className="border-emerald-100 bg-emerald-50/80">
@@ -1333,7 +2204,7 @@ export function PatientDetailPage() {
                 <p className="mt-1 text-xs text-slate-400">Consultation notes will appear here once a session is documented.</p>
               </div>
             ) : (
-              consultationTimeline.map(({ consultation, appointment }) => {
+              paginatedConsultationTimeline.map(({ consultation, appointment }) => {
                 const isExpanded = activeConsultationId === consultation.id;
                 const trayContentId = `consultation-tray-${consultation.id}`;
                 const consultationVitalsText =
@@ -1572,6 +2443,34 @@ export function PatientDetailPage() {
               })
             )}
           </div>
+          {consultationTimeline.length > 0 ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+              <p className="text-xs text-slate-500">
+                Showing {(consultationHistoryPage - 1) * HISTORY_PAGE_SIZE + 1}-{Math.min(consultationHistoryPage * HISTORY_PAGE_SIZE, consultationTimeline.length)} of {consultationTimeline.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  className="h-8 rounded-lg px-3 text-xs font-bold uppercase tracking-wide"
+                  disabled={consultationHistoryPage === 1}
+                  onClick={() => setConsultationHistoryPage((page) => Math.max(1, page - 1))}
+                  type="button"
+                  variant="secondary"
+                >
+                  Previous
+                </Button>
+                <span className="text-xs font-semibold text-slate-600">Page {consultationHistoryPage} of {consultationHistoryTotalPages}</span>
+                <Button
+                  className="h-8 rounded-lg px-3 text-xs font-bold uppercase tracking-wide"
+                  disabled={consultationHistoryPage >= consultationHistoryTotalPages}
+                  onClick={() => setConsultationHistoryPage((page) => Math.min(consultationHistoryTotalPages, page + 1))}
+                  type="button"
+                  variant="secondary"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          ) : null}
           </Card>
         </div>
       )}
@@ -1599,14 +2498,7 @@ export function PatientDetailPage() {
                   <p className="mt-1 text-xs text-slate-400">Prescriptions linked to consultations will appear here.</p>
                 </div>
               ) : (
-                Array.from(
-                  prescriptions.reduce((map, p) => {
-                    const key = `${p.consultationId}::${p.createdAt.substring(0, 16)}`;
-                    if (!map.has(key)) map.set(key, []);
-                    map.get(key)!.push(p);
-                    return map;
-                  }, new Map<string, typeof prescriptions>()),
-                ).map(([batchKey, group]) => {
+                paginatedPrescriptionHistoryGroups.map(([batchKey, group]) => {
                   const consultationId = batchKey.split('::')[0];
                   const linkedConsultation = consultations.find((c) => c.id === consultationId);
                   const isExpanded = activePrescriptionId === batchKey;
@@ -1631,7 +2523,7 @@ export function PatientDetailPage() {
                           onClick={() =>
                             setExpandedPrescriptionId((current) => {
                               const defaultKey = prescriptions[0]
-                                ? `${prescriptions[0].consultationId}::${prescriptions[0].createdAt.substring(0, 16)}`
+                                ? getPrescriptionBatchKey(prescriptions[0])
                                 : null;
                               return (current === undefined ? defaultKey : current) === batchKey ? null : batchKey;
                             })
@@ -1644,8 +2536,8 @@ export function PatientDetailPage() {
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium text-slate-900">
                               {group.length > 1
-                                ? `${group.map((p) => p.prescriptionName).join(', ')}`
-                                : firstPrescription.prescriptionName}
+                                ? `${group.map((p) => getPrescriptionNames(p).genericName).join(', ')}`
+                                : getPrescriptionNames(firstPrescription).genericName}
                             </span>
                             <span className="block text-xs text-slate-400">{dateLabel}</span>
                           </span>
@@ -1658,12 +2550,21 @@ export function PatientDetailPage() {
                         <Button
                           className="h-7 flex-shrink-0 rounded-lg px-2 text-xs"
                           disabled={isViewingLatestPrescriptionFile}
-                          onClick={() => handleViewPrescriptionFromHistory(firstPrescription)}
+                          onClick={() => handleViewPrescriptionFromHistory(group)}
                           type="button"
                           variant="secondary"
                         >
                           <Eye className="mr-1 size-3" />
                           Print
+                        </Button>
+                        <Button
+                          className="h-7 flex-shrink-0 rounded-lg px-2 text-xs"
+                          disabled={updatePrescription.isPending}
+                          onClick={() => openEditPrescriptionModal(group)}
+                          type="button"
+                          variant="secondary"
+                        >
+                          Edit
                         </Button>
                       </div>
 
@@ -1673,13 +2574,20 @@ export function PatientDetailPage() {
                           {group.map((prescription, index) => (
                             <div key={prescription.id}>
                               {index > 0 && <hr className="my-2 border-slate-100" />}
-                              <div className="flex items-baseline gap-1.5">
-                                {group.length > 1 && (
-                                  <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider text-sky-500">#{index + 1}</span>
-                                )}
-                                <span className="text-sm font-semibold text-slate-900">{prescription.prescriptionName}</span>
-                                <span className="text-xs text-slate-400">— {prescription.dosage}</span>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-baseline gap-1.5">
+                                  {group.length > 1 && (
+                                    <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider text-sky-500">#{index + 1}</span>
+                                  )}
+                                  <span className="text-sm font-semibold text-slate-900">{getPrescriptionNames(prescription).genericName}</span>
+                                  <span className="text-xs text-slate-400">— {prescription.dosage}</span>
+                                </div>
                               </div>
+                              {getPrescriptionNames(prescription).brandName ? (
+                                <p className="mt-0.5 text-xs text-slate-500">
+                                  <span className="font-medium text-slate-600">Brand:</span> {getPrescriptionNames(prescription).brandName}
+                                </p>
+                              ) : null}
                               <p className="mt-0.5 text-xs text-slate-500">
                                 <span className="font-medium text-slate-600">Sig.</span> {prescription.instruction}
                               </p>
@@ -1693,6 +2601,34 @@ export function PatientDetailPage() {
                 })
               )}
             </div>
+            {prescriptionHistoryGroups.length > 0 ? (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                <p className="text-xs text-slate-500">
+                  Showing {(prescriptionHistoryPage - 1) * HISTORY_PAGE_SIZE + 1}-{Math.min(prescriptionHistoryPage * HISTORY_PAGE_SIZE, prescriptionHistoryGroups.length)} of {prescriptionHistoryGroups.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    className="h-8 rounded-lg px-3 text-xs font-bold uppercase tracking-wide"
+                    disabled={prescriptionHistoryPage === 1}
+                    onClick={() => setPrescriptionHistoryPage((page) => Math.max(1, page - 1))}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-xs font-semibold text-slate-600">Page {prescriptionHistoryPage} of {prescriptionHistoryTotalPages}</span>
+                  <Button
+                    className="h-8 rounded-lg px-3 text-xs font-bold uppercase tracking-wide"
+                    disabled={prescriptionHistoryPage >= prescriptionHistoryTotalPages}
+                    onClick={() => setPrescriptionHistoryPage((page) => Math.min(prescriptionHistoryTotalPages, page + 1))}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </Card>
           <div className="space-y-6">
             {canDoctorActions ? (
@@ -1712,7 +2648,6 @@ export function PatientDetailPage() {
                     ))}
                   </Select>
                 </FormField>
-
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-slate-700">Medications</span>
@@ -1721,8 +2656,12 @@ export function PatientDetailPage() {
                   {pendingMedications.map((med, index) => (
                     <div className="flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 p-3" key={med.id}>
                       <div className="min-w-0 flex-1 space-y-0.5">
-                        <p className="text-xs font-bold uppercase tracking-wide text-sky-600">#{index + 1}</p>
-                        <p className="text-sm font-semibold text-slate-900">{med.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-bold uppercase tracking-wide text-sky-600">#{index + 1}</p>
+                          <span className="text-xs font-semibold text-sky-700">#{med.numberOfMedications}</span>
+                        </div>
+                        <p className="text-sm font-semibold text-slate-900">{med.genericName}</p>
+                        {med.brandName ? <p className="text-xs text-slate-500">Brand: {med.brandName}</p> : null}
                         <p className="text-xs text-slate-500">{med.dosage}</p>
                         <p className="text-xs text-slate-500 italic">{med.instruction}</p>
                       </div>
@@ -1738,41 +2677,144 @@ export function PatientDetailPage() {
 
                   <div className="space-y-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3">
                     <p className="text-xs font-bold uppercase tracking-wide text-slate-400">New medication</p>
-                    <FormField error={draftMedicationErrors.name} label="Medication name">
-                      <Input
-                        onChange={(e) => setDraftMedication((prev) => ({ ...prev, name: e.target.value }))}
-                        value={draftMedication.name}
-                      />
+                    <FormField label="Brand name">
+                      <div className="relative">
+                        <Input
+                          placeholder="e.g., Biogesic, Medicol, RiteMED (optional)"
+                          onBlur={hideInventoryLookup}
+                          onChange={(e) => setDraftMedication((prev) => ({ ...prev, brandName: e.target.value }))}
+                          onFocus={() => showInventoryLookup({ scope: 'draft', field: 'brandName' })}
+                          value={draftMedication.brandName}
+                        />
+                        {activeInventoryLookup?.scope === 'draft' && activeInventoryLookup.field === 'brandName' ? (
+                          <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+                            {draftBrandSuggestions.length === 0 ? (
+                              <p className="px-3 py-2 text-xs text-slate-500">No matching inventory brand.</p>
+                            ) : (
+                              draftBrandSuggestions.map((item) => (
+                                <button
+                                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-100"
+                                  key={`${item.id}-draft-brand`}
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    handleSelectInventorySuggestion({
+                                      scope: 'draft',
+                                      field: 'brandName',
+                                      itemName: item.name,
+                                      itemBrandName: item.brandName,
+                                    });
+                                  }}
+                                  type="button"
+                                >
+                                  <span className="min-w-0">
+                                    <span className="block truncate text-sm font-medium text-slate-800">{item.brandName}</span>
+                                    <span className="block truncate text-xs text-slate-500">{item.name}</span>
+                                  </span>
+                                  <span className={`ml-3 shrink-0 text-xs font-semibold ${item.stockOnHand > 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                    {item.stockOnHand > 0 ? `${item.stockOnHand} ${item.unit}` : 'Out of stock'}
+                                  </span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    </FormField>
+                    <FormField error={draftMedicationErrors.genericName} label="Generic name">
+                      <div className="relative">
+                        <Input
+                          placeholder="e.g., Paracetamol"
+                          onBlur={hideInventoryLookup}
+                          onChange={(e) => setDraftMedication((prev) => ({ ...prev, genericName: e.target.value }))}
+                          onFocus={() => showInventoryLookup({ scope: 'draft', field: 'genericName' })}
+                          value={draftMedication.genericName}
+                        />
+                        {activeInventoryLookup?.scope === 'draft' && activeInventoryLookup.field === 'genericName' ? (
+                          <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+                            {draftGenericSuggestions.length === 0 ? (
+                              <p className="px-3 py-2 text-xs text-slate-500">No matching inventory item.</p>
+                            ) : (
+                              draftGenericSuggestions.map((item) => (
+                                <button
+                                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-100"
+                                  key={`${item.id}-draft-generic`}
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    handleSelectInventorySuggestion({
+                                      scope: 'draft',
+                                      field: 'genericName',
+                                      itemName: item.name,
+                                      itemBrandName: item.brandName,
+                                    });
+                                  }}
+                                  type="button"
+                                >
+                                  <span className="min-w-0">
+                                    <span className="block truncate text-sm font-medium text-slate-800">{item.name}</span>
+                                    {(item.brandName ?? '').trim().length > 0 ? (
+                                      <span className="block truncate text-xs text-slate-500">{item.brandName}</span>
+                                    ) : null}
+                                  </span>
+                                  <span className={`ml-3 shrink-0 text-xs font-semibold ${item.stockOnHand > 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                    {item.stockOnHand > 0 ? `${item.stockOnHand} ${item.unit}` : 'Out of stock'}
+                                  </span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
                     </FormField>
                     <FormField error={draftMedicationErrors.dosage} label="Dosage">
                       <Input
+                        placeholder="e.g., 500 mg, 1 tablet"
                         onChange={(e) => setDraftMedication((prev) => ({ ...prev, dosage: e.target.value }))}
                         value={draftMedication.dosage}
                       />
                     </FormField>
-                    <FormField error={draftMedicationErrors.instruction} label="Instruction (Sig.)">
+                    <FormField error={draftMedicationErrors.instruction} label="Instruction / Sig.">
                       <Textarea
+                        placeholder="e.g., 1 capsule every 8 hours after meals"
                         onChange={(e) => setDraftMedication((prev) => ({ ...prev, instruction: e.target.value }))}
                         rows={2}
                         value={draftMedication.instruction}
+                      />
+                    </FormField>
+                    <FormField error={draftMedicationErrors.numberOfMedications} label="#">
+                      <Input
+                        inputMode="numeric"
+                        placeholder="e.g., 50"
+                        onChange={(e) => setDraftMedication((prev) => ({ ...prev, numberOfMedications: e.target.value }))}
+                        value={draftMedication.numberOfMedications}
                       />
                     </FormField>
                     <button
                       className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-sky-300 bg-white py-2 text-sm font-semibold text-sky-600 hover:bg-sky-50"
                       onClick={() => {
                         const errors = {
-                          name: draftMedication.name.trim().length < 2 ? 'Medication name is required.' : '',
+                          genericName: draftMedication.genericName.trim().length < 2 ? 'Generic name is required.' : '',
                           dosage: draftMedication.dosage.trim().length < 2 ? 'Dosage is required.' : '',
                           instruction: draftMedication.instruction.trim().length < 2 ? 'Instruction is required.' : '',
+                          numberOfMedications:
+                            draftMedication.numberOfMedications.trim().length === 0
+                              ? 'Number of medications is required.'
+                              : !/^\d+$/.test(draftMedication.numberOfMedications.trim())
+                                ? 'Number of medications must be a whole number.'
+                                : '',
                         };
                         setDraftMedicationErrors(errors);
-                        if (errors.name || errors.dosage || errors.instruction) return;
+                        if (errors.genericName || errors.dosage || errors.instruction) return;
+                        if (errors.numberOfMedications) return;
                         setPendingMedications((prev) => [
                           ...prev,
-                          { id: crypto.randomUUID(), ...draftMedication },
+                          {
+                            id: crypto.randomUUID(),
+                            ...draftMedication,
+                            numberOfMedications: draftMedication.numberOfMedications.trim(),
+                          },
                         ]);
-                        setDraftMedication({ name: '', dosage: '', instruction: '' });
-                        setDraftMedicationErrors({ name: '', dosage: '', instruction: '' });
+                        setDraftMedication({ genericName: '', brandName: '', dosage: '', instruction: '', numberOfMedications: '' });
+                        setDraftMedicationErrors({ genericName: '', dosage: '', instruction: '', numberOfMedications: '' });
                       }}
                       type="button"
                     >
@@ -1823,7 +2865,7 @@ export function PatientDetailPage() {
                   <p className="mt-1 text-xs text-slate-400">Medical certificates issued to this patient will appear here.</p>
                 </div>
               ) : (
-                medicalCertificates.map((medicalCertificate) => {
+                paginatedMedicalCertificates.map((medicalCertificate) => {
                   const linkedConsultation = consultations.find((consultation) => consultation.id === medicalCertificate.consultationId);
                   const isExpanded = activeMedicalCertificateId === medicalCertificate.id;
                   const trayContentId = `certificate-tray-${medicalCertificate.id}`;
@@ -1917,6 +2959,34 @@ export function PatientDetailPage() {
                 })
               )}
             </div>
+            {medicalCertificates.length > 0 ? (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                <p className="text-xs text-slate-500">
+                  Showing {(certificateHistoryPage - 1) * HISTORY_PAGE_SIZE + 1}-{Math.min(certificateHistoryPage * HISTORY_PAGE_SIZE, medicalCertificates.length)} of {medicalCertificates.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    className="h-8 rounded-lg px-3 text-xs font-bold uppercase tracking-wide"
+                    disabled={certificateHistoryPage === 1}
+                    onClick={() => setCertificateHistoryPage((page) => Math.max(1, page - 1))}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-xs font-semibold text-slate-600">Page {certificateHistoryPage} of {certificateHistoryTotalPages}</span>
+                  <Button
+                    className="h-8 rounded-lg px-3 text-xs font-bold uppercase tracking-wide"
+                    disabled={certificateHistoryPage >= certificateHistoryTotalPages}
+                    onClick={() => setCertificateHistoryPage((page) => Math.min(certificateHistoryTotalPages, page + 1))}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </Card>
           <div className="space-y-6">
             {canDoctorActions ? (
@@ -1994,8 +3064,8 @@ export function PatientDetailPage() {
                   <p className="mt-1 text-xs text-slate-400">Medicines and supplies dispensed to this patient will appear here.</p>
                 </div>
               ) : (
-                inventoryUsageLogs.map((log) => {
-                  const item = database.inventoryItems.find((inventoryItem) => inventoryItem.id === log.itemId);
+                paginatedInventoryUsageLogs.map((log) => {
+                  const item = inventoryItems.find((inventoryItem) => inventoryItem.id === log.itemId);
                   const linkedVisit = visits.find((visit) => visit.id === log.appointmentId);
 
                   return (
@@ -2019,6 +3089,34 @@ export function PatientDetailPage() {
                 })
               )}
             </div>
+            {inventoryUsageLogs.length > 0 ? (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                <p className="text-xs text-slate-500">
+                  Showing {(inventoryHistoryPage - 1) * HISTORY_PAGE_SIZE + 1}-{Math.min(inventoryHistoryPage * HISTORY_PAGE_SIZE, inventoryUsageLogs.length)} of {inventoryUsageLogs.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    className="h-8 rounded-lg px-3 text-xs font-bold uppercase tracking-wide"
+                    disabled={inventoryHistoryPage === 1}
+                    onClick={() => setInventoryHistoryPage((page) => Math.max(1, page - 1))}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-xs font-semibold text-slate-600">Page {inventoryHistoryPage} of {inventoryHistoryTotalPages}</span>
+                  <Button
+                    className="h-8 rounded-lg px-3 text-xs font-bold uppercase tracking-wide"
+                    disabled={inventoryHistoryPage >= inventoryHistoryTotalPages}
+                    onClick={() => setInventoryHistoryPage((page) => Math.min(inventoryHistoryTotalPages, page + 1))}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </Card>
           <div className="space-y-6">
             {canInventoryActions ? (
@@ -2283,8 +3381,7 @@ export function PatientDetailPage() {
       )}
 
       {activeTab === 'lab-tests' && (
-        <div className="mt-6">
-          {/* ── Lab Test History ─────────────────────────────────────────── */}
+        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
           <Card>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -2425,6 +3522,173 @@ export function PatientDetailPage() {
           </button>
         )}
       </Card>
+
+      <div className="space-y-6">
+        {canDoctorActions ? (
+          <Card>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle>Lab request document</CardTitle>
+              <Button
+                className="gap-2 rounded-xl"
+                disabled={isViewingLatestLabRequestDocumentFile || (labRequestDocuments.length === 0 && !savedLabRequestDocumentHtml)}
+                onClick={handleViewLatestLabRequestDocumentFile}
+                type="button"
+                variant="secondary"
+              >
+                <Eye className="size-4" />
+                {isViewingLatestLabRequestDocumentFile ? 'Opening latest file...' : 'View Latest Lab Request'}
+              </Button>
+            </div>
+            <p className="mt-2 text-sm text-slate-500">
+              Create a referral lab request document for external laboratories directly from Patient Detail.
+            </p>
+            <form
+              className="mt-5 space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleCreateLabRequestDocument();
+              }}
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-slate-700">Requested tests</span>
+                </div>
+
+                {pendingLabTests.map((test, index) => (
+                  <div className="flex items-start gap-2 rounded-lg border border-violet-200 bg-violet-50 p-3" key={test.id}>
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <p className="text-xs font-bold uppercase tracking-wide text-violet-600">#{index + 1}</p>
+                      <p className="text-sm font-semibold text-slate-900">{test.testName}</p>
+                      {test.instruction ? <p className="text-xs italic text-slate-500">{test.instruction}</p> : null}
+                    </div>
+                    <button
+                      className="mt-0.5 shrink-0 text-slate-400 hover:text-red-500"
+                      onClick={() => setPendingLabTests((prev) => prev.filter((t) => t.id !== test.id))}
+                      type="button"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                ))}
+
+                <div className="space-y-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">New test</p>
+                  <FormField label="Test name">
+                    <Input
+                      placeholder="e.g., CBC, Urinalysis, Fasting Blood Sugar"
+                      onChange={(e) => setDraftLabTest((prev) => ({ ...prev, testName: e.target.value }))}
+                      value={draftLabTest.testName}
+                    />
+                  </FormField>
+                  <FormField label="Instruction (optional)">
+                    <Input
+                      placeholder="e.g., Fasting 8 hours prior"
+                      onChange={(e) => setDraftLabTest((prev) => ({ ...prev, instruction: e.target.value }))}
+                      value={draftLabTest.instruction}
+                    />
+                  </FormField>
+                  <button
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-violet-300 bg-white py-2 text-sm font-semibold text-violet-600 hover:bg-violet-50"
+                    onClick={() => {
+                      if (!draftLabTest.testName.trim()) return;
+                      setPendingLabTests((prev) => [
+                        ...prev,
+                        { id: crypto.randomUUID(), testName: draftLabTest.testName.trim(), instruction: draftLabTest.instruction.trim() },
+                      ]);
+                      setDraftLabTest({ testName: '', instruction: '' });
+                    }}
+                    type="button"
+                  >
+                    <Plus className="size-4" />
+                    Add to list
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                className="w-full"
+                disabled={createLabRequestDocument.isPending || pendingLabTests.length === 0}
+                type="submit"
+              >
+                {createLabRequestDocument.isPending
+                  ? 'Saving...'
+                  : pendingLabTests.length === 0
+                    ? 'Add at least one test'
+                    : `Create document with ${pendingLabTests.length} test${pendingLabTests.length > 1 ? 's' : ''}`}
+              </Button>
+            </form>
+
+            <div className="mt-6 space-y-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">History</p>
+              {labRequestDocuments.length === 0 ? (
+                <div className="flex flex-col items-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 py-8 text-center">
+                  <p className="text-sm font-semibold text-slate-500">No lab request documents yet</p>
+                  <p className="mt-1 text-xs text-slate-400">Documents created above will appear here.</p>
+                </div>
+              ) : (
+                paginatedLabRequestDocuments.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="rounded-2xl border border-slate-200 bg-white px-4 py-3 hover:border-slate-300 hover:shadow-sm transition-all"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0 space-y-0.5">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Issued</p>
+                        <p className="text-sm text-slate-700">{formatDateTimeLabel(doc.createdAt)}</p>
+                      </div>
+                      {doc.documentHtml ? (
+                        <Button
+                          className="h-8 rounded-lg px-3"
+                          onClick={() => openDocumentPreviewInModal(doc.documentHtml!, 'Lab Request Document')}
+                          type="button"
+                          variant="secondary"
+                        >
+                          <Eye className="mr-1.5 size-3.5" />
+                          View
+                        </Button>
+                      ) : null}
+                    </div>
+                    {doc.requestedTests ? (
+                      <div className="mt-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Tests</p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{doc.requestedTests}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                ))
+              )}
+              {labRequestDocuments.length > 0 ? (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                  <p className="text-xs text-slate-500">
+                    Showing {(labDocumentHistoryPage - 1) * HISTORY_PAGE_SIZE + 1}-{Math.min(labDocumentHistoryPage * HISTORY_PAGE_SIZE, labRequestDocuments.length)} of {labRequestDocuments.length}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      className="h-8 rounded-lg px-3 text-xs font-bold uppercase tracking-wide"
+                      disabled={labDocumentHistoryPage === 1}
+                      onClick={() => setLabDocumentHistoryPage((page) => Math.max(1, page - 1))}
+                      type="button"
+                      variant="secondary"
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-xs font-semibold text-slate-600">Page {labDocumentHistoryPage} of {labDocumentHistoryTotalPages}</span>
+                    <Button
+                      className="h-8 rounded-lg px-3 text-xs font-bold uppercase tracking-wide"
+                      disabled={labDocumentHistoryPage >= labDocumentHistoryTotalPages}
+                      onClick={() => setLabDocumentHistoryPage((page) => Math.min(labDocumentHistoryTotalPages, page + 1))}
+                      type="button"
+                      variant="secondary"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </Card>
+        ) : null}
+      </div>
         </div>
       )}
 

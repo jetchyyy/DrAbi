@@ -263,18 +263,34 @@ export interface Prescription extends BaseRecord {
   consultationId: string;
   patientId: string;
   prescriptionName: string;
+  brandName?: string | null;
   dosage: string;
   instruction: string;
+  numberOfMedications?: number | null;
 }
 
 export interface MedicalCertificate extends BaseRecord {
   consultationId: string;
   patientId: string;
+  certificateNumber?: number | null;
+  checkFinancial?: boolean;
+  checkSchool?: boolean;
+  checkWork?: boolean;
   certificatePurpose: string;
   diagnosis: string;
   recommendation: string;
   restFrom?: string | null;
   restUntil?: string | null;
+}
+
+export interface LabRequestDocument extends BaseRecord {
+  patientId: string;
+  consultationId: string | null;
+  requestedBy: string | null;
+  targetLaboratory: string;
+  requestedTests: string;
+  clinicalNotes: string;
+  documentHtml: string | null;
 }
 
 export interface Booking extends BaseRecord {
@@ -482,6 +498,7 @@ export interface AppDatabase {
   consultations: Consultation[];
   prescriptions: Prescription[];
   medicalCertificates: MedicalCertificate[];
+  labRequestDocuments: LabRequestDocument[];
   bookings: Booking[];
   referrals: Referral[];
   invoices: Invoice[];

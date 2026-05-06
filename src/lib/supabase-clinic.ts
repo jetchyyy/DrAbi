@@ -37,6 +37,7 @@ import type {
   BookingPaymentStatus,
   Invoice,
   InvoiceItem,
+  LabRequestDocument,
   MedicalCertificate,
   Patient,
   PaymentStatus,
@@ -181,6 +182,8 @@ type ConsultationRow = Database["public"]["Tables"]["consultations"]["Row"];
 type PrescriptionRow = Database["public"]["Tables"]["prescriptions"]["Row"];
 type MedicalCertificateRow =
   Database["public"]["Tables"]["medical_certificates"]["Row"];
+type LabRequestDocumentRow =
+  Database["public"]["Tables"]["lab_request_documents"]["Row"];
 
 export interface OdcCredentialInput {
   accessKey?: string;
@@ -832,8 +835,10 @@ function mapPrescription(row: PrescriptionRow) {
     consultationId: row.consultation_id,
     patientId: row.patient_id,
     prescriptionName: row.prescription_name ?? row.medication,
+    brandName: row.brand_name ?? null,
     dosage: row.dosage,
     instruction: row.instruction ?? row.instructions,
+    numberOfMedications: row.number_of_medications ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -844,6 +849,9 @@ function mapMedicalCertificate(row: MedicalCertificateRow): MedicalCertificate {
     id: row.id,
     consultationId: row.consultation_id,
     patientId: row.patient_id,
+    checkFinancial: row.check_financial ?? false,
+    checkSchool: row.check_school ?? false,
+    checkWork: row.check_work ?? false,
     certificatePurpose: row.certificate_purpose,
     diagnosis: row.diagnosis,
     recommendation: row.recommendation,
@@ -852,6 +860,28 @@ function mapMedicalCertificate(row: MedicalCertificateRow): MedicalCertificate {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+async function buildMedicalCertificateNumberMap(
+  client: ReturnType<typeof requireSupabase>,
+) {
+  const { data, error } = await client
+    .from("medical_certificates")
+    .select("id,created_at")
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  const numberById = new Map<string, number>();
+  (data ?? []).forEach((row, index) => {
+    const typedRow = row as { id: string };
+    numberById.set(typedRow.id, index + 1);
+  });
+
+  return numberById;
 }
 
 function mapSpecialty(row: SpecialtyRow): Specialty {
@@ -1693,7 +1723,15 @@ export async function listMedicalCertificatesByPatientIdLiveOrDemo(
     throw error;
   }
 
-  return ((data ?? []) as MedicalCertificateRow[]).map(mapMedicalCertificate);
+  const certificateNumberById = await buildMedicalCertificateNumberMap(client);
+
+  return ((data ?? []) as MedicalCertificateRow[]).map((row) => {
+    const mapped = mapMedicalCertificate(row);
+    return {
+      ...mapped,
+      certificateNumber: certificateNumberById.get(mapped.id) ?? null,
+    };
+  });
 }
 
 export async function createAppointmentLiveOrDemo(
@@ -1800,7 +1838,9 @@ export async function createPrescriptionLiveOrDemo(
     dosage: input.dosage,
     instructions: input.instruction,
     prescription_name: input.prescriptionName,
+    brand_name: input.brandName ?? null,
     instruction: input.instruction,
+    number_of_medications: input.numberOfMedications ?? null,
   };
 
   const { data, error } = await client
@@ -1808,6 +1848,50 @@ export async function createPrescriptionLiveOrDemo(
     .insert(payload as never)
     .select("*")
     .single();
+  if (error) {
+    throw error;
+  }
+
+  return mapPrescription(data as PrescriptionRow);
+}
+
+export async function updatePrescriptionLiveOrDemo(input: {
+  prescriptionId: string;
+  prescriptionName: string;
+  brandName?: string | null;
+  dosage: string;
+  instruction: string;
+  numberOfMedications?: number | null;
+}) {
+  if (!isSupabaseConfigured) {
+    const { updatePrescriptionRecord } = await import("./local-db");
+    return updatePrescriptionRecord(input.prescriptionId, {
+      prescriptionName: input.prescriptionName,
+      brandName: input.brandName ?? null,
+      dosage: input.dosage,
+      instruction: input.instruction,
+      numberOfMedications: input.numberOfMedications ?? null,
+    });
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("prescriptions")
+    .update(
+      {
+        medication: input.prescriptionName,
+        dosage: input.dosage,
+        instructions: input.instruction,
+        prescription_name: input.prescriptionName,
+        brand_name: input.brandName ?? null,
+        instruction: input.instruction,
+        number_of_medications: input.numberOfMedications ?? null,
+      } as never,
+    )
+    .eq("id", input.prescriptionId)
+    .select("*")
+    .single();
+
   if (error) {
     throw error;
   }
@@ -1828,6 +1912,9 @@ export async function createMedicalCertificateLiveOrDemo(
     {
       consultation_id: input.consultationId,
       patient_id: input.patientId,
+      check_financial: input.checkFinancial ?? false,
+      check_school: input.checkSchool ?? false,
+      check_work: input.checkWork ?? false,
       certificate_purpose: input.certificatePurpose,
       diagnosis: input.diagnosis,
       recommendation: input.recommendation,
@@ -1844,7 +1931,13 @@ export async function createMedicalCertificateLiveOrDemo(
     throw error;
   }
 
-  return mapMedicalCertificate(data as MedicalCertificateRow);
+  const mapped = mapMedicalCertificate(data as MedicalCertificateRow);
+  const certificateNumberById = await buildMedicalCertificateNumberMap(client);
+
+  return {
+    ...mapped,
+    certificateNumber: certificateNumberById.get(mapped.id) ?? null,
+  };
 }
 
 function mapService(row: ServiceRow): Service {
@@ -1862,6 +1955,76 @@ function mapService(row: ServiceRow): Service {
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
   };
+}
+
+function mapLabRequestDocument(row: LabRequestDocumentRow): LabRequestDocument {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    consultationId: row.consultation_id ?? null,
+    requestedBy: row.requested_by ?? null,
+    targetLaboratory: row.target_laboratory,
+    requestedTests: row.requested_tests,
+    clinicalNotes: row.clinical_notes,
+    documentHtml: row.document_html ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export async function listLabRequestDocumentsByPatientIdLiveOrDemo(
+  patientId: string,
+): Promise<LabRequestDocument[]> {
+  if (!isSupabaseConfigured) {
+    const { listLabRequestDocumentsByPatient } = await import("./local-db");
+    return listLabRequestDocumentsByPatient(patientId);
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("lab_request_documents")
+    .select("*")
+    .eq("patient_id", patientId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as LabRequestDocumentRow[]).map(mapLabRequestDocument);
+}
+
+export async function createLabRequestDocumentLiveOrDemo(
+  input: Omit<LabRequestDocument, "id" | "createdAt" | "updatedAt">,
+): Promise<LabRequestDocument> {
+  if (!isSupabaseConfigured) {
+    const { createLabRequestDocument } = await import("./local-db");
+    return createLabRequestDocument(input);
+  }
+
+  const client = requireSupabase();
+  const payload: Database["public"]["Tables"]["lab_request_documents"]["Insert"] =
+    {
+      patient_id: input.patientId,
+      consultation_id: input.consultationId ?? null,
+      requested_by: input.requestedBy ?? null,
+      target_laboratory: input.targetLaboratory,
+      requested_tests: input.requestedTests,
+      clinical_notes: input.clinicalNotes,
+      document_html: input.documentHtml ?? null,
+    };
+
+  const { data, error } = await client
+    .from("lab_request_documents")
+    .insert(payload as never)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapLabRequestDocument(data as LabRequestDocumentRow);
 }
 
 function mapClinicSettings(row: ClinicSettingsRow): ClinicSettings {

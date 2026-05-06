@@ -1,4 +1,8 @@
 interface MedicalCertificatePrintDocumentInput {
+  certificateNumber: string;
+  patientQrSvg?: string;
+  patientQrCode?: string;
+  patientReferenceCode?: string;
   clinicName: string;
   clinicAddress: string;
   clinicContactNumber: string;
@@ -64,6 +68,9 @@ export function buildMedicalCertificatePrintDocument(input: MedicalCertificatePr
       : input.restUntil
         ? ` Patient is advised to rest until ${toDisplayDate(input.restUntil)}.`
         : '';
+
+  const healthRecordNumber = input.patientQrCode?.trim() || 'ODC-PAT';
+  const patientQrLabel = input.patientQrCode?.trim() || input.patientReferenceCode?.trim() || '';
 
   return `<!doctype html>
 <html lang="en">
@@ -164,7 +171,7 @@ export function buildMedicalCertificatePrintDocument(input: MedicalCertificatePr
         object-fit: contain;
       }
       /* Ensure all direct page content renders above watermark */
-      .header, .document-title, .cert-body, .signature-section {
+      .header, .document-title, .cert-body, .patient-qr-section, .signature-section {
         position: relative;
         z-index: 1;
       }
@@ -273,6 +280,16 @@ export function buildMedicalCertificatePrintDocument(input: MedicalCertificatePr
         flex: 1;
         font-size: 10px;
         padding: 0 2px;
+      }
+      .cert-meta-row.patient-code-row {
+        flex-wrap: nowrap;
+      }
+      .cert-meta-row.patient-code-row .ml-line {
+        white-space: nowrap;
+        word-break: keep-all;
+        overflow-wrap: normal;
+        font-size: 9px;
+        letter-spacing: 0.02em;
       }
 
       /* Specialties bar — center col, below contact */
@@ -400,6 +417,58 @@ export function buildMedicalCertificatePrintDocument(input: MedicalCertificatePr
         right: 10mm;
         bottom: 10mm;
       }
+      .patient-qr-section {
+        position: absolute;
+        left: 10mm;
+        bottom: 10mm;
+      }
+      .patient-qr-block {
+        width: 96px;
+      }
+      .patient-qr-title {
+        margin: 0;
+        font-size: 7.5px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #111827;
+        padding: 0 0 4px;
+      }
+      .patient-qr-frame {
+        background: transparent;
+        padding: 0;
+      }
+      .patient-qr-box {
+        width: 66px;
+        height: 66px;
+        border: none;
+        background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      .patient-qr-box svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .patient-qr-fallback {
+        font-size: 8px;
+        font-weight: 700;
+        color: #475569;
+        text-align: center;
+        line-height: 1.2;
+      }
+      .patient-qr-code {
+        margin: 3px 0 0;
+        font-size: 6.5px;
+        line-height: 1.2;
+        word-break: break-word;
+        font-weight: 700;
+        color: #111827;
+        letter-spacing: 0.02em;
+      }
       .signature-block {
         width: 256px;
       }
@@ -487,11 +556,11 @@ export function buildMedicalCertificatePrintDocument(input: MedicalCertificatePr
           <div class="cert-meta-block">
             <div class="cert-meta-row">
               <span class="ml">Certificate No:</span>
-              <span class="ml-line"></span>
+              <span class="ml-line">${escapeHtml(input.certificateNumber)}</span>
             </div>
-            <div class="cert-meta-row">
-              <span class="ml">Health Record Number:</span>
-              <span class="ml-line"></span>
+            <div class="cert-meta-row patient-code-row">
+              <span class="ml">Patient Code:</span>
+              <span class="ml-line">${escapeHtml(healthRecordNumber)}</span>
             </div>
             <div class="cert-meta-row">
               <span class="ml">Date:</span>
@@ -549,6 +618,22 @@ export function buildMedicalCertificatePrintDocument(input: MedicalCertificatePr
       </div>
 
       <!-- ── Signature ── -->
+      <div class="patient-qr-section">
+        <div class="patient-qr-block">
+          <p class="patient-qr-title">Patient Code</p>
+          <div class="patient-qr-frame">
+            <div class="patient-qr-box">
+              ${
+                input.patientQrSvg?.trim()
+                  ? input.patientQrSvg
+                  : '<span class="patient-qr-fallback">NO<br/>QR</span>'
+              }
+            </div>
+            <p class="patient-qr-code">${escapeHtml(patientQrLabel)}</p>
+          </div>
+        </div>
+      </div>
+
       <div class="signature-section">
         <div class="signature-block">
           <div class="sig-name-line">${escapeHtml(input.doctorName || '')}</div>

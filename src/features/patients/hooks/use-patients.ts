@@ -11,11 +11,14 @@ import {
   createPatientLiveOrDemo,
   createPrescriptionLiveOrDemo,
   createMedicalCertificateLiveOrDemo,
+  createLabRequestDocumentLiveOrDemo,
   deletePatientLiveOrDemo,
   getPatientByIdLiveOrDemo,
   listAppointmentsByPatientIdLiveOrDemo,
   listBookingsByPatientIdLiveOrDemo,
   listMedicalCertificatesByPatientIdLiveOrDemo,
+  listLabRequestDocumentsByPatientIdLiveOrDemo,
+  updatePrescriptionLiveOrDemo,
   updatePatientLiveOrDemo,
   listConsultationsByPatientIdLiveOrDemo,
   listPatientsLiveOrDemo,
@@ -24,6 +27,7 @@ import {
 } from "../../../lib/supabase-clinic";
 import type {
   InventoryUsageLog,
+  LabRequestDocument,
   MedicalCertificate,
   Patient,
   PatientActionLog,
@@ -136,6 +140,34 @@ export function useCreatePrescription() {
   });
 }
 
+export function useUpdatePrescription() {
+  return useMutation({
+    mutationFn: async (payload: {
+      patientId: string;
+      prescriptionId: string;
+      prescriptionName: string;
+      brandName?: string | null;
+      dosage: string;
+      instruction: string;
+      numberOfMedications?: number | null;
+    }) =>
+      updatePrescriptionLiveOrDemo({
+        prescriptionId: payload.prescriptionId,
+        prescriptionName: payload.prescriptionName,
+        brandName: payload.brandName ?? null,
+        dosage: payload.dosage,
+        instruction: payload.instruction,
+        numberOfMedications: payload.numberOfMedications,
+      }),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.patientPrescriptions(variables.patientId),
+      });
+    },
+  });
+}
+
 export function useCreateMedicalCertificate() {
   return useMutation({
     mutationFn: async (
@@ -225,6 +257,31 @@ export function usePatientMedicalCertificates(patientId: string | null) {
       return listMedicalCertificatesByPatientIdLiveOrDemo(patientId);
     },
     enabled: Boolean(patientId),
+  });
+}
+
+export function usePatientLabRequestDocuments(patientId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.patientLabRequestDocuments(patientId),
+    queryFn: async () => {
+      if (!patientId) return [];
+      return listLabRequestDocumentsByPatientIdLiveOrDemo(patientId);
+    },
+    enabled: Boolean(patientId),
+  });
+}
+
+export function useCreateLabRequestDocument() {
+  return useMutation({
+    mutationFn: async (
+      payload: Omit<LabRequestDocument, 'id' | 'createdAt' | 'updatedAt'>,
+    ) => createLabRequestDocumentLiveOrDemo(payload),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.patientLabRequestDocuments(variables.patientId),
+      });
+    },
   });
 }
 

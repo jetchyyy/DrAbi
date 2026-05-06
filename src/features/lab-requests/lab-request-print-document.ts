@@ -1,12 +1,10 @@
-interface MedicationItem {
+interface LabRequestItem {
   name: string;
-  brandName?: string;
-  dosage: string;
-  instruction: string;
-  numberOfMedications?: string;
+  instruction?: string;
+  quantityLabel?: string;
 }
 
-interface PrescriptionPrintDocumentInput {
+interface LabRequestPrintDocumentInput {
   clinicName: string;
   clinicAddress: string;
   clinicContactNumber: string;
@@ -16,16 +14,12 @@ interface PrescriptionPrintDocumentInput {
   doctorLicenseNumber: string;
   doctorBirNumber: string;
   doctorPtrNumber: string;
-  doctorPrcQrData: string;
   patientName: string;
   patientAge?: string;
   patientSex?: string;
   patientAddress?: string;
-  patientWeight?: string;
-  patientCivilStatus?: string;
   issuedDate: string;
-  medications: MedicationItem[];
-  nextAppointment: string;
+  requests: LabRequestItem[];
 }
 
 function escapeHtml(value: string) {
@@ -50,17 +44,18 @@ function toDisplayDate(value: string) {
   }).format(date);
 }
 
-const MEDS_PER_PAGE = 7;
+const REQUESTS_PER_PAGE = 10;
 
-export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentInput) {
-  const meds = input.medications ?? [];
+export function buildLabRequestPrintDocument(input: LabRequestPrintDocumentInput) {
+  const requests = input.requests ?? [];
 
-  // Chunk medications into pages of 10
-  const chunks: MedicationItem[][] = [];
-  for (let i = 0; i < meds.length; i += MEDS_PER_PAGE) {
-    chunks.push(meds.slice(i, i + MEDS_PER_PAGE));
+  const chunks: LabRequestItem[][] = [];
+  for (let index = 0; index < requests.length; index += REQUESTS_PER_PAGE) {
+    chunks.push(requests.slice(index, index + REQUESTS_PER_PAGE));
   }
-  if (chunks.length === 0) chunks.push([]);
+  if (chunks.length === 0) {
+    chunks.push([]);
+  }
 
   const headerHtml = `
       <section class="header">
@@ -117,50 +112,54 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
             <span class="line">${escapeHtml(input.doctorBirNumber || ' ')}</span>
           </div>
           <div class="signature-row">
-            <span class="label">S2 no.</span>
+            <span class="label">Prepared by</span>
             <span class="line"></span>
           </div>
           <p class="debug-note">${escapeHtml(input.doctorSpecialty || 'Physician')}</p>
         </aside>`;
 
-  const pagesHtml = chunks.map((chunk, pageIndex) => {
-    const isLastPage = pageIndex === chunks.length - 1;
-    const globalStart = pageIndex * MEDS_PER_PAGE;
+  const pagesHtml = chunks
+    .map((chunk, pageIndex) => {
+      const isLastPage = pageIndex === chunks.length - 1;
+      const globalStart = pageIndex * REQUESTS_PER_PAGE;
 
-    const medsHtml = chunk.map((med, i) => `
+      const requestHtml = chunk
+        .map(
+          (request, index) => `
         <div class="medication-item">
           <div class="medication-main">
-            <p><strong>${globalStart + i + 1}.</strong> ${escapeHtml(med.name)}</p>
-            ${med.brandName?.trim() ? `<p><strong>Brand:</strong> ${escapeHtml(med.brandName.trim())}</p>` : ''}
-            <p><strong>Dosage:</strong> ${escapeHtml(med.dosage)}</p>
-            <p><strong>Sig:</strong> ${escapeHtml(med.instruction)}</p>
+            <p><strong>${globalStart + index + 1}.</strong> ${escapeHtml(request.name)}</p>
+            ${request.instruction?.trim() ? `<p><strong>Details:</strong> ${escapeHtml(request.instruction.trim())}</p>` : ''}
           </div>
-          <span class="medication-qty">${med.numberOfMedications?.trim() ? `#${escapeHtml(med.numberOfMedications.trim())}` : ''}</span>
-        </div>`).join('');
+          <span class="medication-qty">${request.quantityLabel?.trim() ? escapeHtml(request.quantityLabel.trim()) : ''}</span>
+        </div>`,
+        )
+        .join('');
 
-    const footerHtml = isLastPage
-      ? `<div class="signature-container">${signatureHtml}</div>`
-      : `<p class="continued-note">— continued on next page —</p>
+      const footerHtml = isLastPage
+        ? `<div class="signature-container">${signatureHtml}</div>`
+        : `<p class="continued-note">- continued on next page -</p>
         <div class="signature-container">${signatureHtml}</div>`;
 
-    return `
+      return `
     <main class="page">
       ${headerHtml}
       ${patientLinesHtml}
       <section class="prescription-area">
-        <p class="rx-mark">Rx</p>
-        <div class="meds-list">${medsHtml}</div>
+        <p class="rx-mark">LAB REQUEST</p>
+        <div class="meds-list">${requestHtml}</div>
         <div class="prescription-footer">${footerHtml}</div>
       </section>
     </main>`;
-  }).join('\n');
+    })
+    .join('\n');
 
   return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Prescription</title>
+    <title>Lab Request</title>
     <style>
       :root {
         color-scheme: light;
@@ -225,7 +224,6 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
         color: #475569;
       }
 
-      /* ── Page ── */
       .page {
         width: 100%;
         max-width: 194mm;
@@ -242,7 +240,6 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
         margin-top: 20px;
       }
 
-      /* ── Header ── */
       .header {
         border-bottom: 2px solid #111827;
         padding: 10px 14px 10px;
@@ -344,7 +341,6 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
         color: #111827;
       }
 
-      /* ── Patient info ── */
       .patient-lines {
         border-bottom: 1px solid #111827;
         padding: 7px 10px 8px;
@@ -387,7 +383,6 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
         flex: 0 0 110px;
       }
 
-      /* ── Prescription area ── */
       .prescription-area {
         flex: 1;
         padding: 16px 14px 16px;
@@ -397,12 +392,15 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
       }
 
       .rx-mark {
-        margin: 0;
+        margin: 0 0 12px;
         font-family: "Times New Roman", Georgia, serif;
-        font-size: 70px;
+        font-size: 42px;
         line-height: 1;
-        font-style: italic;
+        letter-spacing: 0.04em;
+        font-style: normal;
         font-weight: 700;
+        width: 100%;
+        text-align: center;
       }
 
       .meds-list {
@@ -444,16 +442,8 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
         margin-right: 2px;
       }
 
-      /* ── Footer (follow-up + signature or continued note) ── */
       .prescription-footer {
         margin-top: 12px;
-      }
-
-      .follow-up {
-        margin: 0 0 16px;
-        font-size: 13px;
-        color: #1f2937;
-        font-style: italic;
       }
 
       .continued-note {
