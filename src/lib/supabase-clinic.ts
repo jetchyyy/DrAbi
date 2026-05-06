@@ -4639,6 +4639,25 @@ export async function getInventoryItems(
   }));
 }
 
+export async function getInventoryItemsCount(): Promise<number> {
+  if (!isSupabaseConfigured) {
+    const { listInventoryItems } = await import("./local-db");
+    const items = listInventoryItems();
+    return items.length;
+  }
+
+  const client = requireSupabase();
+  const { count, error } = await client
+    .from("inventory_items")
+    .select("id", { count: "exact", head: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
+}
+
 export async function getInventoryLogs(
   page: number,
 ): Promise<InventoryUsageLog[]> {
