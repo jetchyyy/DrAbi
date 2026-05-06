@@ -289,6 +289,8 @@ export interface Booking extends BaseRecord {
 export interface Referral extends BaseRecord {
   patientId: string;
   appointmentId?: string | null;
+  appointmentDate?: string | null;
+  appointmentTime?: string | null;
   referringDoctorId: string;
   targetDoctorId?: string | null;
   targetSpecialtyId?: string | null;
