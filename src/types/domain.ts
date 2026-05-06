@@ -1,4 +1,4 @@
-﻿export type Role =
+export type Role =
   | "owner_admin"
   | "doctor"
   | "specialist"
@@ -108,6 +108,7 @@ export interface ClinicSettings extends BaseRecord {
   appointmentSlotMinutes: number;
   systemEnabled: boolean;
   systemMessage: string;
+  systemStatusType: 'maintenance' | 'restricted';
   enabledModules: EnabledModules;
   operatingHours: Array<{
     day: string;

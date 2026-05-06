@@ -389,6 +389,7 @@ export function SettingsInventoryCatalogPage() {
 
       {feedbackModal.open ? (
         <FeedbackModal
+          open={feedbackModal.open}
           message={feedbackModal.message}
           onClose={closeFeedbackModal}
           title={feedbackModal.title}

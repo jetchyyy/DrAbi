@@ -18,15 +18,15 @@ const defaultEnabledModules = {
 };
 
 const defaultClinicSettingsInsert = {
-  clinic_name: 'Odyssey Family Clinic',
-  legal_name: 'Odyssey Family Clinic OPC',
-  short_code: 'ODYSSEY',
-  address: '125 Rizal Avenue, Makati City, Metro Manila',
-  contact_number: '+63 917 555 0134',
-  email: 'hello@odysseyclinic.test',
-  website: 'https://odysseyclinic.test',
-  primary_color: '#155eef',
-  accent_color: '#0f766e',
+  clinic_name: 'CPR Med',
+  legal_name: 'CPR Med Clinic',
+  short_code: 'CPRMED',
+  address: 'CPR Medical Clinic & Laboratory Bulacao, Cebu City',
+  contact_number: '+639623093577',
+  email: 'cprmedicalclinic@gmail.com',
+  website: 'https://cprmedph.com',
+  primary_color: '#7dd453',
+  accent_color: '#34b2f9',
   booking_lead_days: 30,
   booking_cancellation_hours: 12,
   appointment_slot_minutes: 30,
@@ -40,7 +40,8 @@ const defaultClinicSettingsInsert = {
     { day: 'Sunday', open: '00:00', close: '00:00', enabled: false },
   ],
   system_enabled: true,
-  system_message: 'Contact your System Administrator to continue using the System',
+  system_message: 'The system is currently undergoing scheduled maintenance. Please check back later.',
+  system_status_type: 'maintenance',
   enabled_modules: defaultEnabledModules,
 };
 
@@ -179,6 +180,7 @@ Deno.serve(async (request) => {
       .update({
         system_enabled: body.systemEnabled,
         system_message: body.systemMessage.trim(),
+        system_status_type: body.systemStatusType || 'maintenance',
         enabled_modules: enabledModules,
       })
       .eq('id', currentSettings.id)

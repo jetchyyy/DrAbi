@@ -14,7 +14,7 @@ import { Link } from "react-router-dom";
 
 import { Badge } from "../../components/ui/badge";
 import { Card, CardTitle } from "../../components/ui/card";
-import { formatDateLabel, formatDateTimeLabel, formatTimeLabel } from "../../lib/utils";
+import { formatDateLabel, formatTimeLabel } from "../../lib/utils";
 import type { Appointment } from "../../types/domain";
 import { useAuth } from "../auth/auth-context";
 import { isTeleconsultJoinableStatus } from "../teleconsult/teleconsult-data";

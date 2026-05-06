@@ -1844,6 +1844,7 @@ function mapService(row: ServiceRow): Service {
 }
 
 function mapClinicSettings(row: ClinicSettingsRow): ClinicSettings {
+  const rawRow = row as ClinicSettingsRow & { system_status_type?: string };
   return {
     id: row.id,
     clinicName: row.clinic_name,
@@ -1861,6 +1862,7 @@ function mapClinicSettings(row: ClinicSettingsRow): ClinicSettings {
     appointmentSlotMinutes: row.appointment_slot_minutes,
     systemEnabled: row.system_enabled,
     systemMessage: row.system_message,
+    systemStatusType: (rawRow.system_status_type === 'restricted' ? 'restricted' : 'maintenance') as 'maintenance' | 'restricted',
     enabledModules: normalizeEnabledModules(row.enabled_modules),
     operatingHours: Array.isArray(row.operating_hours)
       ? (row.operating_hours as ClinicSettings["operatingHours"])
@@ -1936,6 +1938,8 @@ export async function updateClinicSettingsLiveOrDemo(
     payload.enabled_modules = input.enabledModules;
   if (input.operatingHours !== undefined)
     payload.operating_hours = input.operatingHours;
+  if (input.systemStatusType !== undefined)
+    (payload as Record<string, unknown>).system_status_type = input.systemStatusType;
 
   const { data, error } = await client
     .from("clinic_settings")
@@ -3988,6 +3992,7 @@ export async function updateSystemControlLiveOrDemo(
   input: OdcCredentialInput & {
     systemEnabled: boolean;
     systemMessage: string;
+    systemStatusType: ClinicSettings["systemStatusType"];
     enabledModules: ClinicSettings["enabledModules"];
   },
 ) {
@@ -4002,6 +4007,7 @@ export async function updateSystemControlLiveOrDemo(
     return updateClinicSettings({
       systemEnabled: input.systemEnabled,
       systemMessage: input.systemMessage,
+      systemStatusType: input.systemStatusType,
       enabledModules: input.enabledModules,
     });
   }
@@ -4011,6 +4017,7 @@ export async function updateSystemControlLiveOrDemo(
     ...normalized,
     systemEnabled: input.systemEnabled,
     systemMessage: input.systemMessage,
+    systemStatusType: input.systemStatusType,
     enabledModules: input.enabledModules,
   });
 

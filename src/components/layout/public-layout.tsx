@@ -64,14 +64,14 @@ export function PublicLayout() {
       style={
         isPortalHome
           ? {
-              backgroundColor: '#ffffff',
-            }
+            backgroundColor: '#ffffff',
+          }
           : {
-              backgroundColor: '#f9f7f4',
-              backgroundImage:
-                'radial-gradient(circle, #d4c9be 1.5px, transparent 1.5px)',
-              backgroundSize: '28px 28px',
-            }
+            backgroundColor: '#f9f7f4',
+            backgroundImage:
+              'radial-gradient(circle, #d4c9be 1.5px, transparent 1.5px)',
+            backgroundSize: '28px 28px',
+          }
       }
     >
       <header
@@ -95,236 +95,230 @@ export function PublicLayout() {
                 : 'mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 lg:px-8 lg:py-5'
             }
           >
-          <Link
-            className="flex min-w-0 shrink-0 items-center transition-opacity hover:opacity-90"
-            to="/portal"
-          >
-            <img
-              src="/logo.png"
-              alt=""
-              width={248}
-              height={60}
-              decoding="async"
-              className="h-14 w-auto max-h-14 max-w-[220px] object-contain object-left sm:h-16 sm:max-w-[248px]"
-            />
-            <span className="sr-only">
-              {clinic.clinicName} patient portal — home
-            </span>
-          </Link>
+            <Link
+              className="flex min-w-0 shrink-0 items-center transition-opacity hover:opacity-90"
+              to="/portal"
+            >
+              <img
+                src="/logo.png"
+                alt=""
+                width={248}
+                height={60}
+                decoding="async"
+                className="h-14 w-auto max-h-14 max-w-[220px] object-contain object-left sm:h-16 sm:max-w-[248px]"
+              />
+              <span className="sr-only">
+                {clinic.clinicName} patient portal — home
+              </span>
+            </Link>
 
-          <nav className="hidden min-w-0 flex-1 items-center justify-center gap-5 lg:flex xl:gap-7">
-            {visiblePortalNavigation.map((item, navIndex) => (
-              <NavLink
-                key={`${item.to}::${item.label}::${navIndex}`}
-                className={({ isActive }) =>
-                  `text-sm font-bold tracking-widest transition-all uppercase border-b-2 py-1 ${
-                    isActive
+            <nav className="hidden min-w-0 flex-1 items-center justify-center gap-5 lg:flex xl:gap-7">
+              {visiblePortalNavigation.map((item, navIndex) => (
+                <NavLink
+                  key={`${item.to}::${item.label}::${navIndex}`}
+                  className={({ isActive }) =>
+                    `text-sm font-bold tracking-widest transition-all uppercase border-b-2 py-1 ${isActive
                       ? "border-[var(--color-primary)] text-slate-950"
                       : "border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300"
-                  }`
-                }
-                to={item.to}
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          <div className="hidden items-center gap-2 lg:flex">
-            {isAuthenticated ? (
-              <div className="relative" ref={desktopMenuRef}>
-                <button
-                  className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold transition ${
-                    isPortalHome
-                      ? 'rounded-full border border-white/50 bg-white/25 text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-md hover:bg-white/40'
-                      : 'rounded-full border border-slate-200/90 bg-white text-slate-900 shadow-sm hover:bg-slate-50'
-                  }`}
-                  onClick={() => setMenuOpen((value) => !value)}
-                  type="button"
+                    }`
+                  }
+                  to={item.to}
                 >
-                  <UserRound className="size-4 text-[var(--color-primary)]" />
-                  <span className="hidden md:inline">
-                    {profile?.fullName ?? profile?.email ?? "Patient"}
-                  </span>
-                  <ChevronDown className="size-4 text-slate-500" />
-                </button>
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
 
-                {menuOpen ? (
-                  <div
-                    className={`absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden shadow-lg ${
-                      isPortalHome
-                        ? 'rounded-2xl border border-white/50 bg-white/75 backdrop-blur-xl backdrop-saturate-150'
-                        : 'rounded-2xl border border-slate-200 bg-white'
-                    }`}
+            <div className="hidden items-center gap-2 lg:flex">
+              {isAuthenticated ? (
+                <div className="relative" ref={desktopMenuRef}>
+                  <button
+                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold transition ${isPortalHome
+                        ? 'rounded-full border border-white/50 bg-white/25 text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-md hover:bg-white/40'
+                        : 'rounded-full border border-slate-200/90 bg-white text-slate-900 shadow-sm hover:bg-slate-50'
+                      }`}
+                    onClick={() => setMenuOpen((value) => !value)}
+                    type="button"
                   >
-                    <div className="border-b border-slate-100 px-4 py-3">
-                      <p className="text-xs font-extrabold uppercase tracking-widest text-slate-400">
-                        Patient account
-                      </p>
-                      <p className="mt-1 text-sm font-bold text-slate-950">
-                        {profile?.fullName ?? "Patient"}
-                      </p>
-                      <p className="text-xs text-slate-500">{profile?.email}</p>
-                    </div>
-                    <div className="p-2">
-                      <div className="border-b border-slate-100 pb-2 md:hidden">
-                        {visiblePortalNavigation.map((item, navIndex) => (
-                          <NavLink
-                            key={`${item.to}::${item.label}::${navIndex}`}
-                            className={({ isActive }) =>
-                              `flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold transition ${
-                                isActive
+                    <UserRound className="size-4 text-[var(--color-primary)]" />
+                    <span className="hidden md:inline">
+                      {profile?.fullName ?? profile?.email ?? "Patient"}
+                    </span>
+                    <ChevronDown className="size-4 text-slate-500" />
+                  </button>
+
+                  {menuOpen ? (
+                    <div
+                      className={`absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden shadow-lg ${isPortalHome
+                          ? 'rounded-2xl border border-white/50 bg-white/75 backdrop-blur-xl backdrop-saturate-150'
+                          : 'rounded-2xl border border-slate-200 bg-white'
+                        }`}
+                    >
+                      <div className="border-b border-slate-100 px-4 py-3">
+                        <p className="text-xs font-extrabold uppercase tracking-widest text-slate-400">
+                          Patient account
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-slate-950">
+                          {profile?.fullName ?? "Patient"}
+                        </p>
+                        <p className="text-xs text-slate-500">{profile?.email}</p>
+                      </div>
+                      <div className="p-2">
+                        <div className="border-b border-slate-100 pb-2 md:hidden">
+                          {visiblePortalNavigation.map((item, navIndex) => (
+                            <NavLink
+                              key={`${item.to}::${item.label}::${navIndex}`}
+                              className={({ isActive }) =>
+                                `flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold transition ${isActive
                                   ? "bg-emerald-50 text-slate-900"
                                   : "text-slate-700 hover:bg-slate-50 hover:text-slate-950"
-                              }`
-                            }
-                            onClick={() => setMenuOpen(false)}
-                            to={item.to}
-                          >
-                            {item.label}
-                          </NavLink>
-                        ))}
+                                }`
+                              }
+                              onClick={() => setMenuOpen(false)}
+                              to={item.to}
+                            >
+                              {item.label}
+                            </NavLink>
+                          ))}
+                        </div>
+                        <Link
+                          className="flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950"
+                          onClick={() => setMenuOpen(false)}
+                          to="/portal/profile"
+                        >
+                          <UserRound className="size-4 text-[var(--color-primary)]" />
+                          User profile
+                        </Link>
+                        <button
+                          className="flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            void signOut();
+                          }}
+                          type="button"
+                        >
+                          <LogOut className="size-4 text-[var(--color-primary)]" />
+                          Log out
+                        </button>
                       </div>
-                      <Link
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950"
-                        onClick={() => setMenuOpen(false)}
-                        to="/portal/profile"
-                      >
-                        <UserRound className="size-4 text-[var(--color-primary)]" />
-                        User profile
-                      </Link>
-                      <button
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          void signOut();
-                        }}
-                        type="button"
-                      >
-                        <LogOut className="size-4 text-[var(--color-primary)]" />
-                        Log out
-                      </button>
                     </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <>
-                <Link
-                  className={
-                    isPortalHome
-                      ? "inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-slate-900 shadow-sm transition hover:bg-slate-50"
-                      : "inline-flex items-center justify-center rounded-none bg-white px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-slate-900 ring-1 ring-slate-200 shadow-sm transition hover:bg-slate-50"
-                  }
-                  to="/login"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-white shadow-sm shadow-green-900/10 transition hover:brightness-95 ${
-                    isPortalHome ? 'rounded-full bg-[var(--color-primary)]' : 'rounded-none bg-[var(--color-primary)]'
-                  }`}
-                  to="/portal/register"
-                >
-                  Register
-                  <ArrowRight className="size-4" />
-                </Link>
-              </>
-            )}
-          </div>
-
-          <div className="relative lg:hidden" ref={mobileMenuRef}>
-            <button
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-sm transition hover:bg-slate-50"
-              onClick={() => setMenuOpen((value) => !value)}
-              type="button"
-              aria-label={menuOpen ? "Close menu" : "Open menu"}
-              aria-expanded={menuOpen}
-            >
-              {menuOpen ? (
-                <X className="size-5 text-[var(--color-primary)]" />
-              ) : (
-                <Menu className="size-5 text-[var(--color-primary)]" />
-              )}
-            </button>
-
-            {menuOpen ? (
-              <div className="absolute right-0 top-full z-50 mt-3 w-[min(21rem,calc(100vw-2.5rem))] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
-                <div className="border-b border-slate-100 px-4 py-3">
-                  <p className="text-xs font-extrabold uppercase tracking-widest text-slate-400">
-                    Patient portal
-                  </p>
-                  <p className="mt-1 text-sm font-bold text-slate-950">
-                    {profile?.fullName ?? clinic.clinicName}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Navigate services and account actions
-                  </p>
+                  ) : null}
                 </div>
-                <div className="p-2">
-                  {visiblePortalNavigation.map((item, navIndex) => (
-                    <NavLink
-                      key={`${item.to}::${item.label}::${navIndex}`}
-                      className={({ isActive }) =>
-                        `flex w-full items-center rounded-2xl px-3 py-3 text-sm font-semibold transition ${
-                          isActive
+              ) : (
+                <>
+                  <Link
+                    className={
+                      isPortalHome
+                        ? "inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-slate-900 shadow-sm transition hover:bg-slate-50"
+                        : "inline-flex items-center justify-center rounded-none bg-white px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-slate-900 ring-1 ring-slate-200 shadow-sm transition hover:bg-slate-50"
+                    }
+                    to="/login"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-white shadow-sm shadow-green-900/10 transition hover:brightness-95 ${isPortalHome ? 'rounded-full bg-[var(--color-primary)]' : 'rounded-none bg-[var(--color-primary)]'
+                      }`}
+                    to="/portal/register"
+                  >
+                    Register
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </>
+              )}
+            </div>
+
+            <div className="relative lg:hidden" ref={mobileMenuRef}>
+              <button
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-sm transition hover:bg-slate-50"
+                onClick={() => setMenuOpen((value) => !value)}
+                type="button"
+                aria-label={menuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={menuOpen}
+              >
+                {menuOpen ? (
+                  <X className="size-5 text-[var(--color-primary)]" />
+                ) : (
+                  <Menu className="size-5 text-[var(--color-primary)]" />
+                )}
+              </button>
+
+              {menuOpen ? (
+                <div className="absolute right-0 top-full z-50 mt-3 w-[min(21rem,calc(100vw-2.5rem))] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
+                  <div className="border-b border-slate-100 px-4 py-3">
+                    <p className="text-xs font-extrabold uppercase tracking-widest text-slate-400">
+                      Patient portal
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-slate-950">
+                      {profile?.fullName ?? clinic.clinicName}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Navigate services and account actions
+                    </p>
+                  </div>
+                  <div className="p-2">
+                    {visiblePortalNavigation.map((item, navIndex) => (
+                      <NavLink
+                        key={`${item.to}::${item.label}::${navIndex}`}
+                        className={({ isActive }) =>
+                          `flex w-full items-center rounded-2xl px-3 py-3 text-sm font-semibold transition ${isActive
                             ? "bg-emerald-50 text-slate-900"
                             : "text-slate-700 hover:bg-slate-50 hover:text-slate-950"
-                        }`
-                      }
-                      onClick={() => setMenuOpen(false)}
-                      to={item.to}
-                    >
-                      {item.label}
-                    </NavLink>
-                  ))}
+                          }`
+                        }
+                        onClick={() => setMenuOpen(false)}
+                        to={item.to}
+                      >
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                  <div className="border-t border-slate-100 p-3">
+                    {isAuthenticated ? (
+                      <>
+                        <Link
+                          className="flex w-full items-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950"
+                          onClick={() => setMenuOpen(false)}
+                          to="/portal/profile"
+                        >
+                          <UserRound className="size-4 text-[var(--color-primary)]" />
+                          User profile
+                        </Link>
+                        <button
+                          className="mt-1 flex w-full items-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            void signOut();
+                          }}
+                          type="button"
+                        >
+                          <LogOut className="size-4 text-[var(--color-primary)]" />
+                          Log out
+                        </button>
+                      </>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Link
+                          className="inline-flex flex-1 items-center justify-center rounded-full border border-emerald-200/80 bg-white px-4 py-3 text-sm font-semibold uppercase tracking-wide text-slate-900 shadow-sm transition hover:bg-emerald-50/70"
+                          onClick={() => setMenuOpen(false)}
+                          to="/login"
+                        >
+                          Sign in
+                        </Link>
+                        <Link
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-sm shadow-green-900/10 transition hover:brightness-95"
+                          onClick={() => setMenuOpen(false)}
+                          to="/portal/register"
+                        >
+                          Register
+                          <ArrowRight className="size-4" />
+                        </Link>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="border-t border-slate-100 p-3">
-                  {isAuthenticated ? (
-                    <>
-                      <Link
-                        className="flex w-full items-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950"
-                        onClick={() => setMenuOpen(false)}
-                        to="/portal/profile"
-                      >
-                        <UserRound className="size-4 text-[var(--color-primary)]" />
-                        User profile
-                      </Link>
-                      <button
-                        className="mt-1 flex w-full items-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          void signOut();
-                        }}
-                        type="button"
-                      >
-                        <LogOut className="size-4 text-[var(--color-primary)]" />
-                        Log out
-                      </button>
-                    </>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Link
-                        className="inline-flex flex-1 items-center justify-center rounded-full border border-emerald-200/80 bg-white px-4 py-3 text-sm font-semibold uppercase tracking-wide text-slate-900 shadow-sm transition hover:bg-emerald-50/70"
-                        onClick={() => setMenuOpen(false)}
-                        to="/login"
-                      >
-                        Sign in
-                      </Link>
-                      <Link
-                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-sm shadow-green-900/10 transition hover:brightness-95"
-                        onClick={() => setMenuOpen(false)}
-                        to="/portal/register"
-                      >
-                        Register
-                        <ArrowRight className="size-4" />
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </header>
@@ -377,7 +371,7 @@ export function PublicLayout() {
                             {clinic.contactNumber}
                           </a>
                         </p>
-                      : null}
+                        : null}
                       {clinic.email ?
                         <p className="flex items-center justify-end gap-2.5">
                           <Mail aria-hidden className="size-4 shrink-0 text-slate-500" strokeWidth={2} />
@@ -385,10 +379,10 @@ export function PublicLayout() {
                             {clinic.email}
                           </a>
                         </p>
-                      : null}
+                        : null}
                     </div>
                   </div>
-                : null}
+                  : null}
               </div>
             </div>
           </div>
@@ -403,8 +397,7 @@ export function PublicLayout() {
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-x-8 lg:gap-x-10">
               <NavLink
                 className={({ isActive }) =>
-                  `text-sm font-medium transition-colors ${
-                    isActive ? "text-[var(--color-accent)]" : "text-slate-900 hover:text-[var(--color-accent)]"
+                  `text-sm font-medium transition-colors ${isActive ? "text-[var(--color-accent)]" : "text-slate-900 hover:text-[var(--color-accent)]"
                   }`
                 }
                 end
@@ -418,8 +411,7 @@ export function PublicLayout() {
                   <NavLink
                     key={`${item.to}::foot::${navIndex}`}
                     className={({ isActive }) =>
-                      `text-sm font-medium transition-colors ${
-                        isActive ? "text-[var(--color-accent)]" : "text-slate-900 hover:text-[var(--color-accent)]"
+                      `text-sm font-medium transition-colors ${isActive ? "text-[var(--color-accent)]" : "text-slate-900 hover:text-[var(--color-accent)]"
                       }`
                     }
                     to={item.to}
@@ -461,7 +453,15 @@ export function PublicLayout() {
                 &copy; {new Date().getFullYear()} {clinic.clinicName}. All rights reserved.
               </p>
               <p className="text-[0.8125rem] text-slate-500">
-                Powered and Designed by Odyssey Solutions
+                Powered and Designed by{" "}
+                <a
+                  href="https://odysseyph.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:underline"
+                >
+                  OdysseyPH IT Solutions
+                </a>
               </p>
             </div>
           </div>

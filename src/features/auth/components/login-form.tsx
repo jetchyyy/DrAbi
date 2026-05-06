@@ -116,9 +116,7 @@ export function LoginForm({ defaultRedirectTo }: LoginFormProps) {
         </Link>
       </div>
 
-      <p className="text-center text-xs text-slate-400">
-        One sign-in works for patients, specialists, and clinic staff. You&apos;ll be sent to the right portal after login.
-      </p>
+
     </form>
   );
 }
