@@ -39,6 +39,7 @@ import type { InventoryItem } from "../../types/domain";
 const inventorySchema = z.object({
   categoryId: z.string().min(1, "Category is required."),
   supplierId: z.string().min(1, "Supplier is required."),
+  brandName: z.string().max(120, "Brand name is too long."),
   name: z.string().min(2, "Item name must be at least 2 characters."),
   sku: z.string().min(2, "SKU must be at least 2 characters."),
   unit: z.string().min(1, "Unit is required."),
@@ -134,6 +135,7 @@ export function InventoryPage() {
     defaultValues: {
       categoryId: database.inventoryCategories[0]?.id ?? "",
       supplierId: database.suppliers[0]?.id ?? "",
+      brandName: "",
       name: "",
       sku: "",
       unit: "box",
@@ -157,7 +159,7 @@ export function InventoryPage() {
   const filteredItems = useMemo(
     () =>
       items.filter((item) =>
-        `${item.name} ${item.sku} ${item.unit} ${item.qrCode}`
+        `${item.name} ${item.brandName ?? ""} ${item.sku} ${item.unit} ${item.qrCode}`
           .toLowerCase()
           .includes(deferredSearch.toLowerCase()),
       ),
@@ -183,6 +185,7 @@ export function InventoryPage() {
     form.reset({
       categoryId: database.inventoryCategories[0]?.id ?? "",
       supplierId: database.suppliers[0]?.id ?? "",
+      brandName: "",
       name: "",
       sku: "",
       unit: "box",
@@ -204,6 +207,7 @@ export function InventoryPage() {
     form.reset({
       categoryId: item.category_id,
       supplierId: item.supplier_id ?? "",
+      brandName: item.brandName ?? "",
       name: item.name,
       sku: item.sku,
       unit: item.unit,
@@ -477,6 +481,11 @@ export function InventoryPage() {
                                 <p className="font-bold text-sm text-slate-950">
                                   {item.name}
                                 </p>
+                                {item.brandName ? (
+                                  <p className="mt-0.5 text-xs font-medium text-slate-500">
+                                    Brand: {item.brandName}
+                                  </p>
+                                ) : null}
                                 <p className="mt-0.5 text-xs text-slate-500">
                                   {item.sku} - {item.unit}
                                 </p>
@@ -631,6 +640,15 @@ export function InventoryPage() {
                       label="Item name"
                     >
                       <Input {...form.register("name")} />
+                    </FormField>
+                    <FormField
+                      error={form.formState.errors.brandName?.message}
+                      label="Brand name"
+                    >
+                      <Input
+                        placeholder="e.g. Unilab"
+                        {...form.register("brandName")}
+                      />
                     </FormField>
                     <FormField
                       error={form.formState.errors.sku?.message}

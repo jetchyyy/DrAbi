@@ -4244,6 +4244,7 @@ export async function listInventoryItemsLiveOrDemo(): Promise<InventoryItem[]> {
       id: string;
       category_id: string;
       supplier_id: string | null;
+      brand_name: string | null;
       qr_code: string;
       name: string;
       sku: string;
@@ -4259,6 +4260,7 @@ export async function listInventoryItemsLiveOrDemo(): Promise<InventoryItem[]> {
     id: row.id,
     category_id: row.category_id,
     supplier_id: row.supplier_id,
+    brandName: row.brand_name,
     qrCode: row.qr_code,
     name: row.name,
     sku: row.sku,
@@ -4275,6 +4277,7 @@ export async function listInventoryItemsLiveOrDemo(): Promise<InventoryItem[]> {
 export async function createInventoryItem(values: {
   categoryId: string;
   supplierId: string;
+  brandName?: string;
   name: string;
   sku: string;
   unit: string;
@@ -4289,6 +4292,7 @@ export async function createInventoryItem(values: {
     return createInventoryItemLocal({
       category_id: values.categoryId,
       supplier_id: values.supplierId || null,
+      brandName: values.brandName,
       name: values.name,
       sku: values.sku,
       unit: values.unit,
@@ -4305,6 +4309,7 @@ export async function createInventoryItem(values: {
     .insert({
       category_id: values.categoryId,
       supplier_id: values.supplierId || null,
+      brand_name: values.brandName?.trim() || null,
       name: values.name,
       sku: values.sku,
       unit: values.unit,
@@ -4328,6 +4333,7 @@ export async function updateInventoryItems(
   values: {
     categoryId: string;
     supplierId: string;
+    brandName?: string;
     name: string;
     sku: string;
     unit: string;
@@ -4342,6 +4348,7 @@ export async function updateInventoryItems(
     return updateInventoryItemRecord(itemId, {
       category_id: values.categoryId,
       supplier_id: values.supplierId || null,
+      brandName: values.brandName,
       name: values.name,
       sku: values.sku,
       unit: values.unit,
@@ -4358,6 +4365,7 @@ export async function updateInventoryItems(
     .update({
       category_id: values.categoryId,
       supplier_id: values.supplierId || null,
+      brand_name: values.brandName?.trim() || null,
       name: values.name,
       sku: values.sku,
       unit: values.unit,
@@ -4417,6 +4425,7 @@ export async function getInventoryItems(
       id: string;
       category_id: string;
       supplier_id: string | null;
+      brand_name: string | null;
       qr_code: string;
       name: string;
       sku: string;
@@ -4432,6 +4441,7 @@ export async function getInventoryItems(
     id: row.id,
     category_id: row.category_id,
     supplier_id: row.supplier_id,
+    brandName: row.brand_name,
     qrCode: row.qr_code,
     name: row.name,
     sku: row.sku,

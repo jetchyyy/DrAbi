@@ -1514,6 +1514,7 @@ export function createInventoryItem(
   return updateDatabase((draft) => {
     draft.inventoryItems.unshift({
       ...input,
+      brandName: input.brandName?.trim() || null,
       qrCode: input.qrCode || generateInventoryQrCode(),
       id: generateId("item"),
       createdAt: timestamp,
@@ -1537,6 +1538,7 @@ export function updateInventoryItemRecord(
 
       Object.assign(item, {
         ...input,
+        brandName: input.brandName?.trim() || null,
         qrCode: input.qrCode || item.qrCode,
         updatedAt: new Date().toISOString(),
       });

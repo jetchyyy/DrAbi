@@ -673,6 +673,7 @@ export interface Database {
           id: string;
           category_id: string;
           supplier_id: string | null;
+          brand_name: string | null;
           qr_code: string;
           name: string;
           sku: string;
