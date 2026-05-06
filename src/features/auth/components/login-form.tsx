@@ -52,34 +52,34 @@ export function LoginForm({ defaultRedirectTo }: LoginFormProps) {
   });
 
   return (
-    <form className="space-y-5" onSubmit={onSubmit}>
+    <form className="space-y-6" onSubmit={onSubmit}>
       {!isSupabaseConfigured ? (
-        <div className="border border-orange-200 bg-orange-50 px-4 py-3">
-          <p className="mb-1 text-[11px] font-extrabold uppercase tracking-widest text-orange-600">Local Mode</p>
-          <p className="text-xs leading-relaxed text-orange-800">
+        <div className="rounded-2xl border border-emerald-200/75 bg-emerald-50/80 px-4 py-3.5 shadow-sm shadow-emerald-900/[0.04]">
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-800">Local mode</p>
+          <p className="text-xs leading-relaxed text-emerald-900/90">
             The local database starts empty. Sign in with any email and password to begin adding records manually.
           </p>
         </div>
       ) : null}
 
-      <div className="space-y-1.5">
-        <label className="text-xs font-extrabold uppercase tracking-widest text-slate-500" htmlFor="login-email">
-          Email Address
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-slate-700" htmlFor="login-email">
+          Email address
         </label>
-        <Input id="login-email" placeholder="you@odysseyclinic.test" type="email" {...form.register('email')} />
+        <Input id="login-email" placeholder="you@yourclinic.com" type="email" className="border-slate-200/90 py-3" {...form.register('email')} />
         {form.formState.errors.email?.message ? <p className="text-xs font-medium text-rose-600">{form.formState.errors.email.message}</p> : null}
       </div>
 
-      <div className="space-y-1.5">
-        <label className="text-xs font-extrabold uppercase tracking-widest text-slate-500" htmlFor="login-password">
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-slate-700" htmlFor="login-password">
           Password
         </label>
         <div className="relative">
           <Input
             id="login-password"
-            placeholder="********"
+            placeholder="••••••••"
             type={showPassword ? 'text' : 'password'}
-            className="pr-10"
+            className="border-slate-200/90 py-3 pr-10"
             {...form.register('password')}
           />
           <button
@@ -94,29 +94,38 @@ export function LoginForm({ defaultRedirectTo }: LoginFormProps) {
         {form.formState.errors.password?.message ? <p className="text-xs font-medium text-rose-600">{form.formState.errors.password.message}</p> : null}
       </div>
 
+      <div className="flex justify-end">
+        <Link
+          className="text-[13px] font-medium text-slate-500 underline-offset-[3px] transition-colors hover:text-slate-700 hover:underline"
+          to="/forgot-password"
+        >
+          Forgot password?
+        </Link>
+      </div>
+
       <Button
-        className="w-full gap-2 rounded-xl bg-orange-600 py-5 text-sm font-extrabold uppercase tracking-widest transition-colors hover:bg-orange-700"
+        variant="primary"
+        className="w-full gap-2 rounded-full py-3.5 text-sm font-semibold tracking-tight shadow-lg shadow-green-900/12 ring-1 ring-black/[0.04] transition-[filter] hover:brightness-[0.98] disabled:brightness-100"
         disabled={submitting}
         type="submit"
       >
         {submitting ? (
           <Loader2 className="size-4 animate-spin" />
         ) : (
-          <LogIn className="size-4" />
+          <LogIn className="size-4" strokeWidth={2.25} />
         )}
-        {submitting ? 'Signing in...' : 'Sign In'}
+        {submitting ? 'Signing in…' : 'Sign in'}
       </Button>
 
-      <div className="flex items-center justify-between pt-1">
-        <Link className="text-xs font-bold uppercase tracking-widest text-orange-600 hover:underline" to="/forgot-password">
-          Forgot password?
+      <p className="text-center text-[11px] leading-relaxed text-slate-400 pt-0.5">
+        Need portal access?{' '}
+        <Link
+          className="font-medium text-slate-500 underline-offset-[3px] transition-colors hover:text-slate-800 hover:underline"
+          to="/portal/register"
+        >
+          Patient registration
         </Link>
-        <Link className="text-xs font-bold uppercase tracking-widest text-slate-500 transition-colors hover:text-slate-800" to="/portal/register">
-          Create account
-        </Link>
-      </div>
-
-
+      </p>
     </form>
   );
 }
