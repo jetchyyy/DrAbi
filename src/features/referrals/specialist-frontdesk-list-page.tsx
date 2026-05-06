@@ -221,16 +221,21 @@ function EditReferralModal({
 
   async function handleSave() {
     if (!canSave) return;
+    const nextAppointmentDate = showRescheduleReason
+      ? appointmentDate.trim() || null
+      : referral.appointmentDate;
+    const nextAppointmentTime = showRescheduleReason
+      ? appointmentTime.trim() || null
+      : referral.appointmentTime;
+
     await onSave(referral.id, {
       status,
       cancelledReason: showCancelReason ? cancelledReason.trim() || null : null,
       rescheduledReason: showRescheduleReason
         ? rescheduledReason.trim() || null
         : null,
-      appointmentDate:
-        status === "rescheduled" ? appointmentDate.trim() || null : null,
-      appointmentTime:
-        status === "rescheduled" ? appointmentTime.trim() || null : null,
+      appointmentDate: nextAppointmentDate,
+      appointmentTime: nextAppointmentTime,
       reason,
       clinicalSummary,
       referralNotes,
