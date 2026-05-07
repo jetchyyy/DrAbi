@@ -142,13 +142,6 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-function toDateTimeLocalValue(value: string) {
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset();
-  const localDate = new Date(date.getTime() - offset * 60_000);
-  return localDate.toISOString().slice(0, 16);
-}
-
 export function AppointmentsPage() {
   const { data: clinicSettings } = useClinicSettingsData();
   const { data: appointments = [] } = useAppointments();

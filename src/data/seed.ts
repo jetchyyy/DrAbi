@@ -30,6 +30,7 @@ export function createSeedDatabase(): AppDatabase {
     labResults: [],
     labBookingRequests: [],
     fileUploads: [],
+    labRequestDocuments: [],
     auditLogs: [],
   };
 }
