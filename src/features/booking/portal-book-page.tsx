@@ -46,7 +46,10 @@ const bookingSchema = z.object({
   intakeNotes: z
     .string()
     .trim()
-    .min(10, "Please provide at least 10 characters for your reason or intake notes.")
+    .min(
+      10,
+      "Please provide at least 10 characters for your reason or intake notes.",
+    )
     .max(500, "Reason or intake notes must not exceed 500 characters."),
 });
 

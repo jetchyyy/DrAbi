@@ -107,15 +107,20 @@ function getManilaTimeValue(date = new Date()) {
   return formatter.format(date);
 }
 
-function buildPatientVitalsSnapshot(patient: {
-  temperature?: string;
-  bloodPressure?: string;
-  heartRate?: string;
-  respiratoryRate?: string;
-  weight?: string;
-  height?: string;
-  vitalsRecordedAt?: string | null;
-} | null | undefined) {
+function buildPatientVitalsSnapshot(
+  patient:
+    | {
+        temperature?: string;
+        bloodPressure?: string;
+        heartRate?: string;
+        respiratoryRate?: string;
+        weight?: string;
+        height?: string;
+        vitalsRecordedAt?: string | null;
+      }
+    | null
+    | undefined,
+) {
   if (!patient) {
     return "";
   }
@@ -140,7 +145,9 @@ function buildPatientVitalsSnapshot(patient: {
     lines.push(`Height: ${patient.height} cm`);
   }
   if (patient.vitalsRecordedAt) {
-    lines.push(`Recorded at intake: ${formatDateTimeLabel(patient.vitalsRecordedAt)}`);
+    lines.push(
+      `Recorded at intake: ${formatDateTimeLabel(patient.vitalsRecordedAt)}`,
+    );
   }
 
   return lines.join("\n");
@@ -875,7 +882,12 @@ export function ConsultationEntryPage() {
       </Card>
 
       {/* Patient Vitals Card */}
-        {(patient?.temperature || patient?.bloodPressure || patient?.heartRate || patient?.respiratoryRate || patient?.weight || patient?.height) && (
+      {(patient?.temperature ||
+        patient?.bloodPressure ||
+        patient?.heartRate ||
+        patient?.respiratoryRate ||
+        patient?.weight ||
+        patient?.height) && (
         <Card>
           <div className="space-y-4">
             <div>
@@ -889,38 +901,58 @@ export function ConsultationEntryPage() {
             <div className="grid gap-4 sm:grid-cols-3">
               {patient.temperature && (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs font-medium text-slate-600">Temperature</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">{patient.temperature}°C</p>
+                  <p className="text-xs font-medium text-slate-600">
+                    Temperature
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {patient.temperature}°C
+                  </p>
                 </div>
               )}
               {patient.bloodPressure && (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs font-medium text-slate-600">Blood Pressure</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">{patient.bloodPressure} mmHg</p>
+                  <p className="text-xs font-medium text-slate-600">
+                    Blood Pressure
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {patient.bloodPressure} mmHg
+                  </p>
                 </div>
               )}
               {patient.heartRate && (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs font-medium text-slate-600">Heart Rate</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">{patient.heartRate} bpm</p>
+                  <p className="text-xs font-medium text-slate-600">
+                    Heart Rate
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {patient.heartRate} bpm
+                  </p>
                 </div>
               )}
               {patient.respiratoryRate && (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs font-medium text-slate-600">Respiratory Rate</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">{patient.respiratoryRate} breaths/min</p>
+                  <p className="text-xs font-medium text-slate-600">
+                    Respiratory Rate
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {patient.respiratoryRate} breaths/min
+                  </p>
                 </div>
               )}
               {patient.weight && (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                   <p className="text-xs font-medium text-slate-600">Weight</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">{patient.weight} kg</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {patient.weight} kg
+                  </p>
                 </div>
               )}
               {patient.height && (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                   <p className="text-xs font-medium text-slate-600">Height</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">{patient.height} cm</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {patient.height} cm
+                  </p>
                 </div>
               )}
             </div>
@@ -1101,8 +1133,8 @@ export function ConsultationEntryPage() {
                 <div className="flex gap-2">
                   <AlertCircle className="h-5 w-5 flex-shrink-0 text-amber-600" />
                   <p className="text-sm text-amber-700">
-                    At least one finding (vitals, medications, or lab results)
-                    is required.
+                    At least one finding (medications, or lab results) is
+                    required.
                   </p>
                 </div>
               </div>

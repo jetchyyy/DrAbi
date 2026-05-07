@@ -1,5 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarCheck2, Search, Loader2, AlertCircle, Activity, X } from "lucide-react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  CalendarCheck2,
+  Search,
+  Loader2,
+  AlertCircle,
+  Activity,
+  X,
+} from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { updatePatientLiveOrDemo } from "../../lib/supabase-clinic";
 import { usePatientDetail } from "../patients/hooks/use-patients";
@@ -336,230 +349,221 @@ function EditModal({ booking, onClose }: EditModalProps) {
         onClick={onClose}
       />
       <div className="relative z-10 w-full max-w-lg border border-slate-200 bg-white shadow-2xl mx-4 max-h-[85vh] sm:max-h-[80vh] flex flex-col">
-        <div className="relative z-10 w-full max-w-lg border border-slate-200 bg-white shadow-2xl">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-4 bg-orange-600 px-4 py-4 sm:px-6">
-            <div className="min-w-0">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-white">
-                Edit Booking
-              </h2>
-              <p className="mt-0.5 text-sm font-medium text-white/90">
-                Update the booking status, timing, and notes.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex shrink-0 items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 bg-orange-600 px-4 py-4 sm:px-6">
+          <div className="min-w-0">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-white">
+              Edit Booking
+            </h2>
+            <p className="mt-0.5 text-sm font-medium text-white/90">
+              Update the booking status, timing, and notes.
+            </p>
           </div>
-
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-col min-h-0 flex-1"
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex shrink-0 items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
           >
-            <div className="px-4 py-5 sm:px-6 overflow-y-auto flex-1">
-              <div className="space-y-5">
-                {/* Read-only summary */}
-                <div className="grid grid-cols-1 gap-3 bg-slate-50 p-4 sm:grid-cols-2 sm:gap-4">
-                  <Field label="Patient">{booking.patientFullName}</Field>
-                  <Field label="Doctor / Service">
-                    {booking.doctorFullName ?? booking.serviceName}
-                  </Field>
-                  <Field label="Current Date">
-                    {formatDate(booking.preferredDate)}
-                  </Field>
-                  <Field label="Current Time">
-                    {formatTime(booking.preferredTime)}
-                  </Field>
-                  <Field label="Fee Type">
-                    {feeTypeLabel(booking.feeType)}
-                  </Field>
-                  <Field label="Fee Amount">
-                    ₱{booking.feeAmount.toLocaleString()}
-                  </Field>
-                </div>
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
 
-                {/* Status selector */}
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+          <div className="px-4 py-5 sm:px-6 overflow-y-auto flex-1">
+            <div className="space-y-5">
+              {/* Read-only summary */}
+              <div className="grid grid-cols-1 gap-3 bg-slate-50 p-4 sm:grid-cols-2 sm:gap-4">
+                <Field label="Patient">{booking.patientFullName}</Field>
+                <Field label="Doctor / Service">
+                  {booking.doctorFullName ?? booking.serviceName}
+                </Field>
+                <Field label="Current Date">
+                  {formatDate(booking.preferredDate)}
+                </Field>
+                <Field label="Current Time">
+                  {formatTime(booking.preferredTime)}
+                </Field>
+                <Field label="Fee Type">{feeTypeLabel(booking.feeType)}</Field>
+                <Field label="Fee Amount">
+                  ₱{booking.feeAmount.toLocaleString()}
+                </Field>
+              </div>
+
+              {/* Status selector */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  Update Status
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => {
+                    setStatus(e.target.value);
+                    setError(null);
+                  }}
+                  className="w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="rescheduled">Rescheduled</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              {/* Cancelled reason */}
+              {status === "cancelled" && (
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">
-                    Update Status
+                    Cancellation Reason <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={status}
-                    onChange={(e) => {
-                      setStatus(e.target.value);
-                      setError(null);
-                    }}
-                    className="w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="rescheduled">Rescheduled</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
+                  <textarea
+                    required
+                    rows={3}
+                    value={cancelledReason}
+                    onChange={(e) => setCancelledReason(e.target.value)}
+                    placeholder="Enter reason for cancellation…"
+                    className="w-full resize-none border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                  />
                 </div>
+              )}
 
-                {/* Cancelled reason */}
-                {status === "cancelled" && (
+              {/* Reschedule fields */}
+              {status === "rescheduled" && (
+                <>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600">
-                      Cancellation Reason{" "}
-                      <span className="text-red-500">*</span>
+                      Reschedule Reason <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       required
-                      rows={3}
-                      value={cancelledReason}
-                      onChange={(e) => setCancelledReason(e.target.value)}
-                      placeholder="Enter reason for cancellation…"
+                      rows={2}
+                      value={rescheduledReason}
+                      onChange={(e) => setRescheduledReason(e.target.value)}
+                      placeholder="Enter reason for rescheduling…"
                       className="w-full resize-none border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
                     />
                   </div>
-                )}
-
-                {/* Reschedule fields */}
-                {status === "rescheduled" && (
-                  <>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <label className="mb-1 block text-xs font-medium text-gray-600">
-                        Reschedule Reason{" "}
-                        <span className="text-red-500">*</span>
+                        New Date <span className="text-red-500">*</span>
                       </label>
-                      <textarea
+                      <input
                         required
-                        rows={2}
-                        value={rescheduledReason}
-                        onChange={(e) => setRescheduledReason(e.target.value)}
-                        placeholder="Enter reason for rescheduling…"
-                        className="w-full resize-none border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                        type="date"
+                        value={newDate}
+                        min={todayDateKey}
+                        onChange={(e) => {
+                          setNewDate(e.target.value);
+                          setNewTime("");
+                        }}
+                        className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
                       />
                     </div>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-600">
-                          New Date <span className="text-red-500">*</span>
-                        </label>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        New Time <span className="text-red-500">*</span>
+                      </label>
+                      {booking.doctorId && availableSlots.length > 0 ? (
+                        <select
+                          required
+                          value={newTime}
+                          onChange={(e) => setNewTime(e.target.value)}
+                          className="w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                        >
+                          <option value="">Select time</option>
+                          {availableSlots.map((slot) => (
+                            <option key={slot} value={slot}>
+                              {formatTime(slot)}
+                            </option>
+                          ))}
+                        </select>
+                      ) : booking.doctorId &&
+                        newDate &&
+                        isRescheduleDateInPast ? (
+                        <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-700">
+                          Selected date is already in the past.
+                        </div>
+                      ) : booking.doctorId &&
+                        newDate &&
+                        availableSlots.length === 0 ? (
+                        <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-700">
+                          No available slots on{" "}
+                          {DAY_NAMES[selectedDayOfWeek] ?? "this day"}.
+                        </div>
+                      ) : (
                         <input
                           required
-                          type="date"
-                          value={newDate}
-                          min={todayDateKey}
-                          onChange={(e) => {
-                            setNewDate(e.target.value);
-                            setNewTime("");
-                          }}
+                          type="time"
+                          value={newTime}
+                          min={
+                            isRescheduleForToday
+                              ? currentTimeInputValue
+                              : undefined
+                          }
+                          onChange={(e) => setNewTime(e.target.value)}
                           className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
                         />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-600">
-                          New Time <span className="text-red-500">*</span>
-                        </label>
-                        {booking.doctorId && availableSlots.length > 0 ? (
-                          <select
-                            required
-                            value={newTime}
-                            onChange={(e) => setNewTime(e.target.value)}
-                            className="w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
-                          >
-                            <option value="">Select time</option>
-                            {availableSlots.map((slot) => (
-                              <option key={slot} value={slot}>
-                                {formatTime(slot)}
-                              </option>
-                            ))}
-                          </select>
-                        ) : booking.doctorId &&
-                          newDate &&
-                          isRescheduleDateInPast ? (
-                          <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-700">
-                            Selected date is already in the past.
-                          </div>
-                        ) : booking.doctorId &&
-                          newDate &&
-                          availableSlots.length === 0 ? (
-                          <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-700">
-                            No available slots on{" "}
-                            {DAY_NAMES[selectedDayOfWeek] ?? "this day"}.
-                          </div>
-                        ) : (
-                          <input
-                            required
-                            type="time"
-                            value={newTime}
-                            min={
-                              isRescheduleForToday
-                                ? currentTimeInputValue
-                                : undefined
-                            }
-                            onChange={(e) => setNewTime(e.target.value)}
-                            className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
-                          />
-                        )}
-                      </div>
+                      )}
                     </div>
-                  </>
-                )}
-
-                {/* Intake notes */}
-                {booking.intakeNotes && (
-                  <div>
-                    <p className="mb-1 text-xs font-medium text-gray-600">
-                      Intake Notes
-                    </p>
-                    <p className="bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                      {booking.intakeNotes}
-                    </p>
                   </div>
-                )}
+                </>
+              )}
 
-                {error && (
-                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-                    {error}
-                  </div>
-                )}
-              </div>
-            </div>
+              {/* Intake notes */}
+              {booking.intakeNotes && (
+                <div>
+                  <p className="mb-1 text-xs font-medium text-gray-600">
+                    Intake Notes
+                  </p>
+                  <p className="bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                    {booking.intakeNotes}
+                  </p>
+                </div>
+              )}
 
-            {/* Footer */}
-            <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 sm:w-auto"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={
-                  updateMutation.isPending ||
-                  selectedRescheduleTimeIsBlocked ||
-                  selectedRescheduleTimeIsPast ||
-                  isRescheduleDateInPast
-                }
-                className="inline-flex w-full items-center justify-center gap-2 bg-orange-600 px-4 py-2 text-sm font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-              >
-                {updateMutation.isPending ? "Saving…" : "Save Changes"}
-              </button>
+              {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+                  {error}
+                </div>
+              )}
             </div>
-          </form>
-        </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 sm:w-auto"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={
+                updateMutation.isPending ||
+                selectedRescheduleTimeIsBlocked ||
+                selectedRescheduleTimeIsPast ||
+                isRescheduleDateInPast
+              }
+              className="inline-flex w-full items-center justify-center gap-2 bg-orange-600 px-4 py-2 text-sm font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            >
+              {updateMutation.isPending ? "Saving…" : "Save Changes"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -646,8 +650,9 @@ export function PatientBookingPageList() {
     useState<PatientBookingRow | null>(null);
   const [deletingBooking, setDeletingBooking] =
     useState<PatientBookingRow | null>(null);
-  const [vitalsBooking, setVitalsBooking] =
-    useState<PatientBookingRow | null>(null);
+  const [vitalsBooking, setVitalsBooking] = useState<PatientBookingRow | null>(
+    null,
+  );
   const [currentPage, setCurrentPage] = useState(1);
 
   // Search & filter state
@@ -871,7 +876,12 @@ interface BookingTableRowProps {
   onRecordVitals: () => void;
 }
 
-function BookingTableRow({ booking, onEdit, onDelete, onRecordVitals }: BookingTableRowProps) {
+function BookingTableRow({
+  booking,
+  onEdit,
+  onDelete,
+  onRecordVitals,
+}: BookingTableRowProps) {
   return (
     <tr className="group hover:bg-slate-50 transition-colors">
       {/* Patient */}
@@ -1075,10 +1085,15 @@ function VitalsModal({ booking, onClose }: VitalsModalProps) {
       >
         <div className="flex items-start justify-between gap-4 bg-blue-600 px-4 py-4 sm:px-6">
           <div className="min-w-0">
-            <p className="text-xs font-extrabold uppercase tracking-widest text-blue-100">Patient Booking</p>
-            <p className="mt-0.5 text-sm font-bold text-white">Record Vitals — {booking.patientFullName}</p>
+            <p className="text-xs font-extrabold uppercase tracking-widest text-blue-100">
+              Patient Booking
+            </p>
+            <p className="mt-0.5 text-sm font-bold text-white">
+              Record Vitals — {booking.patientFullName}
+            </p>
             <p className="mt-2 max-w-2xl text-sm text-blue-50">
-              Record the patient's current vital signs. These will be stored in the patient record and auto-populated in the next consultation.
+              Record the patient's current vital signs. These will be stored in
+              the patient record and auto-populated in the next consultation.
             </p>
           </div>
           <button
@@ -1095,28 +1110,67 @@ function VitalsModal({ booking, onClose }: VitalsModalProps) {
           <div className="space-y-4 px-4 py-5 sm:px-6">
             <div className="grid gap-4 sm:grid-cols-2">
               {[
-                { key: "temperature", label: "Temperature (°C)", placeholder: "e.g., 37.5", type: "number", step: "0.1" },
-                { key: "bloodPressure", label: "Blood Pressure (mmHg)", placeholder: "e.g., 120/80", type: "text" },
-                { key: "heartRate", label: "Heart Rate (bpm)", placeholder: "e.g., 72", type: "number" },
-                { key: "respiratoryRate", label: "Respiratory Rate (breaths/min)", placeholder: "e.g., 16", type: "number" },
-                { key: "weight", label: "Weight (kg)", placeholder: "e.g., 70.5", type: "number", step: "0.1" },
-                { key: "height", label: "Height (cm)", placeholder: "e.g., 170", type: "number", step: "0.1" },
+                {
+                  key: "temperature",
+                  label: "Temperature (°C)",
+                  placeholder: "e.g., 37.5",
+                  type: "number",
+                  step: "0.1",
+                },
+                {
+                  key: "bloodPressure",
+                  label: "Blood Pressure (mmHg)",
+                  placeholder: "e.g., 120/80",
+                  type: "text",
+                },
+                {
+                  key: "heartRate",
+                  label: "Heart Rate (bpm)",
+                  placeholder: "e.g., 72",
+                  type: "number",
+                },
+                {
+                  key: "respiratoryRate",
+                  label: "Respiratory Rate (breaths/min)",
+                  placeholder: "e.g., 16",
+                  type: "number",
+                },
+                {
+                  key: "weight",
+                  label: "Weight (kg)",
+                  placeholder: "e.g., 70.5",
+                  type: "number",
+                  step: "0.1",
+                },
+                {
+                  key: "height",
+                  label: "Height (cm)",
+                  placeholder: "e.g., 170",
+                  type: "number",
+                  step: "0.1",
+                },
               ].map(({ key, label, placeholder, type, step }) => (
                 <div key={key}>
-                  <label className="mb-1 block text-xs font-bold text-slate-700">{label}</label>
+                  <label className="mb-1 block text-xs font-bold text-slate-700">
+                    {label}
+                  </label>
                   <input
                     className="w-full border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
                     placeholder={placeholder}
                     type={type}
                     step={step}
                     value={fields[key as keyof typeof fields]}
-                    onChange={(e) => setFields((prev) => ({ ...prev, [key]: e.target.value }))}
+                    onChange={(e) =>
+                      setFields((prev) => ({ ...prev, [key]: e.target.value }))
+                    }
                   />
                 </div>
               ))}
             </div>
             {error && (
-              <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+              <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+              </div>
             )}
           </div>
         </div>
@@ -1135,7 +1189,9 @@ function VitalsModal({ booking, onClose }: VitalsModalProps) {
             onClick={() => mutation.mutate()}
             type="button"
           >
-            {mutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
+            {mutation.isPending && (
+              <Loader2 className="size-3.5 animate-spin" />
+            )}
             {mutation.isPending ? "Saving..." : "Save Vitals"}
           </button>
         </div>

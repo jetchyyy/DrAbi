@@ -1,4 +1,5 @@
 import type { DoctorAvailability } from "../types/domain";
+import { getPhilippineDateKey, getPhilippineTimeKey } from "./utils";
 
 export const DOCTOR_AVAILABILITY_DAY_OPTIONS = [
   { value: 0, label: "Sunday" },
@@ -100,14 +101,16 @@ export function getAvailableTimeSlotsForDate(
 }
 
 export function filterPastTimeSlots(slots: string[], date: string): string[] {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getPhilippineDateKey();
 
   if (date !== today) {
     return slots;
   }
 
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentMinutes = (() => {
+    const [hours, minutes] = getPhilippineTimeKey().split(":").map(Number);
+    return hours * 60 + minutes;
+  })();
 
   return slots.filter((slot) => timeToMinutes(slot) > currentMinutes);
 }
