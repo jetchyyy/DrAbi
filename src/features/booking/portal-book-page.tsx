@@ -37,7 +37,6 @@ import {
 } from "./hooks/use-bookings";
 import { listBookingsByPatientIdLiveOrDemo } from "../../lib/supabase-clinic";
 import type { BookingPaymentStatus } from "../../types/domain";
-import { useAppointments } from "../appointments/hooks/use-appointments";
 
 const bookingSchema = z.object({
   serviceId: z.string().min(1),
@@ -132,7 +131,7 @@ export function PortalBookPage() {
       intakeNotes: "",
     },
   });
-  const { data: appointments = [] } = useAppointments();
+
   const selectedServiceId = form.watch("serviceId");
   const selectedDoctorId = form.watch("doctorId");
   const selectedDate = form.watch("preferredDate");
@@ -166,42 +165,10 @@ export function PortalBookPage() {
     doctorId: requiresDoctor ? selectedDoctorId || null : null,
     serviceId: !requiresDoctor ? selectedServiceId || null : null,
   });
-  const normalizedBlockedSlots = useMemo(() => {
-    const fromBookings = blockedSlots.map((slot) =>
-      normalizeBlockedSlotTime(slot),
-    );
-
-    const fromAppointments = appointments
-      .filter((appt) => {
-        if (requiresDoctor && appt.doctorId !== selectedDoctorId) return false;
-        if (!["scheduled", "confirmed", "completed"].includes(appt.status))
-          return false;
-
-        // Convert UTC scheduledAt → PHT date string "YYYY-MM-DD"
-        const apptDate = new Date(appt.scheduledAt).toLocaleDateString(
-          "en-CA",
-          { timeZone: "Asia/Manila" },
-        );
-
-        return apptDate === selectedDate;
-      })
-      .map((appt) => {
-        // Extract HH:mm in PHT
-        return new Date(appt.scheduledAt).toLocaleTimeString("en-GB", {
-          timeZone: "Asia/Manila",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-      });
-
-    return [...new Set([...fromBookings, ...fromAppointments])];
-  }, [
-    appointments,
-    blockedSlots,
-    requiresDoctor,
-    selectedDate,
-    selectedDoctorId,
-  ]);
+  const normalizedBlockedSlots = useMemo(
+    () => blockedSlots.map((slot) => normalizeBlockedSlotTime(slot)),
+    [blockedSlots],
+  );
   const selectedTimeIsBlocked =
     Boolean(selectedPreferredTime) &&
     normalizedBlockedSlots.includes(selectedPreferredTime);
