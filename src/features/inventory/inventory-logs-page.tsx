@@ -151,9 +151,6 @@ export function InventoryLogsPage() {
                     Patient
                   </th>
                   <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                    Appointment
-                  </th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
                     Item
                   </th>
                   <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
@@ -172,7 +169,7 @@ export function InventoryLogsPage() {
                   <tr>
                     <td
                       className="px-4 py-8 text-center text-sm text-slate-500"
-                      colSpan={8}
+                      colSpan={7}
                     >
                       No logs match this search.
                     </td>
@@ -191,9 +188,6 @@ export function InventoryLogsPage() {
                       </td>
                       <td className="px-4 py-3 align-top text-xs text-slate-700">
                         {formatPatientName(log.patientId)}
-                      </td>
-                      <td className="px-4 py-3 align-top text-xs text-slate-700">
-                        {log.appointmentId || "—"}
                       </td>
                       <td className="px-4 py-3 align-top text-xs text-slate-700">
                         {log.itemId || "—"}

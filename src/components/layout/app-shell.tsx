@@ -329,7 +329,7 @@ export function AppShell() {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-5 overflow-y-auto px-4 py-5">
+        <nav className="sidebar-scroll flex-1 space-y-5 overflow-y-auto px-4 py-5">
           {navigationGroups.map((group) => (
             <div key={group.section} className="space-y-2">
               <p className="px-3 text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">
@@ -365,7 +365,7 @@ export function AppShell() {
         </div>
       </aside>
 
-      <aside className="hidden w-80 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-80 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white lg:flex">
         <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-5">
           <div className="flex size-11 items-center justify-center bg-orange-600 text-white">
             <Stethoscope className="size-5" />
@@ -380,7 +380,7 @@ export function AppShell() {
           </div>
         </div>
 
-        <nav className="flex-1 space-y-5 overflow-y-auto px-4 py-5">
+        <nav className="sidebar-scroll flex-1 space-y-5 overflow-y-auto px-4 py-5">
           {navigationGroups.map((group) => (
             <div key={group.section} className="space-y-2">
               <p className="px-3 text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">

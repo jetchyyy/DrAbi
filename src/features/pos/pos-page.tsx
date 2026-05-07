@@ -11,6 +11,7 @@ import {
   StopCircle,
   Trash2,
   UserRound,
+  X,
 } from "lucide-react";
 import jsQR from "jsqr";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,7 +26,7 @@ import {
 import { toast } from "sonner";
 
 import { Button } from "../../components/ui/button";
-import { Card, CardTitle } from "../../components/ui/card";
+import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { queryKeys } from "../../lib/query-keys";
@@ -161,7 +162,10 @@ export function PosPage() {
   const [lookupValue, setLookupValue] = useState("");
   const [lookupError, setLookupError] = useState("");
   const [cart, setCart] = useState<CartEntry[]>([]);
+  const [pendingItem, setPendingItem] = useState<InventoryItem | null>(null);
+  const [pendingQuantity, setPendingQuantity] = useState("1");
   const [patientId, setPatientId] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PosPaymentMethod>("cash");
   const [paymentReference, setPaymentReference] = useState("");
   const [paymentNotes, setPaymentNotes] = useState("");
@@ -205,6 +209,18 @@ export function PosPage() {
     [items, lookupValue],
   );
 
+  const filteredPatients = useMemo(() => {
+    const query = customerSearch.trim().toLowerCase();
+    if (!query) {
+      return patients;
+    }
+
+    return patients.filter((patient) => {
+      const fullName = `${patient.firstName} ${patient.lastName}`.toLowerCase();
+      return fullName.includes(query);
+    });
+  }, [customerSearch, patients]);
+
   const hasLookupMatches =
     lookupValue.trim().length > 0 && lookupMatches.length > 0;
 
@@ -227,16 +243,22 @@ export function PosPage() {
     [cart],
   );
 
-  const addItemToCart = useCallback((matchedItem: InventoryItem) => {
+  const addItemToCart = useCallback((matchedItem: InventoryItem, quantity = 1) => {
     setCart((currentCart) => {
       const existingEntry = currentCart.find(
         (entry) => entry.item.id === matchedItem.id,
       );
       if (!existingEntry) {
-        return [...currentCart, { item: matchedItem, quantity: 1 }];
+        if (quantity > matchedItem.stockOnHand) {
+          setLookupError(
+            `Only ${matchedItem.stockOnHand} ${matchedItem.unit} available for ${matchedItem.name}.`,
+          );
+          return currentCart;
+        }
+        return [...currentCart, { item: matchedItem, quantity }];
       }
 
-      if (existingEntry.quantity + 1 > matchedItem.stockOnHand) {
+      if (existingEntry.quantity + quantity > matchedItem.stockOnHand) {
         setLookupError(
           `Only ${matchedItem.stockOnHand} ${matchedItem.unit} available for ${matchedItem.name}.`,
         );
@@ -245,7 +267,7 @@ export function PosPage() {
 
       return currentCart.map((entry) =>
         entry.item.id === matchedItem.id
-          ? { ...entry, quantity: entry.quantity + 1 }
+          ? { ...entry, quantity: entry.quantity + quantity }
           : entry,
       );
     });
@@ -253,6 +275,39 @@ export function PosPage() {
     setLookupError("");
     setLookupValue("");
   }, []);
+
+  const openQuantityModal = useCallback((item: InventoryItem) => {
+    setPendingItem(item);
+    setPendingQuantity("1");
+    setLookupError("");
+  }, []);
+
+  const closeQuantityModal = useCallback(() => {
+    setPendingItem(null);
+    setPendingQuantity("1");
+  }, []);
+
+  const confirmAddQuantity = useCallback(() => {
+    if (!pendingItem) {
+      return;
+    }
+
+    const quantity = Number(pendingQuantity);
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      setLookupError("Enter a valid whole number quantity.");
+      return;
+    }
+
+    if (quantity > pendingItem.stockOnHand) {
+      setLookupError(
+        `Only ${pendingItem.stockOnHand} ${pendingItem.unit} available for ${pendingItem.name}.`,
+      );
+      return;
+    }
+
+    addItemToCart(pendingItem, quantity);
+    closeQuantityModal();
+  }, [addItemToCart, closeQuantityModal, pendingItem, pendingQuantity]);
 
   const handleAddByCode = useCallback(
     (codeOverride?: string) => {
@@ -580,496 +635,539 @@ export function PosPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <Card>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm uppercase tracking-[0.18em] text-slate-400">
-              Point of Sale
-            </p>
-            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-              <CircleDashed className="size-3.5" />
-              {cameraStatusLabel}
-            </span>
+    <div className="space-y-5">
+      {/* Page header */}
+      <div className="border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 bg-orange-600 p-2.5 text-white">
+              <ShoppingCart className="size-5" />
+            </div>
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
+                Point of Sale
+              </p>
+              <h1 className="text-xl font-extrabold tracking-tight text-slate-950">
+                Inventory-based Checkout
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Scan or search items, review the cart, and complete checkout in
+                one place.
+              </p>
+            </div>
           </div>
-          <CardTitle className="mt-2 text-3xl">
-            Inventory-based cashier checkout
-          </CardTitle>
-          <p className="mt-3 max-w-3xl text-sm text-slate-500">
-            Add items by SKU, external scanner input, or built-in QR camera
-            scan. Checkout saves the sale and deducts stock immediately.
-          </p>
-          <div className="mt-5 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 sm:grid-cols-3">
-            <p>
-              <span className="font-semibold text-slate-800">1.</span> Scan or
-              type item code
-            </p>
-            <p>
-              <span className="font-semibold text-slate-800">2.</span> Review
-              cart quantities
-            </p>
-            <p>
-              <span className="font-semibold text-slate-800">3.</span> Complete
-              payment and print receipt
-            </p>
+          <div className="inline-flex items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700">
+            <CircleDashed className="size-4 text-orange-600" />
+            <span>{cameraStatusLabel}</span>
           </div>
+        </div>
+      </div>
 
-          <form className="mt-6 space-y-4" onSubmit={handleLookupSubmit}>
-            <div className="space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex flex-wrap gap-3">
+      {/* Last sale success banner */}
+      {recentSale ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+              <ShoppingCart className="size-4 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-wide text-emerald-800">
+                Sale completed — {recentSale.saleNumber}
+              </p>
+              <p className="text-xs text-emerald-700">
+                {formatCurrency(recentSale.total)} via{" "}
+                {recentSale.paymentMethod.toUpperCase()}
+              </p>
+            </div>
+          </div>
+          {receiptState ? (
+            <Button
+              className="gap-2 text-xs"
+              onClick={() => void handlePrintReceipt()}
+              type="button"
+              variant="secondary"
+            >
+              <Printer className="size-3.5" />
+              Print receipt
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Main 2-column grid */}
+      <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
+        {/* Left column: Item lookup + Cart */}
+        <div className="space-y-5">
+          {/* Item lookup */}
+          <Card>
+            <p className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-slate-400">
+              Add Items
+            </p>
+            <form onSubmit={handleLookupSubmit}>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                  <QrCode className="size-4 shrink-0 text-slate-400" />
+                  <Input
+                    className="border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0"
+                    onChange={(event) => setLookupValue(event.target.value)}
+                    placeholder="Item name, SKU, or QR value"
+                    value={lookupValue}
+                  />
+                </div>
+                <Button className="shrink-0 gap-1.5" type="submit">
+                  <Search className="size-3.5" />
+                  Add
+                </Button>
                 <Button
-                  className="gap-2"
+                  className="shrink-0 gap-1.5"
                   onClick={() => void startCamera()}
                   type="button"
+                  variant="secondary"
                 >
-                  <Camera className="size-4" />
-                  {cameraState === "active"
-                    ? "Restart camera"
-                    : "Allow camera and scan"}
+                  <Camera className="size-3.5" />
+                  {cameraState === "active" ? "Restart" : "Scan QR"}
                 </Button>
                 {cameraState === "active" ? (
                   <Button
-                    className="gap-2"
+                    className="shrink-0 gap-1.5"
                     onClick={stopCamera}
                     type="button"
                     variant="secondary"
                   >
-                    <StopCircle className="size-4" />
-                    Stop camera
+                    <StopCircle className="size-3.5" />
+                    Stop
                   </Button>
                 ) : null}
               </div>
-              {cameraMessage ? (
-                <p className="text-sm text-slate-600">{cameraMessage}</p>
-              ) : null}
-              {cameraState === "requesting" || cameraState === "active" ? (
-                <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-black">
-                  <video
-                    className="aspect-video w-full object-cover opacity-90"
-                    muted
-                    playsInline
-                    ref={videoRef}
-                  />
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                    <div className="h-40 w-40 rounded-2xl border-2 border-white/70 shadow-[0_0_0_999px_rgba(0,0,0,0.28)]" />
-                  </div>
-                  <p className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-black/60 px-2 py-1 text-xs font-medium text-slate-100">
-                    Keep item QR inside the frame
-                  </p>
-                  <canvas className="hidden" ref={canvasRef} />
-                </div>
-              ) : null}
-            </div>
+            </form>
 
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Search item, SKU, or QR code
-              </span>
-              <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:flex-row">
-                <div className="flex flex-1 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                  <QrCode className="size-5 text-slate-400" />
-                  <Input
-                    className="border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0"
-                    onChange={(event) => setLookupValue(event.target.value)}
-                    placeholder="Scan from external device or type item name, SKU, or QR value"
-                    value={lookupValue}
-                  />
+            {cameraMessage ? (
+              <p className="mt-2 text-xs text-slate-500">{cameraMessage}</p>
+            ) : null}
+
+            {cameraState === "requesting" || cameraState === "active" ? (
+              <div className="relative mt-3 overflow-hidden rounded-xl border border-slate-200 bg-black">
+                <video
+                  className="aspect-video w-full object-cover opacity-90"
+                  muted
+                  playsInline
+                  ref={videoRef}
+                />
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="h-36 w-36 rounded-xl border-2 border-white/70 shadow-[0_0_0_999px_rgba(0,0,0,0.28)]" />
                 </div>
-                <Button className="gap-2 sm:self-stretch" type="submit">
-                  <Search className="size-4" />
-                  Add item
-                </Button>
-                <Button
-                  className="gap-2 sm:self-stretch"
-                  onClick={() => {
-                    setLookupValue("");
-                    setLookupError("");
-                  }}
-                  type="button"
-                  variant="secondary"
-                >
-                  Clear
-                </Button>
+                <p className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1 text-[11px] font-medium text-slate-100">
+                  Keep item QR inside the frame
+                </p>
+                <canvas className="hidden" ref={canvasRef} />
               </div>
-            </label>
+            ) : null}
 
             {hasLookupMatches ? (
-              <div className="rounded-2xl border border-slate-200 bg-white p-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <p className="border-b border-slate-100 px-3 py-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
                   {lookupMatches.length === 1
-                    ? "Matching inventory item"
-                    : "Matching inventory items"}
+                    ? "Matching item"
+                    : `${lookupMatches.length} matches — select one`}
                 </p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-1 p-2 sm:grid-cols-2">
                   {lookupMatches.slice(0, 6).map((item) => (
                     <button
                       key={item.id}
-                      className="rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:border-emerald-500 hover:bg-emerald-50"
-                      onClick={() => addItemToCart(item)}
+                      className="rounded-lg border border-transparent px-3 py-2.5 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
+                      onClick={() => openQuantityModal(item)}
                       type="button"
                     >
-                      <p className="font-semibold text-slate-950">
+                      <p className="text-sm font-semibold text-slate-950">
                         {item.name}
                       </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        SKU {item.sku} · QR {item.qrCode}
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        SKU {item.sku} · {formatCurrency(item.sellingPrice)}
                       </p>
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-slate-500">
-                  Narrow the search if you want a different item.
-                </p>
               </div>
             ) : null}
 
             {lookupError ? (
-              <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <div className="mt-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
                 <AlertCircle className="mt-0.5 size-4 shrink-0" />
                 <p>{lookupError}</p>
               </div>
             ) : null}
-          </form>
-        </Card>
+          </Card>
 
-        <Card className="bg-slate-950 text-white">
-          <p className="text-sm uppercase tracking-[0.18em] text-slate-400">
-            Sale Summary
-          </p>
-          <CardTitle className="mt-2 text-white">
-            Current cart snapshot
-          </CardTitle>
-          <div className="mt-6 grid gap-4 md:grid-cols-3 xl:grid-cols-1">
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
-                Items
-              </p>
-              <p className="mt-2 text-3xl font-extrabold text-white">
-                {cartCount}
-              </p>
-            </div>
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
-                Subtotal
-              </p>
-              <p className="mt-2 text-3xl font-extrabold text-emerald-300">
-                {formatCurrency(cartSubtotal)}
-              </p>
-            </div>
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
-                Customer
-              </p>
-              <p className="mt-2 text-base font-bold text-white">
-                {customerDisplayName}
-              </p>
-            </div>
-          </div>
-
-          {recentSale ? (
-            <div className="mt-6 rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-emerald-200">
-                Last completed sale
-              </p>
-              <p className="mt-2 text-lg font-bold text-white">
-                {recentSale.saleNumber}
-              </p>
-              <p className="mt-1 text-sm text-slate-300">
-                {formatCurrency(recentSale.total)} via{" "}
-                {recentSale.paymentMethod.toUpperCase()}
-              </p>
-              {receiptState ? (
-                <Button
-                  className="mt-4 gap-2"
-                  onClick={() => void handlePrintReceipt()}
+          {/* Cart */}
+          <Card>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="size-4 text-slate-400" />
+                <p className="text-[11px] font-extrabold uppercase tracking-widest text-slate-500">
+                  Cart
+                </p>
+                {cart.length > 0 ? (
+                  <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-bold text-orange-700">
+                    {cart.length} line{cart.length !== 1 ? "s" : ""}
+                  </span>
+                ) : null}
+              </div>
+              {cart.length > 0 ? (
+                <button
+                  className="text-xs font-semibold text-slate-400 transition hover:text-rose-600"
+                  onClick={() => setCart([])}
                   type="button"
-                  variant="secondary"
                 >
-                  <Printer className="size-4" />
-                  Print receipt
-                </Button>
+                  Clear all
+                </button>
               ) : null}
             </div>
-          ) : null}
-        </Card>
+
+            {cart.length === 0 ? (
+              <div className="mt-4 rounded-xl border-2 border-dashed border-slate-200 py-10 text-center">
+                <ShoppingCart className="mx-auto size-7 text-slate-300" />
+                <p className="mt-2 text-sm font-semibold text-slate-400">
+                  No items added yet
+                </p>
+                <p className="text-xs text-slate-400">
+                  Search or scan an item above
+                </p>
+              </div>
+            ) : (
+              <div className="mt-4 overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="border-b border-slate-100">
+                      <th className="pb-2 text-left text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                        Item
+                      </th>
+                      <th className="pb-2 text-center text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                        Stock
+                      </th>
+                      <th className="pb-2 text-center text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                        Qty
+                      </th>
+                      <th className="pb-2 text-right text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                        Price
+                      </th>
+                      <th className="pb-2 text-right text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                        Total
+                      </th>
+                      <th className="pb-2" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {cart.map((entry) => (
+                      <tr key={entry.item.id}>
+                        <td className="py-3 pr-3">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {entry.item.name}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {entry.item.sku} · {entry.item.unit}
+                          </p>
+                        </td>
+                        <td className="py-3 text-center">
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                              entry.item.stockOnHand <= entry.item.reorderLevel
+                                ? "bg-rose-100 text-rose-700"
+                                : "bg-emerald-100 text-emerald-700"
+                            }`}
+                          >
+                            {entry.item.stockOnHand}
+                          </span>
+                        </td>
+                        <td className="py-3 text-center">
+                          <Input
+                            className="mx-auto w-16 text-center text-sm"
+                            min="1"
+                            max={entry.item.stockOnHand}
+                            type="number"
+                            value={entry.quantity}
+                            onChange={(event) =>
+                              updateCartQuantity(
+                                entry.item.id,
+                                Number(event.target.value),
+                              )
+                            }
+                          />
+                        </td>
+                        <td className="py-3 text-right text-sm text-slate-500">
+                          {formatCurrency(entry.item.sellingPrice)}
+                        </td>
+                        <td className="py-3 text-right text-sm font-bold text-slate-900">
+                          {formatCurrency(
+                            entry.item.sellingPrice * entry.quantity,
+                          )}
+                        </td>
+                        <td className="py-3 pl-3 text-right">
+                          <button
+                            aria-label={`Remove ${entry.item.name}`}
+                            className="text-slate-300 transition hover:text-rose-500"
+                            onClick={() =>
+                              setCart((currentCart) =>
+                                currentCart.filter(
+                                  (cartEntry) =>
+                                    cartEntry.item.id !== entry.item.id,
+                                ),
+                              )
+                            }
+                            type="button"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-slate-200">
+                      <td
+                        className="pt-3 text-right text-xs font-extrabold uppercase tracking-widest text-slate-400"
+                        colSpan={4}
+                      >
+                        Subtotal
+                      </td>
+                      <td className="pt-3 text-right text-base font-extrabold text-slate-950">
+                        {formatCurrency(cartSubtotal)}
+                      </td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Right column: Checkout — sticky on large screens */}
+        <div className="xl:sticky xl:top-6 xl:self-start">
+          <Card>
+            <p className="mb-4 text-[11px] font-extrabold uppercase tracking-widest text-slate-400">
+              Checkout
+            </p>
+
+            <div className="space-y-4">
+              {/* Customer */}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Customer
+                </label>
+                <Input
+                  className="mb-2"
+                  onChange={(event) => setCustomerSearch(event.target.value)}
+                  placeholder="Search customer name"
+                  value={customerSearch}
+                />
+                <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                  <UserRound className="size-4 shrink-0 text-slate-400" />
+                  <Select
+                    value={patientId}
+                    onChange={(event) => setPatientId(event.target.value)}
+                  >
+                    <option value="">Walk-in customer</option>
+                    {filteredPatients.map((patient) => (
+                      <option key={patient.id} value={patient.id}>
+                        {patient.firstName} {patient.lastName}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                {customerSearch.trim() && filteredPatients.length === 0 ? (
+                  <p className="mt-1 text-xs text-slate-400">
+                    No matching customers found.
+                  </p>
+                ) : null}
+              </div>
+
+              {/* Payment method */}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Payment method
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {paymentOptions.map((option) => {
+                    const isActive = paymentMethod === option.value;
+                    const Icon =
+                      option.value === "cash"
+                        ? ShoppingCart
+                        : option.value === "gcash"
+                          ? Smartphone
+                          : CreditCard;
+                    return (
+                      <button
+                        key={option.value}
+                        className={`rounded-xl border px-3 py-3 text-left transition ${
+                          isActive
+                            ? "border-emerald-400 bg-emerald-50 text-emerald-900"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                        onClick={() => setPaymentMethod(option.value)}
+                        type="button"
+                      >
+                        <Icon className="size-4" />
+                        <p className="mt-1.5 text-xs font-bold">
+                          {option.label}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Reference / notes */}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {paymentMethod === "cash"
+                    ? "Cash notes"
+                    : "Payment reference"}
+                  {paymentReferenceRequired ? (
+                    <span className="ml-1 text-rose-500">*</span>
+                  ) : null}
+                </label>
+                <Input
+                  placeholder={
+                    paymentMethod === "cash"
+                      ? "Optional cashier note"
+                      : "Required — reference number or details"
+                  }
+                  value={
+                    paymentMethod === "cash" ? paymentNotes : paymentReference
+                  }
+                  onChange={(event) => {
+                    if (paymentMethod === "cash") {
+                      setPaymentNotes(event.target.value);
+                      return;
+                    }
+                    setPaymentReference(event.target.value);
+                  }}
+                />
+                {paymentReferenceRequired ? (
+                  <p className="mt-1.5 text-xs text-slate-400">
+                    Required for {paymentMethod.toUpperCase()} payments.
+                  </p>
+                ) : null}
+              </div>
+
+              {paymentMethod !== "cash" ? (
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Additional notes
+                  </label>
+                  <Input
+                    placeholder="Optional note"
+                    value={paymentNotes}
+                    onChange={(event) => setPaymentNotes(event.target.value)}
+                  />
+                </div>
+              ) : null}
+
+              {/* Order summary */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-500">Items</span>
+                  <span className="font-semibold text-slate-900">
+                    {cartCount}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-sm">
+                  <span className="text-slate-500">Payment</span>
+                  <span className="font-semibold uppercase text-slate-900">
+                    {paymentMethod}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Total
+                  </span>
+                  <span className="text-xl font-extrabold text-slate-950">
+                    {formatCurrency(cartSubtotal)}
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                className="w-full gap-2"
+                disabled={checkoutMutation.isPending || cart.length === 0}
+                onClick={() => checkoutMutation.mutate()}
+                type="button"
+              >
+                <ShoppingCart className="size-4" />
+                {checkoutMutation.isPending
+                  ? "Processing..."
+                  : `Complete sale (${formatCurrency(cartSubtotal)})`}
+              </Button>
+            </div>
+          </Card>
+        </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <Card>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm uppercase tracking-[0.18em] text-slate-400">
-                Cart
-              </p>
-              <CardTitle className="mt-2">Items ready for checkout</CardTitle>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="inline-flex items-center gap-2 rounded-2xl bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700">
-                <ShoppingCart className="size-4" />
-                {cart.length} line{cart.length !== 1 ? "s" : ""}
+      {pendingItem ? (
+        <div
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"
+          onClick={closeQuantityModal}
+          role="dialog"
+        >
+          <div
+            className="w-full max-w-md border border-slate-200 bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 bg-orange-600 px-5 py-4 text-white">
+              <div>
+                <p className="text-[11px] font-extrabold uppercase tracking-widest text-orange-100">
+                  Add to cart
+                </p>
+                <p className="mt-1 text-sm font-bold">{pendingItem.name}</p>
+                <p className="text-xs text-orange-100">
+                  {formatCurrency(pendingItem.sellingPrice)} each · {pendingItem.stockOnHand} {pendingItem.unit} available
+                </p>
               </div>
-              <Button
-                className="rounded-2xl px-3 py-2 text-xs font-semibold"
-                disabled={cart.length === 0}
-                onClick={() => setCart([])}
+              <button
+                aria-label="Close quantity modal"
+                className="border border-orange-200/40 bg-white/10 p-1.5 text-white transition hover:bg-white/20"
+                onClick={closeQuantityModal}
                 type="button"
-                variant="secondary"
               >
-                Clear cart
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-5 py-5">
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+                Quantity
+              </label>
+              <Input
+                autoFocus
+                max={pendingItem.stockOnHand}
+                min="1"
+                onChange={(event) => setPendingQuantity(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    confirmAddQuantity();
+                  }
+                }}
+                type="number"
+                value={pendingQuantity}
+              />
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                Line total preview: {formatCurrency((Number(pendingQuantity) || 0) * pendingItem.sellingPrice)}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">
+              <Button onClick={closeQuantityModal} type="button" variant="secondary">
+                Cancel
+              </Button>
+              <Button onClick={confirmAddQuantity} type="button">
+                Add item
               </Button>
             </div>
           </div>
-
-          <div className="mt-6 overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                    Item
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                    Stock
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                    Qty
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                    Price
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                    Line Total
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {cart.length === 0 ? (
-                  <tr>
-                    <td
-                      className="px-4 py-12 text-center text-sm text-slate-400"
-                      colSpan={6}
-                    >
-                      Scan or type an inventory item to start the sale.
-                    </td>
-                  </tr>
-                ) : (
-                  cart.map((entry) => (
-                    <tr key={entry.item.id}>
-                      <td className="px-4 py-4">
-                        <p className="font-bold text-slate-950">
-                          {entry.item.name}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {entry.item.sku} - {entry.item.unit}
-                        </p>
-                      </td>
-                      <td className="px-4 py-4 text-sm text-slate-600">
-                        <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            entry.item.stockOnHand <= entry.item.reorderLevel
-                              ? "bg-rose-100 text-rose-700"
-                              : "bg-emerald-100 text-emerald-700"
-                          }`}
-                        >
-                          {entry.item.stockOnHand} available
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <Input
-                          className="max-w-24"
-                          min="1"
-                          max={entry.item.stockOnHand}
-                          type="number"
-                          value={entry.quantity}
-                          onChange={(event) =>
-                            updateCartQuantity(
-                              entry.item.id,
-                              Number(event.target.value),
-                            )
-                          }
-                        />
-                      </td>
-                      <td className="px-4 py-4 text-sm font-semibold text-slate-700">
-                        {formatCurrency(entry.item.sellingPrice)}
-                      </td>
-                      <td className="px-4 py-4 text-sm font-semibold text-slate-950">
-                        {formatCurrency(
-                          entry.item.sellingPrice * entry.quantity,
-                        )}
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        <button
-                          className="inline-flex items-center gap-1 text-sm font-semibold text-rose-600 hover:underline"
-                          onClick={() =>
-                            setCart((currentCart) =>
-                              currentCart.filter(
-                                (cartEntry) =>
-                                  cartEntry.item.id !== entry.item.id,
-                              ),
-                            )
-                          }
-                          type="button"
-                        >
-                          <Trash2 className="size-4" />
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        <Card>
-          <p className="text-sm uppercase tracking-[0.18em] text-slate-400">
-            Checkout
-          </p>
-          <CardTitle className="mt-2">Customer and payment details</CardTitle>
-
-          <div className="mt-6 space-y-5">
-            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-600 sm:grid-cols-2">
-              <p>
-                Customer:{" "}
-                <span className="text-slate-900">{customerDisplayName}</span>
-              </p>
-              <p>
-                Payment mode:{" "}
-                <span className="text-slate-900 uppercase">
-                  {paymentMethod}
-                </span>
-              </p>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Customer
-              </label>
-              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <UserRound className="size-5 text-slate-400" />
-                <Select
-                  value={patientId}
-                  onChange={(event) => setPatientId(event.target.value)}
-                >
-                  <option value="">Walk-in customer</option>
-                  {patients.map((patient) => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.firstName} {patient.lastName}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Payment method
-              </label>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {paymentOptions.map((option) => {
-                  const isActive = paymentMethod === option.value;
-                  const Icon =
-                    option.value === "cash"
-                      ? ShoppingCart
-                      : option.value === "gcash"
-                        ? Smartphone
-                        : CreditCard;
-                  return (
-                    <button
-                      key={option.value}
-                      className={`rounded-3xl border px-4 py-4 text-left transition ${isActive ? "border-emerald-500 bg-emerald-50 text-emerald-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}
-                      onClick={() => setPaymentMethod(option.value)}
-                      type="button"
-                    >
-                      <Icon className="size-5" />
-                      <p className="mt-3 font-bold">{option.label}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                {paymentMethod === "cash"
-                  ? "Cash notes"
-                  : "Reference / payment details"}
-                {paymentReferenceRequired ? (
-                  <span className="ml-1 text-rose-600">*</span>
-                ) : null}
-              </label>
-              <Input
-                placeholder={
-                  paymentMethod === "cash"
-                    ? "Optional cashier note"
-                    : "Required reference number or payment details"
-                }
-                value={
-                  paymentMethod === "cash" ? paymentNotes : paymentReference
-                }
-                onChange={(event) => {
-                  if (paymentMethod === "cash") {
-                    setPaymentNotes(event.target.value);
-                    return;
-                  }
-                  setPaymentReference(event.target.value);
-                }}
-              />
-              {paymentReferenceRequired ? (
-                <p className="mt-2 text-xs text-slate-500">
-                  Reference is required for {paymentMethod.toUpperCase()}{" "}
-                  payments.
-                </p>
-              ) : null}
-            </div>
-
-            {paymentMethod !== "cash" ? (
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Additional notes
-                </label>
-                <Input
-                  placeholder="Optional note for this payment"
-                  value={paymentNotes}
-                  onChange={(event) => setPaymentNotes(event.target.value)}
-                />
-              </div>
-            ) : null}
-
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-slate-600">Subtotal</p>
-                <p className="text-lg font-extrabold text-slate-950">
-                  {formatCurrency(cartSubtotal)}
-                </p>
-              </div>
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-slate-600">
-                  Payment method
-                </p>
-                <p className="text-sm font-bold uppercase tracking-[0.18em] text-slate-950">
-                  {paymentMethod}
-                </p>
-              </div>
-            </div>
-
-            <Button
-              className="w-full gap-2"
-              disabled={checkoutMutation.isPending || cart.length === 0}
-              onClick={() => checkoutMutation.mutate()}
-              type="button"
-            >
-              <ShoppingCart className="size-4" />
-              {checkoutMutation.isPending
-                ? "Processing sale..."
-                : `Complete sale (${formatCurrency(cartSubtotal)})`}
-            </Button>
-          </div>
-        </Card>
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -181,6 +181,32 @@ textarea {
 .chatbot-messages::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
 .chatbot-messages::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
 
+/* ── Sidebar scrollbars ───────────────────────────────────── */
+
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 7px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-color: #cbd5e1;
+  background-clip: content-box;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
 /* ── Hero bubbly floating badges ─────────────────────────── */
 
 @keyframes heroFloat1 {

@@ -672,6 +672,20 @@ export function PatientBookingPageList() {
     });
   }, [bookings, search, statusFilter]);
 
+  const bookingSummary = useMemo(
+    () => ({
+      pending: bookings.filter((booking) => booking.status === "pending").length,
+      confirmed: bookings.filter((booking) => booking.status === "confirmed")
+        .length,
+      rescheduled: bookings.filter(
+        (booking) => booking.status === "rescheduled",
+      ).length,
+      cancelled: bookings.filter((booking) => booking.status === "cancelled")
+        .length,
+    }),
+    [bookings],
+  );
+
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)),
     [filtered.length],
@@ -711,10 +725,11 @@ export function PatientBookingPageList() {
                 Operations
               </p>
               <h1 className="text-xl font-extrabold tracking-tight text-slate-950">
-                Patient Bookings
+                Patient Booking List
               </h1>
               <p className="mt-1 text-sm text-slate-500">
-                Manage and review all patient booking records.
+                Review schedules, update booking status, and keep intake timing
+                on track.
               </p>
             </div>
           </div>
@@ -740,11 +755,33 @@ export function PatientBookingPageList() {
               <option value="rescheduled">Rescheduled</option>
               <option value="cancelled">Cancelled</option>
             </select>
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setStatusFilter("all");
+              }}
+              className="border border-slate-200 px-3 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-600 transition hover:bg-slate-50"
+            >
+              Reset
+            </button>
           </div>
         </div>
-        <div className="border-t border-slate-100 bg-slate-50 px-6 py-2">
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50 px-6 py-2.5">
           <span className="text-xs font-bold text-slate-500">
             {filtered.length} booking{filtered.length !== 1 ? "s" : ""} found
+          </span>
+          <span className="inline-flex items-center border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+            {bookingSummary.pending} pending
+          </span>
+          <span className="inline-flex items-center border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-indigo-600">
+            {bookingSummary.confirmed} confirmed
+          </span>
+          <span className="inline-flex items-center border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-sky-600">
+            {bookingSummary.rescheduled} rescheduled
+          </span>
+          <span className="inline-flex items-center border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-red-600">
+            {bookingSummary.cancelled} cancelled
           </span>
         </div>
       </div>

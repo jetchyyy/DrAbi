@@ -2514,11 +2514,11 @@ export function PatientDetailPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr] xl:items-start">
+      <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr] xl:items-start">
         <div className="space-y-4">
-          <Card>
-            <div className="flex flex-wrap items-start gap-5">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-primary)] text-lg font-bold text-white shadow-sm">
+          <Card className="border-slate-200/80 bg-gradient-to-br from-white via-white to-sky-50/50 shadow-md">
+            <div className="flex flex-wrap items-start gap-5 lg:flex-nowrap lg:justify-between">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-primary)] text-lg font-bold text-white shadow-md ring-4 ring-white">
                 {patient.firstName[0]}
                 {patient.lastName[0]}
               </div>
@@ -2526,7 +2526,7 @@ export function PatientDetailPage() {
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
                   Patient chart
                 </p>
-                <CardTitle className="mt-1 text-3xl">
+                <CardTitle className="mt-1 text-2xl leading-tight sm:text-3xl">
                   {patient.firstName} {patient.lastName}
                 </CardTitle>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
@@ -2541,10 +2541,10 @@ export function PatientDetailPage() {
                   </span>
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
                 {canClinicalActions ? (
                   <Link
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-white shadow-sm transition hover:opacity-90 active:scale-95"
+                    className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-[var(--color-primary)] px-4 text-xs font-bold uppercase tracking-widest text-white shadow-sm transition hover:brightness-95 active:scale-95"
                     to={`/app/consultation/${patient.id}`}
                   >
                     Start Consultation
@@ -2552,7 +2552,7 @@ export function PatientDetailPage() {
                 ) : null}
                 <button
                   onClick={() => setShowVitalsModal(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-white shadow-sm transition hover:opacity-90 active:scale-95"
+                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-bold uppercase tracking-widest text-white shadow-sm transition hover:bg-blue-700 active:scale-95"
                 >
                   <Activity className="size-4" />
                   Record Vitals
@@ -2563,47 +2563,47 @@ export function PatientDetailPage() {
             </div>
           </Card>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Card className="border-sky-300 bg-sky-100">
+            <Card className="border-sky-300/80 bg-sky-100/80 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex items-center gap-3">
                 <div className="rounded-xl bg-sky-200 p-2">
                   <FileText className="size-4 text-sky-700" />
                 </div>
                 <CardTitle className="text-base">Consultations</CardTitle>
               </div>
-              <p className="mt-3 text-3xl font-bold text-sky-950">
+              <p className="mt-3 text-3xl font-bold leading-none text-sky-950">
                 {consultations.length}
               </p>
             </Card>
-            <Card className="border-emerald-300 bg-emerald-100">
+            <Card className="border-emerald-300/80 bg-emerald-100/80 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex items-center gap-3">
                 <div className="rounded-xl bg-emerald-200 p-2">
                   <Pill className="size-4 text-emerald-700" />
                 </div>
                 <CardTitle className="text-base">Prescriptions</CardTitle>
               </div>
-              <p className="mt-3 text-3xl font-bold text-emerald-950">
+              <p className="mt-3 text-3xl font-bold leading-none text-emerald-950">
                 {prescriptions.length}
               </p>
             </Card>
-            <Card className="border-amber-300 bg-amber-100">
+            <Card className="border-amber-300/80 bg-amber-100/80 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex items-center gap-3">
                 <div className="rounded-xl bg-amber-200 p-2">
                   <QrCode className="size-4 text-amber-700" />
                 </div>
                 <CardTitle className="text-base">Items used</CardTitle>
               </div>
-              <p className="mt-3 text-3xl font-bold text-amber-950">
+              <p className="mt-3 text-3xl font-bold leading-none text-amber-950">
                 {inventoryUsageLogs.length}
               </p>
             </Card>
-            <Card className="border-violet-300 bg-violet-100">
+            <Card className="border-violet-300/80 bg-violet-100/80 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex items-center gap-3">
                 <div className="rounded-xl bg-violet-200 p-2">
                   <TestTubeDiagonal className="size-4 text-violet-700" />
                 </div>
                 <CardTitle className="text-base">Lab orders</CardTitle>
               </div>
-              <p className="mt-3 text-3xl font-bold text-violet-950">
+              <p className="mt-3 text-3xl font-bold leading-none text-violet-950">
                 {labOrders.length}
               </p>
             </Card>
@@ -2616,12 +2616,12 @@ export function PatientDetailPage() {
         />
       </div>
 
-      <div className="mt-4 flex overflow-x-auto border-b border-slate-200">
+      <div className="mt-6 flex overflow-x-auto border-b border-slate-200 bg-white/70 px-1 backdrop-blur-sm supports-[backdrop-filter]:bg-white/55">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`whitespace-nowrap border-b-2 px-5 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-inset ${
+            className={`whitespace-nowrap border-b-2 px-5 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-inset ${
               activeTab === tab.id
                 ? "border-[var(--color-primary)] text-[var(--color-primary)]"
                 : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
@@ -2634,10 +2634,10 @@ export function PatientDetailPage() {
 
       {activeTab === "overview" && (
         <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
-          <Card>
+          <Card className="border-slate-200/80 bg-gradient-to-b from-white to-slate-50/50 shadow-sm">
             <CardTitle>Clinical overview</CardTitle>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
                   Birth date
                 </p>
@@ -2645,7 +2645,7 @@ export function PatientDetailPage() {
                   {formatDateLabel(patient.birthDate)}
                 </p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
                   Blood type
                 </p>
@@ -2653,7 +2653,7 @@ export function PatientDetailPage() {
                   {formatConsultationText(patient.bloodType)}
                 </p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
                   Allergies
                 </p>
@@ -2661,7 +2661,7 @@ export function PatientDetailPage() {
                   {formatConsultationText(patient.allergies)}
                 </p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
                   Emergency contact
                 </p>
@@ -2692,7 +2692,7 @@ export function PatientDetailPage() {
           </Card>
 
           <div className="space-y-6">
-            <Card>
+            <Card className="border-slate-200/80 bg-white shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <CardTitle>Visit timeline</CardTitle>
                 <Badge intent="info">
@@ -2713,7 +2713,11 @@ export function PatientDetailPage() {
                   visits.map((visit) => (
                     <div
                       key={visit.id}
-                      className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                      className={`rounded-2xl border bg-slate-50/70 p-4 ${
+                        consultationAppointmentIds.has(visit.id)
+                          ? "border-emerald-200"
+                          : "border-amber-200"
+                      }`}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="font-medium text-slate-950">

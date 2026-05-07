@@ -91,7 +91,7 @@ export function SpecialistShell() {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-2 pt-4">
+        <nav className="sidebar-scroll flex-1 space-y-0.5 overflow-y-auto px-3 pb-2 pt-4">
           <p className="px-3 pb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Specialist Portal</p>
           {navigationItems}
         </nav>
@@ -134,7 +134,7 @@ export function SpecialistShell() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 pt-4 pb-2 space-y-0.5 overflow-y-auto">
+        <nav className="sidebar-scroll flex-1 px-3 pt-4 pb-2 space-y-0.5 overflow-y-auto">
           <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 px-3 pb-2">Specialist Portal</p>
           {navigationItems}
         </nav>

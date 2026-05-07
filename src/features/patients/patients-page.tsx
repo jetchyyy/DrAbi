@@ -386,9 +386,19 @@ export function PatientsPage() {
     }
   };
 
+  const patientSummary = useMemo(
+    () => ({
+      online: patients.filter((p) => p.intakeSource === 'online_registration').length,
+      walkIn: patients.filter((p) => p.intakeSource !== 'online_registration').length,
+      visited: patients.filter((p) => p.visitStatus === 'visited_clinic').length,
+      notVisited: patients.filter((p) => p.visitStatus === 'registered_no_visit').length,
+    }),
+    [patients],
+  );
+
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div className="border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
             <div className="flex items-center gap-3">
@@ -441,8 +451,20 @@ export function PatientsPage() {
               </div>
             </div>
           </div>
-          <div className="border-t border-slate-100 bg-slate-50 px-6 py-2">
+          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50 px-6 py-2.5">
             <span className="text-xs font-bold text-slate-500">{filteredPatients.length} patient{filteredPatients.length !== 1 ? 's' : ''} found</span>
+            <span className="inline-flex items-center border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-indigo-700">
+              {patientSummary.online} online
+            </span>
+            <span className="inline-flex items-center border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+              {patientSummary.walkIn} walk-in
+            </span>
+            <span className="inline-flex items-center border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-emerald-700">
+              {patientSummary.visited} visited
+            </span>
+            <span className="inline-flex items-center border border-yellow-200 bg-yellow-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-yellow-700">
+              {patientSummary.notVisited} not yet visited
+            </span>
           </div>
         </div>
 
@@ -462,13 +484,13 @@ export function PatientsPage() {
               <table className="min-w-full divide-y divide-slate-200">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Patient</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Contact</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Birth date</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Source</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Status</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">QR code</th>
-                    <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Actions</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Patient</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Contact</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Birth date</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Source</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Status</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">QR code</th>
+                    <th className="px-4 py-2.5 text-right text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -477,7 +499,7 @@ export function PatientsPage() {
 
                     return (
                       <tr className="transition-colors hover:bg-slate-50" key={patient.id}>
-                        <td className="px-6 py-4 align-top">
+                        <td className="px-4 py-3 align-top">
                           <div className="space-y-1">
                             <Link
                               to={`/app/patients/${patient.id}`}
@@ -493,26 +515,26 @@ export function PatientsPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 align-top">
-                          <div className="space-y-1 text-sm text-slate-600">
+                        <td className="px-4 py-3 align-top">
+                          <div className="space-y-0.5 text-sm text-slate-600">
                             <p>{patient.email}</p>
                             <p>{patient.mobileNumber}</p>
                           </div>
                         </td>
-                        <td className="px-6 py-4 align-top text-sm text-slate-600">{formatDateLabel(patient.birthDate)}</td>
-                        <td className="px-6 py-4 align-top">
-                          <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">{getPatientSourceLabel(patient)}</span>
+                        <td className="px-4 py-3 align-top text-sm text-slate-600">{formatDateLabel(patient.birthDate)}</td>
+                        <td className="px-4 py-3 align-top">
+                          <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">{getPatientSourceLabel(patient)}</span>
                         </td>
-                        <td className="px-6 py-4 align-top">
+                        <td className="px-4 py-3 align-top">
                           <Badge className="rounded-none text-[10px] font-bold uppercase tracking-widest" intent={visitBadge.intent}>
                             {visitBadge.label}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4 align-top text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                          {patient.qrCode || 'Pending QR'}
+                        <td className="px-4 py-3 align-top text-xs font-mono text-slate-500">
+                          {patient.qrCode || '—'}
                         </td>
-                        <td className="px-6 py-4 align-top">
-                          <div className="flex min-w-max flex-col items-end gap-2 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
+                        <td className="px-4 py-3 align-top">
+                          <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
                             {can('patients.manage') ? (
                               <button
                                 className="inline-flex items-center gap-1 text-slate-600 hover:underline"
@@ -536,7 +558,6 @@ export function PatientsPage() {
                             <Link className="inline-flex items-center text-orange-600 hover:underline" to={`/app/patients/${patient.id}`}>
                               Open Record
                             </Link>
-                            
                           </div>
                         </td>
                       </tr>

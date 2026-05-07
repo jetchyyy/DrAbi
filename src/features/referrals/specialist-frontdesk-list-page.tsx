@@ -564,6 +564,22 @@ export function ReferralsListPage() {
     });
   }, [referrals, search, statusFilter]);
 
+  const referralSummary = useMemo(
+    () => ({
+      pending: referrals.filter((referral) => referral.status === "pending")
+        .length,
+      scheduled: referrals.filter(
+        (referral) => referral.status === "scheduled",
+      ).length,
+      rescheduled: referrals.filter(
+        (referral) => referral.status === "rescheduled",
+      ).length,
+      cancelled: referrals.filter((referral) => referral.status === "cancelled")
+        .length,
+    }),
+    [referrals],
+  );
+
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(filteredReferrals.length / PAGE_SIZE)),
     [filteredReferrals.length],
@@ -623,10 +639,11 @@ export function ReferralsListPage() {
                 Operations
               </p>
               <h1 className="text-xl font-extrabold tracking-tight text-slate-950">
-                Referrals
+                Specialist Booking List
               </h1>
               <p className="mt-1 text-sm text-slate-500">
-                Manage and track all patient referrals.
+                Manage specialist schedules, status updates, and booking
+                notes in one view.
               </p>
             </div>
           </div>
@@ -636,7 +653,7 @@ export function ReferralsListPage() {
               <Search className="size-4 shrink-0 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search patient, reason..."
+                placeholder="Search patient, specialist, date, or reason..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
@@ -657,12 +674,34 @@ export function ReferralsListPage() {
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setStatusFilter("all");
+              }}
+              className="border border-slate-200 px-3 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-600 transition hover:bg-slate-50"
+            >
+              Reset
+            </button>
           </div>
         </div>
-        <div className="border-t border-slate-100 bg-slate-50 px-6 py-2">
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50 px-6 py-2.5">
           <span className="text-xs font-bold text-slate-500">
             {filteredReferrals.length} referral
             {filteredReferrals.length !== 1 ? "s" : ""} found
+          </span>
+          <span className="inline-flex items-center border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-sky-700">
+            {referralSummary.pending} pending
+          </span>
+          <span className="inline-flex items-center border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-indigo-700">
+            {referralSummary.scheduled} scheduled
+          </span>
+          <span className="inline-flex items-center border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+            {referralSummary.rescheduled} rescheduled
+          </span>
+          <span className="inline-flex items-center border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-red-600">
+            {referralSummary.cancelled} cancelled
           </span>
         </div>
       </div>
@@ -676,6 +715,7 @@ export function ReferralsListPage() {
                 {[
                   "Patient",
                   "Specialist",
+                  "Schedule",
                   "Referral Status",
                   "Cancelled Reason",
                   "Reschedule Reason",
