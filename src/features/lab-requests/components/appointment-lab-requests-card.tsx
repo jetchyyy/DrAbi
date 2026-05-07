@@ -79,7 +79,6 @@ function RequestItem({ request }: { request: LabRequestRecord }) {
           <p className="mt-1 font-semibold text-slate-800">{request.resultStatus}</p>
         </div>
       </div>
-
       {request.resultNotes ? (
         <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/80 p-4">
           <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700">Result notes</p>

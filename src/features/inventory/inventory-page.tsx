@@ -1,6 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   PackageSearch,
   Pencil,
@@ -24,13 +26,17 @@ import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { getDatabase } from "../../lib/local-db";
 import { queryKeys } from "../../lib/query-keys";
-import { InventoryItemQrCard } from "./components/inventory-item-qr-card";
-import { extractInventoryItemQrCode } from "./inventory-qr";
+import QRCode from "qrcode";
+import {
+  buildInventoryItemQrValue,
+  extractInventoryItemQrCode,
+} from "./inventory-qr";
 import {
   createInventoryItem,
   deleteInventoryItem,
   getCategories,
   getInventoryItems,
+  getInventoryItemsCount,
   getSupplier,
   updateInventoryItems,
 } from "../../lib/supabase-clinic";
@@ -58,11 +64,61 @@ interface FeedbackModalState {
   variant: "success" | "error";
 }
 
+interface InventoryItemQrInlineProps {
+  itemName: string;
+  qrCode: string;
+}
+
+function InventoryItemQrInline({ itemName, qrCode }: InventoryItemQrInlineProps) {
+  const [svgMarkup, setSvgMarkup] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    void QRCode.toString(buildInventoryItemQrValue(qrCode), {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      type: "svg",
+      width: 56,
+    }).then((svg: string) => {
+      if (active) {
+        setSvgMarkup(svg);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [qrCode]);
+
+  return (
+    <div className="flex items-center justify-end gap-3">
+      <div className="min-w-0 text-right">
+        <p className="break-all font-mono text-xs font-semibold text-slate-800">
+          {qrCode}
+        </p>
+      </div>
+      <div className="shrink-0 grid size-[56px] place-items-center border border-slate-200 bg-white p-1">
+        {svgMarkup ? (
+          <div
+            aria-label={`QR code for ${itemName}`}
+            className="size-[48px] [&>svg]:h-full [&>svg]:w-full"
+            dangerouslySetInnerHTML={{ __html: svgMarkup }}
+          />
+        ) : (
+          <QrCode className="size-5 text-slate-400" />
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function InventoryPage() {
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const database = getDatabase();
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [feedbackModal, setFeedbackModal] = useState<FeedbackModalState>({
@@ -73,11 +129,16 @@ export function InventoryPage() {
   });
   const deferredSearch = useDeferredValue(search);
 
-  const page = 1;
+  const ITEMS_PER_PAGE = 10;
 
   const { data: items = [] } = useQuery<InventoryItem[]>({
-    queryKey: [queryKeys.inventory, page],
-    queryFn: () => getInventoryItems(page),
+    queryKey: [queryKeys.inventory, currentPage],
+    queryFn: () => getInventoryItems(currentPage),
+  });
+
+  const { data: totalItemCount = 0 } = useQuery<number>({
+    queryKey: [queryKeys.inventory, "count"],
+    queryFn: getInventoryItemsCount,
   });
 
   type Category = {
@@ -154,7 +215,6 @@ export function InventoryPage() {
     [searchParams],
   );
   const scannedItem = items.find((item) => item.qrCode === scannedCode) ?? null;
-  const qrPreviewItems = scannedItem ? [scannedItem] : items.slice(0, 2);
 
   const filteredItems = useMemo(
     () =>
@@ -165,6 +225,21 @@ export function InventoryPage() {
       ),
     [deferredSearch, items],
   );
+
+  const hasSearch = deferredSearch.trim().length > 0;
+  const totalPages = hasSearch
+    ? 1
+    : Math.max(1, Math.ceil(totalItemCount / ITEMS_PER_PAGE));
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [deferredSearch]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   useEffect(() => {
     if (!isItemModalOpen) {
@@ -404,16 +479,15 @@ export function InventoryPage() {
           </div>
           <div className="border-t border-slate-100 bg-slate-50 px-6 py-2">
             <span className="text-xs font-bold text-slate-500">
-              {filteredItems.length} item{filteredItems.length !== 1 ? "s" : ""}{" "}
-              found
+              {hasSearch
+                ? `${filteredItems.length} item${filteredItems.length !== 1 ? "s" : ""} found on this page`
+                : `${totalItemCount} item${totalItemCount !== 1 ? "s" : ""} total`}
             </span>
           </div>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1fr_0.38fr]">
-          <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200">
+        <div className="border border-slate-200 bg-white shadow-sm">
+            <table className="w-full divide-y divide-slate-200">
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
@@ -428,8 +502,8 @@ export function InventoryPage() {
                     <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
                       Pricing
                     </th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                      QR Code
+                    <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                      Item Code
                     </th>
                     <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
                       Actions
@@ -517,10 +591,10 @@ export function InventoryPage() {
                             </p>
                           </td>
                           <td className="px-6 py-4 align-top">
-                            <span className="inline-flex items-center gap-1 break-all bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-600">
-                              <QrCode className="size-3.5" />
-                              {item.qrCode}
-                            </span>
+                            <InventoryItemQrInline
+                              itemName={item.name}
+                              qrCode={item.qrCode}
+                            />
                           </td>
                           <td className="px-6 py-4 align-top">
                             <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
@@ -547,21 +621,48 @@ export function InventoryPage() {
                     })
                   )}
                 </tbody>
-              </table>
+            </table>
+          {!hasSearch && (
+            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-6 py-3">
+              <span className="text-xs font-bold text-slate-500">
+                Page {currentPage} of {totalPages}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  className="inline-flex items-center gap-1 border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 disabled:opacity-40 hover:bg-slate-50"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  type="button"
+                >
+                  <ChevronLeft className="size-3.5" />
+                  Prev
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    className={`min-w-[32px] border px-3 py-1.5 text-xs font-bold ${
+                      p === currentPage
+                        ? "border-orange-600 bg-orange-600 text-white"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                    key={p}
+                    onClick={() => setCurrentPage(p)}
+                    type="button"
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  className="inline-flex items-center gap-1 border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 disabled:opacity-40 hover:bg-slate-50"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  type="button"
+                >
+                  Next
+                  <ChevronRight className="size-3.5" />
+                </button>
+              </div>
             </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-              {qrPreviewItems.map((item) => (
-                <InventoryItemQrCard
-                  itemName={item.name}
-                  key={item.id}
-                  qrCode={item.qrCode}
-                />
-              ))}
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

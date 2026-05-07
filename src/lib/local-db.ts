@@ -22,6 +22,7 @@ import type {
   LabResult,
   LabService,
   LabServiceCategory,
+  LabRequestDocument,
   MedicalCertificate,
   PatientActionLog,
   Patient,
@@ -1134,13 +1135,57 @@ export function createPrescription(
   }).prescriptions[0];
 }
 
+export function updatePrescriptionRecord(
+  prescriptionId: string,
+  input: Pick<
+    Prescription,
+    "prescriptionName" | "brandName" | "dosage" | "instruction" | "numberOfMedications"
+  >,
+) {
+  const timestamp = new Date().toISOString();
+  return (
+    updateDatabase((draft) => {
+      const prescription = draft.prescriptions.find(
+        (item) => item.id === prescriptionId,
+      );
+      if (!prescription) {
+        throw new Error("Prescription record not found.");
+      }
+
+      prescription.prescriptionName = input.prescriptionName;
+      prescription.brandName = input.brandName ?? null;
+      prescription.dosage = input.dosage;
+      prescription.instruction = input.instruction;
+      prescription.numberOfMedications = input.numberOfMedications ?? null;
+      prescription.updatedAt = timestamp;
+      draft.auditLogs.unshift(
+        createAuditLog(prescription.patientId, "update", "prescription"),
+      );
+    }).prescriptions.find((item) => item.id === prescriptionId) ?? null
+  );
+}
+
 export function createMedicalCertificate(
   input: Omit<MedicalCertificate, "id" | "createdAt" | "updatedAt">,
 ) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
+    const nextCertificateNumber =
+      Math.max(
+        draft.medicalCertificates.reduce(
+          (max, certificate) =>
+            Math.max(max, certificate.certificateNumber ?? 0),
+          0,
+        ),
+        draft.medicalCertificates.length,
+      ) + 1;
+
     draft.medicalCertificates.unshift({
       ...input,
+      certificateNumber: nextCertificateNumber,
+      checkFinancial: input.checkFinancial ?? false,
+      checkSchool: input.checkSchool ?? false,
+      checkWork: input.checkWork ?? false,
       id: generateId("medcert"),
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -1151,11 +1196,63 @@ export function createMedicalCertificate(
   }).medicalCertificates[0];
 }
 
+export function createLabRequestDocument(
+  input: Omit<LabRequestDocument, 'id' | 'createdAt' | 'updatedAt'>,
+) {
+  const timestamp = new Date().toISOString();
+  return updateDatabase((draft) => {
+    draft.labRequestDocuments = draft.labRequestDocuments ?? [];
+    draft.labRequestDocuments.unshift({
+      ...input,
+      id: generateId('labreq'),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    draft.auditLogs.unshift(
+      createAuditLog(input.patientId, 'create', 'lab_request_document'),
+    );
+  }).labRequestDocuments[0];
+}
+
+export function listLabRequestDocumentsByPatient(patientId: string) {
+  return (getDatabase().labRequestDocuments ?? [])
+    .filter((doc) => doc.patientId === patientId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 export function listMedicalCertificatesByPatient(patientId: string) {
+  const allCertificates = getDatabase().medicalCertificates;
+  const certificateNumberById = new Map<string, number>();
+
+  [...allCertificates]
+    .sort((left, right) => {
+      const createdComparison = left.createdAt.localeCompare(right.createdAt);
+      if (createdComparison !== 0) {
+        return createdComparison;
+      }
+      return left.id.localeCompare(right.id);
+    })
+    .forEach((certificate, index) => {
+      certificateNumberById.set(
+        certificate.id,
+        certificate.certificateNumber ?? index + 1,
+      );
+    });
+
   return getDatabase()
     .medicalCertificates.filter(
       (certificate) => certificate.patientId === patientId,
     )
+    .map((certificate) => ({
+      ...certificate,
+      certificateNumber:
+        certificate.certificateNumber ??
+        certificateNumberById.get(certificate.id) ??
+        null,
+      checkFinancial: certificate.checkFinancial ?? false,
+      checkSchool: certificate.checkSchool ?? false,
+      checkWork: certificate.checkWork ?? false,
+    }))
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
@@ -2112,5 +2209,6 @@ function normalizeDatabase(database: AppDatabase) {
     inventoryUsageLogs: database.inventoryUsageLogs ?? [],
     posSales: database.posSales ?? [],
     posSaleItems: database.posSaleItems ?? [],
+    labRequestDocuments: database.labRequestDocuments ?? [],
   };
 }

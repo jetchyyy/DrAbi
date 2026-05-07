@@ -364,6 +364,7 @@ export function SettingsDocumentsPage() {
     }
 
     return buildMedicalCertificatePrintDocument({
+      certificateNumber: '',
       clinicName: debugValues.clinicName,
       clinicAddress: debugValues.clinicAddress,
       clinicContactNumber: debugValues.clinicContactNumber,

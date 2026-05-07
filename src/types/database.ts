@@ -631,7 +631,9 @@ export interface Database {
           dosage: string;
           instructions: string;
           prescription_name: string | null;
+          brand_name: string | null;
           instruction: string | null;
+          number_of_medications: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -643,6 +645,9 @@ export interface Database {
           id: string;
           consultation_id: string;
           patient_id: string;
+          check_financial: boolean;
+          check_school: boolean;
+          check_work: boolean;
           certificate_purpose: string;
           diagnosis: string;
           recommendation: string;
@@ -653,6 +658,22 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["medical_certificates"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["medical_certificates"]["Row"]>;
+      };
+      lab_request_documents: {
+        Row: {
+          id: string;
+          patient_id: string;
+          consultation_id: string | null;
+          requested_by: string | null;
+          target_laboratory: string;
+          requested_tests: string;
+          clinical_notes: string;
+          document_html: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["lab_request_documents"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["lab_request_documents"]["Row"]>;
       };
       inventory_categories: {
         Row: {

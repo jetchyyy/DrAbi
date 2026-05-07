@@ -14,7 +14,14 @@ import {
 } from "lucide-react";
 import jsQR from "jsqr";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { toast } from "sonner";
 
 import { Button } from "../../components/ui/button";
@@ -26,14 +33,18 @@ import { printHtmlDocument } from "../../lib/print";
 import {
   checkoutPosSaleLiveOrDemo,
   createInventoryLogs,
+  getDoctorDirectoryLiveOrDemo,
+  listConsultationsByPatientIdLiveOrDemo,
   listInventoryItemsLiveOrDemo,
   listPatientsLiveOrDemo,
   listPosSalesLiveOrDemo,
+  listUsersLiveOrDemo,
 } from "../../lib/supabase-clinic";
 import { formatCurrency } from "../../lib/utils";
 import type { InventoryItem, PosPaymentMethod } from "../../types/domain";
 import { useAuth } from "../auth/auth-context";
 import { extractInventoryItemQrCode } from "../inventory/inventory-qr";
+import { buildPosReceiptPrintDocument } from "./pos-receipt-print-document";
 
 function readQrFromVideoFrame(
   video: HTMLVideoElement,
@@ -67,8 +78,12 @@ type CartEntry = {
 type ReceiptState = {
   saleNumber: string;
   customerName: string;
+  doctorAssignedName: string;
+  receptionistName: string;
   paymentMethod: PosPaymentMethod;
   paymentReference: string | null;
+  issuedAt: string;
+  subtotal: number;
   total: number;
   items: Array<{
     itemName: string;
@@ -123,6 +138,23 @@ function findInventoryLookupMatches(items: InventoryItem[], query: string) {
   });
 }
 
+function formatDoctorSignatureName(
+  doctorName: string | null | undefined,
+  postNominals?: string | null,
+) {
+  const baseName = (doctorName ?? "").trim().replace(/^dr\.?\s+/i, "").trim();
+  if (!baseName) {
+    return "N/A";
+  }
+
+  const suffix = (postNominals ?? "")
+    .trim()
+    .replace(/^,\s*/, "")
+    .replace(/^dr\.?\s+/i, "");
+
+  return suffix ? `Dr. ${baseName}, ${suffix}` : `Dr. ${baseName}`;
+}
+
 export function PosPage() {
   const queryClient = useQueryClient();
   const { profile } = useAuth();
@@ -158,6 +190,16 @@ export function PosPage() {
     queryFn: () => listPosSalesLiveOrDemo(),
   });
 
+  const { data: users = [] } = useQuery({
+    queryKey: queryKeys.users,
+    queryFn: () => listUsersLiveOrDemo(),
+  });
+
+  const { data: doctors = [] } = useQuery({
+    queryKey: queryKeys.doctors,
+    queryFn: () => getDoctorDirectoryLiveOrDemo(),
+  });
+
   const lookupMatches = useMemo(
     () => findInventoryLookupMatches(items, lookupValue),
     [items, lookupValue],
@@ -185,7 +227,61 @@ export function PosPage() {
     [cart],
   );
 
-  const stopCamera = () => {
+  const addItemToCart = useCallback((matchedItem: InventoryItem) => {
+    setCart((currentCart) => {
+      const existingEntry = currentCart.find(
+        (entry) => entry.item.id === matchedItem.id,
+      );
+      if (!existingEntry) {
+        return [...currentCart, { item: matchedItem, quantity: 1 }];
+      }
+
+      if (existingEntry.quantity + 1 > matchedItem.stockOnHand) {
+        setLookupError(
+          `Only ${matchedItem.stockOnHand} ${matchedItem.unit} available for ${matchedItem.name}.`,
+        );
+        return currentCart;
+      }
+
+      return currentCart.map((entry) =>
+        entry.item.id === matchedItem.id
+          ? { ...entry, quantity: entry.quantity + 1 }
+          : entry,
+      );
+    });
+
+    setLookupError("");
+    setLookupValue("");
+  }, []);
+
+  const handleAddByCode = useCallback(
+    (codeOverride?: string) => {
+      const query = codeOverride ?? lookupValue;
+      const matches = findInventoryLookupMatches(items, query);
+
+      if (!query.trim()) {
+        setLookupError("Type an item name, SKU, or scan an inventory QR code.");
+        return;
+      }
+
+      if (matches.length === 0) {
+        setLookupError("No inventory item matched that name, SKU, or QR code.");
+        return;
+      }
+
+      if (matches.length > 1) {
+        setLookupError(
+          "Multiple inventory items match that search. Use a more specific name, SKU, or QR code.",
+        );
+        return;
+      }
+
+      addItemToCart(matches[0]);
+    },
+    [addItemToCart, items, lookupValue],
+  );
+
+  const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) {
@@ -194,13 +290,13 @@ export function PosPage() {
     }
     setCameraState((current) => (current === "unsupported" ? current : "idle"));
     setCameraMessage("");
-  };
+  }, []);
 
   useEffect(
     () => () => {
       stopCamera();
     },
-    [],
+    [stopCamera],
   );
 
   useEffect(() => {
@@ -241,7 +337,7 @@ export function PosPage() {
     return () => {
       cancelled = true;
     };
-  }, [cameraState, items]);
+  }, [cameraState, handleAddByCode, stopCamera]);
 
   useEffect(() => {
     if (cameraState !== "requesting" && cameraState !== "active") {
@@ -296,9 +392,10 @@ export function PosPage() {
           const inventoryLogs = await createInventoryLogs(payload);
           console.log("Inventory log created:", inventoryLogs);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Unknown error";
         throw new Error(
-          `Failed to create inventory logs: ${err?.message || "Unknown error"}`,
+          `Failed to create inventory logs: ${message}`,
         );
       }
 
@@ -317,6 +414,43 @@ export function PosPage() {
     },
 
     onSuccess: async (result) => {
+      const checkoutPatient = selectedPatient;
+      const checkoutPatientId = result.sale?.patientId ?? null;
+      let doctorAssignedName = "N/A";
+      if (checkoutPatientId) {
+        try {
+          const patientConsultations =
+            await listConsultationsByPatientIdLiveOrDemo(checkoutPatientId);
+          const latestConsultation = patientConsultations
+            .slice()
+            .sort((left, right) =>
+              right.createdAt.localeCompare(left.createdAt),
+            )[0];
+
+          if (latestConsultation?.doctorId) {
+            const doctorMatch = doctors.find(
+              (doctor) => doctor.id === latestConsultation.doctorId,
+            );
+            doctorAssignedName =
+              formatDoctorSignatureName(
+                doctorMatch?.fullName ?? latestConsultation.providerName,
+                doctorMatch?.title ?? null,
+              ) || "N/A";
+          } else if (latestConsultation?.providerName) {
+            doctorAssignedName = formatDoctorSignatureName(
+              latestConsultation.providerName,
+            );
+          }
+        } catch {
+          doctorAssignedName = "N/A";
+        }
+      }
+
+      const receptionistName =
+        users.find((user) => user.id === result.sale?.cashierId)?.fullName ??
+        profile?.fullName ??
+        "N/A";
+
       setCart([]);
       setLookupValue("");
       setLookupError("");
@@ -328,11 +462,15 @@ export function PosPage() {
         result.sale
           ? {
               saleNumber: result.sale.saleNumber,
-              customerName: selectedPatient
-                ? `${selectedPatient.firstName} ${selectedPatient.lastName}`
+              customerName: checkoutPatient
+                ? `${checkoutPatient.firstName} ${checkoutPatient.lastName}`
                 : "Walk-in customer",
+              doctorAssignedName,
+              receptionistName,
               paymentMethod: result.sale.paymentMethod,
               paymentReference: result.sale.paymentReference ?? null,
+              issuedAt: result.sale.createdAt,
+              subtotal: result.sale.subtotal,
               total: result.sale.total,
               items: result.items.map((entry) => ({
                 itemName: entry.itemName,
@@ -351,57 +489,6 @@ export function PosPage() {
       toast.success("POS sale completed and stock updated.");
     },
   });
-
-  function addItemToCart(matchedItem: InventoryItem) {
-    setCart((currentCart) => {
-      const existingEntry = currentCart.find(
-        (entry) => entry.item.id === matchedItem.id,
-      );
-      if (!existingEntry) {
-        return [...currentCart, { item: matchedItem, quantity: 1 }];
-      }
-
-      if (existingEntry.quantity + 1 > matchedItem.stockOnHand) {
-        setLookupError(
-          `Only ${matchedItem.stockOnHand} ${matchedItem.unit} available for ${matchedItem.name}.`,
-        );
-        return currentCart;
-      }
-
-      return currentCart.map((entry) =>
-        entry.item.id === matchedItem.id
-          ? { ...entry, quantity: entry.quantity + 1 }
-          : entry,
-      );
-    });
-
-    setLookupError("");
-    setLookupValue("");
-  }
-
-  function handleAddByCode(codeOverride?: string) {
-    const query = codeOverride ?? lookupValue;
-    const matches = findInventoryLookupMatches(items, query);
-
-    if (!query.trim()) {
-      setLookupError("Type an item name, SKU, or scan an inventory QR code.");
-      return;
-    }
-
-    if (matches.length === 0) {
-      setLookupError("No inventory item matched that name, SKU, or QR code.");
-      return;
-    }
-
-    if (matches.length > 1) {
-      setLookupError(
-        "Multiple inventory items match that search. Use a more specific name, SKU, or QR code.",
-      );
-      return;
-    }
-
-    addItemToCart(matches[0]);
-  }
 
   function updateCartQuantity(itemId: string, nextQuantity: number) {
     setCart((currentCart) =>
@@ -489,55 +576,7 @@ export function PosPage() {
       return;
     }
 
-    const linesMarkup = receiptState.items
-      .map(
-        (entry) => `
-          <tr>
-            <td>${entry.itemName}</td>
-            <td>${entry.quantity}</td>
-            <td>${formatCurrency(entry.unitPrice)}</td>
-            <td>${formatCurrency(entry.lineTotal)}</td>
-          </tr>`,
-      )
-      .join("");
-
-    await printHtmlDocument(`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>POS Receipt</title>
-    <style>
-      body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
-      .sheet { max-width: 720px; margin: 0 auto; }
-      h1 { font-size: 22px; margin-bottom: 4px; }
-      p { margin: 4px 0; }
-      table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-      th, td { border-bottom: 1px solid #e2e8f0; padding: 10px 8px; text-align: left; font-size: 14px; }
-      .total { margin-top: 20px; font-size: 18px; font-weight: 700; text-align: right; }
-    </style>
-  </head>
-  <body>
-    <main class="sheet">
-      <h1>Odyssey Clinic POS Receipt</h1>
-      <p>Sale No.: ${receiptState.saleNumber}</p>
-      <p>Customer: ${receiptState.customerName}</p>
-      <p>Payment: ${receiptState.paymentMethod.toUpperCase()}</p>
-      <p>Reference: ${receiptState.paymentReference || "N/A"}</p>
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Qty</th>
-            <th>Unit Price</th>
-            <th>Line Total</th>
-          </tr>
-        </thead>
-        <tbody>${linesMarkup}</tbody>
-      </table>
-      <p class="total">Total: ${formatCurrency(receiptState.total)}</p>
-    </main>
-  </body>
-</html>`);
+    await printHtmlDocument(buildPosReceiptPrintDocument(receiptState));
   }
 
   return (
