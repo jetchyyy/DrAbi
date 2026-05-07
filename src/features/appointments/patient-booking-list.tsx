@@ -1,5 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarCheck2, Search, Loader2, AlertCircle, Activity, X } from "lucide-react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  CalendarCheck2,
+  Search,
+  Loader2,
+  AlertCircle,
+  Activity,
+  X,
+} from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { updatePatientLiveOrDemo } from "../../lib/supabase-clinic";
 import { usePatientDetail } from "../patients/hooks/use-patients";
@@ -646,8 +659,9 @@ export function PatientBookingPageList() {
     useState<PatientBookingRow | null>(null);
   const [deletingBooking, setDeletingBooking] =
     useState<PatientBookingRow | null>(null);
-  const [vitalsBooking, setVitalsBooking] =
-    useState<PatientBookingRow | null>(null);
+  const [vitalsBooking, setVitalsBooking] = useState<PatientBookingRow | null>(
+    null,
+  );
   const [currentPage, setCurrentPage] = useState(1);
 
   // Search & filter state
@@ -871,7 +885,12 @@ interface BookingTableRowProps {
   onRecordVitals: () => void;
 }
 
-function BookingTableRow({ booking, onEdit, onDelete, onRecordVitals }: BookingTableRowProps) {
+function BookingTableRow({
+  booking,
+  onEdit,
+  onDelete,
+  onRecordVitals,
+}: BookingTableRowProps) {
   return (
     <tr className="group hover:bg-slate-50 transition-colors">
       {/* Patient */}
@@ -1075,10 +1094,15 @@ function VitalsModal({ booking, onClose }: VitalsModalProps) {
       >
         <div className="flex items-start justify-between gap-4 bg-blue-600 px-4 py-4 sm:px-6">
           <div className="min-w-0">
-            <p className="text-xs font-extrabold uppercase tracking-widest text-blue-100">Patient Booking</p>
-            <p className="mt-0.5 text-sm font-bold text-white">Record Vitals — {booking.patientFullName}</p>
+            <p className="text-xs font-extrabold uppercase tracking-widest text-blue-100">
+              Patient Booking
+            </p>
+            <p className="mt-0.5 text-sm font-bold text-white">
+              Record Vitals — {booking.patientFullName}
+            </p>
             <p className="mt-2 max-w-2xl text-sm text-blue-50">
-              Record the patient's current vital signs. These will be stored in the patient record and auto-populated in the next consultation.
+              Record the patient's current vital signs. These will be stored in
+              the patient record and auto-populated in the next consultation.
             </p>
           </div>
           <button
@@ -1095,28 +1119,67 @@ function VitalsModal({ booking, onClose }: VitalsModalProps) {
           <div className="space-y-4 px-4 py-5 sm:px-6">
             <div className="grid gap-4 sm:grid-cols-2">
               {[
-                { key: "temperature", label: "Temperature (°C)", placeholder: "e.g., 37.5", type: "number", step: "0.1" },
-                { key: "bloodPressure", label: "Blood Pressure (mmHg)", placeholder: "e.g., 120/80", type: "text" },
-                { key: "heartRate", label: "Heart Rate (bpm)", placeholder: "e.g., 72", type: "number" },
-                { key: "respiratoryRate", label: "Respiratory Rate (breaths/min)", placeholder: "e.g., 16", type: "number" },
-                { key: "weight", label: "Weight (kg)", placeholder: "e.g., 70.5", type: "number", step: "0.1" },
-                { key: "height", label: "Height (cm)", placeholder: "e.g., 170", type: "number", step: "0.1" },
+                {
+                  key: "temperature",
+                  label: "Temperature (°C)",
+                  placeholder: "e.g., 37.5",
+                  type: "number",
+                  step: "0.1",
+                },
+                {
+                  key: "bloodPressure",
+                  label: "Blood Pressure (mmHg)",
+                  placeholder: "e.g., 120/80",
+                  type: "text",
+                },
+                {
+                  key: "heartRate",
+                  label: "Heart Rate (bpm)",
+                  placeholder: "e.g., 72",
+                  type: "number",
+                },
+                {
+                  key: "respiratoryRate",
+                  label: "Respiratory Rate (breaths/min)",
+                  placeholder: "e.g., 16",
+                  type: "number",
+                },
+                {
+                  key: "weight",
+                  label: "Weight (kg)",
+                  placeholder: "e.g., 70.5",
+                  type: "number",
+                  step: "0.1",
+                },
+                {
+                  key: "height",
+                  label: "Height (cm)",
+                  placeholder: "e.g., 170",
+                  type: "number",
+                  step: "0.1",
+                },
               ].map(({ key, label, placeholder, type, step }) => (
                 <div key={key}>
-                  <label className="mb-1 block text-xs font-bold text-slate-700">{label}</label>
+                  <label className="mb-1 block text-xs font-bold text-slate-700">
+                    {label}
+                  </label>
                   <input
                     className="w-full border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
                     placeholder={placeholder}
                     type={type}
                     step={step}
                     value={fields[key as keyof typeof fields]}
-                    onChange={(e) => setFields((prev) => ({ ...prev, [key]: e.target.value }))}
+                    onChange={(e) =>
+                      setFields((prev) => ({ ...prev, [key]: e.target.value }))
+                    }
                   />
                 </div>
               ))}
             </div>
             {error && (
-              <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+              <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+              </div>
             )}
           </div>
         </div>
@@ -1135,7 +1198,9 @@ function VitalsModal({ booking, onClose }: VitalsModalProps) {
             onClick={() => mutation.mutate()}
             type="button"
           >
-            {mutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
+            {mutation.isPending && (
+              <Loader2 className="size-3.5 animate-spin" />
+            )}
             {mutation.isPending ? "Saving..." : "Save Vitals"}
           </button>
         </div>

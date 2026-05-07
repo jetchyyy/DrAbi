@@ -55,7 +55,11 @@ import type {
   InventoryUsageLog,
 } from "../types/domain";
 import type { Database } from "../types/database";
-import { generateBookingReceiptCode, generatePatientQrCode } from "./utils";
+import {
+  generateBookingReceiptCode,
+  generatePatientQrCode,
+  toUtcIsoFromPhilippineDateTime,
+} from "./utils";
 import {
   FunctionsFetchError,
   FunctionsHttpError,
@@ -247,36 +251,11 @@ function resolveBookingScheduledAtIso(input: {
   const timeValue = input.preferredTime?.trim() ?? "";
 
   if (dateValue && timeValue) {
-    const timeMatch = timeValue.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
-    if (timeMatch) {
-      const hour = Number(timeMatch[1]);
-      const minute = Number(timeMatch[2]);
-      const second = Number(timeMatch[3] ?? "0");
-
-      if (
-        Number.isInteger(hour) &&
-        Number.isInteger(minute) &&
-        Number.isInteger(second) &&
-        hour >= 0 &&
-        hour <= 23 &&
-        minute >= 0 &&
-        minute <= 59 &&
-        second >= 0 &&
-        second <= 59
-      ) {
-        const normalizedTime = `${String(hour).padStart(2, "0")}:${String(
-          minute,
-        ).padStart(2, "0")}:${String(second).padStart(2, "0")}`;
-        const candidate = new Date(`${dateValue}T${normalizedTime}`);
-        if (!Number.isNaN(candidate.getTime())) {
-          return candidate.toISOString();
-        }
-      }
-    }
-
-    const rawCandidate = new Date(`${dateValue}T${timeValue}`);
-    if (!Number.isNaN(rawCandidate.getTime())) {
-      return rawCandidate.toISOString();
+    const candidate = toUtcIsoFromPhilippineDateTime(
+      `${dateValue}T${timeValue}`,
+    );
+    if (candidate) {
+      return candidate;
     }
   }
 
@@ -498,12 +477,12 @@ export function mapPatient(row: PatientRow): Patient {
     medicalHistory: row.medical_history,
     emergencyContactName: row.emergency_contact_name ?? "",
     emergencyContactPhone: row.emergency_contact_phone ?? "",
-      temperature: row.temperature,
-      bloodPressure: row.blood_pressure,
-      heartRate: row.heart_rate,
-      respiratoryRate: row.respiratory_rate,
-      weight: row.weight,
-      height: row.height,
+    temperature: row.temperature,
+    bloodPressure: row.blood_pressure,
+    heartRate: row.heart_rate,
+    respiratoryRate: row.respiratory_rate,
+    weight: row.weight,
+    height: row.height,
     vitalsRecordedAt: row.vitals_recorded_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -1883,7 +1862,9 @@ function mapClinicSettings(row: ClinicSettingsRow): ClinicSettings {
     appointmentSlotMinutes: row.appointment_slot_minutes,
     systemEnabled: row.system_enabled,
     systemMessage: row.system_message,
-    systemStatusType: (rawRow.system_status_type === 'restricted' ? 'restricted' : 'maintenance') as 'maintenance' | 'restricted',
+    systemStatusType: (rawRow.system_status_type === "restricted"
+      ? "restricted"
+      : "maintenance") as "maintenance" | "restricted",
     enabledModules: normalizeEnabledModules(row.enabled_modules),
     operatingHours: Array.isArray(row.operating_hours)
       ? (row.operating_hours as ClinicSettings["operatingHours"])
@@ -1960,7 +1941,8 @@ export async function updateClinicSettingsLiveOrDemo(
   if (input.operatingHours !== undefined)
     payload.operating_hours = input.operatingHours;
   if (input.systemStatusType !== undefined)
-    (payload as Record<string, unknown>).system_status_type = input.systemStatusType;
+    (payload as Record<string, unknown>).system_status_type =
+      input.systemStatusType;
 
   const { data, error } = await client
     .from("clinic_settings")
@@ -3122,12 +3104,15 @@ export async function listBlockedBookingSlotsLiveOrDemo(input: {
 
     const appointmentTimes = database.appointments
       .filter((appointment) => {
-        if (
-          !appointment.scheduledAt.startsWith(input.date) ||
-          appointment.status === "cancelled"
-        ) {
-          return false;
-        }
+        if (appointment.status === "cancelled") return false;
+
+        // ✅ Convert to PH time (UTC+8) before comparing date
+        const phDate = new Date(
+          new Date(appointment.scheduledAt).getTime() + 8 * 60 * 60 * 1000,
+        );
+        const phDateStr = phDate.toISOString().slice(0, 10); // "YYYY-MM-DD" in PH time
+
+        if (phDateStr !== input.date) return false;
 
         if (input.doctorId) {
           return appointment.doctorId === input.doctorId;
@@ -3137,7 +3122,13 @@ export async function listBlockedBookingSlotsLiveOrDemo(input: {
           appointment.serviceId === input.serviceId && !appointment.doctorId
         );
       })
-      .map((appointment) => appointment.scheduledAt.slice(11, 16));
+      .map((appointment) => {
+        // ✅ Extract PH local time, not raw UTC
+        const phDate = new Date(
+          new Date(appointment.scheduledAt).getTime() + 8 * 60 * 60 * 1000,
+        );
+        return `${String(phDate.getUTCHours()).padStart(2, "0")}:${String(phDate.getUTCMinutes()).padStart(2, "0")}`;
+      });
 
     const referralTimes = input.doctorId
       ? database.referrals
@@ -3153,10 +3144,12 @@ export async function listBlockedBookingSlotsLiveOrDemo(input: {
 
             return referral.targetDoctorId === input.doctorId;
           })
-            .map((referral) => referral.appointmentTime?.slice(0, 5) ?? "")
+          .map((referral) => referral.appointmentTime?.slice(0, 5) ?? "")
       : [];
 
-    return [...new Set([...bookingTimes, ...appointmentTimes, ...referralTimes])].sort();
+    return [
+      ...new Set([...bookingTimes, ...appointmentTimes, ...referralTimes]),
+    ].sort();
   }
 
   const client = requireSupabase();
@@ -3173,6 +3166,41 @@ export async function listBlockedBookingSlotsLiveOrDemo(input: {
     throw error;
   }
 
+  // Query appointments table for blocked times (using PH timezone UTC+8)
+  let appointmentTimes: string[] = [];
+  {
+    // ✅ Convert PH timezone range → UTC ISO strings (PostgREST handles Z format reliably)
+    const startUTC = new Date(`${input.date}T00:00:00+08:00`).toISOString(); // "2026-05-08T16:00:00.000Z"
+    const endUTC = new Date(`${input.date}T23:59:59+08:00`).toISOString(); // "2026-05-09T15:59:59.000Z"
+
+    const apptBase = (client as any)
+      .from("appointments")
+      .select("scheduled_at")
+      .gte("scheduled_at", startUTC)
+      .lt("scheduled_at", endUTC)
+      .neq("status", "cancelled");
+
+    const apptQuery = input.doctorId
+      ? apptBase.eq("doctor_id", input.doctorId)
+      : input.serviceId
+        ? apptBase.eq("service_id", input.serviceId).is("doctor_id", null)
+        : apptBase;
+
+    const { data: apptData, error: apptError } = await apptQuery;
+    if (apptError) throw apptError;
+
+    appointmentTimes = ((apptData ?? []) as Array<{ scheduled_at: string }>)
+      .map((appt) => {
+        const utcDate = new Date(appt.scheduled_at);
+        if (isNaN(utcDate.getTime())) return "";
+        const phDate = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+        const hh = String(phDate.getUTCHours()).padStart(2, "0");
+        const mm = String(phDate.getUTCMinutes()).padStart(2, "0");
+        return `${hh}:${mm}`;
+      })
+      .filter(Boolean);
+  }
+
   let referralTimes: string[] = [];
   if (input.doctorId) {
     const { data: referralData, error: referralError } = await client
@@ -3187,28 +3215,35 @@ export async function listBlockedBookingSlotsLiveOrDemo(input: {
       throw referralError;
     }
 
-    referralTimes = ((referralData ?? []) as Array<{
-      appointment_time: string | null;
-      status: string;
-    }>)
+    referralTimes = (
+      (referralData ?? []) as Array<{
+        appointment_time: string | null;
+        status: string;
+      }>
+    )
       .filter(
         (referral) =>
           !!referral.appointment_time &&
           referral.status !== "cancelled" &&
           referral.status !== "declined",
       )
-        .map((referral) => referral.appointment_time?.slice(0, 5) ?? "");
+      .map((referral) => referral.appointment_time?.slice(0, 5) ?? "");
   }
 
-  return (
-    (data ?? []) as Array<{
-      blocked_time?: string;
-      preferred_time?: string;
-    }>
-  )
-    .map((row) => (row.blocked_time ?? row.preferred_time ?? "").slice(0, 5))
-    .concat(referralTimes)
-    .filter(Boolean);
+  return [
+    ...new Set([
+      ...(
+        (data ?? []) as Array<{
+          blocked_time?: string;
+          preferred_time?: string;
+        }>
+      ).map((row) =>
+        (row.blocked_time ?? row.preferred_time ?? "").slice(0, 5),
+      ),
+      ...appointmentTimes,
+      ...referralTimes,
+    ]),
+  ].filter(Boolean);
 }
 
 export async function getBookingByReceiptCodeLiveOrDemo(receiptCode: string) {

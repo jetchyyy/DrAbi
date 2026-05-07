@@ -63,7 +63,9 @@ export function useBlockedBookingSlots(input: {
         doctorId: input.doctorId ?? null,
         serviceId: input.serviceId ?? null,
       }),
-    enabled: Boolean(input.date && (input.doctorId || input.serviceId)),
+    enabled: !!input.date,
+    staleTime: 0,
+    gcTime: 0, // ← discard cache completely, don't serve stale []
   });
 }
 
@@ -116,8 +118,10 @@ export function useCreateBooking(userId: string | null) {
         queryKey: queryKeys.currentPatient(userId),
       });
       void queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
+      // ✅ Use the same key builder instead of the raw string
       void queryClient.invalidateQueries({
-        queryKey: ["blocked-booking-slots"],
+        queryKey: queryKeys.blockedBookingSlots(null, null, null),
+        exact: false, // invalidates ALL blocked-slot queries regardless of params
       });
     },
   });

@@ -108,7 +108,7 @@ export interface ClinicSettings extends BaseRecord {
   appointmentSlotMinutes: number;
   systemEnabled: boolean;
   systemMessage: string;
-  systemStatusType: 'maintenance' | 'restricted';
+  systemStatusType: "maintenance" | "restricted";
   enabledModules: EnabledModules;
   operatingHours: Array<{
     day: string;

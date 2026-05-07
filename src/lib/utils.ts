@@ -2,6 +2,8 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+const MANILA_TIME_ZONE = "Asia/Manila";
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -24,6 +26,82 @@ export function formatTimeLabel(value: string) {
 
 export function formatDateTimeLabel(value: string) {
   return format(new Date(value), "MMM d, yyyy h:mm a");
+}
+
+export function formatDateTimeLabelPhilippine(value: string) {
+  return new Intl.DateTimeFormat("en-PH", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: MANILA_TIME_ZONE,
+  }).format(new Date(value));
+}
+
+export function getPhilippineDateKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: MANILA_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = parts.find((part) => part.type === "year")?.value ?? "";
+  const month = parts.find((part) => part.type === "month")?.value ?? "";
+  const day = parts.find((part) => part.type === "day")?.value ?? "";
+
+  return `${year}-${month}-${day}`;
+}
+
+export function getPhilippineTimeKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: MANILA_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const hour = parts.find((part) => part.type === "hour")?.value ?? "00";
+  const minute = parts.find((part) => part.type === "minute")?.value ?? "00";
+
+  return `${hour}:${minute}`;
+}
+
+export function toPhilippineDateTimeLocalValue(value: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: MANILA_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(value));
+
+  const year = parts.find((part) => part.type === "year")?.value ?? "";
+  const month = parts.find((part) => part.type === "month")?.value ?? "";
+  const day = parts.find((part) => part.type === "day")?.value ?? "";
+  const hour = parts.find((part) => part.type === "hour")?.value ?? "00";
+  const minute = parts.find((part) => part.type === "minute")?.value ?? "00";
+
+  return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
+export function toUtcIsoFromPhilippineDateTime(value: string) {
+  const match = value
+    .trim()
+    .match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::\d{2})?$/);
+
+  if (!match) {
+    const fallback = new Date(value);
+    return Number.isNaN(fallback.getTime())
+      ? new Date().toISOString()
+      : fallback.toISOString();
+  }
+
+  const [, datePart, hourPart, minutePart] = match;
+  const candidate = new Date(`${datePart}T${hourPart}:${minutePart}:00+08:00`);
+  return Number.isNaN(candidate.getTime())
+    ? new Date().toISOString()
+    : candidate.toISOString();
 }
 
 export function generateId(prefix: string) {
