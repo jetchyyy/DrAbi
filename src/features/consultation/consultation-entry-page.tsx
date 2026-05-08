@@ -1021,22 +1021,6 @@ export function ConsultationEntryPage() {
                 </p>
               </FormField>
 
-              {activeConsultationBookings.length > 0 && (
-                <div className="rounded-lg border border-sky-200 bg-sky-50 p-3">
-                  <p className="text-sm font-medium text-sky-900">
-                    Active booking requests
-                  </p>
-                  <ul className="mt-2 space-y-1">
-                    {activeConsultationBookings.map((booking: Booking) => (
-                      <li key={booking.id} className="text-xs text-sky-700">
-                        {booking.preferredDate} at {booking.preferredTime} —{" "}
-                        {booking.intakeNotes || "General consultation"}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
               <FormField
                 label={`${stepFields.consultationType.label} *`}
                 error={form.formState.errors.consultationType?.message}

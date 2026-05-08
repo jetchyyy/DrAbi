@@ -12,6 +12,7 @@ export const invoiceItemSchema = z.object({
 export const billingSchema = z.object({
   patientId: z.string().min(1, 'Patient is required.'),
   bookingId: z.string().optional(),
+  appointmentId: z.string().optional(),
   items: z.array(invoiceItemSchema).min(1, 'At least one invoice item is required.'),
   paymentStatus: z.enum(['unpaid', 'paid']).default('unpaid'),
   paymentType: z.enum(['cash', 'gcash', 'card']).default('cash'),

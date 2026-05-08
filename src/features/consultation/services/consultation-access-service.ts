@@ -119,7 +119,36 @@ function getNextAppointmentStatus(
   return status;
 }
 
-async function syncAppointmentAfterPaidValidation(patientId: string) {
+async function syncAppointmentAfterPaidValidation(appointmentId: string | null, patientId: string) {
+  // If appointment is linked in the invoice, use that specific appointment
+  if (appointmentId) {
+    const linkedAppointment = await appointmentService.getAppointmentById(appointmentId);
+    
+    if (linkedAppointment) {
+      const [, bookings] = await Promise.all([
+        listAppointmentsByPatientIdLiveOrDemo(patientId),
+        listBookingsByPatientIdLiveOrDemo(patientId),
+      ]);
+      
+      const intakeNotes = getLatestIntakeNotes(bookings);
+      const nextNotes = composeAppointmentNotes(linkedAppointment.notes ?? '', intakeNotes);
+      const nextStatus = getNextAppointmentStatus(linkedAppointment.status);
+
+      await updateAppointmentStatusAndNotesLiveOrDemo({
+        appointmentId: linkedAppointment.id,
+        status: nextStatus,
+        notes: nextNotes,
+      });
+
+      return {
+        appointmentId: linkedAppointment.id,
+        intakeNotesApplied: Boolean(intakeNotes),
+        message: 'Payment validated. Appointment is ready for SOAP documentation.',
+      };
+    }
+  }
+
+  // Fallback: If no appointment in invoice, try to find from linked booking
   const [appointments, bookings] = await Promise.all([
     listAppointmentsByPatientIdLiveOrDemo(patientId),
     listBookingsByPatientIdLiveOrDemo(patientId),
@@ -183,12 +212,24 @@ export async function validatePatientConsultationAccess(
     // Get today's appointments to identify the current active appointment
     const appointments = await listAppointmentsByPatientIdLiveOrDemo(patientId);
     const currentAppointment = getTodaysSoonestAppointment(appointments);
-    
-    // Get the invoice for this specific appointment, or fall back to latest if no current appointment
-    // This prevents old paid invoices from masking new pending ones for returning patients
+
+    if (!currentAppointment) {
+      return {
+        allowed: false,
+        reason: 'no_invoice',
+        latestInvoice: null,
+        appointmentId: null,
+        intakeNotesApplied: false,
+        message:
+          "No appointment found for today's session. Please schedule or select an appointment before proceeding.",
+      };
+    }
+
+    // Get the invoice for this specific appointment only (no fallback).
+    // This prevents old paid invoices from masking new pending ones for returning patients.
     const latestInvoice = await getLatestInvoiceByPatientIdLiveOrDemo(
       patientId,
-      currentAppointment?.id,
+      currentAppointment.id,
     );
 
     if (!latestInvoice) {
@@ -199,7 +240,7 @@ export async function validatePatientConsultationAccess(
         appointmentId: null,
         intakeNotesApplied: false,
         message:
-          'Unpaid Balance. No invoice record exists for this patient yet.',
+          'No invoice generated for this session. A new invoice must be created and paid before consultation can proceed.',
       };
     }
 
@@ -210,11 +251,13 @@ export async function validatePatientConsultationAccess(
         latestInvoice,
         appointmentId: null,
         intakeNotesApplied: false,
-        message: `Unpaid Balance. Latest invoice ${latestInvoice.invoiceNumber} is ${latestInvoice.paymentStatus}.`,
+        message: `Payment Required for today's session. Invoice ${latestInvoice.invoiceNumber} is ${latestInvoice.paymentStatus}.`,
       };
     }
 
-    const syncResult = await syncAppointmentAfterPaidValidation(patientId);
+    // Use invoice's appointment ID if available, otherwise fall back to current appointment
+    const appointmentIdForSync = latestInvoice.appointmentId ?? currentAppointment?.id ?? null;
+    const syncResult = await syncAppointmentAfterPaidValidation(appointmentIdForSync, patientId);
 
     return {
       allowed: true,

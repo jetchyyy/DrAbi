@@ -13,7 +13,8 @@ interface InvoiceFormModalProps {
   editingInvoiceId: string | null;
   form: UseFormReturn<BillingFormValues>;
   patients: Array<{ id: string; firstName: string; lastName: string }>;
-  bookings: Array<{ id: string; patientId: string; feeType: string; feeAmount: number }>;
+  bookings: Array<{ id: string; patientId: string; feeType: string; feeAmount: number; appointmentId?: string | null }>;
+  appointments: Array<{ id: string; patientId: string; scheduledAt: string; status: string }>;
   onSubmit: (data: BillingFormValues) => void;
   createInvoiceMutation: { isPending: boolean };
   updateInvoiceMutation: { isPending: boolean };
@@ -32,6 +33,7 @@ export function InvoiceFormModal({
   form,
   patients,
   bookings,
+  appointments,
   onSubmit,
   createInvoiceMutation,
   updateInvoiceMutation,
@@ -39,6 +41,18 @@ export function InvoiceFormModal({
   itemsFieldArray,
 }: InvoiceFormModalProps) {
   if (!isOpen) return null;
+
+  const selectedPatientId = form.watch('patientId');
+  const patientAppointments = appointments.filter((appt) => appt.patientId === selectedPatientId);
+
+  const formatAppointmentTime = (scheduledAt: string) => {
+    try {
+      const date = new Date(scheduledAt);
+      return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return scheduledAt;
+    }
+  };
 
   return (
     <div
@@ -121,6 +135,21 @@ export function InvoiceFormModal({
                 </Select>
               </FormField>
               {selectedBooking ? <p className="text-xs text-slate-500">Tagged booking amount: {formatCurrency(selectedBooking.feeAmount)}</p> : null}
+              
+              <FormField label="Link to appointment (optional but recommended)">
+                <Select {...form.register('appointmentId')}>
+                  <option value="">Select an appointment</option>
+                  {patientAppointments
+                    .filter((appt) => !['cancelled', 'completed', 'no_show'].includes(appt.status))
+                    .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime())
+                    .map((appointment) => (
+                      <option key={appointment.id} value={appointment.id}>
+                        {formatAppointmentTime(appointment.scheduledAt)} - {appointment.status}
+                      </option>
+                    ))}
+                </Select>
+              </FormField>
+              <p className="text-xs text-slate-500">Linking to an appointment ensures payment verification is tied to the specific session, preventing old invoices from authorizing access.</p>
             </div>
 
             <div className="space-y-4 border-t border-slate-100 px-4 py-5 sm:px-6">
