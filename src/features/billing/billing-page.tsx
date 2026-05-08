@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Coins, Eye, Pencil, Plus, Receipt, ScanLine, Search, TestTube2, Trash2, X, CreditCard } from 'lucide-react';
+import { Coins, CreditCard, Eye, Pencil, Plus, Printer, Receipt, ScanLine, Search, TestTube2, Trash2, X } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -15,11 +15,14 @@ import { isModuleEnabled } from '../../config/modules';
 import { useAuth } from '../auth/auth-context';
 import { useClinicSettingsData } from '../../hooks/use-clinic-data';
 import { LabServiceReceiptCard } from '../laboratory/components/lab-service-receipt-card';
+import { printHtmlDocument } from '../../lib/print';
+import { getDoctorDirectoryLiveOrDemo, listConsultationsByPatientIdLiveOrDemo } from '../../lib/supabase-clinic';
 import { formatCurrency } from '../../lib/utils';
 // import { labRequestService } from '../../lab-requests/api/lab-request-service';
 // import type { LabRequestRecord } from '../../lab-requests/types';
 import { PaymentBadge } from './payment-badge';
 import { PaymentUpdateModal } from './components/payment-update-modal';
+import { buildBillingReceiptPrintDocument } from './lib/billing-receipt-print-document';
 import {
   usePatients,
   useBookings,
@@ -45,6 +48,79 @@ import {
   BILLING_PAGE_SIZE,
 } from './types/forms';
 
+type InvoiceReceiptState = {
+  patientId: string;
+  invoiceNumber: string;
+  customerName: string;
+  doctorAssignedName: string;
+  receptionistName: string;
+  paymentMethod: string;
+  paymentReference: string | null;
+  issuedAt: string;
+  subtotal: number;
+  total: number;
+  items: Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+  }>;
+} | null;
+
+function formatDoctorSignatureName(
+  doctorName: string | null | undefined,
+  postNominals?: string | null,
+) {
+  const baseName = (doctorName ?? '').trim().replace(/^dr\.?\s+/i, '').trim();
+  if (!baseName) {
+    return 'N/A';
+  }
+
+  const suffix = (postNominals ?? '')
+    .trim()
+    .replace(/^,\s*/, '')
+    .replace(/^dr\.?\s+/i, '');
+
+  return suffix ? `Dr. ${baseName}, ${suffix}` : `Dr. ${baseName}`;
+}
+
+async function resolveLatestDoctorAssignedName(patientId: string) {
+  if (!patientId) {
+    return 'N/A';
+  }
+
+  try {
+    const [patientConsultations, doctors] = await Promise.all([
+      listConsultationsByPatientIdLiveOrDemo(patientId),
+      getDoctorDirectoryLiveOrDemo(),
+    ]);
+
+    const latestConsultation = patientConsultations
+      .slice()
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0];
+
+    if (!latestConsultation) {
+      return 'N/A';
+    }
+
+    if (latestConsultation.doctorId) {
+      const matchedDoctor = doctors.find((doctor) => doctor.id === latestConsultation.doctorId);
+      return formatDoctorSignatureName(
+        matchedDoctor?.fullName ?? latestConsultation.providerName,
+        matchedDoctor?.title ?? null,
+      );
+    }
+
+    if (latestConsultation.providerName) {
+      return formatDoctorSignatureName(latestConsultation.providerName);
+    }
+
+    return 'N/A';
+  } catch {
+    return 'N/A';
+  }
+}
+
 
 
 
@@ -56,6 +132,8 @@ export function BillingPage() {
   const bookingEnabled = isModuleEnabled('booking_appointments', clinicSettings?.enabledModules);
   const laboratoryEnabled = isModuleEnabled('laboratory', clinicSettings?.enabledModules);
   const [search, setSearch] = useState('');
+  const [invoicePatientSearch, setInvoicePatientSearch] = useState('');
+  const [isInvoicePatientDropdownOpen, setIsInvoicePatientDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isPayServiceModalOpen, setIsPayServiceModalOpen] = useState(false);
@@ -78,6 +156,7 @@ export function BillingPage() {
     open: false,
     invoiceId: null,
   });
+  const [invoiceReceiptState, setInvoiceReceiptState] = useState<InvoiceReceiptState>(null);
   const deferredSearch = useDeferredValue(search);
 
   const { data: patients = [] } = usePatients();
@@ -101,12 +180,16 @@ export function BillingPage() {
   const updatePaymentMutation = useUpdatePayment();
 
   const { data: paymentsForViewedInvoice = [] } = usePaymentsForInvoice(invoiceViewState.invoiceId || '');
+  const { data: paymentsForEditingInvoice = [] } = usePaymentsForInvoice(editingInvoiceId || '');
 
   const form = useForm<BillingFormValues>({
     resolver: zodResolver(billingSchema),
     defaultValues: {
-      patientId: patients[0]?.id ?? '',
+      patientId: '',
       bookingId: '',
+      paymentStatus: 'unpaid',
+      paymentType: 'cash',
+      referenceNumber: '',
       items: [
         {
           description: 'General Consultation',
@@ -130,9 +213,30 @@ export function BillingPage() {
   });
 
   const selectedBookingId = form.watch('bookingId');
+  const selectedPatientId = form.watch('patientId');
+  const selectedInvoicePaymentStatus = form.watch('paymentStatus');
+  const selectedInvoicePaymentType = form.watch('paymentType');
   const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId) ?? null;
   const selectedLabServiceId = payServiceForm.watch('serviceId');
   const selectedLabService = labServiceOptions.find((service: any) => service.id === selectedLabServiceId) ?? null;
+  const filteredInvoicePatients = useMemo(() => {
+    const query = invoicePatientSearch.trim().toLowerCase();
+    if (!query) {
+      return patients;
+    }
+
+    return patients.filter((patient) => {
+      const fullName = `${patient.firstName} ${patient.lastName}`.toLowerCase();
+      return fullName.includes(query);
+    });
+  }, [invoicePatientSearch, patients]);
+  const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) ?? null;
+
+  const selectInvoicePatient = (patient: { id: string; firstName: string; lastName: string }) => {
+    form.setValue('patientId', patient.id, { shouldDirty: true, shouldValidate: true });
+    setInvoicePatientSearch(`${patient.firstName} ${patient.lastName}`);
+    setIsInvoicePatientDropdownOpen(false);
+  };
 
   const filteredInvoices = useMemo(
     () =>
@@ -167,8 +271,39 @@ export function BillingPage() {
       : Math.min(pageStart + BILLING_PAGE_SIZE, filteredInvoices.length);
   const viewedInvoice = invoices.find((invoice) => invoice.id === invoiceViewState.invoiceId) ?? null;
   const viewedInvoiceItems = invoiceItems.filter((item) => item.invoiceId === invoiceViewState.invoiceId);
-  const viewedInvoiceItem = viewedInvoiceItems[0] ?? null;
   const viewedInvoicePatient = patients.find((patient) => patient.id === viewedInvoice?.patientId) ?? null;
+  const viewedInvoiceReceiptState = useMemo<InvoiceReceiptState>(() => {
+    if (!viewedInvoice) {
+      return null;
+    }
+
+    const latestPayment = paymentsForViewedInvoice[0] ?? null;
+    const paymentMethodMap: Record<string, string> = {
+      cash: 'cash',
+      gcash: 'gcash',
+      bank_transfer: 'bank transfer',
+      other: 'other',
+    };
+
+    return {
+      patientId: viewedInvoice.patientId,
+      invoiceNumber: viewedInvoice.invoiceNumber,
+      customerName: viewedInvoicePatient ? `${viewedInvoicePatient.firstName} ${viewedInvoicePatient.lastName}` : 'Walk-in customer',
+      doctorAssignedName: 'N/A',
+      receptionistName: profile?.fullName ?? 'N/A',
+      paymentMethod: latestPayment ? paymentMethodMap[latestPayment.method] ?? latestPayment.method : viewedInvoice.paymentStatus,
+      paymentReference: latestPayment?.referenceNumber ?? null,
+      issuedAt: viewedInvoice.createdAt,
+      subtotal: viewedInvoice.subtotal,
+      total: viewedInvoice.total,
+      items: viewedInvoiceItems.map((item) => ({
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        lineTotal: item.quantity * item.unitPrice,
+      })),
+    };
+  }, [paymentsForViewedInvoice, profile?.fullName, viewedInvoice, viewedInvoiceItems, viewedInvoicePatient]);
   // const viewedInvoiceLabItem = viewedInvoiceItems.find((item) => item.category === 'laboratory') ?? viewedInvoiceItem;
 
   useEffect(() => {
@@ -191,14 +326,6 @@ export function BillingPage() {
     nextParams.delete('invoiceId');
     setSearchParams(nextParams, { replace: true });
   }, [invoices, searchParams, setSearchParams]);
-
-  useEffect(() => {
-    if (form.getValues('patientId') || patients.length === 0) {
-      return;
-    }
-
-    form.setValue('patientId', patients[0]?.id ?? '');
-  }, [form, patients]);
 
   useEffect(() => {
     if (payServiceForm.getValues('patientId') || patients.length === 0) {
@@ -243,10 +370,35 @@ export function BillingPage() {
     }
   }, [updatePaymentMutation.isSuccess]);
 
+  useEffect(() => {
+    if (selectedInvoicePaymentStatus !== 'paid' || selectedInvoicePaymentType === 'cash') {
+      form.setValue('referenceNumber', '');
+    }
+  }, [form, selectedInvoicePaymentStatus, selectedInvoicePaymentType]);
+
+  useEffect(() => {
+    if (!editingInvoiceId || selectedInvoicePaymentStatus !== 'paid') {
+      return;
+    }
+
+    const latestPayment = paymentsForEditingInvoice[0];
+    if (!latestPayment) {
+      return;
+    }
+
+    if (latestPayment.method === 'cash' || latestPayment.method === 'gcash' || latestPayment.method === 'card') {
+      form.setValue('paymentType', latestPayment.method);
+      form.setValue('referenceNumber', latestPayment.referenceNumber || '');
+    }
+  }, [editingInvoiceId, form, paymentsForEditingInvoice, selectedInvoicePaymentStatus]);
+
   const openCreateModal = () => {
     form.reset({
-      patientId: patients[0]?.id ?? '',
+      patientId: '',
       bookingId: '',
+      paymentStatus: 'unpaid',
+      paymentType: 'cash',
+      referenceNumber: '',
       items: [
         {
           description: 'General Consultation',
@@ -256,6 +408,8 @@ export function BillingPage() {
         },
       ],
     });
+    setInvoicePatientSearch('');
+    setIsInvoicePatientDropdownOpen(false);
     setEditingInvoiceId(null);
     setIsInvoiceModalOpen(true);
   };
@@ -280,6 +434,9 @@ export function BillingPage() {
     form.reset({
       patientId: invoice.patientId,
       bookingId: '',
+      paymentStatus: invoice.paymentStatus === 'paid' ? 'paid' : 'unpaid',
+      paymentType: 'cash',
+      referenceNumber: '',
       items: items.map((item) => ({
         description: item.description,
         category: item.category,
@@ -287,6 +444,9 @@ export function BillingPage() {
         unitPrice: item.unitPrice,
       })),
     });
+    const selectedPatient = patients.find((patient) => patient.id === invoice.patientId) ?? null;
+    setInvoicePatientSearch(selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : '');
+    setIsInvoicePatientDropdownOpen(false);
     setEditingInvoiceId(invoiceId);
     setIsInvoiceModalOpen(true);
   };
@@ -300,6 +460,7 @@ export function BillingPage() {
 
   const closeInvoiceModal = () => {
     setEditingInvoiceId(null);
+    setIsInvoicePatientDropdownOpen(false);
     setIsInvoiceModalOpen(false);
   };
 
@@ -343,7 +504,7 @@ export function BillingPage() {
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       if (editingInvoiceId) {
-        await updateInvoiceMutation.mutateAsync({ invoiceId: editingInvoiceId, values, bookings, invoices });
+        await updateInvoiceMutation.mutateAsync({ invoiceId: editingInvoiceId, values, bookings, invoices, profile });
         setFeedbackModal({
           open: true,
           title: 'Invoice updated',
@@ -351,11 +512,36 @@ export function BillingPage() {
           variant: 'success',
         });
       } else {
-        await createInvoiceMutation.mutateAsync({ values, bookings });
+        const createdInvoice = await createInvoiceMutation.mutateAsync({ values, bookings, profile });
+        const selectedPatient = patients.find((patient) => patient.id === values.patientId) ?? null;
+        const markAsPaidOnCreate = values.paymentStatus === 'paid';
+        const paymentTypeOnCreate = values.paymentType ?? 'cash';
+        const referenceOnCreate =
+          paymentTypeOnCreate === 'cash' ? null : values.referenceNumber?.trim() || null;
+        const doctorAssignedName = await resolveLatestDoctorAssignedName(values.patientId);
+
+        setInvoiceReceiptState({
+          patientId: values.patientId,
+          invoiceNumber: createdInvoice.invoiceNumber,
+          customerName: selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : 'Walk-in customer',
+          doctorAssignedName,
+          receptionistName: profile?.fullName ?? 'N/A',
+          paymentMethod: markAsPaidOnCreate ? paymentTypeOnCreate : createdInvoice.paymentStatus,
+          paymentReference: markAsPaidOnCreate ? referenceOnCreate : null,
+          issuedAt: createdInvoice.createdAt,
+          subtotal: createdInvoice.subtotal,
+          total: createdInvoice.total,
+          items: values.items.map((item) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            lineTotal: item.quantity * item.unitPrice,
+          })),
+        });
         setFeedbackModal({
           open: true,
           title: 'Invoice created',
-          message: 'The invoice has been added successfully.',
+          message: 'The invoice has been added successfully and is ready to print.',
           variant: 'success',
         });
       }
@@ -370,6 +556,48 @@ export function BillingPage() {
       });
     }
   });
+
+  const handlePrintInvoiceReceipt = async () => {
+    if (!invoiceReceiptState) {
+      return;
+    }
+
+    try {
+      const doctorAssignedName = await resolveLatestDoctorAssignedName(invoiceReceiptState.patientId);
+      await printHtmlDocument(
+        buildBillingReceiptPrintDocument({
+          ...invoiceReceiptState,
+          doctorAssignedName,
+        }),
+      );
+    } catch {
+      toast.error('The invoice receipt could not be sent to the print dialog.');
+    }
+  };
+
+  const handlePrintViewedInvoice = async () => {
+    if (!viewedInvoiceReceiptState) {
+      toast.error('No invoice is selected for printing.');
+      return;
+    }
+
+    try {
+      const doctorAssignedName = await resolveLatestDoctorAssignedName(viewedInvoiceReceiptState.patientId);
+      await printHtmlDocument(
+        buildBillingReceiptPrintDocument({
+          ...viewedInvoiceReceiptState,
+          doctorAssignedName,
+        }),
+      );
+    } catch {
+      toast.error('The invoice could not be sent to the print dialog.');
+    }
+  };
+
+  const handleSaveViewedInvoiceAsPdf = () => {
+    toast.message('When the print dialog opens, choose "Save as PDF" as the destination.');
+    void handlePrintViewedInvoice();
+  };
 
   const handleDeleteInvoice = async (invoiceId: string) => {
     const isConfirmed = window.confirm('Delete this invoice from billing records?');
@@ -414,125 +642,6 @@ export function BillingPage() {
       });
     }
   });
-
-  // const handleOpenInvoiceOutput = async () => {
-  //   if (!viewedInvoice) {
-  //     toast.error('No invoice is selected for printing.');
-  //     return;
-  //   }
-
-  //   let relatedRequest: LabRequestRecord | null = null;
-
-  //   if (viewedInvoice.paymentStatus === 'paid' && viewedInvoiceLabItem?.category === 'laboratory') {
-  //     try {
-  //       if (!isSupabaseConfigured || !supabase) {
-  //         const database = getDatabase();
-  //         const matchedService = database.labServices.find((service) => service.name === viewedInvoiceLabItem.description) ?? null;
-  //         const matchingOrders = database.labOrders
-  //           .filter((order) => order.patientId === viewedInvoice.patientId)
-  //           .filter((order) => (matchedService ? order.labServiceId === matchedService.id : true))
-  //           .sort(
-  //             (left, right) =>
-  //               Math.abs(new Date(left.createdAt).getTime() - new Date(viewedInvoice.createdAt).getTime()) -
-  //               Math.abs(new Date(right.createdAt).getTime() - new Date(viewedInvoice.createdAt).getTime()),
-  //             );
-
-  //         const order = matchingOrders[0] ?? null;
-  //         if (order) {
-  //           const service = database.labServices.find((entry) => entry.id === order.labServiceId) ?? null;
-  //           relatedRequest = {
-  //             id: order.id,
-  //             clinicId: '',
-  //             clinicName: null,
-  //             appointmentId: order.appointmentId ?? null,
-  //             patientId: order.patientId,
-  //             patientName: viewedInvoicePatient ? `${viewedInvoicePatient.firstName} ${viewedInvoicePatient.lastName}` : null,
-  //             requestedBy: order.requestedBy,
-  //             requestedByName: null,
-  //             serviceId: order.labServiceId,
-  //             serviceName: service?.name ?? viewedInvoiceLabItem.description,
-  //             serviceCategory: service?.category ?? 'laboratory',
-  //             department: 'Laboratory',
-  //             transactionType: 'cashier_paid_service',
-  //             status: order.status === 'released' ? 'completed' : 'pending',
-  //             sampleStatus: order.status === 'processing' || order.status === 'ready' || order.status === 'released' ? 'processing' : 'pending',
-  //             resultStatus: order.status === 'released' ? 'completed' : 'pending',
-  //             patientNotes: order.notes || null,
-  //             resultData: null,
-  //             resultNotes: null,
-  //             urgentFlag: Boolean(order.urgentFlag),
-  //             completedBy: null,
-  //             completedByName: null,
-  //             completedAt: null,
-  //             media: [],
-  //             createdAt: order.createdAt,
-  //             updatedAt: order.updatedAt,
-  //           };
-  //         }
-  //       } else {
-  //         const patientRequests = await labRequestService.getPatientRequests(viewedInvoice.patientId);
-  //         const matchingRequests = patientRequests
-  //           .filter((request) => request.department === 'Laboratory')
-  //           .filter((request) => request.transactionType === 'cashier_paid_service')
-  //           .filter((request) => {
-  //             if (request.serviceName) {
-  //               return request.serviceName === viewedInvoiceLabItem.description;
-  //             }
-
-  //             return request.serviceCategory.toLowerCase() === viewedInvoiceLabItem.category.toLowerCase();
-  //           })
-  //           .sort(
-  //             (left, right) =>
-  //               Math.abs(new Date(left.createdAt).getTime() - new Date(viewedInvoice.createdAt).getTime()) -
-  //               Math.abs(new Date(right.createdAt).getTime() - new Date(viewedInvoice.createdAt).getTime()),
-  //           );
-
-  //         relatedRequest = matchingRequests[0] ?? null;
-  //       }
-  //     } catch {
-  //       relatedRequest = null;
-  //     }
-  //   }
-
-  //   let qrSvgMarkup = '';
-  //   if (relatedRequest) {
-  //     qrSvgMarkup = await QRCode.toString(buildLabServiceReceiptLookupUrl(relatedRequest.id), {
-  //       errorCorrectionLevel: 'M',
-  //       margin: 1,
-  //       type: 'svg',
-  //       width: 220,
-  //     });
-  //   }
-
-  //   await printHtmlDocument(
-  //     buildInvoicePrintDocument({
-  //       clinicName: clinicSettings?.clinicName ?? 'Clinic',
-  //       invoice: viewedInvoice,
-  //       patientName: viewedInvoicePatient
-  //         ? `${viewedInvoicePatient.firstName} ${viewedInvoicePatient.lastName}`
-  //         : 'Unknown patient',
-  //       patientContact: viewedInvoicePatient?.email || viewedInvoicePatient?.mobileNumber || '',
-  //       items: viewedInvoiceItems,
-  //       qrSvgMarkup,
-  //       qrHelperText: relatedRequest
-  //         ? 'Clinic or laboratory staff can scan this QR code to open the linked request and proceed with the test.'
-  //         : undefined,
-  //     }),
-  //   );
-  // };
-
-  // const handlePrintViewedInvoice = () => {
-  //   void handleOpenInvoiceOutput().catch(() => {
-  //     toast.error('The invoice could not be sent to the print dialog.');
-  //   });
-  // };
-
-  // const handleSaveViewedInvoiceAsPdf = () => {
-  //   toast.message('When the print dialog opens, choose "Save as PDF" as the destination.');
-  //   void handleOpenInvoiceOutput().catch(() => {
-  //     toast.error('The invoice could not be prepared for PDF saving.');
-  //   });
-  // };
 
   return (
     <>
@@ -652,6 +761,33 @@ export function BillingPage() {
                 request={labReceiptState.request}
               />
             </div>
+          </div>
+        ) : null}
+
+        {invoiceReceiptState ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                <Receipt className="size-4 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-wide text-emerald-800">
+                  Invoice created - {invoiceReceiptState.invoiceNumber}
+                </p>
+                <p className="text-xs text-emerald-700">
+                  {formatCurrency(invoiceReceiptState.total)} ({invoiceReceiptState.paymentMethod.toUpperCase()})
+                </p>
+              </div>
+            </div>
+            <Button
+              className="gap-2 text-xs"
+              onClick={() => void handlePrintInvoiceReceipt()}
+              type="button"
+              variant="secondary"
+            >
+              <Printer className="size-3.5" />
+              Print receipt
+            </Button>
           </div>
         ) : null}
 
@@ -787,13 +923,57 @@ export function BillingPage() {
                 <div className="space-y-4 px-4 py-5 sm:px-6">
                   <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Patient</p>
                   <FormField error={form.formState.errors.patientId?.message} label="Select patient">
-                    <Select {...form.register('patientId')}>
-                      {patients.map((patient) => (
-                        <option key={patient.id} value={patient.id}>
-                          {patient.firstName} {patient.lastName}
-                        </option>
-                      ))}
-                    </Select>
+                    <div className="relative">
+                      <input type="hidden" {...form.register('patientId')} />
+                      <Input
+                        onBlur={() => {
+                          window.setTimeout(() => setIsInvoicePatientDropdownOpen(false), 120);
+                        }}
+                        onFocus={() => setIsInvoicePatientDropdownOpen(true)}
+                        onChange={(event) => {
+                          const query = event.target.value;
+                          setInvoicePatientSearch(query);
+                          setIsInvoicePatientDropdownOpen(true);
+
+                          const exactMatch = patients.find(
+                            (patient) =>
+                              `${patient.firstName} ${patient.lastName}`.trim().toLowerCase() === query.trim().toLowerCase(),
+                          );
+                          if (exactMatch) {
+                            form.setValue('patientId', exactMatch.id, { shouldDirty: true, shouldValidate: true });
+                            return;
+                          }
+                          form.setValue('patientId', '', { shouldDirty: true, shouldValidate: true });
+                        }}
+                        placeholder="Type patient name"
+                        value={invoicePatientSearch}
+                      />
+                      {isInvoicePatientDropdownOpen ? (
+                        <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto border border-slate-200 bg-white shadow-lg">
+                          {filteredInvoicePatients.length > 0 ? (
+                            filteredInvoicePatients.slice(0, 20).map((patient) => (
+                              <button
+                                className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${
+                                  selectedPatientId === patient.id ? 'bg-emerald-50 text-emerald-800' : 'text-slate-700'
+                                }`}
+                                key={patient.id}
+                                onMouseDown={() => selectInvoicePatient(patient)}
+                                type="button"
+                              >
+                                {patient.firstName} {patient.lastName}
+                              </button>
+                            ))
+                          ) : (
+                            <p className="px-3 py-2 text-xs text-slate-500">No matching patients found.</p>
+                          )}
+                        </div>
+                      ) : null}
+                      {selectedPatient ? (
+                        <p className="mt-1 text-xs text-slate-500">
+                          Selected: {selectedPatient.firstName} {selectedPatient.lastName}
+                        </p>
+                      ) : null}
+                    </div>
                   </FormField>
                   <FormField label="Tag from booking">
                     <Select
@@ -813,7 +993,11 @@ export function BillingPage() {
                           return;
                         }
 
-                        form.setValue('patientId', booking.patientId);
+                        form.setValue('patientId', booking.patientId, { shouldDirty: true, shouldValidate: true });
+                        const bookingPatient = patients.find((patient) => patient.id === booking.patientId) ?? null;
+                        if (bookingPatient) {
+                          setInvoicePatientSearch(`${bookingPatient.firstName} ${bookingPatient.lastName}`);
+                        }
                         form.setValue('items', [
                           {
                             description: booking.feeType === 'follow_up' ? 'Follow-up Consultation' : 'Consultation Fee',
@@ -836,6 +1020,36 @@ export function BillingPage() {
                     </Select>
                   </FormField>
                   {selectedBooking ? <p className="text-xs text-slate-500">Tagged booking amount: {formatCurrency(selectedBooking.feeAmount)}</p> : null}
+                </div>
+
+                <div className="space-y-4 border-t border-slate-100 px-4 py-5 sm:px-6">
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Payment</p>
+                  <FormField error={form.formState.errors.paymentStatus?.message} label="Payment Status">
+                    <Select {...form.register('paymentStatus')}>
+                      <option value="unpaid">Unpaid</option>
+                      <option value="paid">Paid</option>
+                    </Select>
+                  </FormField>
+
+                  {selectedInvoicePaymentStatus === 'paid' ? (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField error={form.formState.errors.paymentType?.message} label="Payment Type">
+                        <Select {...form.register('paymentType')}>
+                          <option value="cash">Cash</option>
+                          <option value="gcash">GCash</option>
+                          <option value="card">Card</option>
+                        </Select>
+                      </FormField>
+                      {selectedInvoicePaymentType !== 'cash' ? (
+                        <FormField error={form.formState.errors.referenceNumber?.message} label="Reference Number">
+                          <Input
+                            placeholder="Enter reference number"
+                            {...form.register('referenceNumber')}
+                          />
+                        </FormField>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="space-y-4 border-t border-slate-100 px-4 py-5 sm:px-6">
@@ -1038,7 +1252,7 @@ export function BillingPage() {
           role="dialog"
         >
           <div
-            className="my-auto flex w-full max-w-2xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl"
+            className="my-auto flex w-full max-w-2xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[90vh] sm:max-h-[85vh]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4 bg-slate-900 px-4 py-4 sm:px-6">
@@ -1057,7 +1271,8 @@ export function BillingPage() {
               </button>
             </div>
 
-            <div className="space-y-5 px-4 py-5 sm:px-6">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+              <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Patient</p>
@@ -1119,25 +1334,34 @@ export function BillingPage() {
               )}
 
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Line Item</p>
-                {viewedInvoiceItem ? (
-                  <div className="mt-3 grid gap-4 md:grid-cols-4">
-                    <div className="md:col-span-2">
-                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Description</p>
-                      <p className="mt-1 font-semibold text-slate-950">{viewedInvoiceItem.description}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Category</p>
-                      <p className="mt-1 font-semibold text-slate-950">{viewedInvoiceItem.category}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Quantity</p>
-                      <p className="mt-1 font-semibold text-slate-950">{viewedInvoiceItem.quantity}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Unit Price</p>
-                      <p className="mt-1 font-semibold text-slate-950">{formatCurrency(viewedInvoiceItem.unitPrice)}</p>
-                    </div>
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Line Items</p>
+                {viewedInvoiceItems.length > 5 ? (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Showing {viewedInvoiceItems.length} items. Scroll inside this section to view all.
+                  </p>
+                ) : null}
+                {viewedInvoiceItems.length > 0 ? (
+                  <div className="mt-3 max-h-80 space-y-3 overflow-y-auto pr-1">
+                    {viewedInvoiceItems.map((item) => (
+                      <div key={item.id} className="grid gap-4 rounded-xl border border-slate-100 bg-slate-50 p-3 md:grid-cols-5">
+                        <div className="md:col-span-2">
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Description</p>
+                          <p className="mt-1 font-semibold text-slate-950">{item.description}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Category</p>
+                          <p className="mt-1 font-semibold text-slate-950">{item.category}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Quantity</p>
+                          <p className="mt-1 font-semibold text-slate-950">{item.quantity}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Unit Price</p>
+                          <p className="mt-1 font-semibold text-slate-950">{formatCurrency(item.unitPrice)}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <p className="mt-3 text-sm text-slate-500">No invoice item was found for this record.</p>
@@ -1154,17 +1378,18 @@ export function BillingPage() {
                   <p className="mt-2 text-lg font-extrabold text-emerald-950">{formatCurrency(viewedInvoice.total)}</p>
                 </div>
               </div>
+              </div>
             </div>
 
             <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
-              {/* <Button className="gap-2 rounded-none sm:w-auto" onClick={handleSaveViewedInvoiceAsPdf} type="button" variant="secondary">
+              <Button className="gap-2 rounded-none sm:w-auto" onClick={handleSaveViewedInvoiceAsPdf} type="button" variant="secondary">
                 <Receipt className="size-4" />
                 Save as PDF
               </Button>
               <Button className="gap-2 rounded-none sm:w-auto" onClick={handlePrintViewedInvoice} type="button">
                 <Printer className="size-4" />
                 Print receipt
-              </Button> */}
+              </Button>
               <Button className="rounded-none" onClick={closeInvoiceViewModal} type="button" variant="secondary">
                 Close
               </Button>
