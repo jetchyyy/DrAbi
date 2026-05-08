@@ -44,6 +44,8 @@ export const queryKeys = {
   myBookings: (userId: string | null) => ["my-bookings", userId] as const,
   bookingReceipt: (receiptCode: string | null) =>
     ["booking-receipt", receiptCode] as const,
+  bookingsByPatientName: (nameQuery: string | null) =>
+    ["bookings-by-patient-name", nameQuery] as const,
   referrals: (patientId: string | null) => ["referrals", patientId] as const,
   specialistReferrals: (doctorId: string | null) =>
     ["specialist-referrals", doctorId] as const,

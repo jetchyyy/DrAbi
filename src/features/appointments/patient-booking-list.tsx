@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { updatePatientLiveOrDemo } from "../../lib/supabase-clinic";
 import { usePatientDetail } from "../patients/hooks/use-patients";
 
@@ -660,6 +661,12 @@ export function PatientBookingPageList() {
 
   const filtered = useMemo(() => {
     return bookings.filter((b) => {
+      const isCompletedAndPaid =
+        b.status === "completed" && b.paymentStatus === "paid";
+      if (isCompletedAndPaid) {
+        return false;
+      }
+
       const matchesStatus = statusFilter === "all" || b.status === statusFilter;
       const q = search.toLowerCase();
       const matchesSearch =
@@ -992,7 +999,7 @@ function BookingTableRow({
       {/* Actions */}
       <td className="px-4 py-3 align-top">
         <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
-          {booking.paymentStatus === "paid" && (
+          {booking.paymentStatus === "paid" && booking.status !== "completed" && (
             <button
               type="button"
               onClick={onRecordVitals}
@@ -1107,7 +1114,10 @@ function VitalsModal({ booking, onClose }: VitalsModalProps) {
         vitalsRecordedAt: new Date().toISOString(),
       });
     },
-    onSuccess: () => onClose(),
+    onSuccess: () => {
+      toast.success("Vitals saved successfully.");
+      onClose();
+    },
     onError: (err: Error) => setError(err.message),
   });
 

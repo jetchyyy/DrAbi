@@ -10,6 +10,7 @@ import {
   getCurrentPatient,
   listBlockedBookingSlotsLiveOrDemo,
   markBookingPaidAndCreateInvoiceLiveOrDemo,
+  searchPendingBookingsByPatientNameLiveOrDemo,
 } from "../../../lib/supabase-clinic";
 import { isSupabaseConfigured } from "../../../lib/supabase";
 import type { Booking } from "../../../types/domain";
@@ -77,6 +78,18 @@ export function useBookingReceipt(receiptCode: string | null) {
       return getBookingByReceiptCodeLiveOrDemo(receiptCode);
     },
     enabled: Boolean(receiptCode),
+  });
+}
+
+export function useSearchBookingsByPatientName(nameQuery: string | null) {
+  return useQuery({
+    queryKey: queryKeys.bookingsByPatientName(nameQuery),
+    queryFn: async () => {
+      if (!nameQuery?.trim()) return [];
+      return searchPendingBookingsByPatientNameLiveOrDemo(nameQuery);
+    },
+    enabled: Boolean(nameQuery?.trim()),
+    staleTime: 30_000,
   });
 }
 
