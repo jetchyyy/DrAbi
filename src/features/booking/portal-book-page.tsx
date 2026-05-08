@@ -159,7 +159,9 @@ export function PortalBookPage() {
       ? "follow_up"
       : selectedService?.serviceType === "consultation"
         ? "consultation"
-        : "service_fee";
+        : selectedService?.serviceType === "medical_service"
+          ? "medical_service"
+          : null; // Changing "" to null fixes the 22P02 error
   const { data: blockedSlots = [] } = useBlockedBookingSlots({
     date: selectedDate || null,
     doctorId: requiresDoctor ? selectedDoctorId || null : null,
@@ -360,7 +362,7 @@ export function PortalBookPage() {
     const createdBooking = await createBooking.mutateAsync({
       patientId: currentPatient.id,
       serviceId: values.serviceId,
-      doctorId: requiresDoctor ? (values.doctorId ?? "") : "",
+      doctorId: requiresDoctor ? (values.doctorId ?? null) : null,
       preferredDate: values.preferredDate,
       preferredTime: values.preferredTime,
       intakeNotes: values.intakeNotes,
@@ -473,9 +475,18 @@ export function PortalBookPage() {
                 disabled
                 readOnly
                 value={
-                  selectedService?.serviceType === "consultation"
-                    ? "Consultation"
-                    : ""
+                  (
+                    {
+                      laboratory_services: "Laboratory & Diagnostic Services",
+                      medical_certificates: "Medical Certificates",
+                      medical_clearance: "Medical Clearance for Abroad",
+                      aesthetic_services: "Procedures & Aesthetic Services",
+                      vaccination: "Vaccination Services",
+                      consultation: "General Consultation",
+                      follow_up: "Follow-up Visit", // Added this
+                      medical_service: "Medical Service", // Added this
+                    } as Record<string, string>
+                  )[selectedService?.serviceType || ""] || ""
                 }
               />
             </FormField>
@@ -499,9 +510,16 @@ export function PortalBookPage() {
                   disabled
                   readOnly
                   value={
-                    selectedService?.serviceType === "follow_up"
-                      ? "Follow-up Fee"
-                      : "Consultation Fee"
+                    {
+                      follow_up: "Follow-up Fee",
+                      consultation: "Consultation Fee",
+                      laboratory_services: "Laboratory Fee",
+                      medical_certificates: "Certificate Fee",
+                      medical_clearance: "Clearance Fee",
+                      aesthetic_services: "Service Fee",
+                      vaccination: "Vaccination Fee",
+                      medical_service: "Medical Service Fee",
+                    }[selectedService?.serviceType || ""] || "Service Fee"
                   }
                 />
               </FormField>

@@ -43,7 +43,12 @@ export type BookingStatus =
   | "rescheduled"
   | "cancelled"
   | "completed";
-export type BookingFeeType = "consultation" | "follow_up" | "service_fee";
+export type BookingFeeType =
+  | "consultation"
+  | "follow_up"
+  | "service_fee"
+  | "medical_service"
+  | null;
 export type BookingPaymentStatus = "pending_cashier" | "paid";
 export type ServiceType = "medical_service" | "consultation" | "follow_up";
 export type ReferralStatus =
@@ -296,13 +301,13 @@ export interface LabRequestDocument extends BaseRecord {
 export interface Booking extends BaseRecord {
   patientId: string;
   serviceId: string;
-  doctorId: string;
+  doctorId: string | null;
   appointmentId?: string | null;
   preferredDate: string;
   preferredTime: string;
   status: BookingStatus;
   intakeNotes: string;
-  feeType: BookingFeeType;
+  feeType: BookingFeeType | null;
   feeAmount: number;
   receiptCode: string;
   paymentStatus: BookingPaymentStatus;
