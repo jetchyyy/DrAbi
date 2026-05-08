@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase';
-import { getDatabase } from '../../../lib/local-db';
+import { createPaymentRecord, getDatabase, upsertLatestPaymentRecord } from '../../../lib/local-db';
 import { labRequestService } from '../../lab-requests/api/lab-request-service';
 import { queryKeys } from '../../../lib/query-keys';
 import {
@@ -67,7 +67,10 @@ export function usePaymentsForInvoice(invoiceId: string) {
     queryKey: ['payments', invoiceId],
     queryFn: async () => {
       if (!isSupabaseConfigured || !supabase) {
-        return [];
+        return getDatabase()
+          .payments
+          .filter((payment) => payment.invoiceId === invoiceId)
+          .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
       }
 
       const { data, error } = await supabase
@@ -91,7 +94,7 @@ export function usePaymentsForInvoice(invoiceId: string) {
         updatedAt: payment.updated_at,
       })) satisfies Payment[];
     },
-    enabled: !!invoiceId && isSupabaseConfigured,
+    enabled: !!invoiceId,
   });
 }
 
@@ -147,20 +150,23 @@ export function useCreateInvoice() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ values, bookings }: { values: BillingFormValues; bookings: any[] }) => {
+    mutationFn: async ({ values, bookings, profile }: { values: BillingFormValues; bookings: any[]; profile: any }) => {
+      const markAsPaid = values.paymentStatus === 'paid';
+      const paymentType = values.paymentType ?? 'cash';
+      const referenceNumber = paymentType === 'cash' ? null : values.referenceNumber?.trim() || null;
       const total = values.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
       const taggedBooking = bookings.find((booking) => booking.id === values.bookingId) ?? null;
       
       // Get existing invoices to generate sequential invoice number
       const existingInvoices = queryClient.getQueryData<Invoice[]>(queryKeys.invoices) ?? [];
       const invoiceNumber = generateInvoiceNumber(existingInvoices);
-      
-      return createInvoiceLiveOrDemo(
+
+      const createdInvoice = await createInvoiceLiveOrDemo(
         {
           patientId: values.patientId,
           appointmentId: taggedBooking?.appointmentId ?? null,
           invoiceNumber,
-          paymentStatus: 'unpaid',
+          paymentStatus: markAsPaid ? 'paid' : 'unpaid',
           subtotal: total,
           total,
         },
@@ -171,10 +177,40 @@ export function useCreateInvoice() {
           category: item.category,
         })),
       );
+
+      if (markAsPaid) {
+        if (isSupabaseConfigured && supabase) {
+          const { error: paymentError } = await (supabase
+            .from('payments') as any)
+            .insert({
+              invoice_id: createdInvoice.id,
+              amount: createdInvoice.total,
+              method: paymentType,
+              reference_number: referenceNumber,
+              received_by: profile?.id || null,
+            });
+
+          if (paymentError) {
+            await deleteInvoiceLiveOrDemo(createdInvoice.id).catch(() => undefined);
+            throw paymentError;
+          }
+        } else {
+          createPaymentRecord({
+            invoiceId: createdInvoice.id,
+            amount: createdInvoice.total,
+            method: paymentType as Payment['method'],
+            referenceNumber: referenceNumber ?? '',
+            receivedBy: profile?.id || '',
+          });
+        }
+      }
+
+      return createdInvoice;
     },
-    onSuccess: async () => {
+    onSuccess: async (createdInvoice) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoiceItems });
+      await queryClient.invalidateQueries({ queryKey: ['payments', createdInvoice.id] });
     },
   });
 }
@@ -183,20 +219,23 @@ export function useUpdateInvoice() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ invoiceId, values, bookings, invoices }: { invoiceId: string; values: BillingFormValues; bookings: any[]; invoices: Invoice[] }) => {
+    mutationFn: async ({ invoiceId, values, bookings, invoices, profile }: { invoiceId: string; values: BillingFormValues; bookings: any[]; invoices: Invoice[]; profile: any }) => {
+      const markAsPaid = values.paymentStatus === 'paid';
+      const paymentType = values.paymentType ?? 'cash';
+      const referenceNumber = paymentType === 'cash' ? '' : values.referenceNumber?.trim() || '';
       const total = values.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
       const taggedBooking = bookings.find((booking) => booking.id === values.bookingId) ?? null;
       
       // Keep existing invoice number or generate new one
       const invoiceNumber = invoices.find((invoice) => invoice.id === invoiceId)?.invoiceNumber ?? generateInvoiceNumber(invoices);
       
-      return updateInvoiceLiveOrDemo(
+      const updatedInvoice = await updateInvoiceLiveOrDemo(
         invoiceId,
         {
           patientId: values.patientId,
           appointmentId: taggedBooking?.appointmentId ?? null,
           invoiceNumber,
-          paymentStatus: 'unpaid',
+          paymentStatus: markAsPaid ? 'paid' : 'unpaid',
           subtotal: total,
           total,
         },
@@ -207,10 +246,70 @@ export function useUpdateInvoice() {
           category: item.category,
         })),
       );
+
+      if (!updatedInvoice) {
+        throw new Error('Invoice update did not return a saved invoice.');
+      }
+
+      if (markAsPaid) {
+        if (isSupabaseConfigured && supabase) {
+          const { data: existingPayments, error: existingPaymentsError } = await (supabase
+            .from('payments') as any)
+            .select('id')
+            .eq('invoice_id', invoiceId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (existingPaymentsError) {
+            throw existingPaymentsError;
+          }
+
+          const latestPaymentId = (existingPayments?.[0]?.id as string | undefined) ?? null;
+          const paymentPayload = {
+            amount: total,
+            method: paymentType,
+            reference_number: referenceNumber || null,
+            received_by: profile?.id || null,
+          };
+
+          if (latestPaymentId) {
+            const { error: paymentUpdateError } = await (supabase
+              .from('payments') as any)
+              .update(paymentPayload)
+              .eq('id', latestPaymentId);
+
+            if (paymentUpdateError) {
+              throw paymentUpdateError;
+            }
+          } else {
+            const { error: paymentInsertError } = await (supabase
+              .from('payments') as any)
+              .insert({
+                invoice_id: invoiceId,
+                ...paymentPayload,
+              });
+
+            if (paymentInsertError) {
+              throw paymentInsertError;
+            }
+          }
+        } else {
+          upsertLatestPaymentRecord({
+            invoiceId,
+            amount: total,
+            method: paymentType as Payment['method'],
+            referenceNumber,
+            receivedBy: profile?.id || '',
+          });
+        }
+      }
+
+      return updatedInvoice;
     },
-    onSuccess: async () => {
+    onSuccess: async (updatedInvoice) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoiceItems });
+      await queryClient.invalidateQueries({ queryKey: ['payments', updatedInvoice.id] });
     },
   });
 }
@@ -399,7 +498,7 @@ export function useUpdatePayment() {
       // Update the invoice status
       await updateInvoiceLiveOrDemo(invoiceId, updatedInvoice, updatedItems);
 
-      // Create payment record if Supabase is configured
+      // Create payment record
       if (isSupabaseConfigured && supabase) {
         const { error: paymentError } = await (supabase
           .from('payments') as any)
@@ -415,6 +514,14 @@ export function useUpdatePayment() {
           console.error('Failed to create payment record:', paymentError);
           // Don't throw here - invoice is already updated
         }
+      } else {
+        createPaymentRecord({
+          invoiceId,
+          amount: currentInvoice.total,
+          method: paymentType as Payment['method'],
+          referenceNumber: referenceNumber || '',
+          receivedBy: profile?.id || '',
+        });
       }
 
       return updatedInvoice;
@@ -422,6 +529,7 @@ export function useUpdatePayment() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoiceItems });
+      await queryClient.invalidateQueries({ queryKey: ['payments'] });
     },
   });
 }

@@ -13,6 +13,21 @@ export const billingSchema = z.object({
   patientId: z.string().min(1, 'Patient is required.'),
   bookingId: z.string().optional(),
   items: z.array(invoiceItemSchema).min(1, 'At least one invoice item is required.'),
+  paymentStatus: z.enum(['unpaid', 'paid']).default('unpaid'),
+  paymentType: z.enum(['cash', 'gcash', 'card']).default('cash'),
+  referenceNumber: z.string().optional(),
+}).superRefine((values, context) => {
+  if (values.paymentStatus !== 'paid') {
+    return;
+  }
+
+  if ((values.paymentType === 'gcash' || values.paymentType === 'card') && !values.referenceNumber?.trim()) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['referenceNumber'],
+      message: 'Reference number is required for GCash and Card payments.',
+    });
+  }
 });
 
 export const payForServiceSchema = z.object({
@@ -22,7 +37,7 @@ export const payForServiceSchema = z.object({
   urgentFlag: z.boolean(),
 });
 
-export type BillingFormValues = z.infer<typeof billingSchema>;
+export type BillingFormValues = z.input<typeof billingSchema>;
 export type PayForServiceFormValues = z.infer<typeof payForServiceSchema>;
 
 export const BILLING_PAGE_SIZE = 10;

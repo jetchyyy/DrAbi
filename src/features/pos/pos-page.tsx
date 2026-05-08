@@ -28,7 +28,6 @@ import { toast } from "sonner";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
-import { Select } from "../../components/ui/select";
 import { queryKeys } from "../../lib/query-keys";
 import { printHtmlDocument } from "../../lib/print";
 import {
@@ -166,6 +165,7 @@ export function PosPage() {
   const [pendingQuantity, setPendingQuantity] = useState("1");
   const [patientId, setPatientId] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
+  const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PosPaymentMethod>("cash");
   const [paymentReference, setPaymentReference] = useState("");
   const [paymentNotes, setPaymentNotes] = useState("");
@@ -603,11 +603,27 @@ export function PosPage() {
     handleAddByCode();
   }
 
+  function selectCustomer(nextPatientId: string) {
+    if (!nextPatientId) {
+      setPatientId("");
+      setCustomerSearch("");
+      setIsCustomerDropdownOpen(false);
+      return;
+    }
+
+    const matchedPatient =
+      patients.find((patient) => patient.id === nextPatientId) ?? null;
+    setPatientId(nextPatientId);
+    setCustomerSearch(
+      matchedPatient
+        ? `${matchedPatient.firstName} ${matchedPatient.lastName}`
+        : "",
+    );
+    setIsCustomerDropdownOpen(false);
+  }
+
   const selectedPatient =
     patients.find((patient) => patient.id === patientId) ?? null;
-  const customerDisplayName = selectedPatient
-    ? `${selectedPatient.firstName} ${selectedPatient.lastName}`
-    : "Walk-in customer";
   const paymentReferenceRequired =
     paymentMethod === "gcash" || paymentMethod === "card";
   const cameraStatusLabel = useMemo(() => {
@@ -954,31 +970,73 @@ export function PosPage() {
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Customer
                 </label>
-                <Input
-                  className="mb-2"
-                  onChange={(event) => setCustomerSearch(event.target.value)}
-                  placeholder="Search customer name"
-                  value={customerSearch}
-                />
-                <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                  <UserRound className="size-4 shrink-0 text-slate-400" />
-                  <Select
-                    value={patientId}
-                    onChange={(event) => setPatientId(event.target.value)}
-                  >
-                    <option value="">Walk-in customer</option>
-                    {filteredPatients.map((patient) => (
-                      <option key={patient.id} value={patient.id}>
-                        {patient.firstName} {patient.lastName}
-                      </option>
-                    ))}
-                  </Select>
+                <div className="relative">
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                    <UserRound className="size-4 shrink-0 text-slate-400" />
+                    <Input
+                      className="border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0"
+                      onBlur={() => {
+                        window.setTimeout(
+                          () => setIsCustomerDropdownOpen(false),
+                          120,
+                        );
+                      }}
+                      onFocus={() => setIsCustomerDropdownOpen(true)}
+                      onChange={(event) => {
+                        const query = event.target.value;
+                        setCustomerSearch(query);
+                        setIsCustomerDropdownOpen(true);
+
+                        const exactMatch = patients.find(
+                          (patient) =>
+                            `${patient.firstName} ${patient.lastName}`
+                              .trim()
+                              .toLowerCase() ===
+                            query.trim().toLowerCase(),
+                        );
+                        setPatientId(exactMatch?.id ?? "");
+                      }}
+                      placeholder="Search customer name or select walk-in"
+                      value={customerSearch}
+                    />
+                  </div>
+
+                  {isCustomerDropdownOpen ? (
+                    <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto border border-slate-200 bg-white shadow-lg">
+                      <button
+                        className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${
+                          !patientId
+                            ? "bg-orange-50 text-orange-800"
+                            : "text-slate-700"
+                        }`}
+                        onMouseDown={() => selectCustomer("")}
+                        type="button"
+                      >
+                        Walk-in customer
+                      </button>
+                      {filteredPatients.length > 0 ? (
+                        filteredPatients.slice(0, 20).map((patient) => (
+                          <button
+                            className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${
+                              patientId === patient.id
+                                ? "bg-orange-50 text-orange-800"
+                                : "text-slate-700"
+                            }`}
+                            key={patient.id}
+                            onMouseDown={() => selectCustomer(patient.id)}
+                            type="button"
+                          >
+                            {patient.firstName} {patient.lastName}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="px-3 py-2 text-xs text-slate-500">
+                          No matching customers found.
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
-                {customerSearch.trim() && filteredPatients.length === 0 ? (
-                  <p className="mt-1 text-xs text-slate-400">
-                    No matching customers found.
-                  </p>
-                ) : null}
               </div>
 
               {/* Payment method */}
