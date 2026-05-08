@@ -141,10 +141,14 @@ export function PatientQrLookupPage() {
     setIsValidating(false);
 
     if (!access.allowed) {
-      if (access.reason === 'unpaid_balance' || access.reason === 'no_invoice') {
+      if (
+        access.reason === 'unpaid_balance' ||
+        access.reason === 'no_invoice' ||
+        access.reason === 'missing_vitals'
+      ) {
         setBlockingAlert({
           open: true,
-          title: 'Unpaid Balance',
+          title: access.reason === 'missing_vitals' ? 'Vitals Required' : 'Unpaid Balance',
           message: access.message,
         });
         return;
@@ -154,11 +158,13 @@ export function PatientQrLookupPage() {
       return;
     }
 
-    const params = new URLSearchParams({ source: 'qr' });
-    if (access.appointmentId) {
-      params.set('appointmentId', access.appointmentId);
+    if (!access.appointmentId) {
+      setError('Payment is paid but no appointment is linked for this visit. Please contact front desk.');
+      return;
     }
 
+    const params = new URLSearchParams({ source: 'qr' });
+    params.set('appointmentId', access.appointmentId);
     void navigate(`/app/consultation/${patient.id}?${params.toString()}`);
   };
 
