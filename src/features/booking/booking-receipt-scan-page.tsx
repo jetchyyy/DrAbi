@@ -13,7 +13,7 @@ import { useAuth } from '../auth/auth-context';
 import { extractBookingReceiptCode } from './booking-receipt';
 import { useBookingReceipt, useMarkBookingPaid } from './hooks/use-bookings';
 
-function formatFeeLabel(feeType: 'consultation' | 'follow_up' | 'service_fee') {
+function formatFeeLabel(feeType: 'consultation' | 'follow_up' | 'service_fee' | string | null | undefined) {
   if (feeType === 'follow_up') return 'Follow-up Fee';
   if (feeType === 'consultation') return 'Consultation Fee';
   return 'Medical Service Fee';

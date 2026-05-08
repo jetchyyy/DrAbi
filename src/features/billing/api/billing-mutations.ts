@@ -164,8 +164,6 @@ export function useCreateInvoice() {
       // Prefer explicit appointmentId from form, fall back to tagged booking's appointment
       const appointmentId = values.appointmentId ?? taggedBooking?.appointmentId ?? null;
       
-      return createInvoiceLiveOrDemo(
-
       const createdInvoice = await createInvoiceLiveOrDemo(
         {
           patientId: values.patientId,
@@ -237,7 +235,6 @@ export function useUpdateInvoice() {
       // Prefer explicit appointmentId from form, fall back to tagged booking's appointment
       const appointmentId = values.appointmentId ?? taggedBooking?.appointmentId ?? null;
       
-      return updateInvoiceLiveOrDemo(
       const updatedInvoice = await updateInvoiceLiveOrDemo(
         invoiceId,
         {

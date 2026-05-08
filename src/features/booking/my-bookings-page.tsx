@@ -25,7 +25,7 @@ import { isTeleconsultJoinableStatus } from "../teleconsult/teleconsult-data";
 import { BookingReceiptCard } from "./components/booking-receipt-card";
 import { useMyBookings } from "./hooks/use-bookings";
 
-function formatFeeLabel(feeType: "consultation" | "follow_up" | "service_fee") {
+function formatFeeLabel(feeType: "consultation" | "follow_up" | "service_fee" | string | null | undefined) {
   if (feeType === "follow_up") return "Follow-up Fee";
   if (feeType === "consultation") return "Consultation Fee";
   return "Medical Service Fee";

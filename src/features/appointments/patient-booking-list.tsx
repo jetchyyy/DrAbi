@@ -84,7 +84,7 @@ function isPastRescheduleTime(dateStr: string, timeStr: string) {
   return scheduled.getTime() < Date.now();
 }
 
-function feeTypeLabel(type: string) {
+function feeTypeLabel(type: string | null) {
   switch (type) {
     case "consultation":
       return "Consultation";

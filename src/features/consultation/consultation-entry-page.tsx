@@ -26,7 +26,6 @@ import { Textarea } from "../../components/ui/textarea";
 import { useProviderDirectory } from "../../hooks/use-clinic-data";
 import { formatDateLabel, formatDateTimeLabel } from "../../lib/utils";
 import { getHomePathForRole } from "../../lib/role-routing";
-import type { Booking } from "../../types/domain";
 import { useAuth } from "../auth/auth-context";
 import { useCreateReferral } from "../referrals/hooks/use-referrals";
 import { validatePatientConsultationAccess } from "./services/consultation-access-service";

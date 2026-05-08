@@ -3219,7 +3219,7 @@ export async function createBookingLiveOrDemo(input: {
     preferred_time: input.preferredTime,
     intake_notes: input.intakeNotes,
     status: "pending",
-    fee_type: input.feeType,
+    fee_type: input.feeType ?? undefined,
     fee_amount: input.feeAmount,
     receipt_code: input.receiptCode ?? generateBookingReceiptCode(),
     payment_status: input.paymentStatus ?? "pending_cashier",
