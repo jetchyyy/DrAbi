@@ -152,7 +152,7 @@ function formatDoctorSignatureName(
     .replace(/^,\s*/, "")
     .replace(/^dr\.?\s+/i, "");
 
-  return suffix ? `Dr. ${baseName}, ${suffix}` : `Dr. ${baseName}`;
+  return suffix ? `${baseName}, ${suffix}` : baseName;
 }
 
 export function PosPage() {

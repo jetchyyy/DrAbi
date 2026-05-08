@@ -205,6 +205,7 @@ export interface Patient extends BaseRecord {
   temperature?: string;
   bloodPressure?: string;
   heartRate?: string;
+  o2Sat?: string;
   respiratoryRate?: string;
   weight?: string;
   height?: string;

@@ -42,7 +42,7 @@ export function PatientQrCard({ patientName, qrCode }: PatientQrCardProps) {
         {svgMarkup ? (
           <div
             aria-label={`QR code for ${patientName}`}
-            className="size-[180px] rounded-2xl bg-white p-2 shadow-sm sm:size-[220px]"
+            className="size-[180px] overflow-hidden rounded-2xl bg-white p-2 shadow-sm [&_svg]:block [&_svg]:h-full [&_svg]:w-full sm:size-[220px]"
             dangerouslySetInnerHTML={{ __html: svgMarkup }}
           />
         ) : (

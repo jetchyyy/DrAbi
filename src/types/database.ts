@@ -286,6 +286,7 @@ export interface Database {
           temperature: string | null;
           blood_pressure: string | null;
           heart_rate: string | null;
+          o2_sat: string | null;
           respiratory_rate: string | null;
           weight: string | null;
           height: string | null;
@@ -315,6 +316,7 @@ export interface Database {
           temperature?: string | null;
           blood_pressure?: string | null;
           heart_rate?: string | null;
+          o2_sat?: string | null;
           respiratory_rate?: string | null;
           weight?: string | null;
           height?: string | null;

@@ -81,7 +81,7 @@ const defaultDebugValues: DocumentDebugValues = {
   clinicAddress: 'Ground Floor, Maharlika Highway, Cabanatuan City',
   clinicContactNumber: '0917-123-4567',
   clinicEmail: 'clinic@cprmed.local',
-  doctorName: 'Dr. Miguel S. Reyes',
+  doctorName: 'Miguel S. Reyes',
   doctorSpecialty: 'Internal Medicine',
   doctorLicenseNumber: 'PRC-1234567',
   doctorBirNumber: 'BIR-00984213',
