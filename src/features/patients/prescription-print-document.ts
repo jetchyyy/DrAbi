@@ -50,12 +50,12 @@ function toDisplayDate(value: string) {
   }).format(date);
 }
 
-const MEDS_PER_PAGE = 7;
+const MEDS_PER_PAGE = 5;
 
 export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentInput) {
   const meds = input.medications ?? [];
 
-  // Chunk medications into pages of 10
+  // Chunk medications into pages of 5
   const chunks: MedicationItem[][] = [];
   for (let i = 0; i < meds.length; i += MEDS_PER_PAGE) {
     chunks.push(meds.slice(i, i + MEDS_PER_PAGE));
@@ -130,7 +130,7 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
     const medsHtml = chunk.map((med, i) => `
         <div class="medication-item">
           <div class="medication-main">
-            <p><strong>${globalStart + i + 1}.</strong> ${escapeHtml(med.name)}</p>
+            <p><strong>${globalStart + i + 1}. Generic:</strong> ${escapeHtml(med.name)}</p>
             ${med.brandName?.trim() ? `<p><strong>Brand:</strong> ${escapeHtml(med.brandName.trim())}</p>` : ''}
             <p><strong>Dosage:</strong> ${escapeHtml(med.dosage)}</p>
             <p><strong>Sig:</strong> ${escapeHtml(med.instruction)}</p>

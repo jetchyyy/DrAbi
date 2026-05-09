@@ -82,7 +82,7 @@ function formatDoctorSignatureName(
     .replace(/^,\s*/, '')
     .replace(/^dr\.?\s+/i, '');
 
-  return suffix ? `Dr. ${baseName}, ${suffix}` : `Dr. ${baseName}`;
+  return suffix ? `${baseName}, ${suffix}` : baseName;
 }
 
 async function resolveLatestDoctorAssignedName(patientId: string) {

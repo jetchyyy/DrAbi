@@ -32,6 +32,7 @@ const patientSchema = z.object({
   temperature: z.string().optional(),
   bloodPressure: z.string().optional(),
   heartRate: z.string().optional(),
+  o2Sat: z.string().optional(),
   respiratoryRate: z.string().optional(),
   weight: z.string().optional(),
   height: z.string().optional(),
@@ -62,6 +63,7 @@ const patientFieldLabels: Record<keyof PatientFormValues, string> = {
   temperature: 'Temperature (°C)',
   bloodPressure: 'Blood Pressure (mmHg)',
   heartRate: 'Heart Rate (bpm)',
+  o2Sat: 'O2sat (%)',
   respiratoryRate: 'Respiratory Rate (breaths/min)',
   weight: 'Weight (kg)',
   height: 'Height (cm)',
@@ -90,7 +92,7 @@ const walkInSteps = [
     id: 'vitals',
     title: 'Vitals',
     description: 'Record patient vital signs at time of intake.',
-    fields: ['temperature', 'bloodPressure', 'heartRate', 'respiratoryRate', 'weight', 'height'] as const,
+    fields: ['temperature', 'bloodPressure', 'heartRate', 'o2Sat', 'respiratoryRate', 'weight', 'height'] as const,
   },
   {
     id: 'emergency',
@@ -151,6 +153,7 @@ export function PatientsPage() {
       temperature: '',
       bloodPressure: '',
       heartRate: '',
+      o2Sat: '',
       respiratoryRate: '',
       weight: '',
       height: '',
@@ -216,6 +219,7 @@ export function PatientsPage() {
       temperature: patient.temperature ?? '',
       bloodPressure: patient.bloodPressure ?? '',
       heartRate: patient.heartRate ?? '',
+      o2Sat: patient.o2Sat ?? '',
       respiratoryRate: patient.respiratoryRate ?? '',
       weight: patient.weight ?? '',
       height: patient.height ?? '',
@@ -261,10 +265,11 @@ export function PatientsPage() {
             temperature: payload.temperature,
             bloodPressure: payload.bloodPressure,
             heartRate: payload.heartRate,
+            o2Sat: payload.o2Sat,
             respiratoryRate: payload.respiratoryRate,
             weight: payload.weight,
             height: payload.height,
-            vitalsRecordedAt: payload.temperature || payload.bloodPressure || payload.heartRate || payload.respiratoryRate || payload.weight || payload.height 
+            vitalsRecordedAt: payload.temperature || payload.bloodPressure || payload.heartRate || payload.o2Sat || payload.respiratoryRate || payload.weight || payload.height 
               ? new Date().toISOString() 
               : editingPatient.vitalsRecordedAt ?? null,
           },
@@ -294,7 +299,7 @@ export function PatientsPage() {
           variant: 'success',
         });
       } else {
-        const vitalsRecordedAt = values.temperature || values.bloodPressure || values.heartRate || values.respiratoryRate || values.weight || values.height 
+        const vitalsRecordedAt = values.temperature || values.bloodPressure || values.heartRate || values.o2Sat || values.respiratoryRate || values.weight || values.height 
           ? new Date().toISOString() 
           : null;
 
@@ -740,7 +745,10 @@ export function PatientsPage() {
                         <Input type="number" step="1" placeholder="e.g., 16" {...form.register('respiratoryRate')} />
                       </FormField>
                     </div>
-                    <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="grid gap-4 lg:grid-cols-3">
+                      <FormField error={form.formState.errors.o2Sat?.message} label="O2sat (%)">
+                        <Input type="number" step="1" placeholder="e.g., 98" {...form.register('o2Sat')} />
+                      </FormField>
                       <FormField error={form.formState.errors.weight?.message} label="Weight (kg)">
                         <Input type="number" step="0.1" placeholder="e.g., 70.5" {...form.register('weight')} />
                       </FormField>

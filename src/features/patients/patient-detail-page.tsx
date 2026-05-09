@@ -118,6 +118,7 @@ const vitalsSchema = z
     temperature: z.string().optional(),
     bloodPressure: z.string().optional(),
     heartRate: z.string().optional(),
+    o2Sat: z.string().optional(),
     respiratoryRate: z.string().optional(),
     weight: z.string().optional(),
     height: z.string().optional(),
@@ -135,6 +136,7 @@ interface VitalsData {
   temperature?: string;
   bloodPressure?: string;
   heartRate?: string;
+  o2Sat?: string;
   respiratoryRate?: string;
   weight?: string;
   height?: string;
@@ -161,6 +163,8 @@ function parseVitalsFromText(text: string): VitalsData {
         .replace("Heart Rate:", "")
         .trim()
         .replace(" bpm", "");
+    } else if (line.includes("O2sat:")) {
+      vitals.o2Sat = line.replace("O2sat:", "").trim().replace(" %", "");
     } else if (line.includes("Respiratory Rate:")) {
       vitals.respiratoryRate = line
         .replace("Respiratory Rate:", "")
@@ -176,52 +180,6 @@ function parseVitalsFromText(text: string): VitalsData {
   }
 
   return vitals;
-}
-
-function buildPatientVitalsText(
-  patient:
-    | {
-        temperature?: string;
-        bloodPressure?: string;
-        heartRate?: string;
-        respiratoryRate?: string;
-        weight?: string;
-        height?: string;
-        vitalsRecordedAt?: string | null;
-      }
-    | null
-    | undefined,
-) {
-  if (!patient) {
-    return "";
-  }
-
-  const lines: string[] = [];
-  if (patient.temperature) {
-    lines.push(`Temperature: ${patient.temperature} C`);
-  }
-  if (patient.bloodPressure) {
-    lines.push(`Blood Pressure: ${patient.bloodPressure} mmHg`);
-  }
-  if (patient.heartRate) {
-    lines.push(`Heart Rate: ${patient.heartRate} bpm`);
-  }
-  if (patient.respiratoryRate) {
-    lines.push(`Respiratory Rate: ${patient.respiratoryRate} breaths/min`);
-  }
-  if (patient.weight) {
-    lines.push(`Weight: ${patient.weight} kg`);
-  }
-  if (patient.height) {
-    lines.push(`Height: ${patient.height} cm`);
-  }
-  if (patient.vitalsRecordedAt) {
-    lines.push(
-      `Recorded at intake: ${formatDateTimeLabel(patient.vitalsRecordedAt)}`,
-    );
-  }
-
-  return lines.join("\n");
 }
 
 function truncateText(value: string | null | undefined, maxLength = 120) {
@@ -349,7 +307,38 @@ function formatDoctorDisplayName(
   }
 
   const suffix = (postNominals ?? "").trim();
-  return suffix ? `Dr. ${baseName} ${suffix}` : `Dr. ${baseName}`;
+  return suffix ? `${baseName} ${suffix}` : baseName;
+}
+
+function resolveDoctorPostNominals(input: {
+  linkedDoctorTitle?: string | null;
+  linkedProviderName?: string | null;
+  currentDoctorTitle?: string | null;
+  profileRole?: string | null;
+  profileTitle?: string | null;
+}) {
+  const linkedTitle = (input.linkedDoctorTitle ?? "").trim();
+  if (linkedTitle) {
+    return linkedTitle;
+  }
+
+  // If consultation only has a free-text provider name, avoid borrowing
+  // another user's title and accidentally stamping it on printable docs.
+  if ((input.linkedProviderName ?? "").trim()) {
+    return "";
+  }
+
+  const currentDoctorTitle = (input.currentDoctorTitle ?? "").trim();
+  if (currentDoctorTitle) {
+    return currentDoctorTitle;
+  }
+
+  const role = (input.profileRole ?? "").trim();
+  if (role === "doctor" || role === "specialist") {
+    return (input.profileTitle ?? "").trim();
+  }
+
+  return "";
 }
 
 async function buildPatientQrSvgMarkup(value: string) {
@@ -923,6 +912,7 @@ export function PatientDetailPage() {
       temperature: patient?.temperature || "",
       bloodPressure: patient?.bloodPressure || "",
       heartRate: patient?.heartRate || "",
+      o2Sat: patient?.o2Sat || "",
       respiratoryRate: patient?.respiratoryRate || "",
       weight: patient?.weight || "",
       height: patient?.height || "",
@@ -1120,6 +1110,41 @@ export function PatientDetailPage() {
     expandedLabOrderId === undefined
       ? (filteredLabOrders[0]?.id ?? null)
       : expandedLabOrderId;
+  const latestPatientVitals = [
+    {
+      label: "Temperature",
+      value: patient?.temperature ? `${patient.temperature} °C` : null,
+    },
+    {
+      label: "Blood Pressure",
+      value: patient?.bloodPressure ? `${patient.bloodPressure} mmHg` : null,
+    },
+    {
+      label: "Heart Rate",
+      value: patient?.heartRate ? `${patient.heartRate} bpm` : null,
+    },
+    {
+      label: "O2sat",
+      value: patient?.o2Sat ? `${patient.o2Sat} %` : null,
+    },
+    {
+      label: "Respiratory Rate",
+      value: patient?.respiratoryRate
+        ? `${patient.respiratoryRate} breaths/min`
+        : null,
+    },
+    {
+      label: "Weight",
+      value: patient?.weight ? `${patient.weight} kg` : null,
+    },
+    {
+      label: "Height",
+      value: patient?.height ? `${patient.height} cm` : null,
+    },
+  ] as const;
+  const hasLatestPatientVitals = latestPatientVitals.some(
+    (item) => item.value !== null,
+  );
 
   const TABS = [
     { id: "overview", label: "Overview" },
@@ -1318,8 +1343,13 @@ export function PatientDetailPage() {
       currentDoctor?.fullName ??
       profile?.fullName ??
       "Attending Physician";
-    const doctorPostNominals =
-      linkedDoctor?.title ?? currentDoctor?.title ?? profile?.title ?? "";
+    const doctorPostNominals = resolveDoctorPostNominals({
+      linkedDoctorTitle: linkedDoctor?.title ?? null,
+      linkedProviderName: linkedConsultation?.providerName ?? null,
+      currentDoctorTitle: currentDoctor?.title ?? null,
+      profileRole: profile?.role ?? null,
+      profileTitle: profile?.title ?? null,
+    });
     const doctorName = formatDoctorDisplayName(
       doctorNameRaw,
       doctorPostNominals,
@@ -1415,8 +1445,13 @@ export function PatientDetailPage() {
       currentDoctor?.fullName ??
       profile?.fullName ??
       "Attending Physician";
-    const doctorPostNominals =
-      linkedDoctor?.title ?? currentDoctor?.title ?? profile?.title ?? "";
+    const doctorPostNominals = resolveDoctorPostNominals({
+      linkedDoctorTitle: linkedDoctor?.title ?? null,
+      linkedProviderName: linkedConsultation?.providerName ?? null,
+      currentDoctorTitle: currentDoctor?.title ?? null,
+      profileRole: profile?.role ?? null,
+      profileTitle: profile?.title ?? null,
+    });
     const doctorName = formatDoctorDisplayName(
       doctorNameRaw,
       doctorPostNominals,
@@ -1506,7 +1541,11 @@ export function PatientDetailPage() {
   }) => {
     const doctorNameRaw =
       currentDoctor?.fullName ?? profile?.fullName ?? "Attending Physician";
-    const doctorPostNominals = currentDoctor?.title ?? profile?.title ?? "";
+    const doctorPostNominals = resolveDoctorPostNominals({
+      currentDoctorTitle: currentDoctor?.title ?? null,
+      profileRole: profile?.role ?? null,
+      profileTitle: profile?.title ?? null,
+    });
     const doctorName = formatDoctorDisplayName(
       doctorNameRaw,
       doctorPostNominals,
@@ -2255,77 +2294,6 @@ export function PatientDetailPage() {
                       <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                         Medication #{index + 1}
                       </p>
-                      <FormField label="Brand name">
-                        <div className="relative">
-                          <Input
-                            placeholder="e.g., Biogesic, Medicol, RiteMED (optional)"
-                            onBlur={hideInventoryLookup}
-                            onChange={(event) =>
-                              setEditPrescriptionRows((current) =>
-                                current.map((item, itemIndex) =>
-                                  itemIndex === index
-                                    ? { ...item, brandName: event.target.value }
-                                    : item,
-                                ),
-                              )
-                            }
-                            onFocus={() =>
-                              showInventoryLookup({
-                                scope: "edit",
-                                field: "brandName",
-                                rowIndex: index,
-                              })
-                            }
-                            value={row.brandName}
-                          />
-                          {activeInventoryLookup?.scope === "edit" &&
-                          activeInventoryLookup.field === "brandName" &&
-                          activeInventoryLookup.rowIndex === index ? (
-                            <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
-                              {editBrandSuggestions.length === 0 ? (
-                                <p className="px-3 py-2 text-xs text-slate-500">
-                                  No matching inventory brand.
-                                </p>
-                              ) : (
-                                editBrandSuggestions.map((item) => (
-                                  <button
-                                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-100"
-                                    key={`${item.id}-edit-brand-${index}`}
-                                    onMouseDown={(event) => {
-                                      event.preventDefault();
-                                      handleSelectInventorySuggestion({
-                                        scope: "edit",
-                                        field: "brandName",
-                                        itemName: item.name,
-                                        itemBrandName: item.brandName,
-                                        rowIndex: index,
-                                      });
-                                    }}
-                                    type="button"
-                                  >
-                                    <span className="min-w-0">
-                                      <span className="block truncate text-sm font-medium text-slate-800">
-                                        {item.brandName}
-                                      </span>
-                                      <span className="block truncate text-xs text-slate-500">
-                                        {item.name}
-                                      </span>
-                                    </span>
-                                    <span
-                                      className={`ml-3 shrink-0 text-xs font-semibold ${item.stockOnHand > 0 ? "text-emerald-700" : "text-rose-700"}`}
-                                    >
-                                      {item.stockOnHand > 0
-                                        ? `${item.stockOnHand} ${item.unit}`
-                                        : "Out of stock"}
-                                    </span>
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          ) : null}
-                        </div>
-                      </FormField>
-
                       <FormField
                         error={editPrescriptionRowErrors[index]?.genericName}
                         label="Generic name"
@@ -2390,6 +2358,77 @@ export function PatientDetailPage() {
                                           {item.brandName}
                                         </span>
                                       ) : null}
+                                    </span>
+                                    <span
+                                      className={`ml-3 shrink-0 text-xs font-semibold ${item.stockOnHand > 0 ? "text-emerald-700" : "text-rose-700"}`}
+                                    >
+                                      {item.stockOnHand > 0
+                                        ? `${item.stockOnHand} ${item.unit}`
+                                        : "Out of stock"}
+                                    </span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      </FormField>
+
+                      <FormField label="Brand name">
+                        <div className="relative">
+                          <Input
+                            placeholder="e.g., Biogesic, Medicol, RiteMED (optional)"
+                            onBlur={hideInventoryLookup}
+                            onChange={(event) =>
+                              setEditPrescriptionRows((current) =>
+                                current.map((item, itemIndex) =>
+                                  itemIndex === index
+                                    ? { ...item, brandName: event.target.value }
+                                    : item,
+                                ),
+                              )
+                            }
+                            onFocus={() =>
+                              showInventoryLookup({
+                                scope: "edit",
+                                field: "brandName",
+                                rowIndex: index,
+                              })
+                            }
+                            value={row.brandName}
+                          />
+                          {activeInventoryLookup?.scope === "edit" &&
+                          activeInventoryLookup.field === "brandName" &&
+                          activeInventoryLookup.rowIndex === index ? (
+                            <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+                              {editBrandSuggestions.length === 0 ? (
+                                <p className="px-3 py-2 text-xs text-slate-500">
+                                  No matching inventory brand.
+                                </p>
+                              ) : (
+                                editBrandSuggestions.map((item) => (
+                                  <button
+                                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-100"
+                                    key={`${item.id}-edit-brand-${index}`}
+                                    onMouseDown={(event) => {
+                                      event.preventDefault();
+                                      handleSelectInventorySuggestion({
+                                        scope: "edit",
+                                        field: "brandName",
+                                        itemName: item.name,
+                                        itemBrandName: item.brandName,
+                                        rowIndex: index,
+                                      });
+                                    }}
+                                    type="button"
+                                  >
+                                    <span className="min-w-0">
+                                      <span className="block truncate text-sm font-medium text-slate-800">
+                                        {item.brandName}
+                                      </span>
+                                      <span className="block truncate text-xs text-slate-500">
+                                        {item.name}
+                                      </span>
                                     </span>
                                     <span
                                       className={`ml-3 shrink-0 text-xs font-semibold ${item.stockOnHand > 0 ? "text-emerald-700" : "text-rose-700"}`}
@@ -2633,7 +2672,7 @@ export function PatientDetailPage() {
       </div>
 
       {activeTab === "overview" && (
-        <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
+        <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
           <Card className="border-slate-200/80 bg-gradient-to-b from-white to-slate-50/50 shadow-sm">
             <CardTitle>Clinical overview</CardTitle>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -2670,6 +2709,38 @@ export function PatientDetailPage() {
                   {formatConsultationText(patient.emergencyContactPhone)}
                 </p>
               </div>
+            </div>
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                  Latest Recorded Vitals
+                </p>
+                <p className="text-xs text-slate-500">
+                  {patient.vitalsRecordedAt
+                    ? `Recorded: ${formatDateTimeLabel(patient.vitalsRecordedAt)}`
+                    : "No recorded timestamp yet"}
+                </p>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {latestPatientVitals.map((item) => (
+                  <div
+                    className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
+                    key={item.label}
+                  >
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                      {item.label}
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-slate-900">
+                      {item.value ?? "Not recorded"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              {!hasLatestPatientVitals ? (
+                <p className="mt-3 text-xs text-slate-500">
+                  Record vitals to display the latest values here.
+                </p>
+              ) : null}
             </div>
             <div className="mt-4 space-y-3">
               <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
@@ -2751,7 +2822,7 @@ export function PatientDetailPage() {
       )}
 
       {activeTab === "consultations" && (
-        <div className="mt-6">
+        <div className="mt-6 min-w-0">
           <Card>
             <CardTitle>SOAP notes</CardTitle>
             <div className="mt-5 space-y-4">
@@ -2771,9 +2842,7 @@ export function PatientDetailPage() {
                     const isExpanded = activeConsultationId === consultation.id;
                     const trayContentId = `consultation-tray-${consultation.id}`;
                     const consultationVitalsText =
-                      consultation.vitals?.trim() ||
-                      buildPatientVitalsText(patient) ||
-                      "Not provided";
+                      consultation.vitals?.trim() || "Not provided";
 
                     return (
                       <div
@@ -2958,6 +3027,16 @@ export function PatientDetailPage() {
                                             </p>
                                             <p className="mt-0.5 font-semibold text-slate-900">
                                               {vitals.heartRate} bpm
+                                            </p>
+                                          </div>
+                                        )}
+                                        {vitals.o2Sat && (
+                                          <div className="text-sm">
+                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                                              O2sat
+                                            </p>
+                                            <p className="mt-0.5 font-semibold text-slate-900">
+                                              {vitals.o2Sat} %
                                             </p>
                                           </div>
                                         )}
@@ -3179,8 +3258,8 @@ export function PatientDetailPage() {
       )}
 
       {activeTab === "prescriptions" && (
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
-          <Card>
+        <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
+          <Card className="min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle>Prescription history</CardTitle>
               <Button
@@ -3230,11 +3309,11 @@ export function PatientDetailPage() {
                       }`}
                     >
                       {/* Tray header row */}
-                      <div className="flex items-center gap-2 px-3 py-2">
+                      <div className="flex flex-wrap items-center gap-2 px-3 py-2 sm:flex-nowrap">
                         <button
                           aria-controls={trayContentId}
                           aria-expanded={isExpanded}
-                          className="group flex min-w-0 flex-1 items-center gap-2 text-left focus-visible:outline-none"
+                          className="group flex min-w-0 basis-full items-center gap-2 text-left focus-visible:outline-none sm:basis-auto sm:flex-1"
                           onClick={() =>
                             setExpandedPrescriptionId((current) => {
                               const defaultKey = prescriptions[0]
@@ -3273,27 +3352,29 @@ export function PatientDetailPage() {
                             </span>
                           )}
                         </button>
-                        <Button
-                          className="h-7 flex-shrink-0 rounded-lg px-2 text-xs"
-                          disabled={isViewingLatestPrescriptionFile}
-                          onClick={() =>
-                            handleViewPrescriptionFromHistory(group)
-                          }
-                          type="button"
-                          variant="secondary"
-                        >
-                          <Eye className="mr-1 size-3" />
-                          Print
-                        </Button>
-                        <Button
-                          className="h-7 flex-shrink-0 rounded-lg px-2 text-xs"
-                          disabled={updatePrescription.isPending}
-                          onClick={() => openEditPrescriptionModal(group)}
-                          type="button"
-                          variant="secondary"
-                        >
-                          Edit
-                        </Button>
+                        <div className="ml-auto flex items-center gap-2 sm:ml-0">
+                          <Button
+                            className="h-7 flex-shrink-0 rounded-lg px-2 text-xs"
+                            disabled={isViewingLatestPrescriptionFile}
+                            onClick={() =>
+                              handleViewPrescriptionFromHistory(group)
+                            }
+                            type="button"
+                            variant="secondary"
+                          >
+                            <Eye className="mr-1 size-3" />
+                            Print
+                          </Button>
+                          <Button
+                            className="h-7 flex-shrink-0 rounded-lg px-2 text-xs"
+                            disabled={updatePrescription.isPending}
+                            onClick={() => openEditPrescriptionModal(group)}
+                            type="button"
+                            variant="secondary"
+                          >
+                            Edit
+                          </Button>
+                        </div>
                       </div>
 
                       {/* Expanded body */}
@@ -3400,7 +3481,7 @@ export function PatientDetailPage() {
               </div>
             ) : null}
           </Card>
-          <div className="space-y-6">
+          <div className="min-w-0 space-y-6">
             {canDoctorActions ? (
               <Card>
                 <CardTitle>Prescription details</CardTitle>
@@ -3481,70 +3562,6 @@ export function PatientDetailPage() {
                       <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
                         New medication
                       </p>
-                      <FormField label="Brand name">
-                        <div className="relative">
-                          <Input
-                            placeholder="e.g., Biogesic, Medicol, RiteMED (optional)"
-                            onBlur={hideInventoryLookup}
-                            onChange={(e) =>
-                              setDraftMedication((prev) => ({
-                                ...prev,
-                                brandName: e.target.value,
-                              }))
-                            }
-                            onFocus={() =>
-                              showInventoryLookup({
-                                scope: "draft",
-                                field: "brandName",
-                              })
-                            }
-                            value={draftMedication.brandName}
-                          />
-                          {activeInventoryLookup?.scope === "draft" &&
-                          activeInventoryLookup.field === "brandName" ? (
-                            <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
-                              {draftBrandSuggestions.length === 0 ? (
-                                <p className="px-3 py-2 text-xs text-slate-500">
-                                  No matching inventory brand.
-                                </p>
-                              ) : (
-                                draftBrandSuggestions.map((item) => (
-                                  <button
-                                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-100"
-                                    key={`${item.id}-draft-brand`}
-                                    onMouseDown={(event) => {
-                                      event.preventDefault();
-                                      handleSelectInventorySuggestion({
-                                        scope: "draft",
-                                        field: "brandName",
-                                        itemName: item.name,
-                                        itemBrandName: item.brandName,
-                                      });
-                                    }}
-                                    type="button"
-                                  >
-                                    <span className="min-w-0">
-                                      <span className="block truncate text-sm font-medium text-slate-800">
-                                        {item.brandName}
-                                      </span>
-                                      <span className="block truncate text-xs text-slate-500">
-                                        {item.name}
-                                      </span>
-                                    </span>
-                                    <span
-                                      className={`ml-3 shrink-0 text-xs font-semibold ${item.stockOnHand > 0 ? "text-emerald-700" : "text-rose-700"}`}
-                                    >
-                                      {item.stockOnHand > 0
-                                        ? `${item.stockOnHand} ${item.unit}`
-                                        : "Out of stock"}
-                                    </span>
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          ) : null}
-                        </div>
-                      </FormField>
                       <FormField
                         error={draftMedicationErrors.genericName}
                         label="Generic name"
@@ -3600,6 +3617,70 @@ export function PatientDetailPage() {
                                           {item.brandName}
                                         </span>
                                       ) : null}
+                                    </span>
+                                    <span
+                                      className={`ml-3 shrink-0 text-xs font-semibold ${item.stockOnHand > 0 ? "text-emerald-700" : "text-rose-700"}`}
+                                    >
+                                      {item.stockOnHand > 0
+                                        ? `${item.stockOnHand} ${item.unit}`
+                                        : "Out of stock"}
+                                    </span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      </FormField>
+                      <FormField label="Brand name">
+                        <div className="relative">
+                          <Input
+                            placeholder="e.g., Biogesic, Medicol, RiteMED (optional)"
+                            onBlur={hideInventoryLookup}
+                            onChange={(e) =>
+                              setDraftMedication((prev) => ({
+                                ...prev,
+                                brandName: e.target.value,
+                              }))
+                            }
+                            onFocus={() =>
+                              showInventoryLookup({
+                                scope: "draft",
+                                field: "brandName",
+                              })
+                            }
+                            value={draftMedication.brandName}
+                          />
+                          {activeInventoryLookup?.scope === "draft" &&
+                          activeInventoryLookup.field === "brandName" ? (
+                            <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+                              {draftBrandSuggestions.length === 0 ? (
+                                <p className="px-3 py-2 text-xs text-slate-500">
+                                  No matching inventory brand.
+                                </p>
+                              ) : (
+                                draftBrandSuggestions.map((item) => (
+                                  <button
+                                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-100"
+                                    key={`${item.id}-draft-brand`}
+                                    onMouseDown={(event) => {
+                                      event.preventDefault();
+                                      handleSelectInventorySuggestion({
+                                        scope: "draft",
+                                        field: "brandName",
+                                        itemName: item.name,
+                                        itemBrandName: item.brandName,
+                                      });
+                                    }}
+                                    type="button"
+                                  >
+                                    <span className="min-w-0">
+                                      <span className="block truncate text-sm font-medium text-slate-800">
+                                        {item.brandName}
+                                      </span>
+                                      <span className="block truncate text-xs text-slate-500">
+                                        {item.name}
+                                      </span>
                                     </span>
                                     <span
                                       className={`ml-3 shrink-0 text-xs font-semibold ${item.stockOnHand > 0 ? "text-emerald-700" : "text-rose-700"}`}
@@ -3749,7 +3830,7 @@ export function PatientDetailPage() {
       )}
 
       {activeTab === "certificates" && (
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
+        <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
           <Card>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle>Medical certificate history</CardTitle>
@@ -4105,7 +4186,7 @@ export function PatientDetailPage() {
       )}
 
       {activeTab === "inventory" && (
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
+        <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
           <Card>
             <CardTitle>Inventory usage history</CardTitle>
             <div className="mt-5 space-y-4">
@@ -4291,7 +4372,7 @@ export function PatientDetailPage() {
       )}
 
       {activeTab === "referrals" && (
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
+        <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
           <Card>
             <CardTitle>Referral coordination</CardTitle>
             <div className="mt-5 space-y-4">
@@ -4601,7 +4682,7 @@ export function PatientDetailPage() {
       )}
 
       {activeTab === "lab-tests" && (
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
+        <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
           <Card>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -5096,6 +5177,7 @@ export function PatientDetailPage() {
                       temperature: values.temperature || undefined,
                       bloodPressure: values.bloodPressure || undefined,
                       heartRate: values.heartRate || undefined,
+                      o2Sat: values.o2Sat || undefined,
                       respiratoryRate: values.respiratoryRate || undefined,
                       weight: values.weight || undefined,
                       height: values.height || undefined,
@@ -5162,7 +5244,18 @@ export function PatientDetailPage() {
                       />
                     </FormField>
                   </div>
-                  <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="grid gap-4 lg:grid-cols-3">
+                    <FormField
+                      error={vitalsForm.formState.errors.o2Sat?.message}
+                      label="O2sat (%)"
+                    >
+                      <Input
+                        type="number"
+                        step="1"
+                        placeholder="e.g., 98"
+                        {...vitalsForm.register("o2Sat")}
+                      />
+                    </FormField>
                     <FormField
                       error={vitalsForm.formState.errors.weight?.message}
                       label="Weight (kg)"
