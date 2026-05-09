@@ -85,6 +85,7 @@ export interface DoctorDirectoryItem {
 export interface BookingListItem {
   id: string;
   patientId: string;
+  patientName: string | null;
   serviceId: string;
   serviceName: string;
   doctorId: string | null;
@@ -116,6 +117,7 @@ async function buildBookingListItemFromRow(
   maps?: {
     serviceMap?: Map<string, string>;
     doctorMap?: Map<string, string>;
+    patientName?: string | null;
   },
 ): Promise<BookingListItem> {
   let serviceMap = maps?.serviceMap;
@@ -134,6 +136,7 @@ async function buildBookingListItemFromRow(
   return {
     id: row.id,
     patientId: row.patient_id,
+    patientName: maps?.patientName ?? null,
     serviceId: row.service_id,
     serviceName: serviceMap.get(row.service_id) ?? "Service",
     doctorId: row.doctor_id,
@@ -2950,11 +2953,13 @@ export async function getBookingListForUser(
       (item) => item.userId === userId || item.email === userId,
     );
     if (!patient) return [];
+    const patientName = `${patient.firstName} ${patient.lastName}`;
     return database.bookings
       .filter((booking) => booking.patientId === patient.id)
       .map((booking) => ({
         id: booking.id,
         patientId: booking.patientId,
+        patientName,
         serviceId: booking.serviceId,
         serviceName:
           database.services.find((service) => service.id === booking.serviceId)
@@ -2981,6 +2986,7 @@ export async function getBookingListForUser(
     return [];
   }
 
+  const patientName = `${patient.firstName} ${patient.lastName}`;
   const [{ data: bookings, error }, services, doctors] = await Promise.all([
     client
       .from("bookings")
@@ -3007,6 +3013,7 @@ export async function getBookingListForUser(
       buildBookingListItemFromRow(booking, {
         serviceMap,
         doctorMap,
+        patientName,
       }),
     ),
   );
@@ -3421,9 +3428,12 @@ export async function getBookingByReceiptCodeLiveOrDemo(receiptCode: string) {
     }
 
     const database = getDatabase();
+    const patient = database.patients.find((p) => p.id === booking.patientId);
+    const patientName = patient ? `${patient.firstName} ${patient.lastName}` : null;
     return {
       id: booking.id,
       patientId: booking.patientId,
+      patientName,
       serviceId: booking.serviceId,
       serviceName:
         database.services.find((service) => service.id === booking.serviceId)
@@ -3458,19 +3468,154 @@ export async function getBookingByReceiptCodeLiveOrDemo(receiptCode: string) {
     return null;
   }
 
-  const services = await getBookableServicesLiveOrDemo();
-  const doctors = await getDoctorDirectoryLiveOrDemo();
+  const bookingRow = data as BookingRow;
+  const [services, doctors, patient] = await Promise.all([
+    getBookableServicesLiveOrDemo(),
+    getDoctorDirectoryLiveOrDemo(),
+    getPatientByIdLiveOrDemo(bookingRow.patient_id),
+  ]);
   const serviceMap = new Map(
     services.map((service) => [service.id, service.name]),
   );
   const doctorMap = new Map(
     doctors.map((doctor) => [doctor.id, doctor.fullName]),
   );
+  const patientName = patient ? `${patient.firstName} ${patient.lastName}` : null;
 
-  return buildBookingListItemFromRow(data as BookingRow, {
+  return buildBookingListItemFromRow(bookingRow, {
     serviceMap,
     doctorMap,
+    patientName,
   });
+}
+
+export async function searchPendingBookingsByPatientNameLiveOrDemo(
+  nameQuery: string,
+): Promise<BookingListItem[]> {
+  const trimmed = nameQuery.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  if (!isSupabaseConfigured) {
+    const database = getDatabase();
+    const lowerQuery = trimmed.toLowerCase();
+    const matchingPatients = database.patients.filter((patient) => {
+      const fullName = `${patient.firstName} ${patient.lastName}`.toLowerCase();
+      return fullName.includes(lowerQuery);
+    });
+    const matchingPatientIds = new Set(matchingPatients.map((p) => p.id));
+    const patientNameById = new Map(
+      matchingPatients.map((p) => [p.id, `${p.firstName} ${p.lastName}`]),
+    );
+
+    return database.bookings
+      .filter(
+        (booking) =>
+          matchingPatientIds.has(booking.patientId) &&
+          booking.paymentStatus === "pending_cashier",
+      )
+      .sort((a, b) => {
+        const aDateTime = `${a.preferredDate}T${a.preferredTime}`;
+        const bDateTime = `${b.preferredDate}T${b.preferredTime}`;
+        return bDateTime.localeCompare(aDateTime);
+      })
+      .map((booking) => ({
+        id: booking.id,
+        patientId: booking.patientId,
+        patientName: patientNameById.get(booking.patientId) ?? null,
+        serviceId: booking.serviceId,
+        serviceName:
+          database.services.find((service) => service.id === booking.serviceId)
+            ?.name ?? "Service",
+        doctorId: booking.doctorId,
+        doctorName:
+          database.users.find((doctor) => doctor.id === booking.doctorId)
+            ?.fullName ?? null,
+        preferredDate: booking.preferredDate,
+        preferredTime: booking.preferredTime,
+        status: booking.status,
+        intakeNotes: booking.intakeNotes,
+        createdAt: booking.createdAt,
+        feeType: booking.feeType,
+        feeAmount: booking.feeAmount,
+        receiptCode: booking.receiptCode,
+        paymentStatus: booking.paymentStatus,
+      }));
+  }
+
+  const client = requireSupabase();
+  const words = trimmed.split(/\s+/);
+  const firstWord = words[0];
+  const lastWord = words.length > 1 ? words[words.length - 1] : null;
+
+  let patientsQuery = client
+    .from("patients")
+    .select("id, first_name, last_name")
+    .is("deleted_at", null);
+
+  if (lastWord) {
+    patientsQuery = patientsQuery
+      .ilike("first_name", `%${firstWord}%`)
+      .ilike("last_name", `%${lastWord}%`);
+  } else {
+    patientsQuery = patientsQuery.or(
+      `first_name.ilike.%${firstWord}%,last_name.ilike.%${firstWord}%`,
+    );
+  }
+
+  const { data: patientRows, error: patientError } = await patientsQuery.limit(20);
+  if (patientError) {
+    throw patientError;
+  }
+
+  if (!patientRows || patientRows.length === 0) {
+    return [];
+  }
+
+  const patientIds = (patientRows as Array<{ id: string; first_name: string; last_name: string }>).map(
+    (p) => p.id,
+  );
+  const patientNameById = new Map(
+    (patientRows as Array<{ id: string; first_name: string; last_name: string }>).map((p) => [
+      p.id,
+      `${p.first_name} ${p.last_name}`,
+    ]),
+  );
+
+  const { data: bookingRows, error: bookingError } = await client
+    .from("bookings")
+    .select("*")
+    .in("patient_id", patientIds)
+    .eq("payment_status", "pending_cashier")
+    .is("deleted_at", null)
+    .order("preferred_date", { ascending: false })
+    .order("preferred_time", { ascending: false });
+
+  if (bookingError) {
+    throw bookingError;
+  }
+
+  if (!bookingRows || bookingRows.length === 0) {
+    return [];
+  }
+
+  const [services, doctors] = await Promise.all([
+    getBookableServicesLiveOrDemo(),
+    getDoctorDirectoryLiveOrDemo(),
+  ]);
+  const serviceMap = new Map(services.map((s) => [s.id, s.name]));
+  const doctorMap = new Map(doctors.map((d) => [d.id, d.fullName]));
+
+  return Promise.all(
+    (bookingRows as BookingRow[]).map((row) =>
+      buildBookingListItemFromRow(row, {
+        serviceMap,
+        doctorMap,
+        patientName: patientNameById.get(row.patient_id) ?? null,
+      }),
+    ),
+  );
 }
 
 export async function markBookingPaidAndCreateInvoiceLiveOrDemo(
