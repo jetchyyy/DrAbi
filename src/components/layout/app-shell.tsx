@@ -5,7 +5,6 @@ import {
   Menu,
   Search,
   ShieldEllipsis,
-  Stethoscope,
   X,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
@@ -131,21 +130,32 @@ export function AppShell() {
       key={item.to}
       className={({ isActive }) =>
         cn(
-          "flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-md px-3 py-2.5 text-sm font-semibold transition-all duration-150",
+          "flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-150",
           isActive
-            ? "bg-orange-50 text-orange-700 ring-1 ring-orange-200"
-            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+            ? "bg-[color-mix(in_srgb,var(--color-primary)_16%,white)] text-slate-900 ring-1 ring-[color-mix(in_srgb,var(--color-primary)_35%,white)]"
+            : "text-slate-600 hover:bg-slate-100/90 hover:text-slate-900",
         )
       }
       onClick={() => setMobileSidebarOpen(false)}
       to={item.to}
     >
-      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600">
-        <item.icon className="size-4 shrink-0" />
-      </span>
-      <span className="min-w-0 flex-1 break-words text-[13px] leading-snug">
-        {item.label}
-      </span>
+      {({ isActive }) => (
+        <>
+          <span
+            className={cn(
+              "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
+              isActive
+                ? "bg-[color-mix(in_srgb,var(--color-primary)_30%,white)] text-slate-900"
+                : "bg-slate-100 text-slate-600",
+            )}
+          >
+            <item.icon className="size-4 shrink-0" />
+          </span>
+          <span className="min-w-0 flex-1 break-words text-[13px] leading-snug">
+            {item.label}
+          </span>
+        </>
+      )}
     </NavLink>
   );
 
@@ -289,7 +299,7 @@ export function AppShell() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-100">
+    <div className="flex min-h-screen bg-slate-50">
       {mobileSidebarOpen ? (
         <button
           aria-label="Close navigation menu"
@@ -305,23 +315,21 @@ export function AppShell() {
           mobileSidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 pb-5 pt-6">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center bg-orange-600 text-white">
-              <Stethoscope className="size-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-900">
-                {clinic.clinicName ?? "CPRMED Clinic"}
-              </p>
-              <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
-                Navigation
-              </p>
-            </div>
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 pb-5 pt-6">
+          <div className="flex flex-col items-start gap-2">
+            <img
+              alt={`${clinic.clinicName || clinic.legalName || "Clinic"} logo`}
+              className="h-11 w-auto object-contain"
+              decoding="async"
+              src="/logo.png"
+            />
+            <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
+              Operations Hub
+            </p>
           </div>
           <button
             aria-label="Close navigation menu"
-            className="inline-flex size-10 items-center justify-center border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50"
+            className="inline-flex size-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50"
             onClick={() => setMobileSidebarOpen(false)}
             type="button"
           >
@@ -340,9 +348,9 @@ export function AppShell() {
           ))}
         </nav>
 
-        <div className="border-t border-slate-100 px-4 py-4 space-y-2">
+        <div className="border-t border-slate-100 px-4 py-4">
           <div className="flex items-center gap-3 px-1">
-            <div className="flex size-8 items-center justify-center bg-orange-600 text-xs font-extrabold text-white">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-[var(--color-primary)] text-xs font-extrabold text-white">
               {getInitials(profile?.fullName ?? "Guest User")}
             </div>
             <div className="min-w-0">
@@ -354,26 +362,18 @@ export function AppShell() {
               </p>
             </div>
           </div>
-          <button
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-widest text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
-            onClick={() => void signOut()}
-            type="button"
-          >
-            <LogOut className="size-3.5" />
-            Sign out
-          </button>
         </div>
       </aside>
 
       <aside className="sticky top-0 hidden h-screen w-80 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white lg:flex">
-        <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-5">
-          <div className="flex size-11 items-center justify-center bg-orange-600 text-white">
-            <Stethoscope className="size-5" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-slate-900">
-              {clinic.clinicName ?? "CPRMED Clinic"}
-            </p>
+        <div className="border-b border-slate-100 px-6 py-5">
+          <div className="flex flex-col items-start gap-2">
+            <img
+              alt={`${clinic.clinicName || clinic.legalName || "Clinic"} logo`}
+              className="h-11 w-auto object-contain"
+              decoding="async"
+              src="/logo.png"
+            />
             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
               Operations Hub
             </p>
@@ -391,9 +391,9 @@ export function AppShell() {
           ))}
         </nav>
 
-        <div className="border-t border-slate-100 px-4 py-4 space-y-2">
+        <div className="border-t border-slate-100 px-4 py-4">
           <div className="flex items-center gap-3 px-1">
-            <div className="flex size-8 items-center justify-center bg-orange-600 text-xs font-extrabold text-white">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-[var(--color-primary)] text-xs font-extrabold text-white">
               {getInitials(profile?.fullName ?? "Guest User")}
             </div>
             <div className="min-w-0">
@@ -405,30 +405,22 @@ export function AppShell() {
               </p>
             </div>
           </div>
-          <button
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-widest text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
-            onClick={() => void signOut()}
-            type="button"
-          >
-            <LogOut className="size-3.5" />
-            Sign out
-          </button>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3.5 shadow-sm">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-slate-200/90 bg-white/90 px-5 py-3 shadow-[0_1px_0_rgba(15,41,71,0.06)] backdrop-blur-md sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <button
               aria-label="Open navigation menu"
-              className="border border-slate-200 p-2 text-slate-700 lg:hidden"
+              className="rounded-xl border border-slate-200/90 p-2 text-slate-700 transition hover:bg-slate-50 lg:hidden"
               onClick={() => setMobileSidebarOpen((isOpen) => !isOpen)}
               type="button"
             >
               <Menu className="size-5" />
             </button>
-            <div className="hidden items-center gap-2.5 border border-slate-200 bg-slate-50 px-4 py-2 md:flex">
-              <Search className="size-4 text-slate-400" />
+            <div className="hidden h-11 items-center gap-2.5 rounded-xl border border-slate-200/90 bg-slate-50/90 px-4 md:flex lg:min-w-[320px]">
+              <Search className="size-4 shrink-0 text-slate-400" />
               <span className="text-sm text-slate-400">
                 Search patients, appointments, invoices…
               </span>
@@ -438,7 +430,7 @@ export function AppShell() {
           <div className="flex items-center gap-2">
             {profile?.role === "owner_admin" ? (
               <NavLink
-                className="border border-slate-200 p-2.5 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200/90 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
                 title="Super Admin Console"
                 to="/odc"
               >
@@ -446,16 +438,24 @@ export function AppShell() {
               </NavLink>
             ) : null}
             <button
-              className="border border-slate-200 p-2.5 text-slate-500 transition-colors hover:bg-slate-50"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200/90 text-slate-500 transition-colors hover:bg-slate-50"
               type="button"
             >
               <Bell className="size-4" />
             </button>
-            <div className="hidden items-center gap-2.5 border border-slate-200 bg-white px-3 py-2 md:flex">
-              <div className="flex size-8 items-center justify-center bg-orange-600 text-xs font-extrabold text-white">
+            <button
+              className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200/90 px-3 text-xs font-semibold uppercase tracking-wide text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+              onClick={() => void signOut()}
+              type="button"
+            >
+              <LogOut className="size-3.5" />
+              Sign out
+            </button>
+            <div className="hidden h-11 items-center gap-2.5 rounded-xl border border-slate-200/90 bg-white pl-2 pr-3 shadow-sm md:flex">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-[var(--color-primary)] text-xs font-extrabold text-white">
                 {getInitials(profile?.fullName ?? "Guest User")}
               </div>
-              <div>
+              <div className="leading-tight">
                 <p className="text-sm font-semibold leading-none text-slate-900">
                   {profile?.fullName}
                 </p>
@@ -468,7 +468,7 @@ export function AppShell() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1600px] flex-1 p-6 lg:p-8">
+        <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 py-6 sm:px-6 lg:px-10 lg:py-8">
           <Outlet />
         </main>
       </div>
@@ -628,7 +628,7 @@ export function AppShell() {
 
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <Button
-                  className="w-full rounded-none sm:w-auto"
+                  className="w-full sm:w-auto"
                   onClick={() => void signOut()}
                   type="button"
                   variant="secondary"
@@ -636,7 +636,7 @@ export function AppShell() {
                   Sign out
                 </Button>
                 <Button
-                  className="w-full rounded-none bg-orange-600 hover:bg-orange-700 sm:w-auto"
+                  className="w-full bg-orange-600 hover:bg-orange-700 sm:w-auto"
                   disabled={savingPin}
                   onClick={() => void handleSavePin()}
                   type="button"

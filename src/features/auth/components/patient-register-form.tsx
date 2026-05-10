@@ -204,7 +204,7 @@ export function PatientRegisterForm() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField error={form.formState.errors.fullName?.message}>
-                <Label htmlFor="fullName">Full name</Label>
+                <Label htmlFor="fullName">Full name</Label>fo
                 <Input id="fullName" autoComplete="name" {...form.register('fullName')} placeholder="Jordan Lee" />
               </FormField>
               <FormField error={form.formState.errors.email?.message}>

@@ -7,6 +7,18 @@ import QRCode from 'qrcode';
 import { Button } from '../../../components/ui/button';
 import { getDatabase, listLabOrders, updateLabOrderSchedule } from '../../../lib/local-db';
 import { printHtmlDocument } from '../../../lib/print';
+import {
+  INTERNAL_BTN_PAGE,
+  INTERNAL_SEARCH_INPUT_WRAP,
+  INTERNAL_SURFACE,
+  INTERNAL_SURFACE_FOOTER,
+  INTERNAL_TABLE,
+  INTERNAL_TABLE_SCROLL,
+  INTERNAL_TD,
+  INTERNAL_TH,
+  INTERNAL_TR,
+  INTERNAL_THEAD_ROW,
+} from '../../../lib/internal-ui';
 import { queryKeys } from '../../../lib/query-keys';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase';
 import { cn } from '../../../lib/utils';
@@ -577,19 +589,19 @@ export function ScheduleTab() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5 border-b border-slate-100">
+      <div className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
+        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 bg-violet-700 p-2.5 text-white">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 p-2.5 text-white shadow-sm ring-1 ring-emerald-100/90">
               <CalendarDays className="size-5" />
             </div>
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-widest text-violet-700">Laboratory Workflow</p>
-              <h2 className="text-xl font-extrabold tracking-tight text-slate-950">Schedule</h2>
-              <p className="mt-1 text-sm text-slate-500">Assign dates and time slots for pending laboratory requests.</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Laboratory</p>
+              <h2 className="text-xl font-bold tracking-tight text-slate-900">Schedule</h2>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">Assign dates and time slots for pending laboratory requests.</p>
             </div>
           </div>
-          <div className="flex w-full max-w-sm items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5">
+          <div className={`${INTERNAL_SEARCH_INPUT_WRAP} w-full max-w-sm`}>
             <Search className="size-4 shrink-0 text-slate-400" />
             <input
               className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
@@ -599,19 +611,19 @@ export function ScheduleTab() {
             />
           </div>
         </div>
-        <div className="border-t border-slate-100 bg-slate-50 px-6 py-2">
-          <span className="text-xs font-bold text-slate-500">{unscheduled.length} pending scheduling</span>
+        <div className={cn(INTERNAL_SURFACE_FOOTER, 'px-6 py-2.5')}>
+          <span className="text-xs font-medium text-slate-600">{unscheduled.length} pending scheduling</span>
         </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_0.85fr]">
-      <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-2.5 px-6 py-4 border-b border-slate-100">
-          <div className="p-2 bg-violet-700 text-white shrink-0">
+      <div className={INTERNAL_SURFACE}>
+        <div className="flex items-center gap-2.5 border-b border-slate-100/90 px-6 py-4">
+          <div className="flex shrink-0 items-center justify-center rounded-xl bg-emerald-600 p-2 text-white shadow-sm ring-1 ring-emerald-100/90">
             <CalendarDays className="size-4" />
           </div>
           <div>
-            <p className="font-extrabold text-sm uppercase tracking-wide text-slate-950">Unscheduled Lab Tests</p>
+            <p className="text-sm font-semibold text-slate-900">Unscheduled lab tests</p>
             <p className="text-[11px] text-slate-400 font-medium">{unscheduled.length} pending scheduling</p>
           </div>
         </div>
@@ -627,7 +639,7 @@ export function ScheduleTab() {
                   key={order.id}
                   className={cn(
                     'w-full text-left px-6 py-4 hover:bg-slate-50 transition-colors',
-                    selectedOrderId === order.id && 'bg-violet-50 border-l-4 border-violet-600',
+                    selectedOrderId === order.id && 'bg-emerald-50 border-l-4 border-emerald-500',
                   )}
                   onClick={() => { setSelectedOrderId(order.id); setError(''); }}
                   type="button"
@@ -648,14 +660,14 @@ export function ScheduleTab() {
           )}
         </div>
         {filteredOrders.length > 0 ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
-            <p className="text-xs text-slate-500">
+          <div className={cn(INTERNAL_SURFACE_FOOTER, 'flex flex-wrap items-center justify-between gap-3 px-6 py-3')}>
+            <p className="text-xs font-medium text-slate-600">
               Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)} of {filteredOrders.length}
             </p>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className={INTERNAL_BTN_PAGE}
                 onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                 disabled={currentPage === 1}
               >
@@ -664,7 +676,7 @@ export function ScheduleTab() {
               <span className="text-xs font-semibold text-slate-600">Page {currentPage} of {totalPages}</span>
               <button
                 type="button"
-                className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className={INTERNAL_BTN_PAGE}
                 onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                 disabled={currentPage >= totalPages}
               >
@@ -675,10 +687,10 @@ export function ScheduleTab() {
         ) : null}
       </div>
 
-      <div className="border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="bg-violet-700 px-6 py-4">
-          <p className="text-xs font-extrabold uppercase tracking-widest text-violet-200">Assign Schedule</p>
-          <p className="text-sm font-bold text-white mt-0.5">Pick date and time slot</p>
+      <div className={INTERNAL_SURFACE}>
+        <div className="border-b border-slate-100/90 px-6 py-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Assign schedule</p>
+          <p className="mt-0.5 text-sm font-semibold text-slate-900">Pick date and time slot</p>
         </div>
 
         {!selectedOrderId ? (
@@ -705,9 +717,9 @@ export function ScheduleTab() {
                       disabled={disabled}
                       className={cn(
                         'p-1.5 text-xs font-medium transition-colors',
-                        disabled ? 'text-slate-200 cursor-not-allowed' : 'hover:bg-violet-50 cursor-pointer',
-                        isToday && !isSelected && 'text-violet-600 font-extrabold',
-                        isSelected && 'bg-violet-700 text-white font-extrabold',
+                        disabled ? 'text-slate-200 cursor-not-allowed' : 'hover:bg-emerald-50 cursor-pointer',
+                        isToday && !isSelected && 'text-emerald-600 font-extrabold',
+                        isSelected && 'bg-emerald-700 text-white font-extrabold',
                       )}
                       onClick={() => { setSelectedDate(key); setSelectedTime(''); setError(''); }}
                     >
@@ -735,8 +747,8 @@ export function ScheduleTab() {
                           'text-[10px] font-bold px-1 py-1.5 transition-colors border',
                           disabled || conflicted
                             ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'
-                            : 'border-slate-200 hover:border-violet-400 hover:bg-violet-50 cursor-pointer',
-                          isSelected && 'border-violet-600 bg-violet-700 text-white',
+                            : 'border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 cursor-pointer',
+                          isSelected && 'border-emerald-600 bg-emerald-700 text-white',
                           conflicted && !disabled && 'bg-rose-50 border-rose-200 text-rose-300',
                         )}
                         onClick={() => { setSelectedTime(slot); setError(''); }}
@@ -770,7 +782,7 @@ export function ScheduleTab() {
                 </p>
               )}
               <Button
-                className="w-full rounded-none bg-violet-700 hover:bg-violet-800 font-extrabold uppercase tracking-widest text-sm py-5"
+                className="w-full bg-emerald-600 py-3 text-sm font-semibold uppercase tracking-wide shadow-sm ring-1 ring-emerald-700/20 hover:bg-emerald-700"
                 disabled={!selectedOrderId || !selectedDate || !selectedTime || scheduleMutation.isPending}
                 type="button"
                 onClick={() => void scheduleMutation.mutate()}
@@ -783,49 +795,49 @@ export function ScheduleTab() {
       </div>
       </div>
 
-      <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-100">
+      <div className={INTERNAL_SURFACE}>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100/90 px-6 py-4">
           <div>
-            <p className="font-extrabold text-sm uppercase tracking-wide text-slate-950">Confirmed / Scheduled Bookings</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">History of laboratory bookings with assigned date and time</p>
+            <p className="text-sm font-bold text-slate-900">Confirmed / scheduled bookings</p>
+            <p className="mt-0.5 text-[11px] text-slate-500">History of laboratory bookings with assigned date and time</p>
           </div>
-          <span className="text-xs font-bold text-slate-500">{scheduledOrders.length} booking{scheduledOrders.length !== 1 ? 's' : ''}</span>
+          <span className="text-xs font-semibold text-slate-600">{scheduledOrders.length} booking{scheduledOrders.length !== 1 ? 's' : ''}</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Patient</th>
-                <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Service</th>
-                <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Date</th>
-                <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Time</th>
-                <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Status</th>
+        <div className={INTERNAL_TABLE_SCROLL}>
+          <table className={INTERNAL_TABLE}>
+            <thead>
+              <tr className={INTERNAL_THEAD_ROW}>
+                <th className={INTERNAL_TH}>Patient</th>
+                <th className={INTERNAL_TH}>Service</th>
+                <th className={INTERNAL_TH}>Date</th>
+                <th className={INTERNAL_TH}>Time</th>
+                <th className={INTERNAL_TH}>Status</th>
                 {role === 'front_desk_cashier' ? (
-                  <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Receipt</th>
+                  <th className={cn(INTERNAL_TH, 'text-right')}>Receipt</th>
                 ) : null}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody>
               {paginatedHistory.length === 0 ? (
-                <tr>
-                  <td className="px-6 py-12 text-center text-sm text-slate-400" colSpan={role === 'front_desk_cashier' ? 6 : 5}>
+                <tr className={INTERNAL_TR}>
+                  <td className={cn(INTERNAL_TD, 'py-12 text-center text-sm text-slate-500')} colSpan={role === 'front_desk_cashier' ? 6 : 5}>
                     No scheduled laboratory bookings yet.
                   </td>
                 </tr>
               ) : (
                 paginatedHistory.map((order) => (
-                  <tr key={order.id} className="transition-colors hover:bg-slate-50">
-                    <td className="px-6 py-3 text-sm text-slate-700">{order.patientLabel}</td>
-                    <td className="px-6 py-3 text-sm font-semibold text-slate-900">{order.serviceLabel}</td>
-                    <td className="px-6 py-3 text-sm text-slate-700">{order.schedDate}</td>
-                    <td className="px-6 py-3 text-sm text-slate-700">{order.schedTime}</td>
-                    <td className="px-6 py-3"><LabStatusPill status={order.status} /></td>
+                  <tr key={order.id} className={INTERNAL_TR}>
+                    <td className={cn(INTERNAL_TD, 'text-sm')}>{order.patientLabel}</td>
+                    <td className={cn(INTERNAL_TD, 'text-sm font-semibold text-slate-900')}>{order.serviceLabel}</td>
+                    <td className={cn(INTERNAL_TD, 'text-sm')}>{order.schedDate}</td>
+                    <td className={cn(INTERNAL_TD, 'text-sm')}>{order.schedTime}</td>
+                    <td className={INTERNAL_TD}><LabStatusPill status={order.status} /></td>
                     {role === 'front_desk_cashier' ? (
-                      <td className="px-6 py-3 text-right">
+                      <td className={cn(INTERNAL_TD, 'text-right')}>
                         <button
                           type="button"
-                          className="border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-widest text-slate-700 transition hover:bg-slate-50"
+                          className="rounded-lg border border-slate-200/90 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition hover:bg-slate-50"
                           onClick={() => setScheduleReceipt({
                             requestId: order.id,
                             patientLabel: order.patientLabel,
@@ -849,14 +861,14 @@ export function ScheduleTab() {
         </div>
 
         {scheduledOrders.length > 0 ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
-            <p className="text-xs text-slate-500">
+          <div className={cn(INTERNAL_SURFACE_FOOTER, 'flex flex-wrap items-center justify-between gap-3 px-6 py-3')}>
+            <p className="text-xs font-medium text-slate-600">
               Showing {(historyPage - 1) * HISTORY_PAGE_SIZE + 1}-{Math.min(historyPage * HISTORY_PAGE_SIZE, scheduledOrders.length)} of {scheduledOrders.length}
             </p>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className={INTERNAL_BTN_PAGE}
                 onClick={() => setHistoryPage((page) => Math.max(1, page - 1))}
                 disabled={historyPage === 1}
               >
@@ -865,7 +877,7 @@ export function ScheduleTab() {
               <span className="text-xs font-semibold text-slate-600">Page {historyPage} of {historyTotalPages}</span>
               <button
                 type="button"
-                className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className={INTERNAL_BTN_PAGE}
                 onClick={() => setHistoryPage((page) => Math.min(historyTotalPages, page + 1))}
                 disabled={historyPage >= historyTotalPages}
               >
@@ -884,11 +896,11 @@ export function ScheduleTab() {
           onClick={closeScheduleReceiptModal}
         >
           <div
-            className="my-auto w-full max-w-2xl overflow-hidden border border-slate-200 bg-white shadow-2xl"
+            className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="bg-violet-700 px-6 py-4">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-violet-200">Laboratory Receipt</p>
+            <div className="bg-emerald-600 px-6 py-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-emerald-100">Laboratory Receipt</p>
               <p className="mt-0.5 text-sm font-bold text-white">Schedule confirmed. Provide this QR for billing and intake.</p>
             </div>
 
@@ -954,13 +966,13 @@ export function ScheduleTab() {
 
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
               <Link
-                className="inline-flex items-center justify-center border border-slate-200 bg-white px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:bg-slate-50"
                 to="/app/billing"
               >
                 Proceed to billing
               </Link>
               <Button
-                className="rounded-none bg-violet-700 px-4 py-2 text-xs font-extrabold uppercase tracking-widest hover:bg-violet-800"
+                className="bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide hover:bg-emerald-700"
                 type="button"
                 onClick={() => void handlePrintScheduleReceipt()}
                 disabled={!scheduleReceiptQrSvg || isPrintingReceipt}
@@ -968,7 +980,6 @@ export function ScheduleTab() {
                 {isPrintingReceipt ? 'Opening print preview...' : 'Print receipt'}
               </Button>
               <Button
-                className="rounded-none"
                 variant="secondary"
                 type="button"
                 onClick={closeScheduleReceiptModal}

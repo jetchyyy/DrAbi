@@ -2,6 +2,11 @@ import { useMemo } from 'react';
 import { BarChart3 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
+import {
+  INTERNAL_SURFACE,
+  INTERNAL_SURFACE_FOOTER,
+  INTERNAL_SURFACE_PADDING,
+} from '../../../lib/internal-ui';
 import { getDatabase, listLabBookingRequests, listLabOrders } from '../../../lib/local-db';
 import { queryKeys } from '../../../lib/query-keys';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase';
@@ -110,41 +115,41 @@ export function ReportTab() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5 border-b border-slate-100">
+      <div className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
+        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 bg-violet-700 p-2.5 text-white">
-              <BarChart3 className="size-5" />
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100/90">
+              <BarChart3 className="size-5" strokeWidth={2} />
             </div>
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-widest text-violet-700">Laboratory Workflow</p>
-              <h2 className="text-xl font-extrabold tracking-tight text-slate-950">Reports</h2>
-              <p className="mt-1 text-sm text-slate-500">Operational snapshot of laboratory request flow and service demand.</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Laboratory</p>
+              <h2 className="text-xl font-bold tracking-tight text-slate-900">Reports</h2>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">Operational snapshot of laboratory request flow and service demand.</p>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Requests</p>
-            <p className="text-2xl font-extrabold text-slate-950">{totalRequests}</p>
+          <div className="rounded-xl border border-slate-100/90 bg-slate-50/80 px-5 py-3 text-right shadow-inner">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total requests</p>
+            <p className="text-2xl font-bold tabular-nums text-slate-900">{totalRequests}</p>
           </div>
         </div>
-        <div className="border-t border-slate-100 bg-slate-50 px-6 py-2">
-          <span className="text-xs font-bold text-slate-500">Live workflow analytics</span>
+        <div className={cn(INTERNAL_SURFACE_FOOTER, 'px-6 py-2.5')}>
+          <span className="text-xs font-medium text-slate-600">Live workflow analytics</span>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {Object.entries(statusBreakdown).map(([status, count]) => (
-          <div key={status} className="bg-white border border-slate-200 shadow-sm p-5">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{status}</p>
-            <p className="text-3xl font-bold text-slate-950 mt-2">{count}</p>
-            <p className="text-xs text-slate-400 mt-1">{totalRequests > 0 ? Math.round((count / totalRequests) * 100) : 0}% of requests</p>
+          <div key={status} className={INTERNAL_SURFACE_PADDING}>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{status}</p>
+            <p className="mt-2 text-3xl font-bold tabular-nums text-slate-900">{count}</p>
+            <p className="mt-1 text-xs text-slate-500">{totalRequests > 0 ? Math.round((count / totalRequests) * 100) : 0}% of requests</p>
           </div>
         ))}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100">
+        <div className={INTERNAL_SURFACE}>
+          <div className="border-b border-slate-100/90 px-6 py-4">
             <p className="font-extrabold text-sm uppercase tracking-wide text-slate-950">Test Request Frequency</p>
             <p className="text-[11px] text-slate-400 mt-0.5">Top requested tests from bookings</p>
           </div>
@@ -158,8 +163,8 @@ export function ReportTab() {
                     <span className="text-xs font-medium text-slate-700 truncate pr-3">{name}</span>
                     <span className="text-xs font-bold text-slate-950 shrink-0">{count}</span>
                   </div>
-                  <div className="h-3 bg-slate-100 overflow-hidden">
-                    <div className="h-full bg-violet-600 transition-all" style={{ width: `${(count / maxFreq) * 100}%` }} />
+                  <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                    <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${(count / maxFreq) * 100}%` }} />
                   </div>
                 </div>
               ))
@@ -167,23 +172,23 @@ export function ReportTab() {
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100">
+        <div className={INTERNAL_SURFACE}>
+          <div className="border-b border-slate-100/90 px-6 py-4">
             <p className="font-extrabold text-sm uppercase tracking-wide text-slate-950">Request Status Breakdown</p>
             <p className="text-[11px] text-slate-400 mt-0.5">Distribution by booking status</p>
           </div>
           <div className="px-6 py-5 space-y-3">
             {Object.entries(statusBreakdown).map(([status, count]) => (
               <div key={status} className="flex items-center gap-3">
-                <div className={cn('w-3 h-3 shrink-0', STATUS_COLORS[status] ?? 'bg-slate-300')} />
+                <div className={cn('size-2.5 shrink-0 rounded-full', STATUS_COLORS[status] ?? 'bg-slate-300')} />
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-medium text-slate-700">{status}</span>
                     <span className="text-xs font-bold text-slate-950">{count}</span>
                   </div>
-                  <div className="h-2 bg-slate-100 overflow-hidden">
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className={cn('h-full transition-all', STATUS_COLORS[status] ?? 'bg-slate-300')}
+                      className={cn('h-full rounded-full transition-all', STATUS_COLORS[status] ?? 'bg-slate-300')}
                       style={{ width: totalRequests > 0 ? `${(count / totalRequests) * 100}%` : '0%' }}
                     />
                   </div>
@@ -194,8 +199,8 @@ export function ReportTab() {
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100">
+      <div className={INTERNAL_SURFACE}>
+        <div className="border-b border-slate-100/90 px-6 py-4">
           <p className="font-extrabold text-sm uppercase tracking-wide text-slate-950">Lab Orders by Service</p>
           <p className="text-[11px] text-slate-400 mt-0.5">From the workflow module</p>
         </div>
@@ -209,8 +214,8 @@ export function ReportTab() {
                   <span className="text-xs font-medium text-slate-700 truncate pr-3">{name}</span>
                   <span className="text-xs font-bold text-slate-950 shrink-0">{count}</span>
                 </div>
-                <div className="h-3 bg-slate-100 overflow-hidden">
-                  <div className="h-full bg-orange-500 transition-all" style={{ width: `${(count / maxOrders) * 100}%` }} />
+                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-slate-400 transition-all" style={{ width: `${(count / maxOrders) * 100}%` }} />
                 </div>
               </div>
             ))

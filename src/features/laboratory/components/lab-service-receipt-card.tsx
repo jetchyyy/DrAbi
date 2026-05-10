@@ -364,7 +364,7 @@ export function LabServiceReceiptCard({
       </div>
 
       <Button
-        className="mt-4 w-full gap-2 rounded-none bg-violet-700 font-extrabold uppercase tracking-widest hover:bg-violet-800"
+        className="mt-4 w-full gap-2 bg-emerald-600 font-semibold uppercase tracking-wide hover:bg-emerald-700"
         disabled={!svgMarkup || isPrinting}
         onClick={() => void handlePrint()}
         type="button"

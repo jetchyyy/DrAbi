@@ -24,7 +24,20 @@ import {
 } from '../../lab-requests/hooks/use-lab-requests';
 import { labRequestService } from '../../lab-requests/api/lab-request-service';
 import type { LabRequestRecord } from '../../lab-requests/types';
+import {
+  INTERNAL_BTN_PAGE,
+  INTERNAL_SEARCH_INPUT_WRAP,
+  INTERNAL_SURFACE,
+  INTERNAL_SURFACE_FOOTER,
+  INTERNAL_TABLE,
+  INTERNAL_TABLE_SCROLL,
+  INTERNAL_TD,
+  INTERNAL_TH,
+  INTERNAL_TR,
+  INTERNAL_THEAD_ROW,
+} from '../../../lib/internal-ui';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase';
+import { cn } from '../../../lib/utils';
 import { toLabRequestDisplayStatus } from './lab-request-status';
 import { LabStatusPill } from './lab-status-pill';
 import { extractLabServiceReceiptRequestId } from '../lab-service-receipt';
@@ -851,26 +864,26 @@ export function WorkflowTab() {
   return (
     <>
       <div className="space-y-6">
-        <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5 border-b border-slate-100">
+        <div className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
+          <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="shrink-0 bg-violet-700 p-2.5 text-white">
-                <FlaskConical className="size-5" />
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100/90">
+                <FlaskConical className="size-5" strokeWidth={2} />
               </div>
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-violet-700">Laboratory Workflow</p>
-                <h2 className="text-xl font-extrabold tracking-tight text-slate-950">Lab Orders</h2>
-                <p className="mt-1 text-sm text-slate-500">Track and manage laboratory orders from one workflow table.</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Laboratory</p>
+                <h2 className="text-xl font-bold tracking-tight text-slate-900">Lab orders</h2>
+                <p className="mt-1 text-sm leading-relaxed text-slate-600">Track and manage laboratory orders from one workflow table.</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               {canCreateRequests ? (
-                <Button className="rounded-none bg-violet-700 px-4 py-2.5 text-sm font-extrabold uppercase tracking-widest hover:bg-violet-800" onClick={openCreateModal}>
+                <Button className="bg-emerald-600 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-white shadow-sm ring-1 ring-emerald-700/20 hover:bg-emerald-700" onClick={openCreateModal}>
                   <Plus className="mr-2 size-4" />
                   New order
                 </Button>
               ) : null}
-              <div className="flex w-full max-w-sm items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5">
+              <div className={`${INTERNAL_SEARCH_INPUT_WRAP} w-full max-w-sm`}>
                 <Search className="size-4 shrink-0 text-slate-400" />
                 <input
                   className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
@@ -881,13 +894,9 @@ export function WorkflowTab() {
               </div>
             </div>
           </div>
-          <div className="border-t border-slate-100 bg-slate-50 px-6 py-2">
-            <span className="text-xs font-bold text-slate-500">{filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''} found</span>
-          </div>
-          <div className="border-t border-slate-100 bg-slate-50 px-6 py-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              {workflowModeLabel}
-            </span>
+          <div className={cn(INTERNAL_SURFACE_FOOTER, 'flex items-center justify-between gap-3 px-6 py-2.5')}>
+            <span className="text-xs font-medium text-slate-600">{filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''} found</span>
+            <span className="text-xs text-slate-400">{workflowModeLabel}</span>
           </div>
           {!isSupabaseConfigured ? (
             <div className="border-t border-amber-200 bg-amber-50 px-6 py-3 text-xs font-semibold text-amber-700">
@@ -902,13 +911,13 @@ export function WorkflowTab() {
         </div>
 
         {canProcessRequests ? (
-          <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700">Request Intake</p>
-              <p className="mt-1 text-sm text-slate-600">Scan QR with a scanner device or enter Request ID, INV-LAB, or ODC-LAB to open Process Lab Request.</p>
+          <div className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
+            <div className="px-6 py-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Request intake</p>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">Scan QR with a scanner device or enter Request ID, INV-LAB, or ODC-LAB to open Process Lab Request.</p>
             </div>
             <form
-              className="px-6 py-5"
+              className="px-6 py-5 bg-slate-50/40"
               onSubmit={(event) => {
                 event.preventDefault();
                 void lookupRequestMutation.mutateAsync(requestLookupValue);
@@ -916,12 +925,12 @@ export function WorkflowTab() {
             >
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-2">
-                  <Button className="rounded-none border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-emerald-700 hover:bg-emerald-100" onClick={() => void startIntakeCamera()} type="button">
+                  <Button className="border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-700 hover:bg-emerald-100" onClick={() => void startIntakeCamera()} type="button">
                     <Camera className="mr-2 size-4" />
                     {isIntakeCameraOpen ? 'Restart camera' : 'Start camera scan'}
                   </Button>
                   {isIntakeCameraOpen ? (
-                    <Button className="rounded-none" onClick={stopIntakeCamera} type="button" variant="secondary">
+                    <Button onClick={stopIntakeCamera} type="button" variant="secondary">
                       Stop camera
                     </Button>
                   ) : null}
@@ -944,7 +953,7 @@ export function WorkflowTab() {
                       value={requestLookupValue}
                     />
                   </label>
-                  <Button className="rounded-none bg-emerald-700 px-5 py-2.5 text-xs font-extrabold uppercase tracking-widest hover:bg-emerald-800" disabled={lookupRequestMutation.isPending} type="submit">
+                  <Button className="bg-emerald-600 px-5 py-2.5 text-xs font-semibold uppercase tracking-wide hover:bg-emerald-700" disabled={lookupRequestMutation.isPending} type="submit">
                     {lookupRequestMutation.isPending ? 'Checking...' : 'Process request'}
                   </Button>
                 </div>
@@ -953,65 +962,65 @@ export function WorkflowTab() {
           </div>
         ) : null}
 
-        <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Service</th>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Patient</th>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Receipt</th>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Payment</th>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Status</th>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Created</th>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Schedule</th>
-                  <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Actions</th>
+        <div className={INTERNAL_SURFACE}>
+          <div className={INTERNAL_TABLE_SCROLL}>
+            <table className={INTERNAL_TABLE}>
+              <thead>
+                <tr className={INTERNAL_THEAD_ROW}>
+                  <th className={INTERNAL_TH}>Service</th>
+                  <th className={INTERNAL_TH}>Patient</th>
+                  <th className={INTERNAL_TH}>Receipt</th>
+                  <th className={INTERNAL_TH}>Payment</th>
+                  <th className={INTERNAL_TH}>Status</th>
+                  <th className={INTERNAL_TH}>Created</th>
+                  <th className={INTERNAL_TH}>Schedule</th>
+                  <th className={cn(INTERNAL_TH, 'text-right')}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {filteredOrders.length === 0 ? (
-                  <tr>
-                    <td className="px-6 py-12 text-center text-sm text-slate-400" colSpan={8}>
+                  <tr className={INTERNAL_TR}>
+                    <td className={cn(INTERNAL_TD, 'py-12 text-center text-sm text-slate-500')} colSpan={8}>
                       {ordersLoading ? 'Loading lab orders...' : 'No lab orders yet.'}
                     </td>
                   </tr>
                 ) : (
                   paginatedOrders.map((order) => {
                     return (
-                      <tr className="transition-colors hover:bg-slate-50" key={order.id}>
-                        <td className="px-6 py-4 align-top">
+                      <tr className={INTERNAL_TR} key={order.id}>
+                        <td className={INTERNAL_TD}>
                           <div className="flex items-center gap-2">
                             <p className="font-bold text-sm text-slate-950">{order.serviceName ?? order.serviceCategory}</p>
                             {order.urgentFlag ? <AlertTriangle className="size-3.5 text-rose-500" /> : null}
                           </div>
                           {order.patientNotes ? <p className="mt-1 text-xs italic text-slate-400">{order.patientNotes}</p> : null}
                         </td>
-                        <td className="px-6 py-4 align-top text-sm text-slate-600">
+                        <td className={cn(INTERNAL_TD, 'text-sm text-slate-600')}>
                           {order.patientName ?? order.patientId}
                         </td>
-                        <td className="px-6 py-4 align-top text-xs font-mono text-slate-600">
+                        <td className={cn(INTERNAL_TD, 'font-mono text-xs text-slate-600')}>
                           {order.receiptCode ?? 'N/A'}
                         </td>
-                        <td className="px-6 py-4 align-top">
-                          <span className={
+                        <td className={INTERNAL_TD}>
+                          <span className={cn(
+                            'rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ring-1',
                             order.paymentStatus === 'paid'
-                              ? 'bg-emerald-100 text-emerald-700 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1'
-                              : 'bg-rose-100 text-rose-700 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1'
-                          }
-                          >
+                              ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+                              : 'bg-rose-50 text-rose-700 ring-rose-100',
+                          )}>
                             {order.paymentStatus === 'paid' ? 'Paid' : 'Pending'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 align-top">
+                        <td className={INTERNAL_TD}>
                           <LabStatusPill status={order.status} />
                         </td>
-                        <td className="px-6 py-4 align-top text-xs text-slate-600 whitespace-nowrap">
+                        <td className={cn(INTERNAL_TD, 'whitespace-nowrap text-xs text-slate-600')}>
                           {new Date(order.createdAt).toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 align-top text-sm text-slate-600">
+                        <td className={cn(INTERNAL_TD, 'text-sm text-slate-600')}>
                           {order.completedAt ? new Date(order.completedAt).toLocaleString() : 'Not completed'}
                         </td>
-                        <td className="px-6 py-4 align-top">
+                        <td className={INTERNAL_TD}>
                           <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
                             {canProcessRequests ? (
                               <>
@@ -1042,14 +1051,14 @@ export function WorkflowTab() {
             </table>
           </div>
           {filteredOrders.length > 0 ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
-              <p className="text-xs text-slate-500">
+            <div className={cn(INTERNAL_SURFACE_FOOTER, 'flex flex-wrap items-center justify-between gap-3 px-6 py-3')}>
+              <p className="text-xs font-medium text-slate-600">
                 Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)} of {filteredOrders.length}
               </p>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={INTERNAL_BTN_PAGE}
                   onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                   disabled={currentPage === 1}
                 >
@@ -1058,7 +1067,7 @@ export function WorkflowTab() {
                 <span className="text-xs font-semibold text-slate-600">Page {currentPage} of {totalPages}</span>
                 <button
                   type="button"
-                  className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={INTERNAL_BTN_PAGE}
                   onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                   disabled={currentPage >= totalPages}
                 >
@@ -1078,30 +1087,31 @@ export function WorkflowTab() {
           role="dialog"
         >
           <div
-            className="my-auto flex w-full max-w-2xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
+            className="my-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="bg-violet-700 px-6 py-4 flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-4 bg-emerald-600 px-6 py-4">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-violet-200">Lab Order</p>
-                <p className="text-sm font-bold text-white mt-0.5">{modalTitle}</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-emerald-100">Lab Order</p>
+                <p className="mt-0.5 text-sm font-bold text-white">{modalTitle}</p>
                 {isLabStaffProcessingExistingOrder ? (
                   <div className="mt-2">
                     <span
-                      className={
+                      className={cn(
+                        'inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide',
                         form.getValues('urgentFlag')
-                          ? 'inline-flex items-center border border-rose-300 bg-rose-500/20 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-rose-100'
-                          : 'inline-flex items-center border border-slate-300/70 bg-slate-600/30 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-100'
-                      }
+                          ? 'bg-rose-500/25 text-rose-100 ring-1 ring-rose-300/40'
+                          : 'bg-white/15 text-emerald-50 ring-1 ring-white/20',
+                      )}
                     >
-                      {form.getValues('urgentFlag') ? 'Urgent Flag' : 'Routine Flag'}
+                      {form.getValues('urgentFlag') ? 'Urgent' : 'Routine'}
                     </span>
                   </div>
                 ) : null}
               </div>
               <button
                 aria-label="Close lab order modal"
-                className="inline-flex shrink-0 items-center justify-center border border-violet-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                className="inline-flex shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 p-2 text-white transition hover:bg-white/20"
                 onClick={closeOrderModal}
                 type="button"
               >
@@ -1226,7 +1236,7 @@ export function WorkflowTab() {
                   {isProcessingExistingOrder ? (
                     <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <div className="flex items-start gap-3">
-                        <div className="rounded-full bg-white p-2 text-violet-700 shadow-sm">
+                        <div className="rounded-xl bg-slate-100 p-2 text-slate-600">
                           <Paperclip className="size-4" />
                         </div>
                         <div className="min-w-0 flex-1">
@@ -1237,8 +1247,8 @@ export function WorkflowTab() {
                         </div>
                       </div>
                       <div className="grid gap-2 sm:grid-cols-2">
-                        <label className="flex cursor-pointer items-center gap-2 border border-dashed border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-violet-300 hover:bg-violet-50/40">
-                          <FileUp className="size-4 text-violet-600" />
+                        <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-emerald-300 hover:bg-emerald-50/40">
+                          <FileUp className="size-4 text-emerald-600" />
                           <span>Choose files</span>
                           <input
                             accept="image/*,application/pdf,.doc,.docx"
@@ -1277,13 +1287,13 @@ export function WorkflowTab() {
                   ) : null}
                 </div>
               </div>
-              <div className="px-6 py-4 bg-slate-50 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <Button className="w-full rounded-none sm:w-auto" onClick={closeOrderModal} type="button" variant="secondary">
+              <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
+                <Button className="w-full sm:w-auto" onClick={closeOrderModal} type="button" variant="secondary">
                   Cancel
                 </Button>
                 {canCreateRequests || canProcessRequests ? (
                   <Button
-                    className="w-full rounded-none bg-violet-700 hover:bg-violet-800 font-extrabold uppercase tracking-widest text-sm py-3 sm:w-auto"
+                    className="w-full bg-emerald-600 py-3 text-sm font-semibold uppercase tracking-wide hover:bg-emerald-700 sm:w-auto"
                     disabled={
                       createMutation.isPending ||
                       startMutation.isPending ||
@@ -1310,17 +1320,17 @@ export function WorkflowTab() {
           role="dialog"
         >
           <div
-            className="w-full max-w-2xl overflow-hidden border border-slate-200 bg-white shadow-2xl"
+            className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between bg-emerald-700 px-6 py-4">
+            <div className="flex items-center justify-between bg-emerald-600 px-6 py-4">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-200">Capture Result</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-emerald-100">Capture Result</p>
                 <p className="mt-0.5 text-sm font-bold text-white">Use Device Camera</p>
               </div>
               <button
                 aria-label="Close camera capture"
-                className="inline-flex items-center justify-center border border-emerald-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                className="inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/10 p-2 text-white transition hover:bg-white/20"
                 onClick={closeCameraModal}
                 type="button"
               >
@@ -1328,17 +1338,17 @@ export function WorkflowTab() {
               </button>
             </div>
             <div className="space-y-4 p-6">
-              <div className="overflow-hidden border border-slate-200 bg-black">
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-black">
                 <video className="h-auto w-full" muted playsInline ref={videoPreviewRef} />
               </div>
               {cameraError ? (
                 <p className="text-sm font-medium text-rose-600">{cameraError}</p>
               ) : null}
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <Button className="w-full rounded-none sm:w-auto" onClick={closeCameraModal} type="button" variant="secondary">
+                <Button className="w-full sm:w-auto" onClick={closeCameraModal} type="button" variant="secondary">
                   Cancel
                 </Button>
-                <Button className="w-full rounded-none bg-emerald-700 text-sm font-extrabold uppercase tracking-widest hover:bg-emerald-800 sm:w-auto" onClick={() => void capturePhoto()} type="button">
+                <Button className="w-full bg-emerald-600 text-sm font-semibold uppercase tracking-wide hover:bg-emerald-700 sm:w-auto" onClick={() => void capturePhoto()} type="button">
                   Capture photo
                 </Button>
               </div>

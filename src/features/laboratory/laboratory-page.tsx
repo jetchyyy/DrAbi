@@ -1,6 +1,8 @@
 import { CalendarDays, ClipboardList, FlaskConical, TestTube2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
+import { InternalPage } from '../../components/ui/internal-page';
+import { INTERNAL_SURFACE } from '../../lib/internal-ui';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../auth/auth-context';
 import { WorkflowTab } from './components/workflow-tab';
@@ -39,27 +41,36 @@ export function LaboratoryPage() {
   }, [activeTab, visibleTabs]);
 
   return (
-    <div className="space-y-0">
-      <div className="flex border-b border-slate-200 bg-white -mx-6 px-6 mb-6">
-        {visibleTabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              className={cn(
-                'flex items-center gap-2 px-5 py-4 text-xs font-extrabold uppercase tracking-widest border-b-2 transition-colors whitespace-nowrap',
-                activeTab === tab.id
-                  ? 'border-violet-600 text-violet-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300',
-              )}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              <Icon className="size-3.5" />
-              {tab.label}
-            </button>
-          );
-        })}
+    <InternalPage>
+      <div className={cn(INTERNAL_SURFACE, 'p-2 sm:p-2.5')}>
+        <div
+          aria-label="Laboratory sections"
+          className="flex flex-wrap gap-1 border-b border-slate-100/90 px-1 pb-px"
+          role="tablist"
+        >
+          {visibleTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                className={cn(
+                  'flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-3 text-[11px] font-semibold uppercase tracking-wide transition',
+                  isActive
+                    ? 'bg-emerald-50 text-emerald-900 shadow-sm ring-1 ring-emerald-100'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800',
+                )}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <Icon className="size-3.5 shrink-0 opacity-90" strokeWidth={2} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {activeTab === 'workflow' && <WorkflowTab />}
@@ -67,6 +78,6 @@ export function LaboratoryPage() {
       {activeTab === 'requests' && <RequestsTab />}
       {activeTab === 'catalog' && <CatalogTab />}
       {activeTab === 'report' && <ReportTab />}
-    </div>
+    </InternalPage>
   );
 }

@@ -15,12 +15,23 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { FormField } from "../../components/forms/form-field";
-import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { FeedbackModal } from "../../components/ui/feedback-modal";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Textarea } from "../../components/ui/textarea";
+import {
+  INTERNAL_BTN_PAGE,
+  INTERNAL_BTN_PAGE_ACTIVE,
+  INTERNAL_SEARCH_INPUT_WRAP,
+  INTERNAL_SURFACE,
+  INTERNAL_SURFACE_FOOTER,
+  INTERNAL_TABLE,
+  INTERNAL_TD,
+  INTERNAL_TH,
+  INTERNAL_THEAD_ROW,
+  INTERNAL_TR,
+} from "../../lib/internal-ui";
 import {
   useClinicSettingsData,
   useDoctorDirectory,
@@ -113,30 +124,30 @@ function getDefaultScheduledAtValue() {
 }
 
 function StatusPill({ status }: { status: string }) {
-  const label = status.replace("_", " ");
+  const label = status.replace(/_/g, " ");
   if (status === "confirmed" || status === "completed") {
     return (
-      <span className="bg-emerald-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-emerald-700">
+      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-200/80">
         {label}
       </span>
     );
   }
   if (status === "cancelled" || status === "no_show") {
     return (
-      <span className="bg-rose-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-rose-700">
+      <span className="inline-flex items-center rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-rose-700 ring-1 ring-rose-200/80">
         {label}
       </span>
     );
   }
   if (status === "in_progress") {
     return (
-      <span className="bg-sky-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-sky-700">
+      <span className="inline-flex items-center rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-700 ring-1 ring-sky-200/80">
         {label}
       </span>
     );
   }
   return (
-    <span className="bg-orange-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+    <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700 ring-1 ring-amber-200/80">
       {label}
     </span>
   );
@@ -705,40 +716,33 @@ export function AppointmentsPage() {
   return (
     <>
       <div className="space-y-6">
-        <div className="border border-slate-200 bg-white shadow-sm">
+        <div className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}>
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="shrink-0 bg-orange-600 p-2.5 text-white">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100/90">
                 <CalendarCheck2 className="size-5" />
               </div>
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                   Operations
                 </p>
-                <h1 className="text-xl font-extrabold tracking-tight text-slate-950">
+                <h1 className="text-xl font-bold tracking-tight text-slate-900">
                   Appointments and Queue
                 </h1>
-                <p className="mt-1 text-sm text-slate-500">
-                  Manage in-person and teleconsultation appointments from one
-                  schedule table.
-                </p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Badge
-                intent="info"
-                className="rounded-none text-[10px] font-bold uppercase tracking-widest"
-              >
+              <span className="inline-flex items-center rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-200/80">
                 Teleconsultation-ready
-              </Badge>
+              </span>
               <Button
-                className="rounded-none bg-orange-600 px-4 py-2.5 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700"
+                className="gap-2 bg-emerald-600 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide hover:bg-emerald-700 ring-1 ring-emerald-700/20"
                 onClick={() => openCreateModal()}
               >
-                <Plus className="mr-2 size-4" />
+                <Plus className="size-4" />
                 New appointment
               </Button>
-              <div className="flex w-full max-w-sm items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5">
+              <div className={INTERNAL_SEARCH_INPUT_WRAP}>
                 <Search className="size-4 shrink-0 text-slate-400" />
                 <input
                   className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
@@ -752,90 +756,72 @@ export function AppointmentsPage() {
               </div>
             </div>
           </div>
-          <div className="border-t border-slate-100 bg-slate-50 px-6 py-2">
-            <span className="text-xs font-bold text-slate-500">
-              {filteredAppointments.length} appointment
-              {filteredAppointments.length !== 1 ? "s" : ""} found
+          <div className={cn(INTERNAL_SURFACE_FOOTER, "flex flex-wrap items-center gap-2 px-6 py-2.5")}>
+            <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200/80">
+              {filteredAppointments.length} appointment{filteredAppointments.length !== 1 ? "s" : ""}
             </span>
           </div>
         </div>
 
-        <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+        <div className={INTERNAL_SURFACE}>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                    Patient
-                  </th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                    Doctor / Service
-                  </th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                    Schedule
-                  </th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                    Visit Type
-                  </th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                    Status
-                  </th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-right text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                    Actions
-                  </th>
+            <table className={INTERNAL_TABLE}>
+              <thead>
+                <tr className={INTERNAL_THEAD_ROW}>
+                  <th className={INTERNAL_TH}>Patient</th>
+                  <th className={INTERNAL_TH}>Doctor / Service</th>
+                  <th className={INTERNAL_TH}>Schedule</th>
+                  <th className={INTERNAL_TH}>Visit Type</th>
+                  <th className={INTERNAL_TH}>Status</th>
+                  <th className={cn(INTERNAL_TH, "text-right")}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {paginatedAppointments.map((appointment) => {
                   const patient = patientMap.get(appointment.patientId);
                   const doctor = doctorMap.get(appointment.doctorId);
                   const service = serviceMap.get(appointment.serviceId);
 
                   return (
-                    <tr
-                      className="transition-colors hover:bg-slate-50"
-                      key={appointment.id}
-                    >
-                      <td className="px-4 py-3 align-top">
-                        <div className="space-y-1">
-                          <p className="font-bold text-slate-950">
+                    <tr className={INTERNAL_TR} key={appointment.id}>
+                      <td className={INTERNAL_TD}>
+                        <div className="space-y-0.5">
+                          <p className="font-semibold text-slate-900">
                             {patient?.firstName} {patient?.lastName}
                           </p>
-                          <p className="text-sm text-slate-600">
+                          <p className="text-xs text-slate-500">
                             {appointment.reason}
                           </p>
                         </div>
                       </td>
-                      <td className="px-4 py-3 align-top">
-                        <div className="space-y-1 text-sm text-slate-600">
-                          <p>{doctor?.fullName}</p>
-                          <p>{service?.name}</p>
+                      <td className={INTERNAL_TD}>
+                        <div className="space-y-0.5 text-sm">
+                          <p className="text-slate-700">{doctor?.fullName}</p>
+                          <p className="text-xs text-slate-500">{service?.name}</p>
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 align-top text-sm text-slate-600">
+                      <td className={cn(INTERNAL_TD, "whitespace-nowrap text-sm")}>
                         {formatDateTimeLabel(appointment.scheduledAt)}
                       </td>
-                      <td className="px-4 py-3 align-top">
-                        <div className="flex flex-wrap gap-2">
-                          {appointment.visitType === "teleconsultation" ? (
-                            <span className="inline-flex items-center gap-1 bg-sky-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-sky-700">
-                              <Video className="size-3" />
-                              Teleconsultation
-                            </span>
-                          ) : (
-                            <span className="bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-600">
-                              In Person
-                            </span>
-                          )}
-                        </div>
+                      <td className={INTERNAL_TD}>
+                        {appointment.visitType === "teleconsultation" ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-700 ring-1 ring-sky-200/80">
+                            <Video className="size-3" />
+                            Teleconsultation
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200/80">
+                            In Person
+                          </span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 align-top">
+                      <td className={INTERNAL_TD}>
                         <StatusPill status={appointment.status} />
                       </td>
-                      <td className="px-4 py-3 align-top">
-                        <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
+                      <td className={cn(INTERNAL_TD, "text-right")}>
+                        <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-semibold">
                           <button
-                            className="inline-flex items-center gap-1 text-slate-600 hover:underline"
+                            className="inline-flex items-center gap-1 text-slate-600 hover:text-[var(--color-primary)] hover:underline"
                             onClick={() => openEditModal(appointment)}
                             type="button"
                           >
@@ -855,7 +841,7 @@ export function AppointmentsPage() {
                           {appointment.visitType === "teleconsultation" &&
                           isTeleconsultJoinableStatus(appointment.status) ? (
                             <Link
-                              className="inline-flex items-center text-sky-700 hover:underline"
+                              className="inline-flex items-center text-[var(--color-primary)] hover:underline"
                               to={`/app/teleconsult/${appointment.id}`}
                             >
                               Join Teleconsult
@@ -869,7 +855,7 @@ export function AppointmentsPage() {
                 {filteredAppointments.length === 0 ? (
                   <tr>
                     <td
-                      className="px-4 py-8 text-center text-sm text-slate-500"
+                      className="px-6 py-10 text-center text-sm text-slate-400"
                       colSpan={6}
                     >
                       No appointments found for this search.
@@ -880,37 +866,41 @@ export function AppointmentsPage() {
             </table>
           </div>
           {filteredAppointments.length > 0 ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
-              <p className="text-xs font-semibold text-slate-500">
-                Showing {showingStart}-{showingEnd} of{" "}
+            <div className={cn(INTERNAL_SURFACE_FOOTER, "flex flex-wrap items-center justify-between gap-3 px-6 py-3")}>
+              <p className="text-xs text-slate-500">
+                Showing {showingStart}–{showingEnd} of{" "}
                 {filteredAppointments.length} appointments
               </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  className="rounded-none border-slate-300 px-3 py-1 text-xs font-bold uppercase tracking-wide"
+              <div className="flex items-center gap-1.5">
+                <button
+                  className={INTERNAL_BTN_PAGE}
                   disabled={safeCurrentPage <= 1}
-                  onClick={() =>
-                    setCurrentPage((page) => Math.max(1, page - 1))
-                  }
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                   type="button"
-                  variant="secondary"
                 >
                   Previous
-                </Button>
-                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
-                  Page {safeCurrentPage} of {totalPages}
-                </span>
-                <Button
-                  className="rounded-none border-slate-300 px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    className={cn(
+                      INTERNAL_BTN_PAGE,
+                      page === safeCurrentPage && INTERNAL_BTN_PAGE_ACTIVE,
+                    )}
+                    onClick={() => setCurrentPage(page)}
+                    type="button"
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  className={INTERNAL_BTN_PAGE}
                   disabled={safeCurrentPage >= totalPages}
-                  onClick={() =>
-                    setCurrentPage((page) => Math.min(totalPages, page + 1))
-                  }
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                   type="button"
-                  variant="secondary"
                 >
                   Next
-                </Button>
+                </button>
               </div>
             </div>
           ) : null}
@@ -925,27 +915,27 @@ export function AppointmentsPage() {
           role="dialog"
         >
           <div
-            className="my-auto flex w-full max-w-2xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
+            className="my-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 bg-orange-600 px-4 py-4 sm:px-6">
+            <div className="flex items-start justify-between gap-4 bg-emerald-600 px-4 py-4 sm:px-6">
               <div className="min-w-0">
-                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">
+                <p className="text-xs font-medium uppercase tracking-wide text-emerald-100">
                   Appointment Form
                 </p>
-                <p className="mt-0.5 text-sm font-bold text-white">
+                <p className="mt-0.5 text-sm font-semibold text-white">
                   {editingAppointment
                     ? "Edit Appointment"
                     : "Schedule Appointment"}
                 </p>
-                <p className="mt-2 max-w-2xl text-sm text-orange-50">
+                <p className="mt-1.5 max-w-2xl text-sm text-emerald-50/90">
                   Manage the patient, provider, schedule, and teleconsult
                   details from this modal.
                 </p>
               </div>
               <button
                 aria-label="Close appointment modal"
-                className="inline-flex shrink-0 items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                className="inline-flex shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 p-2 text-white transition hover:bg-white/20"
                 onClick={closeAppointmentModal}
                 type="button"
               >
@@ -956,7 +946,7 @@ export function AppointmentsPage() {
             <form className="flex min-h-0 flex-1 flex-col" onSubmit={onSubmit}>
               <div className="min-h-0 flex-1 overflow-y-auto">
                 <div className="space-y-4 px-4 py-5 sm:px-6">
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                     Patient and Provider
                   </p>
                   <FormField
@@ -1003,7 +993,7 @@ export function AppointmentsPage() {
                 </div>
 
                 <div className="space-y-4 border-t border-slate-100 px-4 py-5 sm:px-6">
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                     Appointment Details
                   </p>
                   <div className="grid gap-4 md:grid-cols-2">
@@ -1102,10 +1092,10 @@ export function AppointmentsPage() {
                             <button
                               key={sessionValue}
                               className={cn(
-                                "rounded-sm border px-3 py-3 text-sm font-semibold transition",
+                                "rounded-xl border px-3 py-3 text-sm font-semibold transition",
                                 isActive
-                                  ? "border-orange-300 bg-orange-50 text-orange-700"
-                                  : "border-slate-200 bg-white text-slate-700 hover:border-orange-200 hover:bg-orange-50/40",
+                                  ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                                  : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50/40",
                               )}
                               onClick={() => setSelectedTimeSession(sessionValue)}
                               type="button"
@@ -1115,7 +1105,7 @@ export function AppointmentsPage() {
                           );
                         })
                       ) : (
-                        <div className="rounded-sm border border-dashed border-slate-200 px-3 py-3 text-sm text-slate-400 sm:col-span-3">
+                        <div className="rounded-xl border border-dashed border-slate-200 px-3 py-3 text-sm text-slate-400 sm:col-span-3">
                           {selectedScheduleDate
                             ? "No sessions available for the selected date."
                             : "Select a date first."}
@@ -1123,7 +1113,7 @@ export function AppointmentsPage() {
                       )}
                     </div>
                     {selectedScheduleDate && unavailableTimeSessions.length > 0 ? (
-                      <p className="mt-3 rounded-sm border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
+                      <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
                         Doctor not available during{" "}
                         {unavailableTimeSessions
                           .map((sessionValue) =>
@@ -1144,7 +1134,7 @@ export function AppointmentsPage() {
                     }
                   >
                     <input type="hidden" {...form.register("scheduledAt")} />
-                    <div className="rounded-sm border border-slate-200 bg-slate-50 p-4">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <div className="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <span className="inline-flex items-center gap-2">
                           <span className="size-3 rounded-full bg-emerald-500" />
@@ -1155,7 +1145,7 @@ export function AppointmentsPage() {
                           Booked
                         </span>
                         <span className="inline-flex items-center gap-2">
-                          <span className="size-3 rounded-full bg-orange-500" />
+                          <span className="size-3 rounded-full bg-[var(--color-primary)]" />
                           Selected
                         </span>
                       </div>
@@ -1169,9 +1159,9 @@ export function AppointmentsPage() {
                               <button
                                 key={time}
                                 className={cn(
-                                  "rounded-sm border px-3 py-3 text-sm font-semibold transition",
+                                  "rounded-xl border px-3 py-3 text-sm font-semibold transition",
                                   isSelected
-                                    ? "border-orange-300 bg-orange-50 text-orange-700"
+                                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                                     : isAvailable
                                       ? "border-emerald-200 bg-white text-slate-800 hover:border-emerald-400 hover:bg-emerald-50"
                                       : "cursor-not-allowed border-rose-200 bg-rose-50 text-rose-500 opacity-80",
@@ -1196,7 +1186,7 @@ export function AppointmentsPage() {
                             );
                           })
                         ) : (
-                          <div className="col-span-full rounded-sm border border-dashed border-slate-200 bg-white px-4 py-4 text-sm text-slate-400">
+                          <div className="col-span-full rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4 text-sm text-slate-400">
                             {selectedTimeSession
                               ? `No ${getTimeSessionLabel(selectedTimeSession).toLowerCase()} slots available for this date.`
                               : "Choose a time of day to view exact slots."}
@@ -1209,7 +1199,7 @@ export function AppointmentsPage() {
 
                 {visitType === "teleconsultation" ? (
                   <div className="space-y-4 border-t border-slate-100 px-4 py-5 sm:px-6">
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                       Teleconsultation
                     </p>
                     <FormField label="Platform">
@@ -1234,7 +1224,7 @@ export function AppointmentsPage() {
                 ) : null}
 
                 <div className="space-y-4 border-t border-slate-100 px-4 py-5 sm:px-6">
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                     Notes
                   </p>
                   <FormField
@@ -1252,9 +1242,9 @@ export function AppointmentsPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
+              <div className={cn(INTERNAL_SURFACE_FOOTER, "flex flex-col-reverse gap-3 px-4 py-4 sm:flex-row sm:justify-end sm:px-6")}>
                 <Button
-                  className="w-full rounded-none sm:w-auto"
+                  className="w-full sm:w-auto"
                   onClick={closeAppointmentModal}
                   type="button"
                   variant="secondary"
@@ -1262,7 +1252,7 @@ export function AppointmentsPage() {
                   Cancel
                 </Button>
                 <Button
-                  className="w-full rounded-none bg-orange-600 px-5 py-3 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700 sm:w-auto"
+                  className="w-full bg-emerald-600 px-5 py-3 text-sm font-semibold uppercase tracking-wide hover:bg-emerald-700 sm:w-auto"
                   disabled={
                     createAppointmentMutation.isPending ||
                     updateAppointmentMutation.isPending ||

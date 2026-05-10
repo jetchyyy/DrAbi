@@ -648,18 +648,20 @@ export function ReferralsListPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex w-full max-w-sm items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5">
-              <Search className="size-4 shrink-0 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search patient, specialist, date, or reason..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
-              />
-            </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
+          <div className="flex w-full max-w-xl items-center gap-2 border border-slate-200 bg-white px-4 py-2.5">
+            <Search className="size-4 shrink-0 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search patient, specialist, date, or reason..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+            />
+          </div>
 
+          <div className="flex items-center gap-2">
             <select
               value={statusFilter}
               onChange={(e) =>
@@ -680,7 +682,7 @@ export function ReferralsListPage() {
                 setSearch("");
                 setStatusFilter("all");
               }}
-              className="border border-slate-200 px-3 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-600 transition hover:bg-slate-50"
+              className="border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-600 transition hover:bg-slate-50"
             >
               Reset
             </button>

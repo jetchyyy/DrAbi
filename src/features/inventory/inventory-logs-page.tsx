@@ -4,7 +4,20 @@ import { ClipboardList, Search } from "lucide-react";
 
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { InternalPage } from "../../components/ui/internal-page";
+import {
+  INTERNAL_SEARCH_INPUT_WRAP,
+  INTERNAL_SURFACE,
+  INTERNAL_SURFACE_FOOTER,
+  INTERNAL_TABLE,
+  INTERNAL_TABLE_SCROLL,
+  INTERNAL_TD,
+  INTERNAL_TH,
+  INTERNAL_TR,
+  INTERNAL_THEAD_ROW,
+} from "../../lib/internal-ui";
 import { queryKeys } from "../../lib/query-keys";
+import { cn } from "../../lib/utils";
 import {
   getInventoryLogs,
   getInventoryLogsCount,
@@ -84,29 +97,28 @@ export function InventoryLogsPage() {
       : Math.min(safeCurrentPage * INVENTORY_LOGS_PAGE_SIZE, totalLogs);
 
   return (
-    <div className="space-y-6">
-      <div className="border border-slate-200 bg-white shadow-sm">
+    <InternalPage>
+      <section className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}>
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 bg-slate-950 p-2.5 text-white">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm ring-1 ring-slate-800">
               <ClipboardList className="size-5" />
             </div>
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">
-                Inventory Transaction Activity
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Inventory transaction activity
               </p>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-950">
-                Inventory Transaction Logs
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">
+                Inventory transaction logs
               </h1>
-              <p className="mt-1 text-sm text-slate-500">
-                Review deducted item usage history and trace transactions
-                quickly.
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                Review deducted item usage history and trace transactions quickly.
               </p>
             </div>
           </div>
 
           <div className="flex w-full max-w-xl flex-wrap items-center justify-end gap-3">
-            <div className="flex w-full min-w-[240px] max-w-sm items-center gap-2 border border-slate-200 bg-slate-50 px-3 py-2">
+            <div className={`${INTERNAL_SEARCH_INPUT_WRAP} w-full min-w-[240px] max-w-sm`}>
               <Search className="size-4 shrink-0 text-slate-400" />
               <input
                 className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
@@ -115,60 +127,59 @@ export function InventoryLogsPage() {
                 value={search}
               />
             </div>
-            <Badge className="rounded-none text-[10px] font-bold uppercase tracking-widest">
+            <Badge className="rounded-full border border-slate-200/90 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wide shadow-sm">
               {totalLogs} total
             </Badge>
           </div>
         </div>
-      </div>
+      </section>
 
       {totalLogs === 0 ? (
-        <div className="flex flex-col items-center border-2 border-dashed border-slate-200 bg-white p-12 text-center">
-          <div className="mb-3 flex h-12 w-12 items-center justify-center border border-slate-200 bg-slate-50">
+        <div className="flex flex-col items-center rounded-2xl border-2 border-dashed border-slate-200/90 bg-white p-12 text-center shadow-[0_1px_2px_rgba(15,41,71,0.04)]">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200/90 bg-slate-50 shadow-inner">
             <ClipboardList className="size-6 text-slate-600" />
           </div>
-          <p className="mb-1 text-sm font-extrabold uppercase tracking-wide text-slate-950">
+          <p className="mb-1 text-sm font-bold text-slate-900">
             No inventory logs yet
           </p>
           <p className="max-w-xs text-xs leading-relaxed text-slate-500">
-            Inventory transaction entries will appear here after item usage is
-            recorded.
+            Inventory transaction entries will appear here after item usage is recorded.
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+        <section className={INTERNAL_SURFACE}>
+          <div className={INTERNAL_TABLE_SCROLL}>
+            <table className={INTERNAL_TABLE}>
+              <thead>
+                <tr className={INTERNAL_THEAD_ROW}>
+                  <th className={cn(INTERNAL_TH, "whitespace-nowrap")}>
                     Recorded
                   </th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                  <th className={cn(INTERNAL_TH, "whitespace-nowrap")}>
                     Recorded By
                   </th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                  <th className={cn(INTERNAL_TH, "whitespace-nowrap")}>
                     Patient
                   </th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                  <th className={cn(INTERNAL_TH, "whitespace-nowrap")}>
                     Item
                   </th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                  <th className={cn(INTERNAL_TH, "whitespace-nowrap")}>
                     Qty
                   </th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                  <th className={cn(INTERNAL_TH, "whitespace-nowrap")}>
                     Notes
                   </th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                  <th className={cn(INTERNAL_TH, "whitespace-nowrap")}>
                     QR Code
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {filteredLogs.length === 0 ? (
-                  <tr>
+                  <tr className={INTERNAL_TR}>
                     <td
-                      className="px-4 py-8 text-center text-sm text-slate-500"
+                      className={cn(INTERNAL_TD, "py-10 text-center text-sm text-slate-500")}
                       colSpan={7}
                     >
                       No logs match this search.
@@ -176,36 +187,33 @@ export function InventoryLogsPage() {
                   </tr>
                 ) : (
                   filteredLogs.map((log) => (
-                    <tr
-                      className="transition-colors hover:bg-slate-50"
-                      key={log.id}
-                    >
-                      <td className="whitespace-nowrap px-4 py-3 align-top text-xs text-slate-600">
+                    <tr className={INTERNAL_TR} key={log.id}>
+                      <td className={cn(INTERNAL_TD, "whitespace-nowrap text-xs text-slate-600")}>
                         {formatLogTimestamp(log.createdAt)}
                       </td>
-                      <td className="px-4 py-3 align-top font-mono text-xs text-slate-700">
+                      <td className={cn(INTERNAL_TD, "font-mono text-xs text-slate-700")}>
                         {log.recordedBy || "—"}
                       </td>
-                      <td className="px-4 py-3 align-top text-xs text-slate-700">
+                      <td className={cn(INTERNAL_TD, "text-xs text-slate-700")}>
                         {formatPatientName(log.patientId)}
                       </td>
-                      <td className="px-4 py-3 align-top text-xs text-slate-700">
+                      <td className={cn(INTERNAL_TD, "text-xs text-slate-700")}>
                         {log.itemId || "—"}
                       </td>
-                      <td className="px-4 py-3 align-top">
-                        <span className="inline-flex items-center bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700">
+                      <td className={INTERNAL_TD}>
+                        <span className="inline-flex items-center rounded-md bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-800 ring-1 ring-rose-100">
                           -{log.quantity}
                         </span>
                       </td>
                       <td
-                        className="max-w-[260px] px-4 py-3 align-top text-sm text-slate-700"
+                        className={cn(INTERNAL_TD, "max-w-[260px] text-sm text-slate-700")}
                         title={log.notes || ""}
                       >
                         <span className="block truncate">
                           {log.notes || "—"}
                         </span>
                       </td>
-                      <td className="px-4 py-3 align-top font-mono text-xs text-slate-700">
+                      <td className={cn(INTERNAL_TD, "font-mono text-xs text-slate-700")}>
                         {log.scannedCode || "—"}
                       </td>
                     </tr>
@@ -214,13 +222,18 @@ export function InventoryLogsPage() {
               </tbody>
             </table>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-4 py-3">
-            <p className="text-xs font-semibold text-slate-500">
+          <div
+            className={cn(
+              INTERNAL_SURFACE_FOOTER,
+              "flex flex-wrap items-center justify-between gap-3 px-5 py-3",
+            )}
+          >
+            <p className="text-xs font-medium text-slate-600">
               Showing {showingStart}-{showingEnd} of {totalLogs} logs
             </p>
             <div className="flex items-center gap-2">
               <Button
-                className="rounded-none border-slate-300 px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                className="rounded-lg border border-slate-200/90 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide shadow-sm"
                 disabled={safeCurrentPage <= 1}
                 onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                 type="button"
@@ -228,11 +241,11 @@ export function InventoryLogsPage() {
               >
                 Previous
               </Button>
-              <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">
                 Page {safeCurrentPage} of {totalPages}
               </span>
               <Button
-                className="rounded-none border-slate-300 px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                className="rounded-lg border border-slate-200/90 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide shadow-sm"
                 disabled={safeCurrentPage >= totalPages}
                 onClick={() =>
                   setCurrentPage((page) => Math.min(totalPages, page + 1))
@@ -244,8 +257,8 @@ export function InventoryLogsPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </section>
       )}
-    </div>
+    </InternalPage>
   );
 }

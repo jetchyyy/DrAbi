@@ -22,10 +22,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormField } from "../../components/forms/form-field";
 import { Button } from "../../components/ui/button";
 import { FeedbackModal } from "../../components/ui/feedback-modal";
+import { InternalPage } from "../../components/ui/internal-page";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
+import {
+  INTERNAL_BTN_PAGE,
+  INTERNAL_BTN_PAGE_ACTIVE,
+  INTERNAL_SEARCH_INPUT_WRAP,
+  INTERNAL_SURFACE,
+  INTERNAL_SURFACE_FOOTER,
+  INTERNAL_TABLE,
+  INTERNAL_TABLE_SCROLL,
+  INTERNAL_TD,
+  INTERNAL_TH,
+  INTERNAL_TR,
+  INTERNAL_THEAD_ROW,
+} from "../../lib/internal-ui";
 import { getDatabase } from "../../lib/local-db";
 import { queryKeys } from "../../lib/query-keys";
+import { cn } from "../../lib/utils";
 import QRCode from "qrcode";
 import {
   buildInventoryItemQrValue,
@@ -98,7 +113,7 @@ function InventoryItemQrInline({ itemName, qrCode }: InventoryItemQrInlineProps)
           {qrCode}
         </p>
       </div>
-      <div className="shrink-0 grid size-[56px] place-items-center border border-slate-200 bg-white p-1">
+      <div className="grid size-[56px] shrink-0 place-items-center rounded-lg border border-slate-200/90 bg-white p-1 shadow-sm">
         {svgMarkup ? (
           <div
             aria-label={`QR code for ${itemName}`}
@@ -372,19 +387,19 @@ export function InventoryPage() {
 
   return (
     <>
-      <div className="space-y-6">
+      <InternalPage>
         {scannedItem ? (
-          <div className="border border-emerald-200 bg-emerald-50 px-6 py-4 shadow-sm">
+          <div className="rounded-2xl border border-[color-mix(in_srgb,var(--color-primary)_35%,white)] bg-[color-mix(in_srgb,var(--color-primary)_12%,white)] px-6 py-4 shadow-[0_1px_2px_rgba(15,41,71,0.04)]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700">
+                <p className="text-xs font-extrabold uppercase tracking-widest text-[var(--color-primary)]">
                   Scanned item recognized
                 </p>
-                <p className="mt-1 text-sm font-semibold text-emerald-950">
+                <p className="mt-1 text-sm font-semibold text-slate-900">
                   {scannedItem.name} is ready to use for patient dispensing.
                 </p>
               </div>
-              <span className="bg-emerald-100 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-emerald-700">
+              <span className="bg-[color-mix(in_srgb,var(--color-primary)_20%,white)] px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-[var(--color-primary)]">
                 {scannedItem.stockOnHand} on hand
               </span>
             </div>
@@ -392,19 +407,21 @@ export function InventoryPage() {
         ) : null}
 
         {lowStockItems.length > 0 ? (
-          <div className="overflow-hidden border border-rose-200 bg-white shadow-sm">
-            <div className="flex items-center gap-2 bg-rose-600 px-6 py-3">
-              <AlertTriangle className="size-4 text-rose-100" />
-              <p className="text-xs font-extrabold uppercase tracking-widest text-rose-100">
-                Low-Stock Alerts - {lowStockItems.length} item
+          <div className={INTERNAL_SURFACE}>
+            <div className="flex flex-wrap items-center gap-2 border-b border-rose-100/90 bg-gradient-to-r from-rose-50 to-white px-6 py-3.5">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-rose-100 text-rose-600 ring-1 ring-rose-200/70">
+                <AlertTriangle className="size-4" />
+              </div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-rose-900">
+                Low-stock alerts · {lowStockItems.length} item
                 {lowStockItems.length !== 1 ? "s" : ""}
               </p>
             </div>
-            <div className="divide-y divide-rose-50">
+            <ul className="divide-y divide-slate-100">
               {lowStockItems.map((item) => (
+                <li key={item.id}>
                 <div
-                  className="flex items-center justify-between gap-3 px-6 py-3 transition-colors hover:bg-rose-50"
-                  key={item.id}
+                  className="flex items-center justify-between gap-3 px-6 py-3 transition-colors hover:bg-rose-50/40"
                 >
                   <div>
                     <p className="font-bold text-sm text-slate-950">
@@ -414,45 +431,42 @@ export function InventoryPage() {
                       {item.unit} - reorder at {item.reorderLevel}
                     </p>
                   </div>
-                  <span className="whitespace-nowrap bg-rose-100 px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider text-rose-700">
+                  <span className="whitespace-nowrap rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-rose-800 ring-1 ring-rose-100">
                     {item.stockOnHand} left
                   </span>
                 </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         ) : null}
 
-        <div className="border border-slate-200 bg-slate-950 px-6 py-5 text-white shadow-sm">
-          <div className="flex items-center gap-2">
-            <ScanLine className="size-4 text-orange-300" />
-            <p className="text-xs font-extrabold uppercase tracking-widest text-orange-200">
-              Scan workflow
+        <div className={cn(INTERNAL_SURFACE, "flex items-start gap-4 px-6 py-5")}>
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] text-[var(--color-primary)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_30%,white)]">
+            <ScanLine className="size-[18px]" strokeWidth={2} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-900">QR scan workflow</p>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600">
+              Open a patient chart, scan the medicine or supply QR, and the system deducts stock automatically.
             </p>
           </div>
-          <p className="mt-3 text-sm font-semibold text-white">
-            Use the item QR while treating a patient.
-          </p>
-          <p className="mt-2 text-sm text-slate-300">
-            Open the patient chart, scan the medicine or supply QR into the
-            inventory usage box, and the system will deduct stock automatically.
-          </p>
         </div>
 
-        <div className="border border-slate-200 bg-white shadow-sm">
+        <div className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}>
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="shrink-0 bg-orange-600 p-2.5 text-white">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] p-2.5 text-white shadow-sm">
                 <PackageSearch className="size-5" />
               </div>
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
-                  Inventory Control
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Inventory control
                 </p>
-                <h1 className="text-xl font-extrabold tracking-tight text-slate-950">
-                  Inventory Items
+                <h1 className="text-xl font-bold tracking-tight text-slate-900">
+                  Inventory items
                 </h1>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm leading-relaxed text-slate-600">
                   Track stock, pricing, QR-ready labels, and low-stock items
                   from one table.
                 </p>
@@ -460,13 +474,13 @@ export function InventoryPage() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Button
-                className="rounded-none bg-orange-600 px-4 py-2.5 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700"
+                className="rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-white shadow-sm hover:brightness-95"
                 onClick={openCreateModal}
               >
                 <Plus className="mr-2 size-4" />
                 New item
               </Button>
-              <div className="flex w-full max-w-sm items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5">
+              <div className={`${INTERNAL_SEARCH_INPUT_WRAP} w-full max-w-sm py-2`}>
                 <Search className="size-4 shrink-0 text-slate-400" />
                 <input
                   className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
@@ -477,8 +491,8 @@ export function InventoryPage() {
               </div>
             </div>
           </div>
-          <div className="border-t border-slate-100 bg-slate-50 px-6 py-2">
-            <span className="text-xs font-bold text-slate-500">
+          <div className={cn(INTERNAL_SURFACE_FOOTER, "px-6 py-2.5")}>
+            <span className="text-xs font-medium text-slate-600">
               {hasSearch
                 ? `${filteredItems.length} item${filteredItems.length !== 1 ? "s" : ""} found on this page`
                 : `${totalItemCount} item${totalItemCount !== 1 ? "s" : ""} total`}
@@ -486,35 +500,36 @@ export function InventoryPage() {
           </div>
         </div>
 
-        <div className="border border-slate-200 bg-white shadow-sm">
-            <table className="w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+        <div className={INTERNAL_SURFACE}>
+          <div className={INTERNAL_TABLE_SCROLL}>
+            <table className={INTERNAL_TABLE}>
+                <thead>
+                  <tr className={INTERNAL_THEAD_ROW}>
+                    <th className={INTERNAL_TH}>
                       Item
                     </th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                    <th className={INTERNAL_TH}>
                       Category / Supplier
                     </th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                    <th className={INTERNAL_TH}>
                       Stock
                     </th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                    <th className={INTERNAL_TH}>
                       Pricing
                     </th>
-                    <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                    <th className={cn(INTERNAL_TH, "text-right")}>
                       Item Code
                     </th>
-                    <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                    <th className={cn(INTERNAL_TH, "text-right")}>
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody>
                   {filteredItems.length === 0 ? (
-                    <tr>
+                    <tr className={INTERNAL_TR}>
                       <td
-                        className="px-6 py-12 text-center text-sm text-slate-400"
+                        className={cn(INTERNAL_TD, "py-12 text-center text-sm text-slate-500")}
                         colSpan={6}
                       >
                         No inventory items yet.
@@ -533,17 +548,21 @@ export function InventoryPage() {
 
                       return (
                         <tr
-                          className={
-                            isScanned
-                              ? "bg-emerald-50 transition-colors"
-                              : "transition-colors hover:bg-slate-50"
-                          }
+                          className={cn(
+                            INTERNAL_TR,
+                            isScanned && "bg-[color-mix(in_srgb,var(--color-primary)_12%,white)] hover:bg-[color-mix(in_srgb,var(--color-primary)_12%,white)]",
+                          )}
                           key={item.id}
                         >
-                          <td className="px-6 py-4 align-top">
+                          <td className={INTERNAL_TD}>
                             <div className="flex min-w-0 items-center gap-3">
                               <div
-                                className={`shrink-0 p-1.5 ${isLow ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"}`}
+                                className={cn(
+                                  "flex shrink-0 rounded-lg p-1.5 ring-1",
+                                  isLow
+                                    ? "bg-rose-50 text-rose-600 ring-rose-100"
+                                    : "bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] text-[var(--color-primary)] ring-[color-mix(in_srgb,var(--color-primary)_30%,white)]",
+                                )}
                               >
                                 {isLow ? (
                                   <AlertTriangle className="size-4" />
@@ -552,7 +571,7 @@ export function InventoryPage() {
                                 )}
                               </div>
                               <div>
-                                <p className="font-bold text-sm text-slate-950">
+                                <p className="text-sm font-semibold text-slate-900">
                                   {item.name}
                                 </p>
                                 {item.brandName ? (
@@ -566,40 +585,45 @@ export function InventoryPage() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 align-top text-sm text-slate-600">
+                          <td className={cn(INTERNAL_TD, "text-sm text-slate-600")}>
                             <p>{category?.name ?? "Uncategorized"}</p>
                             <p className="mt-1 text-xs text-slate-400">
                               {supplier?.name ?? "No supplier"}
                             </p>
                           </td>
-                          <td className="px-6 py-4 align-top">
+                          <td className={INTERNAL_TD}>
                             <div className="flex flex-wrap items-center gap-2">
                               <span
-                                className={`whitespace-nowrap px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider ${isLow ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}
+                                className={cn(
+                                  "whitespace-nowrap rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ring-1",
+                                  isLow
+                                    ? "bg-rose-50 text-rose-800 ring-rose-100"
+                                    : "bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] text-slate-900 ring-[color-mix(in_srgb,var(--color-primary)_30%,white)]",
+                                )}
                               >
                                 {item.stockOnHand} on hand
                               </span>
-                              <span className="bg-slate-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-slate-600">
+                              <span className="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200/80">
                                 Reorder {item.reorderLevel}
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 align-top text-sm text-slate-600">
+                          <td className={cn(INTERNAL_TD, "text-sm text-slate-600")}>
                             <p>Cost: PHP {item.costPrice.toFixed(2)}</p>
                             <p className="mt-1 text-xs font-semibold text-slate-800">
                               Sell: PHP {item.sellingPrice.toFixed(2)}
                             </p>
                           </td>
-                          <td className="px-6 py-4 align-top">
+                          <td className={cn(INTERNAL_TD, "text-right")}>
                             <InventoryItemQrInline
                               itemName={item.name}
                               qrCode={item.qrCode}
                             />
                           </td>
-                          <td className="px-6 py-4 align-top">
-                            <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
+                          <td className={cn(INTERNAL_TD, "text-right")}>
+                            <div className="flex min-w-max items-center justify-end gap-2 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide">
                               <button
-                                className="inline-flex items-center gap-1 text-slate-600 hover:underline"
+                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
                                 onClick={() => openEditModal(item.id)}
                                 type="button"
                               >
@@ -607,7 +631,7 @@ export function InventoryPage() {
                                 Edit
                               </button>
                               <button
-                                className="inline-flex items-center gap-1 text-rose-600 hover:underline"
+                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-rose-600 transition hover:bg-rose-50"
                                 onClick={() => void handleDeleteItem(item.id)}
                                 type="button"
                               >
@@ -622,14 +646,20 @@ export function InventoryPage() {
                   )}
                 </tbody>
             </table>
-          {!hasSearch && (
-            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-6 py-3">
-              <span className="text-xs font-bold text-slate-500">
+          </div>
+          {!hasSearch ? (
+            <div
+              className={cn(
+                INTERNAL_SURFACE_FOOTER,
+                "flex flex-wrap items-center justify-between gap-3 px-6 py-3",
+              )}
+            >
+              <span className="text-xs font-semibold text-slate-600">
                 Page {currentPage} of {totalPages}
               </span>
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
-                  className="inline-flex items-center gap-1 border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 disabled:opacity-40 hover:bg-slate-50"
+                  className={cn(INTERNAL_BTN_PAGE, "gap-1 px-3")}
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage((p) => p - 1)}
                   type="button"
@@ -639,11 +669,10 @@ export function InventoryPage() {
                 </button>
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                   <button
-                    className={`min-w-[32px] border px-3 py-1.5 text-xs font-bold ${
-                      p === currentPage
-                        ? "border-orange-600 bg-orange-600 text-white"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
+                    className={cn(
+                      INTERNAL_BTN_PAGE,
+                      p === currentPage && INTERNAL_BTN_PAGE_ACTIVE,
+                    )}
                     key={p}
                     onClick={() => setCurrentPage(p)}
                     type="button"
@@ -652,7 +681,7 @@ export function InventoryPage() {
                   </button>
                 ))}
                 <button
-                  className="inline-flex items-center gap-1 border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 disabled:opacity-40 hover:bg-slate-50"
+                  className={cn(INTERNAL_BTN_PAGE, "gap-1 px-3")}
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage((p) => p + 1)}
                   type="button"
@@ -662,9 +691,9 @@ export function InventoryPage() {
                 </button>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
-      </div>
+      </InternalPage>
 
       {isItemModalOpen ? (
         <div
@@ -674,24 +703,24 @@ export function InventoryPage() {
           role="dialog"
         >
           <div
-            className="my-auto flex w-full max-w-2xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
+            className="my-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 bg-orange-600 px-4 py-4 sm:px-6">
+            <div className="flex items-start justify-between gap-4 bg-[var(--color-primary)] px-4 py-4 sm:px-6">
               <div className="min-w-0">
-                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/85">
                   Inventory Form
                 </p>
                 <p className="mt-0.5 text-sm font-bold text-white">
                   {editingItemId ? "Edit Inventory Item" : "Add Inventory Item"}
                 </p>
-                <p className="mt-2 max-w-2xl text-sm text-orange-50">
+                <p className="mt-2 max-w-2xl text-sm text-white/90">
                   Create or update inventory records from this modal form.
                 </p>
               </div>
               <button
                 aria-label="Close inventory modal"
-                className="inline-flex shrink-0 items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                className="inline-flex shrink-0 items-center justify-center rounded-lg border border-white/25 bg-white/10 p-2 text-white transition hover:bg-white/20"
                 onClick={closeItemModal}
                 type="button"
               >
@@ -823,7 +852,7 @@ export function InventoryPage() {
 
               <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
                 <Button
-                  className="w-full rounded-none sm:w-auto"
+                  className="w-full sm:w-auto"
                   onClick={closeItemModal}
                   type="button"
                   variant="secondary"
@@ -831,7 +860,7 @@ export function InventoryPage() {
                   Cancel
                 </Button>
                 <Button
-                  className="w-full rounded-none bg-orange-600 px-5 py-3 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700 sm:w-auto"
+                  className="w-full bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold uppercase tracking-wide shadow-sm hover:brightness-95 sm:w-auto"
                   disabled={
                     createItemMutation.isPending || updateItemMutation.isPending
                   }

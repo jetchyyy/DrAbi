@@ -11,8 +11,21 @@ import { FeedbackModal } from '../../../components/ui/feedback-modal';
 import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
+import {
+  INTERNAL_BTN_PAGE,
+  INTERNAL_SEARCH_INPUT_WRAP,
+  INTERNAL_SURFACE,
+  INTERNAL_SURFACE_FOOTER,
+  INTERNAL_SURFACE_PADDING,
+  INTERNAL_TABLE,
+  INTERNAL_TABLE_SCROLL,
+  INTERNAL_TD,
+  INTERNAL_TH,
+  INTERNAL_TR,
+  INTERNAL_THEAD_ROW,
+} from '../../../lib/internal-ui';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase';
-import { formatCurrency } from '../../../lib/utils';
+import { cn, formatCurrency } from '../../../lib/utils';
 import type { LabServiceCategory } from '../../../types/domain';
 
 const catalogSchema = z.object({
@@ -349,24 +362,24 @@ export function CatalogTab() {
   return (
     <>
       <div className="space-y-6">
-        <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5 border-b border-slate-100">
+        <div className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
+          <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-violet-700 text-white shrink-0">
-                <TestTube2 className="size-5" />
+              <div className="flex shrink-0 items-center justify-center rounded-xl bg-emerald-50 p-2.5 text-emerald-600 ring-1 ring-emerald-100/90">
+                <TestTube2 className="size-5" strokeWidth={2} />
               </div>
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-violet-700">Lab Service Catalog</p>
-                <h2 className="text-xl font-extrabold tracking-tight text-slate-950">Catalog</h2>
-                <p className="mt-1 text-sm text-slate-500">Manage lab and imaging services from a searchable service table.</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Lab service catalog</p>
+                <h2 className="text-xl font-bold tracking-tight text-slate-900">Catalog</h2>
+                <p className="mt-1 text-sm leading-relaxed text-slate-600">Manage lab and imaging services from a searchable service table.</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Button className="rounded-none bg-violet-700 px-4 py-2.5 text-sm font-extrabold uppercase tracking-widest hover:bg-violet-800" onClick={openCreateModal}>
+              <Button className="bg-emerald-600 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-white shadow-sm ring-1 ring-emerald-700/20 hover:bg-emerald-700" onClick={openCreateModal}>
                 <Plus className="mr-2 size-4" />
                 Add service
               </Button>
-              <div className="flex w-full max-w-sm items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5">
+              <div className={`${INTERNAL_SEARCH_INPUT_WRAP} w-full max-w-sm`}>
                 <Search className="size-4 shrink-0 text-slate-400" />
                 <input
                   className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
@@ -377,8 +390,8 @@ export function CatalogTab() {
               </div>
             </div>
           </div>
-          <div className="border-t border-slate-100 bg-slate-50 px-6 py-2">
-            <span className="text-xs font-bold text-slate-500">{filteredServices.length} service{filteredServices.length !== 1 ? 's' : ''} found</span>
+          <div className={cn(INTERNAL_SURFACE_FOOTER, 'px-6 py-2.5')}>
+            <span className="text-xs font-medium text-slate-600">{filteredServices.length} service{filteredServices.length !== 1 ? 's' : ''} found</span>
           </div>
           {!isSupabaseConfigured ? (
             <div className="border-t border-amber-200 bg-amber-50 px-6 py-3 text-xs font-semibold text-amber-700">
@@ -393,50 +406,50 @@ export function CatalogTab() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Visible</p>
-            <p className="mt-2 text-2xl font-extrabold text-slate-950">{catalogMetrics.total}</p>
+          <div className={INTERNAL_SURFACE_PADDING}>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total visible</p>
+            <p className="mt-2 text-2xl font-bold tabular-nums text-slate-900">{catalogMetrics.total}</p>
           </div>
-          <div className="border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Laboratory Tests</p>
-            <p className="mt-2 text-2xl font-extrabold text-slate-950">{catalogMetrics.laboratoryCount}</p>
+          <div className={INTERNAL_SURFACE_PADDING}>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Laboratory tests</p>
+            <p className="mt-2 text-2xl font-bold tabular-nums text-slate-900">{catalogMetrics.laboratoryCount}</p>
           </div>
-          <div className="border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Imaging Services</p>
-            <p className="mt-2 text-2xl font-extrabold text-slate-950">{catalogMetrics.imagingCount}</p>
+          <div className={INTERNAL_SURFACE_PADDING}>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Imaging services</p>
+            <p className="mt-2 text-2xl font-bold tabular-nums text-slate-900">{catalogMetrics.imagingCount}</p>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Service</th>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Description</th>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Category</th>
-                  <th className="px-6 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Fee</th>
-                  <th className="px-6 py-3 text-right text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Actions</th>
+        <div className={INTERNAL_SURFACE}>
+          <div className={INTERNAL_TABLE_SCROLL}>
+            <table className={INTERNAL_TABLE}>
+              <thead>
+                <tr className={INTERNAL_THEAD_ROW}>
+                  <th className={INTERNAL_TH}>Service</th>
+                  <th className={INTERNAL_TH}>Description</th>
+                  <th className={INTERNAL_TH}>Category</th>
+                  <th className={INTERNAL_TH}>Fee</th>
+                  <th className={cn(INTERNAL_TH, 'text-right')}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {filteredServices.length === 0 ? (
-                  <tr>
-                    <td className="px-6 py-12 text-center text-sm text-slate-400" colSpan={5}>
+                  <tr className={INTERNAL_TR}>
+                    <td className={cn(INTERNAL_TD, 'py-12 text-center text-sm text-slate-500')} colSpan={5}>
                       {isLoading ? 'Loading lab services...' : 'No lab services defined yet.'}
                     </td>
                   </tr>
                 ) : (
                   paginatedServices.map((service) => (
-                    <tr className="transition-colors hover:bg-slate-50" key={service.id}>
-                      <td className="px-6 py-4 align-top font-bold text-sm text-slate-950">{service.name}</td>
-                      <td className="px-6 py-4 align-top text-sm text-slate-600">{service.description ?? 'No description'}</td>
-                      <td className="px-6 py-4 align-top text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
+                    <tr className={INTERNAL_TR} key={service.id}>
+                      <td className={cn(INTERNAL_TD, 'text-sm font-semibold text-slate-900')}>{service.name}</td>
+                      <td className={cn(INTERNAL_TD, 'text-sm text-slate-600')}>{service.description ?? 'No description'}</td>
+                      <td className={cn(INTERNAL_TD, 'text-[10px] font-semibold uppercase tracking-wide text-slate-500')}>
                         {CATEGORY_LABELS[service.category]}
                       </td>
-                      <td className="px-6 py-4 align-top text-sm font-bold text-violet-700">{formatCurrency(service.price)}</td>
-                      <td className="px-6 py-4 align-top">
-                        <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
+                      <td className={cn(INTERNAL_TD, 'text-sm font-semibold text-slate-900')}>{formatCurrency(service.price)}</td>
+                      <td className={cn(INTERNAL_TD, 'text-right')}>
+                        <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide">
                           <button className="inline-flex items-center gap-1 text-slate-600 hover:underline" onClick={() => openEditModal(service.id)} type="button">
                             <Pencil className="size-3.5" />
                             Edit
@@ -454,14 +467,14 @@ export function CatalogTab() {
             </table>
           </div>
           {filteredServices.length > 0 ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
-              <p className="text-xs text-slate-500">
+            <div className={cn(INTERNAL_SURFACE_FOOTER, 'flex flex-wrap items-center justify-between gap-3 px-6 py-3')}>
+              <p className="text-xs font-medium text-slate-600">
                 Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredServices.length)} of {filteredServices.length}
               </p>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={INTERNAL_BTN_PAGE}
                   onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                   disabled={currentPage === 1}
                 >
@@ -470,7 +483,7 @@ export function CatalogTab() {
                 <span className="text-xs font-semibold text-slate-600">Page {currentPage} of {totalPages}</span>
                 <button
                   type="button"
-                  className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={INTERNAL_BTN_PAGE}
                   onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                   disabled={currentPage >= totalPages}
                 >
@@ -490,17 +503,17 @@ export function CatalogTab() {
           role="dialog"
         >
           <div
-            className="my-auto flex w-full max-w-2xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
+            className="my-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="bg-violet-700 px-6 py-4 flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-4 bg-emerald-600 px-6 py-4">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-violet-200">Service Form</p>
-                <p className="text-sm font-bold text-white mt-0.5">{editingId ? 'Edit Service' : 'New lab or imaging service'}</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-emerald-100">Service Form</p>
+                <p className="mt-0.5 text-sm font-bold text-white">{editingId ? 'Edit Service' : 'New lab or imaging service'}</p>
               </div>
               <button
                 aria-label="Close service modal"
-                className="inline-flex shrink-0 items-center justify-center border border-violet-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                className="inline-flex shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 p-2 text-white transition hover:bg-white/20"
                 onClick={closeServiceModal}
                 type="button"
               >
@@ -526,10 +539,10 @@ export function CatalogTab() {
                 </FormField>
               </div>
               <div className="px-6 py-4 bg-slate-50 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <Button className="w-full rounded-none sm:w-auto" onClick={closeServiceModal} type="button" variant="secondary">
+                <Button className="w-full sm:w-auto" onClick={closeServiceModal} type="button" variant="secondary">
                   Cancel
                 </Button>
-                <Button className="w-full rounded-none bg-violet-700 hover:bg-violet-800 font-extrabold uppercase tracking-widest text-sm py-3 sm:w-auto" disabled={!isSupabaseConfigured || createMutation.isPending || updateMutation.isPending} type="submit">
+                <Button className="w-full bg-emerald-600 py-3 text-sm font-semibold uppercase tracking-wide hover:bg-emerald-700 sm:w-auto" disabled={!isSupabaseConfigured || createMutation.isPending || updateMutation.isPending} type="submit">
                   {createMutation.isPending || updateMutation.isPending ? 'Saving...' : editingId ? 'Save Service' : 'Add Service'}
                 </Button>
               </div>

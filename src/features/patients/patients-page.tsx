@@ -6,12 +6,23 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 
 import { FormField } from '../../components/forms/form-field';
-import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { FeedbackModal } from '../../components/ui/feedback-modal';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
-import { formatDateLabel } from '../../lib/utils';
+import {
+  INTERNAL_BTN_PAGE,
+  INTERNAL_SEARCH_INPUT_WRAP,
+  INTERNAL_SURFACE,
+  INTERNAL_SURFACE_FOOTER,
+  INTERNAL_TABLE,
+  INTERNAL_TABLE_SCROLL,
+  INTERNAL_TD,
+  INTERNAL_TH,
+  INTERNAL_THEAD_ROW,
+  INTERNAL_TR,
+} from '../../lib/internal-ui';
+import { cn, formatDateLabel } from '../../lib/utils';
 import type { Patient } from '../../types/domain';
 import { useAuth } from '../auth/auth-context';
 import { useCreatePatient, useCreatePatientActionLog, useDeletePatient, usePatients, useUpdatePatient } from './hooks/use-patients';
@@ -106,14 +117,6 @@ const PATIENTS_PAGE_SIZE = 10;
 
 function getPatientSourceLabel(patient: Patient) {
   return patient.intakeSource === 'online_registration' ? 'Online registration' : 'Walk-in encoded by staff';
-}
-
-function getPatientVisitBadge(patient: Patient) {
-  if (patient.visitStatus === 'registered_no_visit') {
-    return { label: 'Not visited yet', intent: 'warning' as const };
-  }
-
-  return { label: 'Visited clinic', intent: 'success' as const };
 }
 
 export function PatientsPage() {
@@ -294,9 +297,16 @@ export function PatientsPage() {
             respiratoryRate: payload.respiratoryRate,
             weight: payload.weight,
             height: payload.height,
-            vitalsRecordedAt: payload.temperature || payload.bloodPressure || payload.heartRate || payload.o2Sat || payload.respiratoryRate || payload.weight || payload.height 
-              ? new Date().toISOString() 
-              : editingPatient.vitalsRecordedAt ?? null,
+            vitalsRecordedAt:
+              payload.temperature ||
+              payload.bloodPressure ||
+              payload.heartRate ||
+              payload.o2Sat ||
+              payload.respiratoryRate ||
+              payload.weight ||
+              payload.height
+                ? new Date().toISOString()
+                : editingPatient.vitalsRecordedAt ?? null,
           },
         });
 
@@ -324,9 +334,16 @@ export function PatientsPage() {
           variant: 'success',
         });
       } else {
-        const vitalsRecordedAt = values.temperature || values.bloodPressure || values.heartRate || values.o2Sat || values.respiratoryRate || values.weight || values.height 
-          ? new Date().toISOString() 
-          : null;
+        const vitalsRecordedAt =
+          values.temperature ||
+          values.bloodPressure ||
+          values.heartRate ||
+          values.o2Sat ||
+          values.respiratoryRate ||
+          values.weight ||
+          values.height
+            ? new Date().toISOString()
+            : null;
 
         const createdPatient = await createPatient.mutateAsync({
           ...values,
@@ -436,45 +453,46 @@ export function PatientsPage() {
   return (
     <>
       <div className="space-y-5">
-        <div className="border border-slate-200 bg-white shadow-sm">
+        {/* Page header */}
+        <div className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="shrink-0 bg-orange-600 p-2.5 text-white">
-                <Users className="size-5" />
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100/90">
+                <Users className="size-5" strokeWidth={2} />
               </div>
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">Patient Management</p>
-                <h1 className="text-xl font-extrabold tracking-tight text-slate-950">Unified Patient Registry</h1>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Patient Management</p>
+                <h1 className="mt-0.5 text-xl font-bold tracking-tight text-slate-900">Unified Patient Registry</h1>
                 <p className="mt-1 text-sm text-slate-500">
-                  Online registrations appear here automatically, while walk-ins can be encoded by staff during the clinic visit.
+                  Online registrations appear here automatically; walk-ins can be encoded by staff during the visit.
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               {can('patients.manage') ? (
                 <Button
-                  className="rounded-none bg-orange-600 px-4 py-2.5 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700"
+                  className="gap-2 bg-emerald-600 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide hover:bg-emerald-700 ring-1 ring-emerald-700/20"
                   onClick={openWalkInModal}
                 >
-                  <UserRoundPlus className="mr-2 size-4" />
+                  <UserRoundPlus className="size-4" />
                   Add walk-in patient
                 </Button>
               ) : null}
               <Link
-                className="inline-flex items-center justify-center border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 to="/app/patients/logs"
               >
-                <ClipboardList className="mr-2 size-4" />
+                <ClipboardList className="size-4" />
                 View logs
               </Link>
               <Link
-                className="inline-flex items-center justify-center border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 to="/app/patients/scan"
               >
-                <QrCode className="mr-2 size-4" />
-                Scan patient QR
+                <QrCode className="size-4" />
+                Scan QR
               </Link>
-              <div className="flex w-full max-w-sm items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5">
+              <div className={INTERNAL_SEARCH_INPUT_WRAP}>
                 <Search className="size-4 shrink-0 text-slate-400" />
                 <input
                   className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
@@ -482,154 +500,162 @@ export function PatientsPage() {
                     setSearch(event.target.value);
                     setCurrentPage(1);
                   }}
-                  placeholder="Search patient, email, QR code, or intake type"
+                  placeholder="Search patient, email, QR code..."
                   value={search}
                 />
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50 px-6 py-2.5">
-            <span className="text-xs font-bold text-slate-500">{filteredPatients.length} patient{filteredPatients.length !== 1 ? 's' : ''} found</span>
-            <span className="inline-flex items-center border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-indigo-700">
+          <div className={cn(INTERNAL_SURFACE_FOOTER, 'flex flex-wrap items-center gap-2 px-6 py-2.5')}>
+            <span className="text-xs font-medium text-slate-500">
+              {filteredPatients.length} patient{filteredPatients.length !== 1 ? 's' : ''} found
+            </span>
+            <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-100">
               {patientSummary.online} online
             </span>
-            <span className="inline-flex items-center border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-100">
               {patientSummary.walkIn} walk-in
             </span>
-            <span className="inline-flex items-center border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-emerald-700">
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
               {patientSummary.visited} visited
             </span>
-            <span className="inline-flex items-center border border-yellow-200 bg-yellow-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-yellow-700">
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">
               {patientSummary.notVisited} not yet visited
             </span>
           </div>
         </div>
 
+        {/* Table / empty state */}
         {filteredPatients.length === 0 ? (
-          <div className="flex flex-col items-center border-2 border-dashed border-slate-200 bg-white p-12 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center border border-orange-100 bg-orange-50">
-              <UserRoundPlus className="size-6 text-orange-600" />
+          <div className={cn(INTERNAL_SURFACE, 'flex flex-col items-center p-12 text-center')}>
+            <div className="mb-3 flex size-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100/90">
+              <UserRoundPlus className="size-6" strokeWidth={1.5} />
             </div>
-            <p className="mb-1 text-sm font-extrabold uppercase tracking-wide text-slate-950">No patients found</p>
-            <p className="max-w-xs text-xs leading-relaxed text-slate-500">
+            <p className="text-sm font-bold text-slate-900">No patients found</p>
+            <p className="mt-1 max-w-xs text-xs leading-relaxed text-slate-500">
               Online registrations and walk-in records will appear here once patients start entering the system.
             </p>
           </div>
         ) : (
-          <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Patient</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Contact</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Birth date</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Source</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Status</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">QR code</th>
-                    <th className="px-4 py-2.5 text-right text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Actions</th>
+          <div className={INTERNAL_SURFACE}>
+            <div className={INTERNAL_TABLE_SCROLL}>
+              <table className={INTERNAL_TABLE}>
+                <thead>
+                  <tr className={INTERNAL_THEAD_ROW}>
+                    <th className={INTERNAL_TH}>Patient</th>
+                    <th className={INTERNAL_TH}>Contact</th>
+                    <th className={INTERNAL_TH}>Birth date</th>
+                    <th className={INTERNAL_TH}>Source</th>
+                    <th className={INTERNAL_TH}>Visit status</th>
+                    <th className={INTERNAL_TH}>QR code</th>
+                    <th className={cn(INTERNAL_TH, 'text-right')}>Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {paginatedPatients.map((patient) => {
-                    const visitBadge = getPatientVisitBadge(patient);
-
-                    return (
-                      <tr className="transition-colors hover:bg-slate-50" key={patient.id}>
-                        <td className="px-4 py-3 align-top">
-                          <div className="space-y-1">
-                            <Link
-                              to={`/app/patients/${patient.id}`}
-                              className="font-bold text-slate-950 hover:text-orange-600 hover:underline"
+                <tbody>
+                  {paginatedPatients.map((patient) => (
+                    <tr className={INTERNAL_TR} key={patient.id}>
+                      <td className={INTERNAL_TD}>
+                        <div className="space-y-1">
+                          <Link
+                            className="font-semibold text-slate-900 hover:text-[var(--color-primary)] hover:underline"
+                            to={`/app/patients/${patient.id}`}
+                          >
+                            {patient.firstName} {patient.lastName}
+                          </Link>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200/80">
+                              {patient.bloodType || 'Unspecified'}
+                            </span>
+                            <span className="text-[10px] uppercase tracking-[0.16em] text-slate-400">{patient.sex}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className={INTERNAL_TD}>
+                        <div className="space-y-0.5 text-sm text-slate-600">
+                          <p>{patient.email}</p>
+                          <p>{patient.mobileNumber}</p>
+                        </div>
+                      </td>
+                      <td className={INTERNAL_TD}>
+                        <span className="text-sm text-slate-600">{formatDateLabel(patient.birthDate)}</span>
+                      </td>
+                      <td className={INTERNAL_TD}>
+                        <span className="text-xs font-medium text-slate-500">{getPatientSourceLabel(patient)}</span>
+                      </td>
+                      <td className={INTERNAL_TD}>
+                        {patient.visitStatus === 'visited_clinic' ? (
+                          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100">
+                            Visited clinic
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700 ring-1 ring-amber-100">
+                            Not visited yet
+                          </span>
+                        )}
+                      </td>
+                      <td className={INTERNAL_TD}>
+                        <span className="font-mono text-xs text-slate-500">{patient.qrCode || '—'}</span>
+                      </td>
+                      <td className={INTERNAL_TD}>
+                        <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-semibold uppercase tracking-wide">
+                          {can('patients.manage') ? (
+                            <button
+                              className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 hover:underline"
+                              onClick={() => openEditPatientModal(patient)}
+                              type="button"
                             >
-                              {patient.firstName} {patient.lastName}
-                            </Link>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge className="rounded-none text-[10px] font-bold uppercase tracking-widest">
-                                {patient.bloodType || 'Unspecified'}
-                              </Badge>
-                              <span className="text-xs uppercase tracking-[0.16em] text-slate-400">{patient.sex}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 align-top">
-                          <div className="space-y-0.5 text-sm text-slate-600">
-                            <p>{patient.email}</p>
-                            <p>{patient.mobileNumber}</p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 align-top text-sm text-slate-600">{formatDateLabel(patient.birthDate)}</td>
-                        <td className="px-4 py-3 align-top">
-                          <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">{getPatientSourceLabel(patient)}</span>
-                        </td>
-                        <td className="px-4 py-3 align-top">
-                          <Badge className="rounded-none text-[10px] font-bold uppercase tracking-widest" intent={visitBadge.intent}>
-                            {visitBadge.label}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 align-top text-xs font-mono text-slate-500">
-                          {patient.qrCode || '—'}
-                        </td>
-                        <td className="px-4 py-3 align-top">
-                          <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
-                            {can('patients.manage') ? (
-                              <button
-                                className="inline-flex items-center gap-1 text-slate-600 hover:underline"
-                                onClick={() => openEditPatientModal(patient)}
-                                type="button"
-                              >
-                                <Pencil className="size-3.5" />
-                                Edit
-                              </button>
-                            ) : null}
-                            {can('patients.manage') ? (
-                              <button
-                                className="inline-flex items-center gap-1 text-rose-600 hover:underline"
-                                onClick={() => void handleDeletePatient(patient)}
-                                type="button"
-                              >
-                                <Trash2 className="size-3.5" />
-                                Delete
-                              </button>
-                            ) : null}
-                            <Link className="inline-flex items-center text-orange-600 hover:underline" to={`/app/patients/${patient.id}`}>
-                              Open Record
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                              <Pencil className="size-3.5" />
+                              Edit
+                            </button>
+                          ) : null}
+                          {can('patients.manage') ? (
+                            <button
+                              className="inline-flex items-center gap-1 text-rose-600 hover:underline"
+                              onClick={() => void handleDeletePatient(patient)}
+                              type="button"
+                            >
+                              <Trash2 className="size-3.5" />
+                              Delete
+                            </button>
+                          ) : null}
+                          <Link
+                            className="inline-flex items-center text-[var(--color-primary)] hover:underline"
+                            to={`/app/patients/${patient.id}`}
+                          >
+                            Open record
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
             {filteredPatients.length > 0 ? (
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
-                <p className="text-xs font-semibold text-slate-500">
-                  Showing {showingStart}-{showingEnd} of {filteredPatients.length} patients
+              <div className={cn(INTERNAL_SURFACE_FOOTER, 'flex flex-wrap items-center justify-between gap-3 px-6 py-3')}>
+                <p className="text-xs font-medium text-slate-500">
+                  Showing {showingStart}–{showingEnd} of {filteredPatients.length} patients
                 </p>
                 <div className="flex items-center gap-2">
-                  <Button
-                    className="rounded-none border-slate-300 px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                  <button
+                    className={INTERNAL_BTN_PAGE}
                     disabled={safeCurrentPage <= 1}
                     onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                     type="button"
-                    variant="secondary"
                   >
                     Previous
-                  </Button>
-                  <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
-                    Page {safeCurrentPage} of {totalPages}
+                  </button>
+                  <span className="text-xs font-medium text-slate-500">
+                    {safeCurrentPage} / {totalPages}
                   </span>
-                  <Button
-                    className="rounded-none border-slate-300 px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                  <button
+                    className={INTERNAL_BTN_PAGE}
                     disabled={safeCurrentPage >= totalPages}
                     onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                     type="button"
-                    variant="secondary"
                   >
                     Next
-                  </Button>
+                  </button>
                 </div>
               </div>
             ) : null}
@@ -637,6 +663,7 @@ export function PatientsPage() {
         )}
       </div>
 
+      {/* Walk-in / edit modal */}
       {isWalkInModalOpen ? (
         <div
           aria-modal="true"
@@ -645,24 +672,25 @@ export function PatientsPage() {
           role="dialog"
         >
           <div
-            className="my-auto flex w-full max-w-2xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
+            className="my-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 bg-orange-600 px-4 py-4 sm:px-6">
+            {/* Modal header */}
+            <div className="flex items-start justify-between gap-4 bg-emerald-600 px-4 py-4 sm:px-6">
               <div className="min-w-0">
-                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">Walk-In Intake</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-100">Walk-In Intake</p>
                 <p className="mt-0.5 text-sm font-bold text-white">
                   {editingPatient ? 'Edit Patient Record' : 'Create Staff-Encoded Patient Record'}
                 </p>
-                <p className="mt-2 max-w-2xl text-sm text-orange-50">
+                <p className="mt-1.5 max-w-2xl text-sm text-emerald-50">
                   {editingPatient
                     ? 'Update the most important patient details here. Only the key changed fields will be recorded in the patient logs.'
-                    : 'Use this form for patients who arrive at the clinic without an existing portal account. The record will be tagged as a walk-in patient who has already visited the clinic.'}
+                    : 'Use this form for patients who arrive at the clinic without an existing portal account.'}
                 </p>
               </div>
               <button
                 aria-label="Close walk-in patient modal"
-                className="inline-flex shrink-0 items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                className="inline-flex shrink-0 items-center justify-center rounded-lg border border-white/20 p-2 text-white transition hover:bg-white/10"
                 onClick={closeWalkInModal}
                 type="button"
               >
@@ -671,19 +699,23 @@ export function PatientsPage() {
             </div>
 
             <form className="flex min-h-0 flex-1 flex-col" onSubmit={onSubmit}>
+              {/* Step indicator */}
               <div className="border-b border-slate-100 bg-slate-50 px-4 py-4 sm:px-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-600">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
                       Step {walkInStepIndex + 1} of {walkInSteps.length}
                     </p>
-                    <p className="mt-1 text-sm font-bold text-slate-950">{currentStep.title}</p>
-                    <p className="mt-1 text-xs text-slate-500">{currentStep.description}</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">{currentStep.title}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{currentStep.description}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     {walkInSteps.map((step, index) => (
                       <span
-                        className={`h-2.5 w-10 ${index <= walkInStepIndex ? 'bg-orange-600' : 'bg-slate-200'}`}
+                        className={cn(
+                          'h-2 w-8 rounded-full transition-colors',
+                          index <= walkInStepIndex ? 'bg-[var(--color-primary)]' : 'bg-slate-200',
+                        )}
                         key={step.id}
                       />
                     ))}
@@ -704,7 +736,7 @@ export function PatientsPage() {
                     </div>
                     <div className="grid gap-4 lg:grid-cols-2">
                       <FormField label="Sex">
-                        <select className="w-full border border-slate-200 bg-white px-3 py-2.5 text-sm" {...form.register('sex')}>
+                        <select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]" {...form.register('sex')}>
                           <option value="female">Female</option>
                           <option value="male">Male</option>
                           <option value="other">Other</option>
@@ -737,7 +769,7 @@ export function PatientsPage() {
                   <div className="space-y-4 px-4 py-5 sm:px-6">
                     <div className="grid gap-4 lg:grid-cols-2">
                       <FormField error={form.formState.errors.bloodType?.message} label="Blood type">
-                        <select className="w-full border border-slate-200 bg-white px-3 py-2.5 text-sm" {...form.register('bloodType')}>
+                        <select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]" {...form.register('bloodType')}>
                           <option value="">Select blood type</option>
                           <option value="O+">O+</option>
                           <option value="O-">O-</option>
@@ -805,19 +837,19 @@ export function PatientsPage() {
                 ) : null}
               </div>
 
-              <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
-                <Button className="w-full rounded-none sm:w-auto" onClick={closeWalkInModal} type="button" variant="secondary">
+              <div className={cn(INTERNAL_SURFACE_FOOTER, 'flex flex-col-reverse gap-3 px-4 py-4 sm:flex-row sm:justify-end sm:px-6')}>
+                <Button className="w-full sm:w-auto" onClick={closeWalkInModal} type="button" variant="secondary">
                   Cancel
                 </Button>
                 {walkInStepIndex > 0 ? (
-                  <Button className="w-full rounded-none sm:w-auto" onClick={goToPreviousStep} type="button" variant="secondary">
+                  <Button className="w-full sm:w-auto" onClick={goToPreviousStep} type="button" variant="secondary">
                     Back
                   </Button>
                 ) : null}
                 {isLastStep ? (
                   <Button
-                    className="w-full rounded-none bg-orange-600 px-5 py-3 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700 sm:w-auto"
-                    disabled={createPatient.isPending}
+                    className="w-full bg-emerald-600 px-5 py-3 text-sm font-semibold uppercase tracking-wide hover:bg-emerald-700 sm:w-auto"
+                    disabled={createPatient.isPending || updatePatient.isPending}
                     type="submit"
                   >
                     {createPatient.isPending || updatePatient.isPending
@@ -828,7 +860,7 @@ export function PatientsPage() {
                   </Button>
                 ) : (
                   <Button
-                    className="w-full rounded-none bg-orange-600 px-5 py-3 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700 sm:w-auto"
+                    className="w-full bg-emerald-600 px-5 py-3 text-sm font-semibold uppercase tracking-wide hover:bg-emerald-700 sm:w-auto"
                     onClick={() => void goToNextStep()}
                     type="button"
                   >

@@ -91,7 +91,7 @@ export function PublicLayout() {
           <div
             className={
               isPortalHome
-                ? 'pointer-events-auto mx-auto flex w-full max-w-7xl items-center justify-between gap-4 rounded-[1.625rem] border border-white/45 bg-white/35 px-5 py-3 shadow-[0_26px_55px_-24px_rgba(15,50,105,0.18),inset_0_1px_0_rgba(255,255,255,0.52)] backdrop-blur-xl backdrop-saturate-150 sm:rounded-[2rem] sm:px-7 sm:py-3.5 xl:gap-8'
+                ? 'pointer-events-auto mx-auto flex w-full max-w-7xl items-center justify-between gap-4 rounded-[1.625rem] border border-white/22 bg-[var(--color-primary)] px-5 py-3 shadow-[0_22px_52px_-26px_rgba(0,0,0,0.3)] sm:rounded-[2rem] sm:px-6 sm:py-3.5 lg:gap-8 lg:border-white/45 lg:bg-white/35 lg:px-7 lg:py-3 lg:shadow-[0_26px_55px_-24px_rgba(15,50,105,0.18),inset_0_1px_0_rgba(255,255,255,0.52)] lg:backdrop-blur-xl lg:backdrop-saturate-150 xl:gap-8'
                 : 'mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 lg:px-8 lg:py-5'
             }
           >
@@ -105,7 +105,11 @@ export function PublicLayout() {
                 width={248}
                 height={60}
                 decoding="async"
-                className="h-14 w-auto max-h-14 max-w-[220px] object-contain object-left sm:h-16 sm:max-w-[248px]"
+                className={
+                  isPortalHome
+                    ? 'h-14 w-auto max-h-14 max-w-[220px] object-contain object-left brightness-0 invert sm:h-16 sm:max-w-[248px] lg:max-h-16 lg:brightness-100 lg:invert-0'
+                    : 'h-14 w-auto max-h-14 max-w-[220px] object-contain object-left sm:h-16 sm:max-w-[248px]'
+                }
               />
               <span className="sr-only">
                 {clinic.clinicName} patient portal — home
@@ -228,18 +232,38 @@ export function PublicLayout() {
               )}
             </div>
 
-            <div className="relative lg:hidden" ref={mobileMenuRef}>
+            <div className="relative flex min-w-0 items-center justify-end gap-2 lg:hidden" ref={mobileMenuRef}>
+              {isPortalHome && !isAuthenticated && (
+                <Link
+                  className="shrink-0 whitespace-nowrap py-1 text-sm font-semibold uppercase tracking-wide text-white underline-offset-4 transition hover:underline"
+                  to="/login"
+                >
+                  Sign in
+                </Link>
+              )}
               <button
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-sm transition hover:bg-slate-50"
+                className={
+                  isPortalHome
+                    ? 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/30 bg-white/15 text-white shadow-none transition hover:bg-white/22'
+                    : 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-sm transition hover:bg-slate-50'
+                }
                 onClick={() => setMenuOpen((value) => !value)}
                 type="button"
                 aria-label={menuOpen ? "Close menu" : "Open menu"}
                 aria-expanded={menuOpen}
               >
                 {menuOpen ? (
-                  <X className="size-5 text-[var(--color-primary)]" />
+                  <X
+                    className={
+                      isPortalHome ? 'size-5 text-white' : 'size-5 text-[var(--color-primary)]'
+                    }
+                  />
                 ) : (
-                  <Menu className="size-5 text-[var(--color-primary)]" />
+                  <Menu
+                    className={
+                      isPortalHome ? 'size-5 text-white' : 'size-5 text-[var(--color-primary)]'
+                    }
+                  />
                 )}
               </button>
 
@@ -340,8 +364,8 @@ export function PublicLayout() {
         */}
         <div className="w-full max-w-none px-5 sm:px-8 lg:px-11 xl:px-14 2xl:px-20">
           {/* Top: brand + intro row; contact aligns with description (same row on large screens) */}
-          <div className="py-12">
-            <div className="flex min-w-0 flex-col gap-6 sm:gap-7">
+          <div className="py-8 sm:py-12">
+            <div className="flex min-w-0 flex-col gap-5 sm:gap-7">
               <Link className="inline-flex w-fit shrink-0 items-center" to="/portal">
                 <img
                   src="/logo.png"
@@ -349,11 +373,11 @@ export function PublicLayout() {
                   width={400}
                   height={97}
                   decoding="async"
-                  className="h-20 w-auto max-w-[min(100%,22rem)] object-contain object-left sm:h-28 sm:max-w-none lg:h-32 xl:h-36"
+                  className="h-14 w-auto max-w-[min(100%,18rem)] object-contain object-left sm:h-20 sm:max-w-none lg:h-24 xl:h-28"
                 />
                 <span className="sr-only">{clinic.clinicName} — home</span>
               </Link>
-              <div className="grid min-w-0 gap-8 lg:grid-cols-2 lg:items-start lg:gap-x-16 xl:gap-x-24">
+              <div className="grid min-w-0 gap-5 sm:gap-8 lg:grid-cols-2 lg:items-start lg:gap-x-16 xl:gap-x-24">
                 <p className="max-w-2xl text-[0.9375rem] leading-[1.65] text-slate-600 sm:max-w-none sm:text-[0.9625rem] lg:max-w-[44rem]">
                   <span className="font-semibold text-slate-900">{clinic.clinicName}</span>
                   {' '}
@@ -362,10 +386,10 @@ export function PublicLayout() {
                   care anchored in clarity and trust.
                 </p>
                 {(clinic.contactNumber || clinic.email) ?
-                  <div className="min-w-0 text-right lg:justify-self-end">
+                  <div className="min-w-0 lg:justify-self-end lg:text-right">
                     <div className="space-y-2 text-[0.9375rem] leading-[1.65] text-slate-600">
                       {clinic.contactNumber && telHref ?
-                        <p className="flex items-center justify-end gap-2.5">
+                        <p className="flex items-center gap-2.5 lg:justify-end">
                           <Phone aria-hidden className="size-4 shrink-0 text-slate-500" strokeWidth={2} />
                           <a className="min-w-0 hover:underline" href={telHref}>
                             {clinic.contactNumber}
@@ -373,7 +397,7 @@ export function PublicLayout() {
                         </p>
                         : null}
                       {clinic.email ?
-                        <p className="flex items-center justify-end gap-2.5">
+                        <p className="flex items-center gap-2.5 lg:justify-end">
                           <Mail aria-hidden className="size-4 shrink-0 text-slate-500" strokeWidth={2} />
                           <a className="min-w-0 break-all hover:underline" href={`mailto:${clinic.email}`}>
                             {clinic.email}
@@ -392,9 +416,9 @@ export function PublicLayout() {
           {/* Middle: horizontal nav row */}
           <nav
             aria-label="Footer"
-            className="flex flex-col gap-4 py-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6 sm:gap-y-3 lg:gap-x-10"
+            className="flex flex-col gap-3 py-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6 sm:gap-y-3 lg:gap-x-10"
           >
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-x-8 lg:gap-x-10">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 sm:gap-x-8 lg:gap-x-10">
               <NavLink
                 className={({ isActive }) =>
                   `text-sm font-medium transition-colors ${isActive ? "text-[var(--color-accent)]" : "text-slate-900 hover:text-[var(--color-accent)]"
@@ -441,14 +465,14 @@ export function PublicLayout() {
           <div className="border-t border-slate-200" />
 
           {/* Disclaimer + bottom line */}
-          <div className="space-y-6 py-8">
+          <div className="space-y-5 py-6 sm:py-8">
             <p className="text-[0.8125rem] leading-relaxed text-slate-500 sm:text-[0.84375rem]">
               This site is for information and appointment management at {clinic.clinicName}. It does
               not replace professional medical advice, diagnosis, or treatment. In an emergency, contact
               local emergency services. Use of this portal is subject to clinic policies and applicable
               law. Content may change without notice.
             </p>
-            <div className="flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <p className="text-[0.8125rem] text-slate-500">
                 &copy; {new Date().getFullYear()} {clinic.clinicName}. All rights reserved.
               </p>

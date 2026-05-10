@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 
@@ -54,7 +55,7 @@ export function FaqSection() {
   return (
     <section
       id="faq"
-      className="relative isolate flex min-h-[100dvh] flex-col overflow-x-clip bg-white py-14 sm:py-16 lg:py-20 xl:py-24"
+      className="relative isolate flex flex-col overflow-x-clip bg-white py-14 sm:py-16 lg:py-20 xl:py-24"
     >
       {/* wash-only: sky wash without vertical stripe “columns” */}
       <PortalSectionBackdrop variant="wash-only" />
@@ -99,25 +100,35 @@ export function FaqSection() {
                         <span className="min-w-0 pt-0.5 font-display text-[1.0625rem] font-semibold leading-snug tracking-tight text-slate-900 sm:text-xl sm:leading-snug lg:text-[1.275rem]">
                           {item.question}
                         </span>
-                        <span className="mt-1 flex size-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200/75 bg-white text-[var(--color-accent)] shadow-sm transition group-hover:border-slate-300/90 group-hover:shadow-[0_10px_28px_-16px_rgba(15,23,42,0.18)]">
-                          <ChevronDown
-                            aria-hidden
-                            className={`size-[1.375rem] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                          />
-                        </span>
+                        <motion.span
+                        animate={{ rotate: isOpen ? 180 : 0 }}
+                        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                        className="mt-1 flex size-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200/75 bg-white text-[var(--color-accent)] shadow-sm transition group-hover:border-slate-300/90 group-hover:shadow-[0_10px_28px_-16px_rgba(15,23,42,0.18)]"
+                      >
+                          <ChevronDown aria-hidden className="size-[1.375rem]" />
+                        </motion.span>
                       </button>
-                      {isOpen ? (
-                        <div
-                          className="border-t border-slate-100/90 px-5 pb-6 sm:px-7 sm:pb-8"
-                          id={panelId}
-                          role="region"
-                          aria-labelledby={`faq-trigger-${index}`}
-                        >
-                          <p className="pt-5 font-sans text-[15px] leading-relaxed tracking-tight text-slate-600 sm:text-[1.0625rem] sm:leading-[1.65] lg:text-[1.125rem]">
-                            {item.answer}
-                          </p>
-                        </div>
-                      ) : null}
+                      <AnimatePresence initial={false}>
+                        {isOpen && (
+                          <motion.div
+                            key={panelId}
+                            id={panelId}
+                            role="region"
+                            aria-labelledby={`faq-trigger-${index}`}
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                            style={{ overflow: 'hidden' }}
+                          >
+                            <div className="border-t border-slate-100/90 px-5 pb-6 sm:px-7 sm:pb-8">
+                              <p className="pt-5 font-sans text-[15px] leading-relaxed tracking-tight text-slate-600 sm:text-[1.0625rem] sm:leading-[1.65] lg:text-[1.125rem]">
+                                {item.answer}
+                              </p>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </ScrollReveal>
                 );

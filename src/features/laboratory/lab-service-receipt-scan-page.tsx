@@ -527,7 +527,7 @@ export function LabServiceReceiptScanPage() {
                 <p className="mt-1 text-xs text-sky-800">Invoice ID: {linkedInvoice.invoiceId ?? 'Already linked before this action'}</p>
                 {linkedInvoice.invoiceId ? (
                   <Link
-                    className="mt-3 inline-flex items-center justify-center rounded-none border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-widest text-sky-700 transition hover:bg-sky-100"
+                    className="mt-3 inline-flex items-center justify-center rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-700 transition hover:bg-sky-50"
                     to={`/app/billing?invoiceId=${encodeURIComponent(linkedInvoice.invoiceId)}`}
                   >
                     View in billing
