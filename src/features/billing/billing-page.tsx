@@ -331,6 +331,61 @@ export function BillingPage() {
   }, [invoices, searchParams, setSearchParams]);
 
   useEffect(() => {
+    const action = (searchParams.get('action') ?? '').trim();
+    if (action !== 'create') {
+      return;
+    }
+
+    const patientIdFromQuery = (searchParams.get('patientId') ?? '').trim();
+    const appointmentIdFromQuery = (searchParams.get('appointmentId') ?? '').trim();
+    const bookingIdFromQuery = (searchParams.get('bookingId') ?? '').trim();
+    const linkedBooking = bookings.find((booking) => booking.id === bookingIdFromQuery) ?? null;
+    const linkedAppointment = appointments.find((appointment) => appointment.id === appointmentIdFromQuery) ?? null;
+
+    const resolvedPatientId =
+      patientIdFromQuery ||
+      linkedAppointment?.patientId ||
+      linkedBooking?.patientId ||
+      '';
+    const resolvedAppointmentId =
+      appointmentIdFromQuery ||
+      linkedBooking?.appointmentId ||
+      '';
+    const resolvedBookingId = bookingIdFromQuery || '';
+    const resolvedPatient = patients.find((patient) => patient.id === resolvedPatientId) ?? null;
+
+    form.reset({
+      patientId: resolvedPatientId,
+      bookingId: resolvedBookingId,
+      appointmentId: resolvedAppointmentId,
+      paymentStatus: 'unpaid',
+      paymentType: 'cash',
+      referenceNumber: '',
+      items: [
+        {
+          description: 'General Consultation',
+          category: 'consultation',
+          quantity: 1,
+          unitPrice: 800,
+        },
+      ],
+    });
+    setInvoicePatientSearch(
+      resolvedPatient ? `${resolvedPatient.firstName} ${resolvedPatient.lastName}` : '',
+    );
+    setIsInvoicePatientDropdownOpen(false);
+    setEditingInvoiceId(null);
+    setIsInvoiceModalOpen(true);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('action');
+    nextParams.delete('patientId');
+    nextParams.delete('appointmentId');
+    nextParams.delete('bookingId');
+    setSearchParams(nextParams, { replace: true });
+  }, [appointments, bookings, form, patients, searchParams, setSearchParams]);
+
+  useEffect(() => {
     if (payServiceForm.getValues('patientId') || patients.length === 0) {
       return;
     }

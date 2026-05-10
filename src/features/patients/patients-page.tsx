@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ClipboardList, Pencil, QrCode, Search, Trash2, UserRoundPlus, Users, X } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 
 import { FormField } from '../../components/forms/form-field';
@@ -117,6 +117,8 @@ function getPatientVisitBadge(patient: Patient) {
 }
 
 export function PatientsPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: patients = [] } = usePatients();
   const { can, profile } = useAuth();
   const createPatient = useCreatePatient();
@@ -127,6 +129,7 @@ export function PatientsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
   const [walkInStepIndex, setWalkInStepIndex] = useState(0);
+  const [walkInNextStep, setWalkInNextStep] = useState<'none' | 'appointment'>('none');
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [feedbackModal, setFeedbackModal] = useState<FeedbackModalState>({
     open: false,
@@ -169,6 +172,26 @@ export function PatientsPage() {
       ),
     [deferredSearch, patients],
   );
+
+  useEffect(() => {
+    const action = (searchParams.get('action') ?? '').trim();
+    if (action !== 'walk-in-intake') {
+      return;
+    }
+
+    const next = (searchParams.get('next') ?? '').trim();
+    setWalkInNextStep(next === 'appointment' ? 'appointment' : 'none');
+    form.reset();
+    setEditingPatient(null);
+    setWalkInStepIndex(0);
+    setIsWalkInModalOpen(true);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('action');
+    nextParams.delete('next');
+    setSearchParams(nextParams, { replace: true });
+  }, [form, searchParams, setSearchParams]);
+
   const totalPages = Math.max(1, Math.ceil(filteredPatients.length / PATIENTS_PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const pageStart = (safeCurrentPage - 1) * PATIENTS_PAGE_SIZE;
@@ -199,6 +222,7 @@ export function PatientsPage() {
     form.reset();
     setEditingPatient(null);
     setWalkInStepIndex(0);
+    setWalkInNextStep('none');
     setIsWalkInModalOpen(true);
   };
 
@@ -232,6 +256,7 @@ export function PatientsPage() {
   const closeWalkInModal = () => {
     setWalkInStepIndex(0);
     setEditingPatient(null);
+    setWalkInNextStep('none');
     setIsWalkInModalOpen(false);
   };
 
@@ -303,7 +328,7 @@ export function PatientsPage() {
           ? new Date().toISOString() 
           : null;
 
-        await createPatient.mutateAsync({
+        const createdPatient = await createPatient.mutateAsync({
           ...values,
           userId: null,
           qrCode: '',
@@ -317,11 +342,18 @@ export function PatientsPage() {
           message: 'The patient record was created successfully and is now available in the registry.',
           variant: 'success',
         });
+
+        if (walkInNextStep === 'appointment') {
+          navigate(
+            `/app/appointments?action=create&patientId=${createdPatient.id}&source=internal`,
+          );
+        }
       }
 
       form.reset();
       setWalkInStepIndex(0);
       setEditingPatient(null);
+      setWalkInNextStep('none');
       setIsWalkInModalOpen(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Something went wrong while creating the patient record.';

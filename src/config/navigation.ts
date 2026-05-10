@@ -1,4 +1,5 @@
 import {
+  Activity,
   ScanLine,
   ClipboardList,
   CalendarDays,
@@ -65,6 +66,22 @@ export const appNavigation: NavItem[] = [
     to: "/app/appointments",
     icon: CalendarDays,
     permission: "appointments.view",
+    moduleKey: "booking_appointments",
+  },
+  {
+    label: "Front Desk Workflow",
+    to: "/app/front-desk-workflow",
+    icon: Activity,
+    permission: "appointments.view",
+    roles: ["owner_admin", "front_desk_cashier"],
+    moduleKey: "booking_appointments",
+  },
+  {
+    label: "Doctor Workflow",
+    to: "/app/doctor-workflow",
+    icon: Stethoscope,
+    permission: "consultations.manage",
+    roles: ["owner_admin", "doctor"],
     moduleKey: "booking_appointments",
   },
   {
