@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -143,6 +143,7 @@ function StatusPill({ status }: { status: string }) {
 }
 
 export function AppointmentsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: clinicSettings } = useClinicSettingsData();
   const { data: appointments = [] } = useAppointments();
   const { data: patients = [] } = usePatients();
@@ -484,16 +485,26 @@ export function AppointmentsPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isAppointmentModalOpen]);
 
-  const openCreateModal = () => {
+  const openCreateModal = ({
+    patientId,
+    source,
+  }: {
+    patientId?: string;
+    source?: Appointment["source"];
+  } = {}) => {
     const defaultScheduledAt = getDefaultScheduledAtValue();
+    const selectedPatientId =
+      patientId && patients.some((patient) => patient.id === patientId)
+        ? patientId
+        : (patients[0]?.id ?? "");
     form.reset({
-      patientId: patients[0]?.id ?? "",
+      patientId: selectedPatientId,
       doctorId: doctors[0]?.id ?? "",
       specialtyId: defaultSpecialtyId,
       serviceId: services[0]?.id ?? "",
       scheduledAt: defaultScheduledAt,
       status: "scheduled",
-      source: "internal",
+      source: source ?? "internal",
       visitType: "in_person",
       reason: "",
       notes: "",
@@ -505,6 +516,29 @@ export function AppointmentsPage() {
     setEditingAppointment(null);
     setIsAppointmentModalOpen(true);
   };
+
+  useEffect(() => {
+    const action = (searchParams.get("action") ?? "").trim();
+    if (action !== "create") {
+      return;
+    }
+
+    const patientIdFromQuery = (searchParams.get("patientId") ?? "").trim();
+    const sourceFromQuery = (searchParams.get("source") ?? "").trim();
+    const normalizedSource: Appointment["source"] =
+      sourceFromQuery === "portal" ? "portal" : "internal";
+
+    openCreateModal({
+      patientId: patientIdFromQuery || undefined,
+      source: normalizedSource,
+    });
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("action");
+    nextParams.delete("patientId");
+    nextParams.delete("source");
+    setSearchParams(nextParams, { replace: true });
+  }, [patients, doctors, services, searchParams, setSearchParams]);
 
   const openEditModal = (appointment: Appointment) => {
     const scheduledAt = toPhilippineDateTimeLocalValue(appointment.scheduledAt);
@@ -699,7 +733,7 @@ export function AppointmentsPage() {
               </Badge>
               <Button
                 className="rounded-none bg-orange-600 px-4 py-2.5 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700"
-                onClick={openCreateModal}
+                onClick={() => openCreateModal()}
               >
                 <Plus className="mr-2 size-4" />
                 New appointment

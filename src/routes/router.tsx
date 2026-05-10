@@ -46,6 +46,8 @@ import { TeleconsultRoomPage } from "../features/teleconsult/teleconsult-room-pa
 import { ModuleGate, PermissionGate, ProtectedRoute } from "./guards";
 import { SystemAvailabilityGate } from "./system-availability-gate";
 import { InventoryLogsPage } from "../features/inventory/inventory-logs-page";
+import { DoctorWorkflowPage } from "../features/workflows/doctor-workflow-page";
+import { FrontDeskWorkflowPage } from "../features/workflows/front-desk-workflow-page";
 
 export const router = createBrowserRouter([
   {
@@ -243,6 +245,31 @@ export const router = createBrowserRouter([
                     element: <PermissionGate permission="appointments.view" />,
                     children: [
                       { path: "appointments", element: <AppointmentsPage /> },
+                      {
+                        path: "front-desk-workflow",
+                        element: (
+                          <ProtectedRoute
+                            allowedRoles={[
+                              "owner_admin",
+                              "front_desk_cashier",
+                            ]}
+                          />
+                        ),
+                        children: [
+                          { index: true, element: <FrontDeskWorkflowPage /> },
+                        ],
+                      },
+                      {
+                        path: "doctor-workflow",
+                        element: (
+                          <ProtectedRoute
+                            allowedRoles={["owner_admin", "doctor"]}
+                          />
+                        ),
+                        children: [
+                          { index: true, element: <DoctorWorkflowPage /> },
+                        ],
+                      },
                       {
                         path: "patient-bookings",
                         element: <PatientBookingPageList />,
