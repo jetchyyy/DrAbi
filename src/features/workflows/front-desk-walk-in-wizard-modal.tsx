@@ -107,7 +107,7 @@ const walkInWizardSchema = z.object({
 
 type WalkInWizardFormValues = z.infer<typeof walkInWizardSchema>;
 
-type WalkInWizardStage = "patient" | "appointment" | "billing" | "complete";
+export type WalkInWizardStage = "patient" | "appointment" | "billing" | "complete";
 
 type TimeSession = "morning" | "afternoon" | "evening";
 
@@ -161,7 +161,15 @@ function getPhilippineTimeKeyFromIso(value: string) {
   return `${hour}:${minute}`;
 }
 
-export function WalkInWizardModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function WalkInWizardModal({
+  open,
+  onClose,
+  initialStage = "patient",
+}: {
+  open: boolean;
+  onClose: () => void;
+  initialStage?: WalkInWizardStage;
+}) {
   const { profile } = useAuth();
   const { data: appointments = [] } = useAppointments();
   const { data: doctors = [] } = useDoctorDirectory();
@@ -174,7 +182,7 @@ export function WalkInWizardModal({ open, onClose }: { open: boolean; onClose: (
   const createAppointment = useCreateAppointment();
   const createInvoice = useCreateInvoice();
   const updateAppointment = useUpdateAppointment();
-  const [stage, setStage] = useState<WalkInWizardStage>("patient");
+  const [stage, setStage] = useState<WalkInWizardStage>(initialStage);
   const [selectedTimeSession, setSelectedTimeSession] = useState<TimeSession | null>(null);
   const [existingPatientSearch, setExistingPatientSearch] = useState("");
   const [isExistingPatientDropdownOpen, setIsExistingPatientDropdownOpen] = useState(false);
@@ -453,13 +461,13 @@ export function WalkInWizardModal({ open, onClose }: { open: boolean; onClose: (
         ],
       },
     });
-    setStage("patient");
+    setStage(initialStage);
     setExistingPatientSearch("");
     setIsExistingPatientDropdownOpen(false);
     setSelectedExistingPatientId(null);
     setCreatedPatient(null);
     setCreatedAppointment(null);
-  }, [defaultDoctor?.id, defaultDoctor?.specialtyId, defaultService?.id, defaultService?.specialtyId, form, open]);
+  }, [defaultDoctor?.id, defaultDoctor?.specialtyId, defaultService?.id, defaultService?.specialtyId, form, initialStage, open]);
 
   if (!open) {
     return null;
@@ -708,14 +716,23 @@ export function WalkInWizardModal({ open, onClose }: { open: boolean; onClose: (
         </div>
 
         <div className="border-b border-slate-100 bg-slate-50 px-6 py-4">
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {stepLabels.map((label, index) => {
               const active = index <= stepIndex;
-              return <div className="flex min-w-0 flex-1 items-center gap-2" key={label}><div className={`h-2 flex-1 ${active ? "bg-orange-600" : "bg-slate-200"}`} /></div>;
+
+              return (
+                <div className="min-w-0" key={label}>
+                  <div className={`h-2 w-full ${active ? "bg-orange-600" : "bg-slate-200"}`} />
+                  <p
+                    className={`mt-2 text-center text-[10px] font-extrabold uppercase tracking-[0.14em] ${
+                      active ? "text-orange-700" : "text-slate-400"
+                    }`}
+                  >
+                    {label}
+                  </p>
+                </div>
+              );
             })}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
-            {stepLabels.map((label, index) => (<span className={index <= stepIndex ? "text-orange-700" : "text-slate-400"} key={label}>{label}</span>))}
           </div>
         </div>
 
@@ -817,7 +834,20 @@ export function WalkInWizardModal({ open, onClose }: { open: boolean; onClose: (
               </div>
               <FormField error={form.formState.errors.patient?.address?.message} label="Address"><Input disabled={isUsingExistingPatient} {...form.register("patient.address")} /></FormField>
               <div className="grid gap-4 md:grid-cols-2">
-                <FormField error={form.formState.errors.patient?.bloodType?.message} label="Blood type"><Input disabled={isUsingExistingPatient} placeholder="e.g. O+" {...form.register("patient.bloodType")} /></FormField>
+                <FormField error={form.formState.errors.patient?.bloodType?.message} label="Blood type">
+                  <Select disabled={isUsingExistingPatient} {...form.register("patient.bloodType")}>
+                    <option value="">Select blood type</option>
+                    <option value="N/A">N/A</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </Select>
+                </FormField>
                 <FormField error={form.formState.errors.patient?.allergies?.message} label="Allergies"><Input disabled={isUsingExistingPatient} {...form.register("patient.allergies")} /></FormField>
               </div>
               <FormField error={form.formState.errors.patient?.medicalHistory?.message} label="Medical history"><Textarea disabled={isUsingExistingPatient} {...form.register("patient.medicalHistory")} /></FormField>

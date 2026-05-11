@@ -1,8 +1,9 @@
-import { AlertCircle, Camera, CheckCircle2, CircleDashed, QrCode, Search, ShieldCheck, StopCircle } from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle2, CircleDashed, QrCode, Search, ShieldCheck, StopCircle, UserRoundSearch } from 'lucide-react';
 import jsQR from 'jsqr';
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
+import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardTitle } from '../../components/ui/card';
 import { FeedbackModal } from '../../components/ui/feedback-modal';
@@ -11,8 +12,10 @@ import { queryClient } from '../../app/query-client';
 import { queryKeys } from '../../lib/query-keys';
 import { getPatientByQrCodeLiveOrDemo } from '../../lib/supabase-clinic';
 import { updatePatientLiveOrDemo } from '../../lib/supabase-clinic';
-import type { Patient } from '../../types/domain';
+import type { Invoice, Patient } from '../../types/domain';
 import { validatePatientConsultationAccess } from '../consultation/services/consultation-access-service';
+import { useInvoices } from '../billing/api/billing-mutations';
+import { usePatients } from './hooks/use-patients';
 import { extractPatientQrCode } from './patient-qr';
 
 function readQrFromVideoFrame(video: HTMLVideoElement, canvas: HTMLCanvasElement) {
@@ -36,6 +39,87 @@ function readQrFromVideoFrame(video: HTMLVideoElement, canvas: HTMLCanvasElement
   return decoded?.data?.trim() ?? '';
 }
 
+function getPatientPaymentState(patientId: string, invoices: Invoice[]): 'paid' | 'pending' | 'none' {
+  const patientInvoices = invoices
+    .filter((inv) => inv.patientId === patientId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  if (patientInvoices.length === 0) {
+    return 'none';
+  }
+
+  const latest = patientInvoices[0];
+  if (latest.paymentStatus === 'unpaid' || latest.paymentStatus === 'partial') {
+    return 'pending';
+  }
+
+  return 'paid';
+}
+
+function getPatientAge(birthDate: string) {
+  const birth = new Date(birthDate);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+function PatientSearchResultRow({
+  patient,
+  paymentState,
+}: {
+  patient: Patient;
+  paymentState: 'paid' | 'pending' | 'none';
+}) {
+  const isPending = paymentState === 'pending';
+  const age = getPatientAge(patient.birthDate);
+  const fullName = `${patient.firstName} ${patient.lastName}`;
+
+  const paymentBadge = isPending
+    ? <Badge intent="warning">Pending</Badge>
+    : paymentState === 'paid'
+      ? <Badge intent="success">Paid</Badge>
+      : <Badge intent="neutral">No invoice</Badge>;
+
+  const content = (
+    <div className="flex items-center justify-between gap-4 px-5 py-4">
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-bold text-slate-950">{fullName}</p>
+        <p className="mt-0.5 text-xs text-slate-500">
+          {patient.sex.charAt(0).toUpperCase() + patient.sex.slice(1)}, {age} yrs
+          {patient.mobileNumber ? ` · ${patient.mobileNumber}` : ''}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-3">
+        {paymentBadge}
+        {isPending ? null : (
+          <span className="text-xs font-semibold text-orange-600">View chart →</span>
+        )}
+      </div>
+    </div>
+  );
+
+  if (isPending) {
+    return (
+      <div className="cursor-not-allowed border-b border-slate-100 opacity-60 last:border-b-0">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      className="block border-b border-slate-100 transition hover:bg-orange-50 last:border-b-0"
+      to={`/app/patients/${patient.id}`}
+    >
+      {content}
+    </Link>
+  );
+}
+
 function getLocalCalendarKey(value: string | null | undefined) {
   if (!value) {
     return null;
@@ -53,6 +137,7 @@ export function PatientQrLookupPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialQuery = searchParams.get('qr') ?? '';
+  const [mode, setMode] = useState<'qr' | 'search'>('qr');
   const [value, setValue] = useState(initialQuery);
   const [error, setError] = useState('');
   const [cameraState, setCameraState] = useState<'idle' | 'requesting' | 'active' | 'unsupported' | 'denied'>('idle');
@@ -67,7 +152,21 @@ export function PatientQrLookupPage() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // Patient search state
+  const [patientSearch, setPatientSearch] = useState('');
+  const deferredPatientSearch = useDeferredValue(patientSearch);
+  const { data: allPatients = [] } = usePatients();
+  const { data: invoices = [] } = useInvoices();
+
   const normalizedCode = useMemo(() => extractPatientQrCode(value), [value]);
+  const filteredPatients = useMemo(() => {
+    if (!deferredPatientSearch.trim()) return [];
+    const q = deferredPatientSearch.toLowerCase();
+    return allPatients.filter((p) =>
+      `${p.firstName} ${p.lastName}`.toLowerCase().includes(q) ||
+      p.mobileNumber.includes(q),
+    );
+  }, [deferredPatientSearch, allPatients]);
   const cameraStatusLabel = useMemo(() => {
     if (cameraState === 'active') {
       return 'Camera active';
@@ -304,9 +403,112 @@ export function PatientQrLookupPage() {
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">QR Lookup</p>
         <h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">Scan patient QR for consultation entry</h1>
         <p className="mt-2 max-w-2xl text-sm text-slate-500">
-          Allow camera access, scan the patient QR, and jump straight into the patient chart to record consultation details.
+          Allow camera access, scan the patient QR, or search by name to view the patient chart.
         </p>
       </div>
+
+      {/* Mode tabs */}
+      <div className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 w-fit">
+        <button
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+            mode === 'qr'
+              ? 'bg-white text-slate-950 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+          onClick={() => setMode('qr')}
+          type="button"
+        >
+          <QrCode className="size-4" />
+          Scan QR
+        </button>
+        <button
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+            mode === 'search'
+              ? 'bg-white text-slate-950 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+          onClick={() => setMode('search')}
+          type="button"
+        >
+          <UserRoundSearch className="size-4" />
+          Search patients
+        </button>
+      </div>
+
+      {mode === 'search' ? (
+        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-4">
+            <Card>
+              <CardTitle>Search patients by name</CardTitle>
+              <div className="mt-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
+                <Search className="size-4 shrink-0 text-slate-400" />
+                <input
+                  autoFocus
+                  className="flex-1 bg-transparent text-sm text-slate-950 placeholder:text-slate-400 focus:outline-none"
+                  onChange={(e) => setPatientSearch(e.target.value)}
+                  placeholder="Type patient name or mobile number…"
+                  type="text"
+                  value={patientSearch}
+                />
+              </div>
+
+              {patientSearch.trim() && (
+                <div className="mt-4">
+                  {filteredPatients.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 px-5 py-8 text-center text-sm text-slate-500">
+                      No patients found matching &ldquo;{patientSearch}&rdquo;
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      <div className="border-b border-slate-100 bg-slate-50 px-5 py-2.5">
+                        <p className="text-[11px] font-extrabold uppercase tracking-widest text-slate-400">
+                          {filteredPatients.length} result{filteredPatients.length === 1 ? '' : 's'}
+                        </p>
+                      </div>
+                      {filteredPatients.map((patient) => {
+                        const paymentState = getPatientPaymentState(patient.id, invoices);
+                        return (
+                          <PatientSearchResultRow
+                            key={patient.id}
+                            patient={patient}
+                            paymentState={paymentState}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!patientSearch.trim() && (
+                <p className="mt-3 text-xs text-slate-400">Start typing to find patients.</p>
+              )}
+            </Card>
+          </div>
+
+          {/* Info panel */}
+          <div className="flex flex-col gap-4">
+            <Card className="bg-slate-950 text-white">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Patient search</p>
+              <CardTitle className="mt-1 text-white">Payment status guide</CardTitle>
+              <div className="mt-4 space-y-3 text-sm text-slate-400">
+                <div className="flex items-start gap-3 rounded-xl bg-slate-900/60 px-4 py-3">
+                  <span className="mt-0.5 inline-block size-2.5 shrink-0 rounded-full bg-emerald-400" />
+                  <p><span className="font-semibold text-emerald-300">Paid</span> — Patient has a cleared invoice. Click to open their chart.</p>
+                </div>
+                <div className="flex items-start gap-3 rounded-xl bg-slate-900/60 px-4 py-3">
+                  <span className="mt-0.5 inline-block size-2.5 shrink-0 rounded-full bg-amber-400" />
+                  <p><span className="font-semibold text-amber-300">Pending</span> — Outstanding balance. Row is disabled; direct to front desk for payment clearance.</p>
+                </div>
+                <div className="flex items-start gap-3 rounded-xl bg-slate-900/60 px-4 py-3">
+                  <span className="mt-0.5 inline-block size-2.5 shrink-0 rounded-full bg-slate-500" />
+                  <p><span className="font-semibold text-slate-300">No invoice</span> — No billing record found. Chart is still accessible.</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      ) : (
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Card>
@@ -492,6 +694,8 @@ export function PatientQrLookupPage() {
           </div>
         </div>
       </div>
+
+      )}
     </div>
   );
 }
