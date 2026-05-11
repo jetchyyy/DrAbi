@@ -431,6 +431,8 @@ export interface Database {
           service_id: string | null;
           booking_id: string | null;
           scheduled_at: string;
+          queue_number: string | null;
+          estimated_end: string | null;
           status: string;
           source: string;
           visit_type: string;
@@ -447,8 +449,14 @@ export interface Database {
           updated_at: string;
           deleted_at: string | null;
         };
-        Insert: Partial<Database["public"]["Tables"]["appointments"]["Row"]>;
-        Update: Partial<Database["public"]["Tables"]["appointments"]["Row"]>;
+        Insert: Partial<Database["public"]["Tables"]["appointments"]["Row"]> & {
+          queue_number?: string | null;
+          estimated_end?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["appointments"]["Row"]> & {
+          queue_number?: string | null;
+          estimated_end?: string | null;
+        };
       };
       specialist_schedules: {
         Row: {
@@ -658,8 +666,12 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["medical_certificates"]["Row"]>;
-        Update: Partial<Database["public"]["Tables"]["medical_certificates"]["Row"]>;
+        Insert: Partial<
+          Database["public"]["Tables"]["medical_certificates"]["Row"]
+        >;
+        Update: Partial<
+          Database["public"]["Tables"]["medical_certificates"]["Row"]
+        >;
       };
       lab_request_documents: {
         Row: {
@@ -674,8 +686,12 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["lab_request_documents"]["Row"]>;
-        Update: Partial<Database["public"]["Tables"]["lab_request_documents"]["Row"]>;
+        Insert: Partial<
+          Database["public"]["Tables"]["lab_request_documents"]["Row"]
+        >;
+        Update: Partial<
+          Database["public"]["Tables"]["lab_request_documents"]["Row"]
+        >;
       };
       inventory_categories: {
         Row: {

@@ -69,6 +69,13 @@ export const appNavigation: NavItem[] = [
     moduleKey: "booking_appointments",
   },
   {
+    label: "Display Queue",
+    to: "/app/appointments-queue",
+    icon: CalendarDays,
+    permission: "appointments.view",
+    moduleKey: "booking_appointments",
+  },
+  {
     label: "Front Desk Workflow",
     to: "/app/front-desk-workflow",
     icon: Activity,

@@ -224,6 +224,8 @@ export interface Appointment extends BaseRecord {
   visitType: VisitType;
   reason: string;
   notes: string;
+  queue_number?: string | null;
+  estimated_end?: string | null;
   teleconsultationPlatform?: string | null;
   teleconsultationUrl?: string | null;
   teleconsultationAccessInstructions?: string | null;

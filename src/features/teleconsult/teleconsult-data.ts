@@ -78,6 +78,29 @@ function getEffectiveTeleconsultationRoomName(
   return roomName?.trim() || `odc-teleconsult-${appointmentId}`;
 }
 
+function normalizeTimeOnlyValue(value?: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  if (/^\d{2}:\d{2}(:\d{2})?$/.test(value)) {
+    return value.length === 5 ? `${value}:00` : value;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Manila",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(parsed);
+}
+
 function normalizeAppointmentInput(
   input: AppointmentInput,
 ): NormalizedAppointmentInput {
@@ -116,6 +139,8 @@ function mapAppointmentRow(
     specialtyId: row.specialty_id ?? "",
     serviceId: row.service_id ?? "",
     scheduledAt: row.scheduled_at,
+    queue_number: (row as any).queue_number ?? null,
+    estimated_end: (row as any).estimated_end ?? null,
     status:
       row.status === "scheduled" ||
       row.status === "confirmed" ||
@@ -251,6 +276,8 @@ export async function createAppointmentLiveOrDemo(input: AppointmentInput) {
     specialty_id: normalized.specialtyId || null,
     service_id: normalized.serviceId || null,
     scheduled_at: normalized.scheduledAt,
+    queue_number: (normalized as any).queue_number ?? null,
+    estimated_end: normalizeTimeOnlyValue((normalized as any).estimated_end),
     status: normalized.status,
     source: normalized.source,
     visit_type: normalized.visitType,
@@ -294,6 +321,8 @@ export async function updateAppointmentLiveOrDemo(
     specialty_id: normalized.specialtyId || null,
     service_id: normalized.serviceId || null,
     scheduled_at: normalized.scheduledAt,
+    queue_number: (normalized as any).queue_number ?? null,
+    estimated_end: normalizeTimeOnlyValue((normalized as any).estimated_end),
     status: normalized.status,
     source: normalized.source,
     visit_type: normalized.visitType,

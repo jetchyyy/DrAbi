@@ -1140,7 +1140,11 @@ export function updatePrescriptionRecord(
   prescriptionId: string,
   input: Pick<
     Prescription,
-    "prescriptionName" | "brandName" | "dosage" | "instruction" | "numberOfMedications"
+    | "prescriptionName"
+    | "brandName"
+    | "dosage"
+    | "instruction"
+    | "numberOfMedications"
   >,
 ) {
   const timestamp = new Date().toISOString();
@@ -1198,19 +1202,19 @@ export function createMedicalCertificate(
 }
 
 export function createLabRequestDocument(
-  input: Omit<LabRequestDocument, 'id' | 'createdAt' | 'updatedAt'>,
+  input: Omit<LabRequestDocument, "id" | "createdAt" | "updatedAt">,
 ) {
   const timestamp = new Date().toISOString();
   return updateDatabase((draft) => {
     draft.labRequestDocuments = draft.labRequestDocuments ?? [];
     draft.labRequestDocuments.unshift({
       ...input,
-      id: generateId('labreq'),
+      id: generateId("labreq"),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
     draft.auditLogs.unshift(
-      createAuditLog(input.patientId, 'create', 'lab_request_document'),
+      createAuditLog(input.patientId, "create", "lab_request_document"),
     );
   }).labRequestDocuments[0];
 }
@@ -1608,27 +1612,29 @@ export function upsertLatestPaymentRecord(
   input: Omit<Payment, "id" | "createdAt" | "updatedAt">,
 ) {
   const timestamp = new Date().toISOString();
-  return updateDatabase((draft) => {
-    const existingPayment = draft.payments.find(
-      (payment) => payment.invoiceId === input.invoiceId,
-    );
+  return (
+    updateDatabase((draft) => {
+      const existingPayment = draft.payments.find(
+        (payment) => payment.invoiceId === input.invoiceId,
+      );
 
-    if (existingPayment) {
-      existingPayment.amount = input.amount;
-      existingPayment.method = input.method;
-      existingPayment.referenceNumber = input.referenceNumber;
-      existingPayment.receivedBy = input.receivedBy;
-      existingPayment.updatedAt = timestamp;
-      return;
-    }
+      if (existingPayment) {
+        existingPayment.amount = input.amount;
+        existingPayment.method = input.method;
+        existingPayment.referenceNumber = input.referenceNumber;
+        existingPayment.receivedBy = input.receivedBy;
+        existingPayment.updatedAt = timestamp;
+        return;
+      }
 
-    draft.payments.unshift({
-      ...input,
-      id: generateId("pay"),
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    } as Payment);
-  }).payments.find((payment) => payment.invoiceId === input.invoiceId) ?? null;
+      draft.payments.unshift({
+        ...input,
+        id: generateId("pay"),
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      } as Payment);
+    }).payments.find((payment) => payment.invoiceId === input.invoiceId) ?? null
+  );
 }
 
 export function deleteInvoiceRecord(invoiceId: string) {

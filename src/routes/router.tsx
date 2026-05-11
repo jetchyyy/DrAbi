@@ -48,6 +48,7 @@ import { SystemAvailabilityGate } from "./system-availability-gate";
 import { InventoryLogsPage } from "../features/inventory/inventory-logs-page";
 import { DoctorWorkflowPage } from "../features/workflows/doctor-workflow-page";
 import { FrontDeskWorkflowPage } from "../features/workflows/front-desk-workflow-page";
+import { AppointmentsQueueDisplay } from "../features/appointments/components/appoinments-que-display.tsx";
 
 export const router = createBrowserRouter([
   {
@@ -249,10 +250,7 @@ export const router = createBrowserRouter([
                         path: "front-desk-workflow",
                         element: (
                           <ProtectedRoute
-                            allowedRoles={[
-                              "owner_admin",
-                              "front_desk_cashier",
-                            ]}
+                            allowedRoles={["owner_admin", "front_desk_cashier"]}
                           />
                         ),
                         children: [
@@ -273,6 +271,10 @@ export const router = createBrowserRouter([
                       {
                         path: "patient-bookings",
                         element: <PatientBookingPageList />,
+                      },
+                      {
+                        path: "appointments-queue",
+                        element: <AppointmentsQueueDisplay />,
                       },
                       {
                         path: "specialist-list",

@@ -13,8 +13,8 @@ export const DOCTOR_AVAILABILITY_DAY_OPTIONS = [
 
 export const DOCTOR_SLOT_MINUTE_OPTIONS = [15, 30, 60] as const;
 
-const DEFAULT_START_MINUTES = 6 * 60;
-const DEFAULT_END_MINUTES = 21 * 60;
+const DEFAULT_START_MINUTES = 10 * 60;
+const DEFAULT_END_MINUTES = 22 * 60;
 
 export function timeToMinutes(value: string) {
   const [hours, minutes] = value.split(":").map(Number);

@@ -1862,17 +1862,15 @@ export async function updatePrescriptionLiveOrDemo(input: {
   const client = requireSupabase();
   const { data, error } = await client
     .from("prescriptions")
-    .update(
-      {
-        medication: input.prescriptionName,
-        dosage: input.dosage,
-        instructions: input.instruction,
-        prescription_name: input.prescriptionName,
-        brand_name: input.brandName ?? null,
-        instruction: input.instruction,
-        number_of_medications: input.numberOfMedications ?? null,
-      } as never,
-    )
+    .update({
+      medication: input.prescriptionName,
+      dosage: input.dosage,
+      instructions: input.instruction,
+      prescription_name: input.prescriptionName,
+      brand_name: input.brandName ?? null,
+      instruction: input.instruction,
+      number_of_medications: input.numberOfMedications ?? null,
+    } as never)
     .eq("id", input.prescriptionId)
     .select("*")
     .single();
@@ -3340,15 +3338,15 @@ export async function listBlockedBookingSlotsLiveOrDemo(input: {
   }
 
   // Query appointments table for blocked times (using PH timezone UTC+8)
+  // Query appointments table for blocked times (using PH timezone UTC+8)
   let appointmentTimes: string[] = [];
   {
-    // ✅ Convert PH timezone range → UTC ISO strings (PostgREST handles Z format reliably)
-    const startUTC = new Date(`${input.date}T00:00:00+08:00`).toISOString(); // "2026-05-08T16:00:00.000Z"
-    const endUTC = new Date(`${input.date}T23:59:59+08:00`).toISOString(); // "2026-05-09T15:59:59.000Z"
+    const startUTC = new Date(`${input.date}T00:00:00+08:00`).toISOString();
+    const endUTC = new Date(`${input.date}T23:59:59+08:00`).toISOString();
 
     const apptBase = (client as any)
       .from("appointments")
-      .select("scheduled_at")
+      .select("scheduled_at, estimated_end") // ← add estimated_end
       .gte("scheduled_at", startUTC)
       .lt("scheduled_at", endUTC)
       .neq("status", "cancelled");
@@ -3362,14 +3360,39 @@ export async function listBlockedBookingSlotsLiveOrDemo(input: {
     const { data: apptData, error: apptError } = await apptQuery;
     if (apptError) throw apptError;
 
-    appointmentTimes = ((apptData ?? []) as Array<{ scheduled_at: string }>)
-      .map((appt) => {
+    appointmentTimes = (
+      (apptData ?? []) as Array<{
+        scheduled_at: string;
+        estimated_end: string | null;
+      }>
+    )
+      .flatMap((appt) => {
         const utcDate = new Date(appt.scheduled_at);
-        if (isNaN(utcDate.getTime())) return "";
-        const phDate = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
-        const hh = String(phDate.getUTCHours()).padStart(2, "0");
-        const mm = String(phDate.getUTCMinutes()).padStart(2, "0");
-        return `${hh}:${mm}`;
+        if (isNaN(utcDate.getTime())) return [];
+
+        const phStart = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+        const startMinutes =
+          phStart.getUTCHours() * 60 + phStart.getUTCMinutes();
+
+        // If no estimated_end, just block the scheduled_at slot
+        if (!appt.estimated_end) {
+          const hh = String(phStart.getUTCHours()).padStart(2, "0");
+          const mm = String(phStart.getUTCMinutes()).padStart(2, "0");
+          return [`${hh}:${mm}`];
+        }
+
+        // estimated_end is a plain TIME string e.g. "16:30:00"
+        const [endHh, endMm] = appt.estimated_end.split(":").map(Number);
+        const endMinutes = endHh * 60 + endMm;
+
+        // Generate every 30-min slot from scheduled_at up to (not including) estimated_end
+        const slots: string[] = [];
+        for (let m = startMinutes; m <= endMinutes; m += 30) {
+          const hh = String(Math.floor(m / 60)).padStart(2, "0");
+          const mm = String(m % 60).padStart(2, "0");
+          slots.push(`${hh}:${mm}`);
+        }
+        return slots;
       })
       .filter(Boolean);
   }
@@ -3429,7 +3452,9 @@ export async function getBookingByReceiptCodeLiveOrDemo(receiptCode: string) {
 
     const database = getDatabase();
     const patient = database.patients.find((p) => p.id === booking.patientId);
-    const patientName = patient ? `${patient.firstName} ${patient.lastName}` : null;
+    const patientName = patient
+      ? `${patient.firstName} ${patient.lastName}`
+      : null;
     return {
       id: booking.id,
       patientId: booking.patientId,
@@ -3480,7 +3505,9 @@ export async function getBookingByReceiptCodeLiveOrDemo(receiptCode: string) {
   const doctorMap = new Map(
     doctors.map((doctor) => [doctor.id, doctor.fullName]),
   );
-  const patientName = patient ? `${patient.firstName} ${patient.lastName}` : null;
+  const patientName = patient
+    ? `${patient.firstName} ${patient.lastName}`
+    : null;
 
   return buildBookingListItemFromRow(bookingRow, {
     serviceMap,
@@ -3564,7 +3591,8 @@ export async function searchPendingBookingsByPatientNameLiveOrDemo(
     );
   }
 
-  const { data: patientRows, error: patientError } = await patientsQuery.limit(20);
+  const { data: patientRows, error: patientError } =
+    await patientsQuery.limit(20);
   if (patientError) {
     throw patientError;
   }
@@ -3573,14 +3601,17 @@ export async function searchPendingBookingsByPatientNameLiveOrDemo(
     return [];
   }
 
-  const patientIds = (patientRows as Array<{ id: string; first_name: string; last_name: string }>).map(
-    (p) => p.id,
-  );
+  const patientIds = (
+    patientRows as Array<{ id: string; first_name: string; last_name: string }>
+  ).map((p) => p.id);
   const patientNameById = new Map(
-    (patientRows as Array<{ id: string; first_name: string; last_name: string }>).map((p) => [
-      p.id,
-      `${p.first_name} ${p.last_name}`,
-    ]),
+    (
+      patientRows as Array<{
+        id: string;
+        first_name: string;
+        last_name: string;
+      }>
+    ).map((p) => [p.id, `${p.first_name} ${p.last_name}`]),
   );
 
   const { data: bookingRows, error: bookingError } = await client
