@@ -84,21 +84,6 @@ function labelFromValue(value: string) {
   return value.replaceAll("_", " ");
 }
 
-function getPhilippineDateKeyFromIso(value: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    day: "2-digit",
-    month: "2-digit",
-    timeZone: "Asia/Manila",
-    year: "numeric",
-  }).formatToParts(new Date(value));
-
-  const year = parts.find((part) => part.type === "year")?.value ?? "";
-  const month = parts.find((part) => part.type === "month")?.value ?? "";
-  const day = parts.find((part) => part.type === "day")?.value ?? "";
-
-  return `${year}-${month}-${day}`;
-}
-
 function buildAppointmentPayload(appointment: Appointment, status: Appointment["status"]) {
   return {
     patientId: appointment.patientId,
@@ -216,32 +201,6 @@ export function FrontDeskWorkflowPage() {
       ).length,
     }),
     [rows],
-  );
-  const walkInRows = useMemo(
-    () => rows.filter((row) => row.isWalkInPatient),
-    [rows],
-  );
-  const walkInPatientIdsWithAppointmentsToday = useMemo(
-    () => new Set(walkInRows.map((row) => row.patientId)),
-    [walkInRows],
-  );
-  const walkInSummary = useMemo(
-    () => ({
-      waitingAppointment: patients.filter(
-        (patient) =>
-          patient.intakeSource === "staff_walk_in" &&
-          getPhilippineDateKeyFromIso(patient.createdAt) === todayDateKey &&
-          !walkInPatientIdsWithAppointmentsToday.has(patient.id),
-      ).length,
-      waitingBilling: walkInRows.filter((row) => row.paymentState !== "paid").length,
-      readyForConsultation: walkInRows.filter(
-        (row) => row.workflowState === "ready_for_doctor",
-      ).length,
-      inConsultation: walkInRows.filter(
-        (row) => row.workflowState === "in_consultation",
-      ).length,
-    }),
-    [patients, todayDateKey, walkInPatientIdsWithAppointmentsToday, walkInRows],
   );
   const filterCounts = useMemo(
     () => ({
@@ -417,124 +376,76 @@ export function FrontDeskWorkflowPage() {
         </div>
       </section>
 
-      <section className="border border-orange-200 bg-orange-50 shadow-sm">
-        <div className="border-b border-orange-200 px-6 py-4">
-          <p className="text-xs font-extrabold uppercase tracking-widest text-orange-700">
-            Walk-In Fast Lane
-          </p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">
-            Add patient, appoint, bill, and clear for consultation in one guided path.
-          </p>
-        </div>
-
-        <div className="grid gap-0 border-b border-orange-200 md:grid-cols-4">
-          <div className="border-b border-orange-200 px-6 py-4 md:border-b-0 md:border-r">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
-              Add patient
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">
-              {walkInSummary.waitingAppointment}
-            </p>
-            <p className="mt-1 text-xs text-slate-600">Waiting for appointment</p>
-          </div>
-          <div className="border-b border-orange-200 px-6 py-4 md:border-b-0 md:border-r">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
-              Appoint patient
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">
-              {walkInSummary.waitingBilling}
-            </p>
-            <p className="mt-1 text-xs text-slate-600">Waiting for billing clearance</p>
-          </div>
-          <div className="border-b border-orange-200 px-6 py-4 md:border-b-0 md:border-r">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
-              Billing
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">
-              {walkInSummary.readyForConsultation}
-            </p>
-            <p className="mt-1 text-xs text-slate-600">Ready for consultation</p>
-          </div>
-          <div className="px-6 py-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
-              Consultation
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">
-              {walkInSummary.inConsultation}
-            </p>
-            <p className="mt-1 text-xs text-slate-600">Already in progress</p>
-          </div>
-        </div>
-
-        <div className="space-y-4 px-6 py-4">
-          <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
-              Quick actions
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Link
-                className="inline-flex items-center border border-orange-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-orange-700 transition hover:bg-orange-100"
-                to="/app/patients?action=walk-in-intake"
-              >
-                Add Patient
-                <ArrowRight className="ml-1 size-3.5" />
-              </Link>
-              <Link
-                className="inline-flex items-center border border-orange-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-orange-700 transition hover:bg-orange-100"
-                to="/app/appointments?action=create&source=internal"
-              >
-                Appoint Patient
-                <ArrowRight className="ml-1 size-3.5" />
-              </Link>
-              <Link
-                className="inline-flex items-center border border-orange-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-orange-700 transition hover:bg-orange-100"
-                to="/app/billing?action=create"
-              >
-                Billing
-                <ArrowRight className="ml-1 size-3.5" />
-              </Link>
-            </div>
-          </div>
-
-          <div className="border-t border-orange-200/70 pt-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
-              View pages
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Link
-                className="inline-flex items-center border border-orange-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-orange-700 transition hover:bg-orange-100"
-                to="/app/patients"
-              >
-                Patients
-                <ArrowRight className="ml-1 size-3.5" />
-              </Link>
-              <Link
-                className="inline-flex items-center border border-orange-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-orange-700 transition hover:bg-orange-100"
-                to="/app/appointments"
-              >
-                Appointments
-                <ArrowRight className="ml-1 size-3.5" />
-              </Link>
-              <Link
-                className="inline-flex items-center border border-orange-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-orange-700 transition hover:bg-orange-100"
-                to="/app/billing"
-              >
-                Billing
-                <ArrowRight className="ml-1 size-3.5" />
-              </Link>
-              <Link
-                className="inline-flex items-center border border-orange-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-orange-700 transition hover:bg-orange-100"
-                to="/app/doctor-workflow"
-              >
-                Doctor Workflow
-                <ArrowRight className="ml-1 size-3.5" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section className="border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50 px-6 py-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+                Quick actions
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Link
+                  className="inline-flex items-center border border-orange-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-orange-700 transition hover:bg-orange-100"
+                  to="/app/patients?action=walk-in-intake"
+                >
+                  Add Patient
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+                <Link
+                  className="inline-flex items-center border border-orange-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-orange-700 transition hover:bg-orange-100"
+                  to="/app/appointments?action=create&source=internal"
+                >
+                  Appoint Patient
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+                <Link
+                  className="inline-flex items-center border border-orange-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-orange-700 transition hover:bg-orange-100"
+                  to="/app/billing?action=create"
+                >
+                  Billing
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
+                View pages
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Link
+                  className="inline-flex items-center border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100"
+                  to="/app/patients"
+                >
+                  Patients
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+                <Link
+                  className="inline-flex items-center border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100"
+                  to="/app/appointments"
+                >
+                  Appointments
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+                <Link
+                  className="inline-flex items-center border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100"
+                  to="/app/billing"
+                >
+                  Billing
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+                <Link
+                  className="inline-flex items-center border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100"
+                  to="/app/doctor-workflow"
+                >
+                  Doctor Workflow
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
           <div>
             <p className="text-xs font-extrabold uppercase tracking-widest text-slate-400">

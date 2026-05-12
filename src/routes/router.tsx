@@ -49,11 +49,16 @@ import { InventoryLogsPage } from "../features/inventory/inventory-logs-page";
 import { DoctorWorkflowPage } from "../features/workflows/doctor-workflow-page";
 import { FrontDeskWorkflowPage } from "../features/workflows/front-desk-workflow-page";
 import { AppointmentsQueueDisplay } from "../features/appointments/components/appoinments-que-display.tsx";
+import { AppointmentsQueueTv } from "../features/appointments/components/appointments-queue-tv.tsx";
 
 export const router = createBrowserRouter([
   {
     path: "/odc",
     element: <OdcPage />,
+  },
+  {
+    path: "/queue-display",
+    element: <AppointmentsQueueTv />,
   },
   {
     element: <SystemAvailabilityGate />,

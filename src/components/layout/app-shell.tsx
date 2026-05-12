@@ -46,6 +46,12 @@ function getNavigationSection(item: NavItem): NavigationSection {
   if (item.to === "/app/profile") {
     return "Account";
   }
+  if (
+    item.to === "/app/front-desk-workflow" ||
+    item.to === "/app/doctor-workflow"
+  ) {
+    return "Overview";
+  }
   if (item.moduleKey === "dashboard") {
     return "Overview";
   }
