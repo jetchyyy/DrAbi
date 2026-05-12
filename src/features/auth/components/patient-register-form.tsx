@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { parse } from 'date-fns';
 import { Eye, EyeOff, Loader2Icon } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { useEffect, useState, type LabelHTMLAttributes, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +12,7 @@ import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
+import { isSupabaseConfigured } from '../../../lib/supabase';
 import { useAuth } from '../auth-context';
 
 const REGISTER_DRAFT_KEY = 'patient-register-draft-v1';
@@ -79,6 +81,7 @@ export function PatientRegisterForm() {
   const { signUpPatient } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string>();
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -139,7 +142,7 @@ export function PatientRegisterForm() {
         medicalHistory: computedMedicalHistory,
         emergencyContactName: values.emergencyContactName,
         emergencyContactPhone: values.emergencyContactPhone,
-      });
+      }, captchaToken);
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(REGISTER_DRAFT_KEY);
       }
@@ -325,6 +328,14 @@ export function PatientRegisterForm() {
                 <Input id="emergencyContactPhone" autoComplete="tel" {...form.register('emergencyContactPhone')} placeholder="+1 — — — ----" />
               </FormField>
             </div>
+            {isSupabaseConfigured && (
+              <div className="flex justify-center py-4 border-t border-slate-100 mt-6">
+                <Turnstile
+                  siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                  onSuccess={(token) => setCaptchaToken(token)}
+                />
+              </div>
+            )}
           </section>
         ) : null}
 

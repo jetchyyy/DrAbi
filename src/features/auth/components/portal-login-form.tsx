@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, LogIn, Loader2 } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -24,6 +25,7 @@ export function PortalLoginForm() {
   const location = useLocation();
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string>();
 
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
   const redirectTo = from?.startsWith('/portal') ? from : '/portal';
@@ -36,7 +38,7 @@ export function PortalLoginForm() {
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       setSubmitting(true);
-      await signIn(values.email, values.password);
+      await signIn(values.email, values.password, captchaToken);
       toast.success('Welcome back.');
       navigate(redirectTo, { replace: true });
     } catch (error) {
@@ -92,6 +94,15 @@ export function PortalLoginForm() {
           <p className="text-xs font-medium text-rose-600">{form.formState.errors.password.message}</p>
         ) : null}
       </div>
+
+      {isSupabaseConfigured && (
+        <div className="flex justify-center py-1">
+          <Turnstile
+            siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+            onSuccess={(token) => setCaptchaToken(token)}
+          />
+        </div>
+      )}
 
       <Button
         className="w-full gap-2 rounded-xl bg-[#10295e] py-5 text-sm font-extrabold uppercase tracking-widest transition-colors hover:bg-[#08142c]"

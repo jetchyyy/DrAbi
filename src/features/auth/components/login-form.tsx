@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, LogIn, Loader2 } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -29,6 +30,7 @@ export function LoginForm({ defaultRedirectTo }: LoginFormProps) {
   const location = useLocation();
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string>();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -41,7 +43,7 @@ export function LoginForm({ defaultRedirectTo }: LoginFormProps) {
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       setSubmitting(true);
-      const role = await signIn(values.email, values.password);
+      const role = await signIn(values.email, values.password, captchaToken);
       toast.success('Welcome back.');
       navigate((location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? defaultRedirectTo ?? getHomePathForRole(role ?? profile?.role), { replace: true });
     } catch (error) {
@@ -102,6 +104,15 @@ export function LoginForm({ defaultRedirectTo }: LoginFormProps) {
           Forgot password?
         </Link>
       </div>
+
+      {isSupabaseConfigured && (
+        <div className="flex justify-center py-2">
+          <Turnstile
+            siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+            onSuccess={(token) => setCaptchaToken(token)}
+          />
+        </div>
+      )}
 
       <Button
         variant="primary"

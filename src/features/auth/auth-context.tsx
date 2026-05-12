@@ -1,4 +1,4 @@
-﻿import type { Session, User } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 
 import { rolePermissions } from '../../config/permissions';
@@ -19,7 +19,7 @@ interface AuthContextValue {
   pinSetupRequired: boolean;
   pinVerificationRequired: boolean;
   isAuthenticated: boolean;
-  signIn: (email: string, password: string) => Promise<Role>;
+  signIn: (email: string, password: string, captchaToken?: string) => Promise<Role>;
   signOut: () => Promise<void>;
   setSecurityPin: (pin: string) => Promise<void>;
   verifySecurityPin: (pin: string) => Promise<void>;
@@ -36,7 +36,7 @@ interface AuthContextValue {
     medicalHistory: string;
     emergencyContactName: string;
     emergencyContactPhone: string;
-  }) => Promise<{ requiresEmailConfirmation: boolean }>;
+  }, captchaToken?: string) => Promise<{ requiresEmailConfirmation: boolean }>;
   can: (permission: Permission) => boolean;
 }
 
@@ -269,10 +269,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
       pinSetupRequired,
       pinVerificationRequired,
       isAuthenticated: Boolean(profile ?? session),
-      async signIn(email, password) {
+      async signIn(email, password, captchaToken) {
         if (isSupabaseConfigured && supabase) {
           requirePinOnNextAuthenticatedSessionRef.current = true;
-          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+            options: {
+              captchaToken,
+            },
+          });
           if (error) {
             requirePinOnNextAuthenticatedSessionRef.current = false;
             throw error;
@@ -346,12 +352,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return;
         }
       },
-      async signUpPatient(input) {
+      async signUpPatient(input, captchaToken) {
         if (isSupabaseConfigured && supabase) {
           const { data, error } = await supabase.auth.signUp({
             email: input.email,
             password: input.password,
             options: {
+              captchaToken,
               data: {
                 role: 'patient',
                 full_name: input.fullName,
