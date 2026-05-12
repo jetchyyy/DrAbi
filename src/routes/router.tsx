@@ -1,4 +1,4 @@
-﻿import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { AppShell } from "../components/layout/app-shell";
 import { PublicLayout } from "../components/layout/public-layout";
@@ -50,6 +50,13 @@ import { DoctorWorkflowPage } from "../features/workflows/doctor-workflow-page";
 import { FrontDeskWorkflowPage } from "../features/workflows/front-desk-workflow-page";
 import { AppointmentsQueueDisplay } from "../features/appointments/components/appoinments-que-display.tsx";
 import { AppointmentsQueueTv } from "../features/appointments/components/appointments-queue-tv.tsx";
+import { HmoDashboardPage } from "../features/hmo/hmo-dashboard-page";
+import { HmoProvidersPage } from "../features/hmo/hmo-providers-page";
+import { PatientHmoAccountsPage } from "../features/hmo/patient-hmo-accounts-page";
+import { HmoAuthorizationsPage } from "../features/hmo/hmo-authorizations-page";
+import { HmoClaimsPage } from "../features/hmo/hmo-claims-page";
+import { HmoPaymentsPage } from "../features/hmo/hmo-payments-page";
+import { HmoReportsPage } from "../features/hmo/hmo-reports-page";
 
 export const router = createBrowserRouter([
   {
@@ -400,6 +407,37 @@ export const router = createBrowserRouter([
                     element: <PermissionGate permission="laboratory.view" />,
                     children: [
                       { path: "laboratory", element: <LaboratoryPage /> },
+                    ],
+                  },
+                ],
+              },
+              {
+                element: <ModuleGate moduleKey="hmo" />,
+                children: [
+                  {
+                    element: <PermissionGate permission="hmo.view" />,
+                    children: [
+                      { path: "hmo", element: <HmoDashboardPage /> },
+                      { path: "hmo/accounts", element: <PatientHmoAccountsPage /> },
+                      { path: "hmo/authorizations", element: <HmoAuthorizationsPage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionGate permission="hmo.manage" />,
+                    children: [
+                      { path: "hmo/providers", element: <HmoProvidersPage /> },
+                      { path: "hmo/claims", element: <HmoClaimsPage /> },
+                      { path: "hmo/payments", element: <HmoPaymentsPage /> },
+                      {
+                        element: (
+                          <ProtectedRoute
+                            allowedRoles={["owner_admin"]}
+                          />
+                        ),
+                        children: [
+                          { path: "hmo/reports", element: <HmoReportsPage /> },
+                        ],
+                      },
                     ],
                   },
                 ],

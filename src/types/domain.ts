@@ -27,7 +27,9 @@ export type Permission =
   | "settings.manage"
   | "booking.view"
   | "booking.manage"
-  | "users.manage";
+  | "users.manage"
+  | "hmo.view"
+  | "hmo.manage";
 
 export type AppointmentStatus =
   | "scheduled"
@@ -63,6 +65,16 @@ export type ReferralStatus =
   | "rescheduled"
   | "cancelled";
 export type PaymentStatus = "unpaid" | "partial" | "paid" | "void";
+export type HmoApprovalStatus = "pending" | "approved" | "denied" | "expired";
+export type HmoClaimStatus =
+  | "draft"
+  | "pending_submission"
+  | "submitted"
+  | "processing"
+  | "paid"
+  | "denied"
+  | "partial_payment"
+  | "overdue";
 export type LabOrderStatus =
   | "requested"
   | "collected"
@@ -87,7 +99,8 @@ export type ModuleKey =
   | "pos"
   | "inventory"
   | "laboratory"
-  | "teleconsult";
+  | "teleconsult"
+  | "hmo";
 export type EnabledModules = Record<ModuleKey, boolean>;
 
 export interface BaseRecord {
@@ -493,6 +506,73 @@ export interface PatientActionLog extends BaseRecord {
   actorName: string;
   summary: string;
   fields: string[];
+}
+
+export interface HmoProvider extends BaseRecord {
+  name: string;
+  code: string;
+  contactPerson: string;
+  contactEmail: string;
+  contactNumber: string;
+  address: string;
+  submissionCycle: string;
+  paymentTermsDays: number;
+  status: string;
+}
+
+export interface PatientHmoAccount extends BaseRecord {
+  patientId: string;
+  hmoProviderId: string;
+  cardNumber: string;
+  memberType: string;
+  principalName: string;
+  expirationDate: string;
+  coverageLimit: number;
+  remainingBalance: number;
+  isActive: boolean;
+}
+
+export interface HmoAuthorization extends BaseRecord {
+  patientId: string;
+  appointmentId: string | null;
+  hmoProviderId: string;
+  authorizationCode: string;
+  coverageAmount: number;
+  approvalStatus: HmoApprovalStatus;
+  approvedBy: string;
+  approvalDate: string | null;
+  notes: string;
+}
+
+export interface HmoClaim extends BaseRecord {
+  authorizationId: string | null;
+  invoiceNumber: string;
+  totalAmount: number;
+  coveredAmount: number;
+  patientExcess: number;
+  claimStatus: HmoClaimStatus;
+  submissionDate: string | null;
+  paymentDueDate: string | null;
+  paidDate: string | null;
+  remarks: string;
+}
+
+export interface HmoClaimItem extends BaseRecord {
+  claimId: string;
+  serviceName: string;
+  doctorId: string | null;
+  quantity: number;
+  amount: number;
+  remarks: string;
+}
+
+export interface HmoPayment extends BaseRecord {
+  claimId: string;
+  paymentReference: string;
+  amountPaid: number;
+  paymentDate: string;
+  paymentMethod: string;
+  remarks: string;
 }
 
 export interface AppDatabase {

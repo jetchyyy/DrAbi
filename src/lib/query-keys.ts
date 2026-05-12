@@ -88,4 +88,17 @@ export const queryKeys = {
   patientMedicalTimeline: (patientId: string | null) =>
     ["patient-medical-timeline", patientId] as const,
   dashboard: ["dashboard"] as const,
+  // HMO Management
+  hmoProviders: ["hmo-providers"] as const,
+  patientHmoAccounts: ["patient-hmo-accounts"] as const,
+  patientHmoAccountsByPatient: (patientId: string | null) =>
+    ["patient-hmo-accounts", patientId] as const,
+  hmoAuthorizations: ["hmo-authorizations"] as const,
+  hmoClaims: ["hmo-claims"] as const,
+  hmoClaimItems: (claimId: string | null) =>
+    ["hmo-claim-items", claimId] as const,
+  hmoPayments: ["hmo-payments"] as const,
+  hmoPaymentsByClaim: (claimId: string | null) =>
+    ["hmo-payments-by-claim", claimId] as const,
+  hmoDashboard: ["hmo-dashboard"] as const,
 };

@@ -19,6 +19,9 @@ import {
   KeyRound,
   UserRound,
   ShoppingCart,
+  Building2,
+  Wallet,
+  Receipt,
 } from "lucide-react";
 
 import type { ModuleKey, Permission, Role } from "../types/domain";
@@ -241,6 +244,60 @@ export const appNavigation: NavItem[] = [
       "lab_staff",
       "inventory_staff",
     ],
+  },
+  // ── HMO Management ────────────────────────────────
+  {
+    label: "HMO Dashboard",
+    to: "/app/hmo",
+    icon: ShieldCheck,
+    permission: "hmo.view",
+    moduleKey: "hmo",
+  },
+  {
+    label: "HMO Providers",
+    to: "/app/hmo/providers",
+    icon: Building2,
+    permission: "hmo.manage",
+    roles: ["owner_admin", "front_desk_cashier"],
+    moduleKey: "hmo",
+  },
+  {
+    label: "Patient HMO Accounts",
+    to: "/app/hmo/accounts",
+    icon: ClipboardList,
+    permission: "hmo.view",
+    moduleKey: "hmo",
+  },
+  {
+    label: "Authorizations",
+    to: "/app/hmo/authorizations",
+    icon: FileText,
+    permission: "hmo.view",
+    moduleKey: "hmo",
+  },
+  {
+    label: "Claims",
+    to: "/app/hmo/claims",
+    icon: Receipt,
+    permission: "hmo.manage",
+    roles: ["owner_admin", "front_desk_cashier"],
+    moduleKey: "hmo",
+  },
+  {
+    label: "Payments",
+    to: "/app/hmo/payments",
+    icon: Wallet,
+    permission: "hmo.manage",
+    roles: ["owner_admin", "front_desk_cashier"],
+    moduleKey: "hmo",
+  },
+  {
+    label: "HMO Reports",
+    to: "/app/hmo/reports",
+    icon: FileText,
+    permission: "hmo.manage",
+    roles: ["owner_admin"],
+    moduleKey: "hmo",
   },
 ];
 

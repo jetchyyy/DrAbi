@@ -23,6 +23,7 @@ type NavigationSection =
   | "Patient Care"
   | "Appointments & Queue"
   | "Finance"
+  | "HMO Management"
   | "Operations"
   | "Administration"
   | "Account"
@@ -34,6 +35,7 @@ const navigationSectionOrder: NavigationSection[] = [
   "Patient Care",
   "Appointments & Queue",
   "Finance",
+  "HMO Management",
   "Operations",
   "Administration",
   "Account",
@@ -63,6 +65,9 @@ function getNavigationSection(item: NavItem): NavigationSection {
   }
   if (item.moduleKey === "billing" || item.moduleKey === "pos") {
     return "Finance";
+  }
+  if (item.moduleKey === "hmo") {
+    return "HMO Management";
   }
   if (item.moduleKey === "inventory" || item.moduleKey === "laboratory") {
     return "Operations";

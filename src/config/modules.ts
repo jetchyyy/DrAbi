@@ -47,6 +47,11 @@ export const moduleDefinitions: ModuleDefinition[] = [
     label: "Teleconsult",
     description: "Online teleconsult room access for doctors and patients.",
   },
+  {
+    key: "hmo",
+    label: "HMO Management",
+    description: "HMO provider tracking, authorizations, claims, payments, and receivables.",
+  },
 ];
 
 export const defaultEnabledModules: EnabledModules = {
@@ -58,6 +63,7 @@ export const defaultEnabledModules: EnabledModules = {
   inventory: true,
   laboratory: true,
   teleconsult: true,
+  hmo: true,
 };
 
 export const moduleDefinitionMap: Record<ModuleKey, ModuleDefinition> = moduleDefinitions.reduce(
@@ -82,6 +88,7 @@ export function normalizeEnabledModules(value: unknown): EnabledModules {
     inventory: raw.inventory === false ? false : true,
     laboratory: raw.laboratory === false ? false : true,
     teleconsult: raw.teleconsult === false ? false : true,
+    hmo: raw.hmo === false ? false : true,
   };
 }
 

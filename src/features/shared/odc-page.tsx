@@ -44,6 +44,7 @@ const controlSchema = z.object({
     inventory: z.boolean(),
     laboratory: z.boolean(),
     teleconsult: z.boolean(),
+    hmo: z.boolean(),
   }),
 });
 

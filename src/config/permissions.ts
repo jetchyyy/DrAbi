@@ -1,4 +1,4 @@
-﻿import type { Permission, Role } from "../types/domain";
+import type { Permission, Role } from "../types/domain";
 
 export const roleLabels: Record<Role, string> = {
   owner_admin: "Owner / Admin",
@@ -32,6 +32,8 @@ export const rolePermissions: Record<Role, Permission[]> = {
     "booking.view",
     "booking.manage",
     "users.manage",
+    "hmo.view",
+    "hmo.manage",
   ],
   doctor: [
     "dashboard.view",
@@ -40,6 +42,7 @@ export const rolePermissions: Record<Role, Permission[]> = {
     "consultations.manage",
     "laboratory.view",
     "booking.view",
+    "hmo.view",
   ],
   specialist: [
     "patients.view",
@@ -55,6 +58,7 @@ export const rolePermissions: Record<Role, Permission[]> = {
     "appointments.manage",
     "consultations.manage",
     "laboratory.view",
+    "hmo.view",
   ],
   front_desk_cashier: [
     "dashboard.view",
@@ -71,6 +75,8 @@ export const rolePermissions: Record<Role, Permission[]> = {
     "booking.manage",
     "inventory.view",
     "inventory.manage",
+    "hmo.view",
+    "hmo.manage",
   ],
   lab_staff: [
     "dashboard.view",
