@@ -1,6 +1,7 @@
 import {
   Activity,
   ArrowRight,
+  CalendarCheck2,
   ExternalLink,
   CalendarPlus,
   ClipboardList,
@@ -36,6 +37,7 @@ import {
 } from "./workflow-utils";
 import { WalkInWizardModal } from "./front-desk-walk-in-wizard-modal";
 import { FrontDeskPatientDetailsModal } from "./front-desk-patient-details-modal";
+import { BookingListModal } from "./front-desk-booking-list-modal";
 
 const FRONT_DESK_WORKFLOW_PAGE_SIZE = 10;
 const FRONT_DESK_OVERDUE_MINUTES = 15;
@@ -312,6 +314,7 @@ function VitalsModal({
 
 export function FrontDeskWorkflowPage() {
   const [walkInWizardOpen, setWalkInWizardOpen] = useState(false);
+  const [bookingDrawerOpen, setBookingDrawerOpen] = useState(false);
   const [selectedPatientRowId, setSelectedPatientRowId] = useState<string | null>(null);
   const [vitalsRowId, setVitalsRowId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -347,6 +350,24 @@ export function FrontDeskWorkflowPage() {
       }),
     [appointments, bookingRecords, invoices, patients, todayDateKey],
   );
+  const queueNumberMap = useMemo(
+    () => new Map(rows.map((row, index) => [row.id, index + 1])),
+    [rows],
+  );
+  const [patientQuery, setPatientQuery] = useState("");
+  const [patientDropdownOpen, setPatientDropdownOpen] = useState(false);
+  const patientSearchRef = useRef<HTMLDivElement>(null);
+  const filteredPatients = useMemo(() => {
+    const q = patientQuery.trim().toLowerCase();
+    if (!q) return [];
+    return patients
+      .filter((p) =>
+        `${p.firstName} ${p.lastName} ${p.mobileNumber} ${p.email}`
+          .toLowerCase()
+          .includes(q),
+      )
+      .slice(0, 8);
+  }, [patientQuery, patients]);
   const searchedRows = useMemo(
     () =>
       rows.filter((row) =>
@@ -533,6 +554,19 @@ export function FrontDeskWorkflowPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        patientSearchRef.current &&
+        !patientSearchRef.current.contains(event.target as Node)
+      ) {
+        setPatientDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
     <div className="space-y-5">
       <section className="border border-slate-200 bg-white shadow-sm">
@@ -555,6 +589,71 @@ export function FrontDeskWorkflowPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <div className="relative" ref={patientSearchRef}>
+              <div className="flex w-64 items-center gap-2 border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <Search className="size-4 shrink-0 text-slate-400" />
+                <input
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                  onFocus={() => {
+                    if (patientQuery.trim()) setPatientDropdownOpen(true);
+                  }}
+                  onChange={(event) => {
+                    setPatientQuery(event.target.value);
+                    setPatientDropdownOpen(event.target.value.trim().length > 0);
+                  }}
+                  placeholder="Lookup any patient…"
+                  value={patientQuery}
+                />
+                {patientQuery ? (
+                  <button
+                    aria-label="Clear patient search"
+                    className="shrink-0 text-slate-400 hover:text-slate-700"
+                    onClick={() => {
+                      setPatientQuery("");
+                      setPatientDropdownOpen(false);
+                    }}
+                    type="button"
+                  >
+                    ✕
+                  </button>
+                ) : null}
+              </div>
+              {patientDropdownOpen && filteredPatients.length > 0 ? (
+                <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden border border-slate-200 bg-white shadow-lg">
+                  {filteredPatients.map((patient) => (
+                    <Link
+                      className="flex flex-col px-4 py-3 transition hover:bg-orange-50"
+                      key={patient.id}
+                      onClick={() => {
+                        setPatientQuery("");
+                        setPatientDropdownOpen(false);
+                      }}
+                      to={`/app/patients/${patient.id}`}
+                    >
+                      <span className="text-sm font-bold text-slate-950">
+                        {patient.firstName} {patient.lastName}
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {patient.mobileNumber || patient.email}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              ) : patientDropdownOpen && patientQuery.trim() ? (
+                <div className="absolute left-0 top-full z-50 mt-1 w-full border border-slate-200 bg-white px-4 py-3 shadow-lg">
+                  <p className="text-xs text-slate-500">No patients found.</p>
+                </div>
+              ) : null}
+            </div>
+            <Button
+              className="inline-flex items-center border border-indigo-500 bg-indigo-600 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-indigo-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+              onClick={() => setBookingDrawerOpen(true)}
+              type="button"
+              variant="secondary"
+            >
+              <CalendarCheck2 className="mr-2 size-4" />
+              Online Bookings
+            </Button>
             <Button
               className="inline-flex items-center border border-orange-500 bg-orange-600 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-orange-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
               onClick={() => setWalkInWizardOpen(true)}
@@ -764,6 +863,9 @@ export function FrontDeskWorkflowPage() {
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="sticky top-0 z-10 bg-slate-50 px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                      #
+                    </th>
+                    <th className="sticky top-0 z-10 bg-slate-50 px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
                       Patient
                     </th>
                     <th className="sticky top-0 z-10 bg-slate-50 px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
@@ -792,6 +894,11 @@ export function FrontDeskWorkflowPage() {
                       }`}
                       key={row.id}
                     >
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex size-6 items-center justify-center rounded-full bg-slate-100 text-[11px] font-extrabold text-slate-600">
+                          {queueNumberMap.get(row.id)}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         {row.isWalkInPatient ? (
                           <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-orange-600">
@@ -962,6 +1069,11 @@ export function FrontDeskWorkflowPage() {
           </>
         )}
       </section>
+
+      <BookingListModal
+        open={bookingDrawerOpen}
+        onClose={() => setBookingDrawerOpen(false)}
+      />
 
       <WalkInWizardModal
         open={walkInWizardOpen}

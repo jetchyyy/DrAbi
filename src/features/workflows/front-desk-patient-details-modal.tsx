@@ -813,21 +813,21 @@ export function FrontDeskPatientDetailsModal({
           className="flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-slate-900 px-6 py-5 text-white">
+          <div className="flex items-start justify-between gap-4 border-b border-orange-100 bg-orange-50 px-6 py-5">
             <div className="min-w-0">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-slate-300">
+              <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
                 Front Desk Patient Details
               </p>
-              <h2 className="mt-1 text-lg font-extrabold text-white">
+              <h2 className="mt-1 text-lg font-extrabold text-slate-950">
                 {patient.firstName} {patient.lastName}
               </h2>
-              <p className="mt-1 text-sm text-slate-300">
+              <p className="mt-1 text-sm text-slate-500">
                 Edit patient details, update billing services, clear payment, and print receipt.
               </p>
             </div>
             <button
               aria-label="Close patient details modal"
-              className="inline-flex items-center justify-center border border-slate-500/50 bg-white/10 p-2 transition hover:bg-white/20"
+              className="inline-flex items-center justify-center border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-100"
               onClick={requestClose}
               type="button"
             >

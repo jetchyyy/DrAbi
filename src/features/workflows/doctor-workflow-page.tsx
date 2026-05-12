@@ -7,7 +7,7 @@ import {
   Stethoscope,
   UserRoundSearch,
 } from "lucide-react";
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { Badge } from "../../components/ui/badge";
@@ -144,6 +144,9 @@ export function DoctorWorkflowPage() {
   const [sortMode, setSortMode] = useState<DoctorQueueSort>("priority");
   const [currentPage, setCurrentPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
+  const [patientQuery, setPatientQuery] = useState("");
+  const [patientDropdownOpen, setPatientDropdownOpen] = useState(false);
+  const patientSearchRef = useRef<HTMLDivElement>(null);
   const todayDateKey = getPhilippineDateKey();
   const currentDoctor = doctors.find(
     (doctor) => doctor.profileId === profile?.id || doctor.id === profile?.id,
@@ -160,6 +163,34 @@ export function DoctorWorkflowPage() {
       }),
     [appointments, currentDoctorId, invoices, patients, todayDateKey],
   );
+  const queueNumberMap = useMemo(
+    () => new Map(rows.map((row, index) => [row.id, index + 1])),
+    [rows],
+  );
+  const filteredPatients = useMemo(() => {
+    const q = patientQuery.trim().toLowerCase();
+    if (!q) return [];
+    return patients
+      .filter((p) =>
+        `${p.firstName} ${p.lastName} ${p.mobileNumber} ${p.email}`
+          .toLowerCase()
+          .includes(q),
+      )
+      .slice(0, 8);
+  }, [patientQuery, patients]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        patientSearchRef.current &&
+        !patientSearchRef.current.contains(event.target as Node)
+      ) {
+        setPatientDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
   const searchedRows = useMemo(
     () =>
       rows.filter((row) =>
@@ -267,6 +298,62 @@ export function DoctorWorkflowPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <div className="relative" ref={patientSearchRef}>
+              <div className="flex w-64 items-center gap-2 border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <Search className="size-4 shrink-0 text-slate-400" />
+                <input
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                  onFocus={() => {
+                    if (patientQuery.trim()) setPatientDropdownOpen(true);
+                  }}
+                  onChange={(event) => {
+                    setPatientQuery(event.target.value);
+                    setPatientDropdownOpen(event.target.value.trim().length > 0);
+                  }}
+                  placeholder="Lookup any patient…"
+                  value={patientQuery}
+                />
+                {patientQuery ? (
+                  <button
+                    aria-label="Clear patient search"
+                    className="shrink-0 text-slate-400 hover:text-slate-700"
+                    onClick={() => {
+                      setPatientQuery("");
+                      setPatientDropdownOpen(false);
+                    }}
+                    type="button"
+                  >
+                    ✕
+                  </button>
+                ) : null}
+              </div>
+              {patientDropdownOpen && filteredPatients.length > 0 ? (
+                <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden border border-slate-200 bg-white shadow-lg">
+                  {filteredPatients.map((patient) => (
+                    <Link
+                      className="flex flex-col px-4 py-3 transition hover:bg-orange-50"
+                      key={patient.id}
+                      onClick={() => {
+                        setPatientQuery("");
+                        setPatientDropdownOpen(false);
+                      }}
+                      to={`/app/patients/${patient.id}`}
+                    >
+                      <span className="text-sm font-bold text-slate-950">
+                        {patient.firstName} {patient.lastName}
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {patient.mobileNumber || patient.email}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              ) : patientDropdownOpen && patientQuery.trim() ? (
+                <div className="absolute left-0 top-full z-50 mt-1 w-full border border-slate-200 bg-white px-4 py-3 shadow-lg">
+                  <p className="text-xs text-slate-500">No patients found.</p>
+                </div>
+              ) : null}
+            </div>
             <Link
               className="inline-flex items-center border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               to="/app/patients/scan"
@@ -399,6 +486,9 @@ export function DoctorWorkflowPage() {
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                      #
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
                       Patient
                     </th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
@@ -428,6 +518,11 @@ export function DoctorWorkflowPage() {
                         }`}
                         key={row.id}
                       >
+                        <td className="px-4 py-3 text-center">
+                          <span className="inline-flex size-6 items-center justify-center rounded-full bg-slate-100 text-[11px] font-extrabold text-slate-600">
+                            {queueNumberMap.get(row.id)}
+                          </span>
+                        </td>
                         <td className="px-4 py-3">
                           <Link
                             className="font-bold text-slate-950 hover:text-orange-600 hover:underline"

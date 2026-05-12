@@ -863,21 +863,21 @@ export function WalkInWizardModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
       <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 bg-slate-950 px-6 py-5 text-white">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-orange-100 bg-orange-50 px-6 py-5">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-orange-300">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-orange-600">
               Front Desk Walk-In Flow
             </p>
-            <h2 className="mt-1 text-2xl font-black tracking-tight">
+            <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">
               One modal, one patient, full handoff
             </h2>
-            <p className="mt-1 max-w-2xl text-sm text-slate-300">
+            <p className="mt-1 max-w-2xl text-sm text-slate-500">
               Add the patient, set the appointment, bill immediately, and send
               them ready for consultation without leaving this page.
             </p>
           </div>
           <button
-            className="border border-white/15 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+            className="border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-widest text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={isBusy}
             onClick={closeModal}
             type="button"
