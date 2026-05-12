@@ -23,6 +23,8 @@ export function useMyBookings(userId: string | null) {
       return getBookingListForUser(userId);
     },
     enabled: Boolean(userId),
+    refetchInterval: 5_000, // ← poll every 5s
+    refetchOnWindowFocus: true, // ← also refresh when tab regains focus
   });
 }
 
@@ -66,7 +68,9 @@ export function useBlockedBookingSlots(input: {
       }),
     enabled: !!input.date,
     staleTime: 0,
-    gcTime: 0, // ← discard cache completely, don't serve stale []
+    gcTime: 0,
+    refetchInterval: 5_000, // ← poll every 5s
+    refetchOnWindowFocus: true, // ← also refresh when tab regains focus
   });
 }
 

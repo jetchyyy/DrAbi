@@ -28,6 +28,7 @@ type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 interface QueueDisplay {
   id: string;
   queue_number: string;
+  display_number: string;
   status: "waiting" | "called" | "in-service" | "completed";
   completed_at: string | null;
   scheduled_at: string;
@@ -54,6 +55,49 @@ const STATUS_CONFIG: Record<
     label: "Completed",
     className: "bg-slate-100 text-slate-500 ring-1 ring-slate-200",
   },
+};
+
+const VISUAL_RESET_HOUR = 22;
+
+const getVisualResetKey = (scheduledAt: string): string | null => {
+  const date = new Date(scheduledAt);
+  if (Number.isNaN(date.getTime()) || date.getHours() < VISUAL_RESET_HOUR) {
+    return null;
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const buildResetDisplayNumber = (original: string, nextNumber: number) => {
+  const match = original.match(/^(.*-)(\d+)$/);
+  if (!match) {
+    return String(nextNumber);
+  }
+
+  const prefix = match[1];
+  const width = match[2].length;
+  return `${prefix}${String(nextNumber).padStart(width, "0")}`;
+};
+
+const applyVisualQueueReset = (items: QueueDisplay[]): QueueDisplay[] => {
+  const counters = new Map<string, number>();
+
+  return items.map((item) => {
+    const resetKey = getVisualResetKey(item.scheduled_at);
+    if (!resetKey) {
+      return { ...item, display_number: item.queue_number };
+    }
+
+    const nextNumber = (counters.get(resetKey) ?? 0) + 1;
+    counters.set(resetKey, nextNumber);
+    return {
+      ...item,
+      display_number: buildResetDisplayNumber(item.queue_number, nextNumber),
+    };
+  });
 };
 
 export function AppointmentsQueueDisplay() {
@@ -116,6 +160,7 @@ export function AppointmentsQueueDisplay() {
           (apt) => ({
             id: apt.id,
             queue_number: apt.queue_number || "",
+            display_number: apt.queue_number || "",
             status: apt.completed_at
               ? "completed"
               : apt.status === "in-service"
@@ -128,9 +173,10 @@ export function AppointmentsQueueDisplay() {
           }),
         );
 
-        setQueueNumbers(formattedData);
+        const visualResetData = applyVisualQueueReset(formattedData);
+        setQueueNumbers(visualResetData);
 
-        const nextInLine = getNextQueueInLine(formattedData);
+        const nextInLine = getNextQueueInLine(visualResetData);
         if (
           nextInLine &&
           (!currentQueue || currentQueue.id !== nextInLine.id)
@@ -157,8 +203,8 @@ export function AppointmentsQueueDisplay() {
       if (nextQueue && currentQueue?.id !== nextQueue.id) {
         setCurrentQueue(nextQueue);
         if (autoAnnounce) {
-          speakQueueNumber(nextQueue.queue_number);
-          lastAnnouncedRef.current = nextQueue.queue_number;
+          speakQueueNumber(nextQueue.display_number);
+          lastAnnouncedRef.current = nextQueue.id;
         }
       }
     }, 1000);
@@ -197,13 +243,10 @@ export function AppointmentsQueueDisplay() {
             );
             const nextQueue = getNextQueueByScheduledTime(refreshedQueues);
 
-            if (
-              nextQueue &&
-              nextQueue.queue_number !== lastAnnouncedRef.current
-            ) {
+            if (nextQueue && nextQueue.id !== lastAnnouncedRef.current) {
               setTimeout(() => {
-                speakQueueNumber(nextQueue.queue_number);
-                lastAnnouncedRef.current = nextQueue.queue_number;
+                speakQueueNumber(nextQueue.display_number);
+                lastAnnouncedRef.current = nextQueue.id;
               }, 500);
             }
           }
@@ -241,7 +284,7 @@ export function AppointmentsQueueDisplay() {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
     } else if (currentQueue) {
-      speakQueueNumber(currentQueue.queue_number);
+      speakQueueNumber(currentQueue.display_number);
     }
   };
 
@@ -252,8 +295,8 @@ export function AppointmentsQueueDisplay() {
     try {
       setCurrentQueue(waitingQueue);
       if (autoAnnounce) {
-        speakQueueNumber(waitingQueue.queue_number);
-        lastAnnouncedRef.current = waitingQueue.queue_number;
+        speakQueueNumber(waitingQueue.display_number);
+        lastAnnouncedRef.current = waitingQueue.id;
       }
     } catch (err) {
       console.error("Error calling next queue:", err);
@@ -287,8 +330,8 @@ export function AppointmentsQueueDisplay() {
         setCurrentQueue(nextQueue);
         if (autoAnnounce) {
           setTimeout(() => {
-            speakQueueNumber(nextQueue.queue_number);
-            lastAnnouncedRef.current = nextQueue.queue_number;
+            speakQueueNumber(nextQueue.display_number);
+            lastAnnouncedRef.current = nextQueue.id;
           }, 500);
         }
       }
@@ -422,7 +465,9 @@ export function AppointmentsQueueDisplay() {
           {/* ── Main grid ───────────────────────────────────────── */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {/* Now Calling — spans 2 cols */}
-            <div className={cn(INTERNAL_SURFACE, "overflow-hidden lg:col-span-2")}>
+            <div
+              className={cn(INTERNAL_SURFACE, "overflow-hidden lg:col-span-2")}
+            >
               {/* Tinted header strip */}
               <div className="flex items-center justify-between border-b border-[color-mix(in_srgb,var(--color-primary)_18%,white)] bg-[color-mix(in_srgb,var(--color-primary)_7%,white)] px-6 py-3.5">
                 <div className="flex items-center gap-2.5">
@@ -486,7 +531,7 @@ export function AppointmentsQueueDisplay() {
                       )}
                     >
                       <span className="font-mono text-7xl font-bold leading-none tracking-tight text-slate-900">
-                        {currentQueue.queue_number}
+                        {currentQueue.display_number}
                       </span>
                     </div>
                   </div>
@@ -666,7 +711,7 @@ export function AppointmentsQueueDisplay() {
                             "font-mono font-bold text-slate-900",
                           )}
                         >
-                          {queue.queue_number}
+                          {queue.display_number}
                         </td>
                         <td className={INTERNAL_TD}>
                           <span
@@ -684,10 +729,10 @@ export function AppointmentsQueueDisplay() {
                             "tabular-nums text-xs text-slate-500",
                           )}
                         >
-                          {new Date(queue.scheduled_at).toLocaleTimeString(
-                            [],
-                            { hour: "2-digit", minute: "2-digit" },
-                          )}
+                          {new Date(queue.scheduled_at).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </td>
                         <td
                           className={cn(
@@ -710,7 +755,8 @@ export function AppointmentsQueueDisplay() {
                             onClick={() => {
                               setCurrentQueue(queue);
                               if (autoAnnounce) {
-                                speakQueueNumber(queue.queue_number);
+                                speakQueueNumber(queue.display_number);
+                                lastAnnouncedRef.current = queue.id;
                               }
                             }}
                           >

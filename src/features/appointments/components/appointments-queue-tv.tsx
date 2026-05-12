@@ -9,11 +9,55 @@ type AppointmentRow = Database["public"]["Tables"]["appointments"]["Row"];
 interface QueueItem {
   id: string;
   queue_number: string;
+  display_number: string;
   completed_at: string | null;
   scheduled_at: string;
 }
 
 const defaultClinicSettings = { clinicName: "CPR Med Clinic" };
+
+const VISUAL_RESET_HOUR = 22;
+
+const getVisualResetKey = (scheduledAt: string): string | null => {
+  const date = new Date(scheduledAt);
+  if (Number.isNaN(date.getTime()) || date.getHours() < VISUAL_RESET_HOUR) {
+    return null;
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const buildResetDisplayNumber = (original: string, nextNumber: number) => {
+  const match = original.match(/^(.*-)(\d+)$/);
+  if (!match) {
+    return String(nextNumber);
+  }
+
+  const prefix = match[1];
+  const width = match[2].length;
+  return `${prefix}${String(nextNumber).padStart(width, "0")}`;
+};
+
+const applyVisualQueueReset = (items: QueueItem[]): QueueItem[] => {
+  const counters = new Map<string, number>();
+
+  return items.map((item) => {
+    const resetKey = getVisualResetKey(item.scheduled_at);
+    if (!resetKey) {
+      return { ...item, display_number: item.queue_number };
+    }
+
+    const nextNumber = (counters.get(resetKey) ?? 0) + 1;
+    counters.set(resetKey, nextNumber);
+    return {
+      ...item,
+      display_number: buildResetDisplayNumber(item.queue_number, nextNumber),
+    };
+  });
+};
 
 function SoundWave({ active }: { active: boolean }) {
   const heights = [4, 8, 13, 7, 17, 9, 13, 6, 15, 8, 11, 5];
@@ -86,12 +130,14 @@ export function AppointmentsQueueTv() {
       .order("scheduled_at", { ascending: true });
 
     if (data && Array.isArray(data)) {
-      const items: QueueItem[] = (data as AppointmentRow[]).map((apt) => ({
+      const rawItems: QueueItem[] = (data as AppointmentRow[]).map((apt) => ({
         id: apt.id,
         queue_number: apt.queue_number || "",
+        display_number: apt.queue_number || "",
         completed_at: apt.completed_at,
         scheduled_at: apt.scheduled_at || new Date().toISOString(),
       }));
+      const items = applyVisualQueueReset(rawItems);
       setQueueItems(items);
 
       const next = items.find((i) => i.completed_at === null) ?? null;
@@ -132,15 +178,12 @@ export function AppointmentsQueueTv() {
   }, [fetchQueueData]);
 
   useEffect(() => {
-    if (
-      currentQueue &&
-      currentQueue.queue_number !== lastAnnouncedRef.current
-    ) {
+    if (currentQueue && currentQueue.id !== lastAnnouncedRef.current) {
       if (audioUnlocked) {
-        speakQueueNumber(currentQueue.queue_number);
-        lastAnnouncedRef.current = currentQueue.queue_number;
+        speakQueueNumber(currentQueue.display_number);
+        lastAnnouncedRef.current = currentQueue.id;
       } else {
-        pendingAnnounceRef.current = currentQueue.queue_number;
+        pendingAnnounceRef.current = currentQueue.id;
       }
     }
   }, [currentQueue, speakQueueNumber, audioUnlocked]);
@@ -150,11 +193,14 @@ export function AppointmentsQueueTv() {
     const silent = new SpeechSynthesisUtterance(" ");
     silent.volume = 0;
     window.speechSynthesis.speak(silent);
-    const pending = pendingAnnounceRef.current ?? currentQueue?.queue_number;
-    if (pending) {
+    const pendingId = pendingAnnounceRef.current ?? currentQueue?.id;
+    const pendingQueue = pendingId
+      ? (queueItems.find((queue) => queue.id === pendingId) ?? currentQueue)
+      : null;
+    if (pendingQueue) {
       setTimeout(() => {
-        speakQueueNumber(pending);
-        lastAnnouncedRef.current = pending;
+        speakQueueNumber(pendingQueue.display_number);
+        lastAnnouncedRef.current = pendingQueue.id;
         pendingAnnounceRef.current = null;
       }, 300);
     }
@@ -169,9 +215,13 @@ export function AppointmentsQueueTv() {
     .filter((q) => q.completed_at === null && q.id !== currentQueue?.id)
     .slice(0, 5);
 
-  const completedCount = queueItems.filter((q) => q.completed_at !== null).length;
+  const completedCount = queueItems.filter(
+    (q) => q.completed_at !== null,
+  ).length;
   const totalCount = queueItems.length;
-  const remainingCount = queueItems.filter((q) => q.completed_at === null).length;
+  const remainingCount = queueItems.filter(
+    (q) => q.completed_at === null,
+  ).length;
   const progressPct = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   return (
@@ -210,8 +260,13 @@ export function AppointmentsQueueTv() {
             alt={clinic.clinicName}
             className="h-20 w-auto object-contain opacity-80"
           />
-          <div className="flex h-28 w-28 items-center justify-center rounded-full"
-            style={{ background: "rgba(125,212,83,0.1)", border: "1px solid rgba(125,212,83,0.3)" }}>
+          <div
+            className="flex h-28 w-28 items-center justify-center rounded-full"
+            style={{
+              background: "rgba(125,212,83,0.1)",
+              border: "1px solid rgba(125,212,83,0.3)",
+            }}
+          >
             <Volume2 className="h-12 w-12 text-[var(--color-primary)]" />
           </div>
           <div className="text-center">
@@ -222,8 +277,13 @@ export function AppointmentsQueueTv() {
               Enables audio announcements for the queue display
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-full px-5 py-2.5"
-            style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.08)" }}>
+          <div
+            className="flex items-center gap-2 rounded-full px-5 py-2.5"
+            style={{
+              background: "rgba(0,0,0,0.04)",
+              border: "1px solid rgba(0,0,0,0.08)",
+            }}
+          >
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-primary)] opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-primary)]" />
@@ -243,7 +303,10 @@ export function AppointmentsQueueTv() {
         {/* ── Header ───────────────────────────────────────────── */}
         <header
           className="flex shrink-0 items-center justify-between px-8 py-4"
-          style={{ borderBottom: "1px solid rgba(0,0,0,0.07)", background: "rgba(0,0,0,0.015)" }}
+          style={{
+            borderBottom: "1px solid rgba(0,0,0,0.07)",
+            background: "rgba(0,0,0,0.015)",
+          }}
         >
           {/* Brand */}
           <div className="flex items-center gap-4">
@@ -252,13 +315,20 @@ export function AppointmentsQueueTv() {
               alt={clinic.clinicName}
               className="h-11 w-auto object-contain opacity-90"
             />
-            <div className="h-8 w-px" style={{ background: "rgba(0,0,0,0.12)" }} />
+            <div
+              className="h-8 w-px"
+              style={{ background: "rgba(0,0,0,0.12)" }}
+            />
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.3em]"
-                style={{ color: "var(--color-primary)" }}>
+              <p
+                className="text-[10px] font-bold uppercase tracking-[0.3em]"
+                style={{ color: "var(--color-primary)" }}
+              >
                 Patient Queue
               </p>
-              <p className="text-sm font-bold text-slate-600">{clinic.clinicName}</p>
+              <p className="text-sm font-bold text-slate-600">
+                {clinic.clinicName}
+              </p>
             </div>
           </div>
 
@@ -271,24 +341,33 @@ export function AppointmentsQueueTv() {
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                   </span>
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Live</span>
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                    Live
+                  </span>
                 </>
               ) : (
                 <>
                   <span className="relative flex h-2 w-2 rounded-full bg-rose-500" />
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-rose-600">Offline</span>
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-rose-600">
+                    Offline
+                  </span>
                 </>
               )}
             </div>
             <div className="text-right">
               <p className="font-mono text-xl font-bold tabular-nums text-slate-900">
                 {currentTime.toLocaleTimeString("en-PH", {
-                  hour: "2-digit", minute: "2-digit", second: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
                 })}
               </p>
               <p className="text-[11px] text-slate-400">
                 {currentTime.toLocaleDateString("en-PH", {
-                  weekday: "short", month: "long", day: "numeric", year: "numeric",
+                  weekday: "short",
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
                 })}
               </p>
             </div>
@@ -297,19 +376,22 @@ export function AppointmentsQueueTv() {
 
         {/* ── Main ─────────────────────────────────────────────── */}
         <main className="grid min-h-0 flex-1 grid-cols-[1fr_310px]">
-
           {/* Left: Now Serving */}
-          <div className="relative flex flex-col items-center justify-center overflow-hidden px-12 py-10"
-            style={{ borderRight: "1px solid rgba(0,0,0,0.07)" }}>
-
+          <div
+            className="relative flex flex-col items-center justify-center overflow-hidden px-12 py-10"
+            style={{ borderRight: "1px solid rgba(0,0,0,0.07)" }}
+          >
             {/* Ambient glow — pulses when speaking */}
             <div
               className="pointer-events-none absolute inset-0"
               style={{
-                background: "radial-gradient(ellipse 55% 45% at 50% 60%, var(--color-primary), transparent)",
+                background:
+                  "radial-gradient(ellipse 55% 45% at 50% 60%, var(--color-primary), transparent)",
                 opacity: isSpeaking ? 0.11 : 0.05,
                 transition: "opacity 0.8s ease",
-                animation: isSpeaking ? "subtlePulse 2s ease-in-out infinite" : "none",
+                animation: isSpeaking
+                  ? "subtlePulse 2s ease-in-out infinite"
+                  : "none",
               }}
             />
             {/* Centered watermark logo */}
@@ -338,18 +420,22 @@ export function AppointmentsQueueTv() {
                 <div className="relative flex items-center justify-center">
                   {isSpeaking && (
                     <>
-                      <span className="absolute rounded-full"
+                      <span
+                        className="absolute rounded-full"
                         style={{
                           inset: "-20%",
                           border: "1px solid rgba(125,212,83,0.30)",
-                          animation: "soundBar 1.5s ease-in-out infinite alternate",
+                          animation:
+                            "soundBar 1.5s ease-in-out infinite alternate",
                         }}
                       />
-                      <span className="absolute rounded-full"
+                      <span
+                        className="absolute rounded-full"
                         style={{
                           inset: "-36%",
                           border: "1px solid rgba(125,212,83,0.18)",
-                          animation: "soundBar 2s ease-in-out 0.4s infinite alternate",
+                          animation:
+                            "soundBar 2s ease-in-out 0.4s infinite alternate",
                         }}
                       />
                     </>
@@ -366,7 +452,7 @@ export function AppointmentsQueueTv() {
                       transition: "text-shadow 0.6s ease",
                     }}
                   >
-                    {currentQueue.queue_number}
+                    {currentQueue.display_number}
                   </span>
                 </div>
 
@@ -386,20 +472,29 @@ export function AppointmentsQueueTv() {
                   <Volume2
                     className="h-5 w-5 shrink-0"
                     style={{
-                      color: isSpeaking ? "var(--color-primary)" : "rgba(100,116,139,0.6)",
+                      color: isSpeaking
+                        ? "var(--color-primary)"
+                        : "rgba(100,116,139,0.6)",
                       transition: "color 0.4s ease",
                     }}
                   />
                   <SoundWave active={isSpeaking} />
-                  <div className="mx-1 h-5 w-px" style={{ background: "rgba(0,0,0,0.1)" }} />
+                  <div
+                    className="mx-1 h-5 w-px"
+                    style={{ background: "rgba(0,0,0,0.1)" }}
+                  />
                   <p
                     className="text-base font-semibold tracking-wide"
                     style={{
-                      color: isSpeaking ? "var(--color-primary)" : "rgb(100,116,139)",
+                      color: isSpeaking
+                        ? "var(--color-primary)"
+                        : "rgb(100,116,139)",
                       transition: "color 0.4s ease",
                     }}
                   >
-                    {isSpeaking ? "Announcing now…" : "Please proceed to the counter"}
+                    {isSpeaking
+                      ? "Announcing now…"
+                      : "Please proceed to the counter"}
                   </p>
                 </div>
 
@@ -410,10 +505,15 @@ export function AppointmentsQueueTv() {
                       Previous:
                     </span>
                     <span className="font-mono text-sm font-bold text-slate-500">
-                      {previousQueue.queue_number}
+                      {previousQueue.display_number}
                     </span>
-                    <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                      style={{ background: "rgba(0,0,0,0.05)", color: "rgb(100,116,139)" }}>
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                      style={{
+                        background: "rgba(0,0,0,0.05)",
+                        color: "rgb(100,116,139)",
+                      }}
+                    >
                       Done
                     </span>
                   </div>
@@ -421,15 +521,21 @@ export function AppointmentsQueueTv() {
               </>
             ) : (
               <div className="text-center">
-                <p className="font-mono text-8xl font-bold" style={{ color: "rgba(203,213,225,1)" }}>—</p>
-                <p className="mt-5 text-lg text-slate-400">No active queue at this time</p>
+                <p
+                  className="font-mono text-8xl font-bold"
+                  style={{ color: "rgba(203,213,225,1)" }}
+                >
+                  —
+                </p>
+                <p className="mt-5 text-lg text-slate-400">
+                  No active queue at this time
+                </p>
               </div>
             )}
           </div>
 
           {/* ── Right sidebar ─────────────────────────────────── */}
           <div className="flex flex-col">
-
             {/* Up Next */}
             <div className="flex-1 overflow-y-auto px-5 pt-6 pb-4">
               <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
@@ -442,10 +548,14 @@ export function AppointmentsQueueTv() {
                       key={q.id}
                       className="flex items-center gap-3 rounded-xl px-4 py-3"
                       style={{
-                        background: i === 0 ? "rgba(125,212,83,0.09)" : "rgba(0,0,0,0.03)",
-                        border: i === 0
-                          ? "1px solid rgba(125,212,83,0.25)"
-                          : "1px solid rgba(0,0,0,0.07)",
+                        background:
+                          i === 0
+                            ? "rgba(125,212,83,0.09)"
+                            : "rgba(0,0,0,0.03)",
+                        border:
+                          i === 0
+                            ? "1px solid rgba(125,212,83,0.25)"
+                            : "1px solid rgba(0,0,0,0.07)",
                       }}
                     >
                       <span className="w-5 text-center text-xs font-bold tabular-nums text-slate-400">
@@ -453,14 +563,19 @@ export function AppointmentsQueueTv() {
                       </span>
                       <span
                         className="font-mono text-base font-bold tabular-nums"
-                        style={{ color: i === 0 ? "rgb(15,23,42)" : "rgb(100,116,139)" }}
+                        style={{
+                          color: i === 0 ? "rgb(15,23,42)" : "rgb(100,116,139)",
+                        }}
                       >
-                        {q.queue_number}
+                        {q.display_number}
                       </span>
                       {i === 0 && (
                         <span
                           className="ml-auto rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
-                          style={{ background: "rgba(125,212,83,0.15)", color: "var(--color-primary)" }}
+                          style={{
+                            background: "rgba(125,212,83,0.15)",
+                            color: "var(--color-primary)",
+                          }}
                         >
                           Next
                         </span>
@@ -474,7 +589,10 @@ export function AppointmentsQueueTv() {
             </div>
 
             {/* Divider */}
-            <div className="mx-5" style={{ borderTop: "1px solid rgba(0,0,0,0.07)" }} />
+            <div
+              className="mx-5"
+              style={{ borderTop: "1px solid rgba(0,0,0,0.07)" }}
+            />
 
             {/* Stats */}
             <div className="px-5 py-5">
@@ -482,17 +600,37 @@ export function AppointmentsQueueTv() {
                 Today's Progress
               </p>
               <div className="grid grid-cols-2 gap-2 mb-4">
-                <div className="rounded-xl p-3 text-center"
-                  style={{ background: "rgba(0,0,0,0.03)", border: "1px solid rgba(0,0,0,0.07)" }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Served</p>
-                  <p className="mt-0.5 font-mono text-2xl font-bold" style={{ color: "var(--color-primary)" }}>
+                <div
+                  className="rounded-xl p-3 text-center"
+                  style={{
+                    background: "rgba(0,0,0,0.03)",
+                    border: "1px solid rgba(0,0,0,0.07)",
+                  }}
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    Served
+                  </p>
+                  <p
+                    className="mt-0.5 font-mono text-2xl font-bold"
+                    style={{ color: "var(--color-primary)" }}
+                  >
                     {completedCount}
                   </p>
                 </div>
-                <div className="rounded-xl p-3 text-center"
-                  style={{ background: "rgba(0,0,0,0.03)", border: "1px solid rgba(0,0,0,0.07)" }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Waiting</p>
-                  <p className="mt-0.5 font-mono text-2xl font-bold" style={{ color: "var(--color-accent)" }}>
+                <div
+                  className="rounded-xl p-3 text-center"
+                  style={{
+                    background: "rgba(0,0,0,0.03)",
+                    border: "1px solid rgba(0,0,0,0.07)",
+                  }}
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    Waiting
+                  </p>
+                  <p
+                    className="mt-0.5 font-mono text-2xl font-bold"
+                    style={{ color: "var(--color-accent)" }}
+                  >
                     {remainingCount}
                   </p>
                 </div>
@@ -502,16 +640,23 @@ export function AppointmentsQueueTv() {
               <div>
                 <div className="mb-1.5 flex justify-between text-[10px] font-semibold text-slate-400">
                   <span>Progress</span>
-                  <span>{completedCount} / {totalCount}</span>
+                  <span>
+                    {completedCount} / {totalCount}
+                  </span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full"
-                  style={{ background: "rgba(0,0,0,0.08)" }}>
+                <div
+                  className="h-1.5 w-full overflow-hidden rounded-full"
+                  style={{ background: "rgba(0,0,0,0.08)" }}
+                >
                   <div
                     className="h-full rounded-full transition-all duration-700"
                     style={{
                       width: `${progressPct}%`,
                       background: "var(--color-primary)",
-                      boxShadow: progressPct > 0 ? "0 0 10px rgba(125,212,83,0.5)" : "none",
+                      boxShadow:
+                        progressPct > 0
+                          ? "0 0 10px rgba(125,212,83,0.5)"
+                          : "none",
                     }}
                   />
                 </div>
