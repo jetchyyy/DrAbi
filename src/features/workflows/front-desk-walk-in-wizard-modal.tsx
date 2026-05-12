@@ -32,7 +32,9 @@ import {
   getPhilippineTimeKey,
 } from "../../lib/utils";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
+import { printHtmlDocument } from "../../lib/print";
 import { openQueuePrint } from "../appointments/components/appointments-que";
+import { buildBillingReceiptPrintDocument } from "../billing/lib/billing-receipt-print-document";
 import type { Appointment, Patient } from "../../types/domain";
 
 const walkInWizardSchema = z.object({
@@ -111,6 +113,24 @@ const walkInWizardSchema = z.object({
 
 type WalkInWizardFormValues = z.infer<typeof walkInWizardSchema>;
 
+type BillingReceiptPrintState = {
+  invoiceNumber: string;
+  customerName: string;
+  doctorAssignedName: string;
+  receptionistName: string;
+  paymentMethod: string;
+  paymentReference: string | null;
+  issuedAt: string;
+  subtotal: number;
+  total: number;
+  items: Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+  }>;
+};
+
 type WalkInWizardStage = "patient" | "appointment" | "billing" | "complete";
 
 function getDefaultWalkInScheduledAtValue() {
@@ -155,6 +175,8 @@ export function WalkInWizardModal({
   } | null>(null);
   const [createdAppointment, setCreatedAppointment] =
     useState<Appointment | null>(null);
+  const [billingReceiptPrintState, setBillingReceiptPrintState] =
+    useState<BillingReceiptPrintState | null>(null);
 
   const defaultDoctor = doctors[0];
   const defaultService = services[0];
@@ -428,6 +450,7 @@ export function WalkInWizardModal({
     setSelectedExistingPatientId(null);
     setCreatedPatient(null);
     setCreatedAppointment(null);
+    setBillingReceiptPrintState(null);
   }, [
     defaultDoctor?.id,
     defaultDoctor?.specialtyId,
@@ -714,7 +737,7 @@ export function WalkInWizardModal({
     }
 
     const values = form.getValues("billing");
-    await createInvoice.mutateAsync({
+    const createdInvoice = await createInvoice.mutateAsync({
       values: {
         patientId: values.patientId,
         bookingId: values.bookingId ?? "",
@@ -726,6 +749,33 @@ export function WalkInWizardModal({
       },
       bookings,
       profile,
+    });
+
+    const doctorAssignedName =
+      doctors.find((doctor) => doctor.id === createdAppointment.doctorId)
+        ?.fullName ?? "N/A";
+    setBillingReceiptPrintState({
+      invoiceNumber: createdInvoice.invoiceNumber,
+      customerName: `${createdPatient.firstName} ${createdPatient.lastName}`,
+      doctorAssignedName,
+      receptionistName: profile?.fullName ?? "N/A",
+      paymentMethod:
+        values.paymentStatus === "paid"
+          ? values.paymentType ?? "cash"
+          : createdInvoice.paymentStatus,
+      paymentReference:
+        values.paymentStatus === "paid" && values.paymentType !== "cash"
+          ? values.referenceNumber?.trim() || null
+          : null,
+      issuedAt: createdInvoice.createdAt,
+      subtotal: createdInvoice.subtotal,
+      total: createdInvoice.total,
+      items: values.items.map((item) => ({
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        lineTotal: item.quantity * item.unitPrice,
+      })),
     });
 
     await updateAppointment.mutateAsync({
@@ -764,6 +814,43 @@ export function WalkInWizardModal({
 
     setStage("complete");
     toast.success("Billing completed. The patient is ready for consultation.");
+  };
+
+  const handleReprintQueueNumber = () => {
+    if (!createdAppointment || !createdPatient) {
+      toast.error("Queue details are not available yet.");
+      return;
+    }
+
+    openQueuePrint({
+      queueNumber: createdAppointment.queue_number ?? "ODC-QUE-000001",
+      scheduledAt: createdAppointment.scheduledAt,
+      estimatedEnd:
+        createdAppointment.estimated_end ?? createdAppointment.scheduledAt,
+      patientName: `${createdPatient.firstName} ${createdPatient.lastName}`,
+    });
+  };
+
+  const handlePrintBillingReceipt = async () => {
+    if (!billingReceiptPrintState) {
+      toast.error("Billing receipt details are not available yet.");
+      return;
+    }
+
+    try {
+      await printHtmlDocument(
+        buildBillingReceiptPrintDocument(billingReceiptPrintState),
+      );
+    } catch {
+      toast.error("The billing receipt could not be sent to the print dialog.");
+    }
+  };
+
+  const handleSaveBillingReceiptAsPdf = () => {
+    toast.message(
+      'When the print dialog opens, choose "Save as PDF" as the destination.',
+    );
+    void handlePrintBillingReceipt();
   };
 
   const isBusy =
@@ -1617,6 +1704,30 @@ export function WalkInWizardModal({
                   type="button"
                 >
                   Finish
+                </Button>
+                <Button
+                  className="rounded-none border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+                  onClick={() => void handlePrintBillingReceipt()}
+                  type="button"
+                  variant="secondary"
+                >
+                  Print billing receipt
+                </Button>
+                <Button
+                  className="rounded-none border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+                  onClick={handleSaveBillingReceiptAsPdf}
+                  type="button"
+                  variant="secondary"
+                >
+                  Save receipt as PDF
+                </Button>
+                <Button
+                  className="rounded-none border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+                  onClick={handleReprintQueueNumber}
+                  type="button"
+                  variant="secondary"
+                >
+                  Print queue number
                 </Button>
                 {createdPatient ? (
                   <Link

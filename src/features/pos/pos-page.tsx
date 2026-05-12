@@ -812,6 +812,57 @@ export function PosPage() {
                 <p>{lookupError}</p>
               </div>
             ) : null}
+
+            {/* Item browser */}
+            <div className="mt-4">
+              <p className="mb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                Browse &amp; tap to add
+              </p>
+              {items.length === 0 ? (
+                <p className="text-xs text-slate-400">No inventory items found.</p>
+              ) : (
+                <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-200">
+                  <div className="grid grid-cols-2 gap-1 p-2 sm:grid-cols-3">
+                    {items.map((item) => {
+                      const outOfStock = item.stockOnHand <= 0;
+                      return (
+                        <button
+                          key={item.id}
+                          className={`rounded-lg border px-3 py-2.5 text-left transition ${
+                            outOfStock
+                              ? "cursor-not-allowed border-slate-100 bg-slate-50 opacity-50"
+                              : "border-transparent hover:border-emerald-300 hover:bg-emerald-50"
+                          }`}
+                          disabled={outOfStock}
+                          onClick={() => openQuantityModal(item)}
+                          type="button"
+                        >
+                          <p className="truncate text-sm font-semibold text-slate-950">
+                            {item.name}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-400">
+                            {formatCurrency(item.sellingPrice)}
+                          </p>
+                          <p
+                            className={`mt-0.5 text-[10px] font-semibold ${
+                              outOfStock
+                                ? "text-rose-500"
+                                : item.stockOnHand <= item.reorderLevel
+                                  ? "text-amber-500"
+                                  : "text-emerald-600"
+                            }`}
+                          >
+                            {outOfStock
+                              ? "Out of stock"
+                              : `${item.stockOnHand} ${item.unit}`}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </Card>
 
           {/* Cart */}

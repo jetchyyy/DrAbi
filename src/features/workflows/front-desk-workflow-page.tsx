@@ -1,26 +1,31 @@
 import {
   Activity,
   ArrowRight,
+  ExternalLink,
   CalendarPlus,
-  CheckCircle2,
   ClipboardList,
   CreditCard,
+  Eye,
   PlayCircle,
   ReceiptText,
   Search,
+  Stethoscope,
   UserRoundPlus,
+  X,
 } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
+import { FormField } from "../../components/forms/form-field";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import { useAppointments, useUpdateAppointment } from "../appointments/hooks/use-appointments";
 import { usePatientBookings } from "../appointments/hooks/use-patients-booking";
 import { useMarkBookingPaid } from "../booking/hooks/use-bookings";
 import { useInvoices } from "../billing/api/billing-mutations";
-import { usePatients } from "../patients/hooks/use-patients";
+import { usePatients, useUpdatePatient } from "../patients/hooks/use-patients";
 import { formatDateTimeLabel, getPhilippineDateKey } from "../../lib/utils";
 import type { Appointment, Booking } from "../../types/domain";
 import {
@@ -136,9 +141,179 @@ function EmptyQueue() {
   );
 }
 
+type VitalsFormValues = {
+  temperature: string;
+  bloodPressure: string;
+  heartRate: string;
+  o2Sat: string;
+  respiratoryRate: string;
+  weight: string;
+  height: string;
+};
+
+const EMPTY_VITALS: VitalsFormValues = {
+  temperature: "",
+  bloodPressure: "",
+  heartRate: "",
+  o2Sat: "",
+  respiratoryRate: "",
+  weight: "",
+  height: "",
+};
+
+function VitalsModal({
+  open,
+  patientName,
+  initialValues,
+  isSaving,
+  onClose,
+  onSave,
+}: {
+  open: boolean;
+  patientName: string;
+  initialValues: VitalsFormValues;
+  isSaving: boolean;
+  onClose: () => void;
+  onSave: (values: VitalsFormValues) => Promise<void>;
+}) {
+  const [values, setValues] = useState<VitalsFormValues>(initialValues);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setValues(initialValues);
+    setError("");
+  }, [initialValues, open]);
+
+  if (!open) {
+    return null;
+  }
+
+  const handleSubmit = async () => {
+    const hasAnyVitals = Object.values(values).some((entry) => entry.trim().length > 0);
+    if (!hasAnyVitals) {
+      setError("Record at least one vital sign before saving.");
+      return;
+    }
+
+    setError("");
+    await onSave(values);
+  };
+
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-4"
+      onClick={onClose}
+      role="dialog"
+    >
+      <div
+        className="w-full max-w-2xl border border-slate-200 bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4">
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+              Front Desk Action
+            </p>
+            <h2 className="mt-1 text-base font-extrabold text-slate-950">Record Vitals</h2>
+            <p className="mt-1 text-sm text-slate-500">{patientName}</p>
+          </div>
+          <button
+            aria-label="Close vitals modal"
+            className="inline-flex items-center justify-center border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-100"
+            onClick={onClose}
+            type="button"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="grid gap-4 px-5 py-5 md:grid-cols-2">
+          <FormField label="Temperature (°C)">
+            <Input
+              onChange={(event) =>
+                setValues((prev) => ({ ...prev, temperature: event.target.value }))
+              }
+              placeholder="e.g., 37.2"
+              value={values.temperature}
+            />
+          </FormField>
+          <FormField label="Blood Pressure (mmHg)">
+            <Input
+              onChange={(event) =>
+                setValues((prev) => ({ ...prev, bloodPressure: event.target.value }))
+              }
+              placeholder="e.g., 120/80"
+              value={values.bloodPressure}
+            />
+          </FormField>
+          <FormField label="Heart Rate (bpm)">
+            <Input
+              onChange={(event) =>
+                setValues((prev) => ({ ...prev, heartRate: event.target.value }))
+              }
+              placeholder="e.g., 78"
+              value={values.heartRate}
+            />
+          </FormField>
+          <FormField label="O2 Saturation (%)">
+            <Input
+              onChange={(event) => setValues((prev) => ({ ...prev, o2Sat: event.target.value }))}
+              placeholder="e.g., 98"
+              value={values.o2Sat}
+            />
+          </FormField>
+          <FormField label="Respiratory Rate (breaths/min)">
+            <Input
+              onChange={(event) =>
+                setValues((prev) => ({ ...prev, respiratoryRate: event.target.value }))
+              }
+              placeholder="e.g., 16"
+              value={values.respiratoryRate}
+            />
+          </FormField>
+          <FormField label="Weight (kg)">
+            <Input
+              onChange={(event) => setValues((prev) => ({ ...prev, weight: event.target.value }))}
+              placeholder="e.g., 65"
+              value={values.weight}
+            />
+          </FormField>
+          <FormField label="Height (cm)">
+            <Input
+              onChange={(event) => setValues((prev) => ({ ...prev, height: event.target.value }))}
+              placeholder="e.g., 172"
+              value={values.height}
+            />
+          </FormField>
+        </div>
+
+        {error ? (
+          <p className="px-5 pb-2 text-sm font-semibold text-rose-700">{error}</p>
+        ) : null}
+
+        <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
+          <Button onClick={onClose} type="button" variant="secondary">
+            Cancel
+          </Button>
+          <Button disabled={isSaving} onClick={() => void handleSubmit()} type="button">
+            <Stethoscope className="mr-2 size-4" />
+            Save Vitals
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function FrontDeskWorkflowPage() {
   const [walkInWizardOpen, setWalkInWizardOpen] = useState(false);
   const [selectedPatientRowId, setSelectedPatientRowId] = useState<string | null>(null);
+  const [vitalsRowId, setVitalsRowId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFilter, setActiveFilter] = useState<FrontDeskQueueFilter>("all");
   const { data: appointments = [] } = useAppointments();
@@ -146,6 +321,7 @@ export function FrontDeskWorkflowPage() {
   const { data: invoices = [] } = useInvoices();
   const bookingsQuery = usePatientBookings();
   const updateAppointment = useUpdateAppointment();
+  const updatePatient = useUpdatePatient();
   const markBookingPaid = useMarkBookingPaid();
   const [search, setSearch] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -233,6 +409,26 @@ export function FrontDeskWorkflowPage() {
     () => rows.find((entry) => entry.id === selectedPatientRowId) ?? null,
     [rows, selectedPatientRowId],
   );
+  const vitalsRow = useMemo(
+    () => rows.find((entry) => entry.id === vitalsRowId) ?? null,
+    [rows, vitalsRowId],
+  );
+  const vitalsPatient = useMemo(
+    () => patients.find((entry) => entry.id === vitalsRow?.patientId) ?? null,
+    [patients, vitalsRow?.patientId],
+  );
+  const vitalsInitialValues: VitalsFormValues = useMemo(
+    () => ({
+      temperature: vitalsPatient?.temperature ?? "",
+      bloodPressure: vitalsPatient?.bloodPressure ?? "",
+      heartRate: vitalsPatient?.heartRate ?? "",
+      o2Sat: vitalsPatient?.o2Sat ?? "",
+      respiratoryRate: vitalsPatient?.respiratoryRate ?? "",
+      weight: vitalsPatient?.weight ?? "",
+      height: vitalsPatient?.height ?? "",
+    }),
+    [vitalsPatient],
+  );
 
   const handleMarkBookingPaid = async (row: FrontDeskWorkflowRow) => {
     if (!row.receiptCode) {
@@ -264,6 +460,51 @@ export function FrontDeskWorkflowPage() {
 
   const closePatientDetails = () => {
     setSelectedPatientRowId(null);
+  };
+
+  const openVitalsModal = (row: FrontDeskWorkflowRow) => {
+    const patient = patients.find((entry) => entry.id === row.patientId);
+    if (!patient) {
+      toast.error("Patient record was not found.");
+      return;
+    }
+
+    setVitalsRowId(row.id);
+  };
+
+  const closeVitalsModal = () => {
+    setVitalsRowId(null);
+  };
+
+  const handleSaveVitals = async (values: VitalsFormValues) => {
+    if (!vitalsPatient) {
+      toast.error("Patient record was not found.");
+      return;
+    }
+
+    const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...basePayload } =
+      vitalsPatient;
+    const hasAnyVitals = Object.values(values).some((entry) => entry.trim().length > 0);
+
+    await updatePatient.mutateAsync({
+      patientId: vitalsPatient.id,
+      payload: {
+        ...basePayload,
+        temperature: values.temperature.trim() || undefined,
+        bloodPressure: values.bloodPressure.trim() || undefined,
+        heartRate: values.heartRate.trim() || undefined,
+        o2Sat: values.o2Sat.trim() || undefined,
+        respiratoryRate: values.respiratoryRate.trim() || undefined,
+        weight: values.weight.trim() || undefined,
+        height: values.height.trim() || undefined,
+        vitalsRecordedAt: hasAnyVitals
+          ? new Date().toISOString()
+          : vitalsPatient.vitalsRecordedAt ?? null,
+      },
+    });
+
+    toast.success("Vitals saved successfully.");
+    closeVitalsModal();
   };
 
   useEffect(() => {
@@ -619,40 +860,60 @@ export function FrontDeskWorkflowPage() {
                           overdue ? "bg-rose-50/95" : "bg-white"
                         }`}
                       >
-                        <div className="flex min-w-max justify-end gap-2">
+                        <div className="flex min-w-max justify-end gap-1.5">
                           {row.paymentState !== "paid" ? (
                             row.receiptCode ? (
                               <Button
-                                className="rounded-none px-3 py-2 text-xs"
+                                aria-label={`Mark ${row.patientName} as paid`}
+                                className="rounded-none border border-emerald-300 bg-emerald-50 p-2 text-emerald-800 hover:bg-emerald-100"
                                 disabled={markBookingPaid.isPending || !row.receiptCode}
                                 onClick={() => void handleMarkBookingPaid(row)}
                                 type="button"
                                 variant="secondary"
                               >
-                                <CreditCard className="mr-1 size-3.5" />
-                                Mark paid
+                                <CreditCard className="size-3.5" />
                               </Button>
                             ) : (
                               <Link
-                                className="inline-flex items-center border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-emerald-800 transition hover:bg-emerald-100"
+                                aria-label={`Create invoice for ${row.patientName}`}
+                                className="inline-flex items-center border border-emerald-200 bg-emerald-50 p-2 text-emerald-800 transition hover:bg-emerald-100"
                                 to={`/app/billing?action=create&patientId=${row.patientId}&appointmentId=${row.appointmentId}`}
                               >
-                                <ReceiptText className="mr-1 size-3.5" />
-                                Create invoice
+                                <ReceiptText className="size-3.5" />
                               </Link>
                             )
                           ) : null}
+                          {row.workflowState === "needs_vitals" || row.missingVitals ? (
+                            <Button
+                              aria-label={`Record vitals for ${row.patientName}`}
+                              className="rounded-none border border-amber-300 bg-amber-50 p-2 text-amber-800 hover:bg-amber-100"
+                              disabled={updatePatient.isPending}
+                              onClick={() => openVitalsModal(row)}
+                              type="button"
+                              variant="secondary"
+                            >
+                              <Stethoscope className="size-3.5" />
+                            </Button>
+                          ) : null}
+                          <Link
+                            aria-label={`Open ${row.patientName} patient page`}
+                            className="inline-flex items-center border border-slate-200 bg-white p-2 text-slate-700 transition hover:bg-slate-50"
+                            to={`/app/patients/${row.patientId}`}
+                          >
+                            <ExternalLink className="size-3.5" />
+                          </Link>
                           <Button
-                            className="rounded-none border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-50"
+                            aria-label={`Open ${row.patientName} details modal`}
+                            className="rounded-none border border-slate-200 bg-white p-2 text-slate-700 transition hover:bg-slate-50"
                             onClick={() => openPatientDetails(row)}
                             type="button"
                             variant="secondary"
                           >
-                            <CheckCircle2 className="mr-1 size-3.5" />
-                            Details
+                            <Eye className="size-3.5" />
                           </Button>
                           <Button
-                            className="rounded-none bg-orange-600 px-3 py-2 text-xs hover:bg-orange-700"
+                            aria-label={`Send ${row.patientName} to doctor`}
+                            className="rounded-none bg-orange-600 px-3 py-2 text-xs text-white hover:bg-orange-700"
                             disabled={
                               updateAppointment.isPending ||
                               row.workflowState !== "ready_for_doctor"
@@ -711,6 +972,15 @@ export function FrontDeskWorkflowPage() {
         onClose={closePatientDetails}
         open={Boolean(selectedPatientRow)}
         row={selectedPatientRow}
+      />
+
+      <VitalsModal
+        initialValues={vitalsInitialValues ?? EMPTY_VITALS}
+        isSaving={updatePatient.isPending}
+        onClose={closeVitalsModal}
+        onSave={handleSaveVitals}
+        open={Boolean(vitalsRow && vitalsPatient)}
+        patientName={vitalsRow?.patientName ?? ""}
       />
 
     </div>
