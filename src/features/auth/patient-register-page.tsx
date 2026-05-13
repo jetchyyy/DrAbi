@@ -141,6 +141,10 @@ export function PatientRegisterPage() {
               <Link className="font-medium text-slate-500 underline-offset-[3px] transition-colors hover:text-slate-800 hover:underline" to="/login">
                 Operations sign-in
               </Link>
+              . Walk-in patients with a Unique ID can continue via{' '}
+              <Link className="font-medium text-slate-500 underline-offset-[3px] transition-colors hover:text-slate-800 hover:underline" to="/portal/walk-in/login">
+                Walk-in Login
+              </Link>
               .
             </p>
           </div>

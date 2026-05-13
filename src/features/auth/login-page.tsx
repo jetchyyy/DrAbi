@@ -1,4 +1,5 @@
 import { CalendarCheck2, FileText, Receipt, ShieldCheck, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import { useClinicSettingsData } from '../../hooks/use-clinic-data';
 import { defaultClinicSettings } from '../../config/clinic';
@@ -106,6 +107,14 @@ export function LoginPage() {
         <div className="absolute left-6 top-6 flex items-center gap-3 lg:hidden">
           <img alt={`${clinicName} logo`} className="h-9 w-auto object-contain" decoding="async" src="/logo.png" width={200} />
           <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">{clinicName}</span>
+        </div>
+        <div className="absolute right-6 top-6">
+          <Link
+            className="text-xs font-semibold uppercase tracking-widest text-slate-500 transition-colors hover:text-slate-700"
+            to="/portal"
+          >
+            Back to portal
+          </Link>
         </div>
         <div aria-hidden className="fixed inset-x-0 top-0 z-10 h-1 shrink-0 bg-[var(--color-primary)] lg:hidden" />
 

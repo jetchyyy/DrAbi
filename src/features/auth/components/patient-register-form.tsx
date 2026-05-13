@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { parse } from 'date-fns';
 import { Eye, EyeOff, Loader2Icon } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
-import { useEffect, useState, type LabelHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type LabelHTMLAttributes, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -30,11 +30,30 @@ const allergyOptions = [
   'Dust mites',
   'Other',
 ] as const;
+const monthOptions = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+] as const;
+
+function padToTwoDigits(value: number) {
+  return value.toString().padStart(2, '0');
+}
 
 const registerSchema = z.object({
   fullName: z.string().min(1, 'Full name is required'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
   phone: z.string().min(1, 'Phone number is required'),
   sex: z.union([z.literal('MALE'), z.literal('FEMALE')]),
   bloodType: z.string().optional(),
@@ -44,6 +63,9 @@ const registerSchema = z.object({
   medicalHistory: z.string().optional(),
   emergencyContactName: z.string().min(1, 'Emergency contact name is required'),
   emergencyContactPhone: z.string().min(1, 'Emergency contact phone is required'),
+}).refine((values) => values.password === values.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -57,7 +79,7 @@ const stepConfigs: ReadonlyArray<{
   {
     title: 'Account & sign-in',
     description: "How you'll sign in to book and manage appointments.",
-    fields: ['fullName', 'email', 'password'],
+    fields: ['fullName', 'email', 'password', 'confirmPassword'],
   },
   {
     title: 'Contact & demographics',
@@ -82,13 +104,17 @@ export function PatientRegisterForm() {
   const [currentStep, setCurrentStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string>();
+  const [selectedBirthYear, setSelectedBirthYear] = useState('');
+  const [selectedBirthMonth, setSelectedBirthMonth] = useState('');
+  const [selectedBirthDay, setSelectedBirthDay] = useState('');
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       fullName: '',
       email: '',
       password: '',
-      phone: '',
+      confirmPassword: '',
+      phone: '+63',
       sex: 'MALE',
       bloodType: '',
       birthDate: '',
@@ -99,6 +125,67 @@ export function PatientRegisterForm() {
       emergencyContactPhone: '',
     },
   });
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
+  const currentDay = today.getDate();
+  const currentMonthPadded = padToTwoDigits(currentMonth);
+  const birthDateValue = form.watch('birthDate');
+  const yearOptions = useMemo(() => Array.from({ length: 121 }, (_, index) => String(currentYear - index)), [currentYear]);
+  const maxMonth = selectedBirthYear === String(currentYear) ? currentMonth : 12;
+  const availableMonthOptions = monthOptions.filter((month) => Number(month.value) <= maxMonth);
+  const daysInSelectedMonth =
+    selectedBirthYear && selectedBirthMonth
+      ? new Date(Number(selectedBirthYear), Number(selectedBirthMonth), 0).getDate()
+      : 31;
+  const maxDay =
+    selectedBirthYear === String(currentYear) && selectedBirthMonth === currentMonthPadded
+      ? Math.min(daysInSelectedMonth, currentDay)
+      : daysInSelectedMonth;
+  const dayOptions = Array.from({ length: maxDay }, (_, index) => padToTwoDigits(index + 1));
+
+  useEffect(() => {
+    if (!birthDateValue) return;
+    const [year = '', month = '', day = ''] = birthDateValue.split('-');
+    if (!year || !month || !day) return;
+    setSelectedBirthYear(year);
+    setSelectedBirthMonth(month);
+    setSelectedBirthDay(day);
+  }, [birthDateValue]);
+
+  function handleBirthDatePartChange(part: 'year' | 'month' | 'day', value: string) {
+    const inputYear = part === 'year' ? value : selectedBirthYear;
+    const inputMonth = part === 'month' ? value : selectedBirthMonth;
+    const inputDay = part === 'day' ? value : selectedBirthDay;
+
+    setSelectedBirthYear(inputYear);
+    setSelectedBirthMonth(inputMonth);
+    setSelectedBirthDay(inputDay);
+
+    if (!inputYear || !inputMonth || !inputDay) {
+      form.setValue('birthDate', '', { shouldDirty: true, shouldValidate: false });
+      return;
+    }
+
+    const normalizedMonthNumber = Math.min(
+      Number(inputMonth),
+      inputYear === String(currentYear) ? currentMonth : 12,
+    );
+    const normalizedMonth = padToTwoDigits(normalizedMonthNumber);
+    const monthDayLimit = new Date(Number(inputYear), normalizedMonthNumber, 0).getDate();
+    const dateDayLimit =
+      inputYear === String(currentYear) && normalizedMonth === currentMonthPadded
+        ? Math.min(monthDayLimit, currentDay)
+        : monthDayLimit;
+    const normalizedDay = padToTwoDigits(Math.min(Number(inputDay), dateDayLimit));
+    setSelectedBirthMonth(normalizedMonth);
+    setSelectedBirthDay(normalizedDay);
+
+    form.setValue('birthDate', `${inputYear}-${normalizedMonth}-${normalizedDay}`, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -207,7 +294,7 @@ export function PatientRegisterForm() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField error={form.formState.errors.fullName?.message}>
-                <Label htmlFor="fullName">Full name</Label>fo
+                <Label htmlFor="fullName">Full name</Label>
                 <Input id="fullName" autoComplete="name" {...form.register('fullName')} placeholder="Jordan Lee" />
               </FormField>
               <FormField error={form.formState.errors.email?.message}>
@@ -239,6 +326,30 @@ export function PatientRegisterForm() {
                   <p className="text-xs text-slate-500">Use 8+ chars with uppercase, lowercase, number, and symbol.</p>
                 </FormField>
               </div>
+              <div className="sm:col-span-2">
+                <FormField error={form.formState.errors.confirmPassword?.message}>
+                  <Label htmlFor="confirmPassword">Confirm password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      className="pr-10"
+                      {...form.register('confirmPassword')}
+                      placeholder="Re-enter your password"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword((value) => !value)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-700"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
+                </FormField>
+              </div>
             </div>
           </section>
         ) : null}
@@ -252,7 +363,7 @@ export function PatientRegisterForm() {
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField error={form.formState.errors.phone?.message}>
                 <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" autoComplete="tel" {...form.register('phone')} placeholder="+1 — — — ----" />
+                <Input id="phone" autoComplete="tel" {...form.register('phone')} placeholder="+63 9XX XXX XXXX" />
               </FormField>
               <FormField error={form.formState.errors.sex?.message}>
                 <Label htmlFor="sex">Sex</Label>
@@ -271,10 +382,51 @@ export function PatientRegisterForm() {
                   ))}
                 </Select>
               </FormField>
-              <div className="sm:col-span-2 max-w-[11.5rem]">
+              <div className="sm:col-span-2">
                 <FormField error={form.formState.errors.birthDate?.message}>
-                  <Label htmlFor="birthDate">Date of birth</Label>
-                  <Input id="birthDate" type="date" {...form.register('birthDate')} />
+                  <Label htmlFor="birthMonth">Date of birth</Label>
+                  <Input type="hidden" {...form.register('birthDate')} />
+                  <div className="grid grid-cols-3 gap-2">
+                    <Select
+                      id="birthMonth"
+                      aria-label="Birth month"
+                      value={selectedBirthMonth}
+                      onChange={(event) => handleBirthDatePartChange('month', event.target.value)}
+                    >
+                      <option value="">Month</option>
+                      {availableMonthOptions.map((month) => (
+                        <option key={month.value} value={month.value}>
+                          {month.label}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select
+                      aria-label="Birth day"
+                      value={selectedBirthDay}
+                      disabled={!selectedBirthYear || !selectedBirthMonth}
+                      onChange={(event) => handleBirthDatePartChange('day', event.target.value)}
+                    >
+                      <option value="">Day</option>
+                      {dayOptions.map((day) => (
+                        <option key={day} value={day}>
+                          {day}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select
+                      aria-label="Birth year"
+                      value={selectedBirthYear}
+                      onChange={(event) => handleBirthDatePartChange('year', event.target.value)}
+                    >
+                      <option value="">Year</option>
+                      {yearOptions.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <p className="text-xs text-slate-500">Select Month, Day, and Year.</p>
                 </FormField>
               </div>
               <div className="sm:col-span-2">
@@ -398,3 +550,4 @@ function FormField({ children, error }: FormFieldProps) {
 function Label({ className = '', ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
   return <label className={`text-sm font-medium text-slate-700 ${className}`.trim()} {...props} />;
 }
+

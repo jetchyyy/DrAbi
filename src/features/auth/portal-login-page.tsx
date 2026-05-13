@@ -171,6 +171,15 @@ export function PortalLoginPage() {
         </div>
 
         <div className="w-full max-w-sm animate-fade-up">
+          <div className="mb-4">
+            <Link
+              to="/portal"
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-500 transition-colors hover:text-slate-700"
+            >
+              <MoveLeft className="size-3.5" />
+              Back to Portal
+            </Link>
+          </div>
 
           {/* Panel heading */}
           <div className="mb-8">

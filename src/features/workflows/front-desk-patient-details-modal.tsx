@@ -863,6 +863,24 @@ export function FrontDeskPatientDetailsModal({
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
+                          Walk-In Unique ID
+                        </p>
+                        <p className="mt-1 break-all font-mono text-sm font-semibold text-slate-900">
+                          {displayOrFallback(patient.uniqueLoginId)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
+                          Account Setup
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                          {patient.walkInAccountClaimedAt
+                            ? "Completed"
+                            : "Pending"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
                           Full Name
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-900">

@@ -10,6 +10,8 @@ import { ForgotPasswordPage } from "../features/auth/forgot-password-page";
 import { LoginPage } from "../features/auth/login-page";
 import { PatientRegisterPage } from "../features/auth/patient-register-page";
 import { ResetPasswordPage } from "../features/auth/reset-password-page";
+import { WalkInAccountSetupPage } from "../features/auth/walk-in-account-setup-page";
+import { WalkInUniqueLoginPage } from "../features/auth/walk-in-unique-login-page";
 import { BillingPage } from "../features/billing/billing-page";
 import { BookingReceiptScanPage } from "../features/booking/booking-receipt-scan-page";
 import { PatientConsultationPage } from "../features/booking/patient-teleconsultation-page";
@@ -93,6 +95,14 @@ export const router = createBrowserRouter([
       {
         path: "/forgot-password",
         element: <ForgotPasswordPage />,
+      },
+      {
+        path: "/portal/walk-in/login",
+        element: <WalkInUniqueLoginPage />,
+      },
+      {
+        path: "/portal/walk-in/setup",
+        element: <WalkInAccountSetupPage />,
       },
       {
         path: "/reset-password",

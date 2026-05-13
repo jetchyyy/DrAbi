@@ -9,9 +9,11 @@ import {
   clearUserAccessRoleAssignment,
   clearUserPermissionOverride,
   createAccessRole as createDemoAccessRole,
+  claimWalkInPatientAccount,
   deleteAccessRoleRecord as deleteDemoAccessRoleRecord,
   getClinicSettings as getDemoClinicSettings,
   getDatabase,
+  getWalkInPatientByUniqueLoginId,
   listAccessRoles as listDemoAccessRoles,
   listDoctorAvailabilityByDoctor,
   replaceDoctorAvailability,
@@ -59,6 +61,7 @@ import type { Database } from "../types/database";
 import {
   generateBookingReceiptCode,
   generatePatientQrCode,
+  generateWalkInUniqueLoginId,
   toUtcIsoFromPhilippineDateTime,
 } from "./utils";
 import {
@@ -110,6 +113,23 @@ export interface PatientTeleconsultationSummary {
   teleconsultationPlatform: string;
   teleconsultationAccessInstructions: string;
   joinPath: string;
+}
+
+export interface WalkInUniqueLoginProfile {
+  patientId: string;
+  uniqueLoginId: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  mobileNumber: string;
+  email: string;
+  address: string;
+  bloodType: string;
+  allergies: string;
+  medicalHistory: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  accountLinked: boolean;
 }
 
 async function buildBookingListItemFromRow(
@@ -459,6 +479,8 @@ export function mapPatient(row: PatientRow): Patient {
     id: row.id,
     userId: row.user_id,
     qrCode: row.qr_code,
+    uniqueLoginId: row.unique_login_id,
+    walkInAccountClaimedAt: row.walk_in_account_claimed_at,
     intakeSource:
       row.intake_source === "staff_walk_in"
         ? "staff_walk_in"
@@ -1090,10 +1112,16 @@ export async function createPatientLiveOrDemo(
   }
 
   const client = requireSupabase();
+  const intakeSource = input.intakeSource;
+  const uniqueLoginId =
+    input.uniqueLoginId ??
+    (intakeSource === "staff_walk_in" ? generateWalkInUniqueLoginId() : null);
   const payload: Database["public"]["Tables"]["patients"]["Insert"] = {
     user_id: input.userId ?? null,
     qr_code: input.qrCode || generatePatientQrCode(),
-    intake_source: input.intakeSource,
+    unique_login_id: uniqueLoginId,
+    walk_in_account_claimed_at: input.walkInAccountClaimedAt ?? null,
+    intake_source: intakeSource,
     visit_status: input.visitStatus,
     ...(input.lastClinicVisitAt !== undefined
       ? { last_clinic_visit_at: input.lastClinicVisitAt }
@@ -1145,6 +1173,12 @@ export async function updatePatientLiveOrDemo(
   const payload: Database["public"]["Tables"]["patients"]["Update"] = {
     user_id: input.userId ?? null,
     qr_code: input.qrCode || generatePatientQrCode(),
+    ...(input.uniqueLoginId !== undefined
+      ? { unique_login_id: input.uniqueLoginId }
+      : {}),
+    ...(input.walkInAccountClaimedAt !== undefined
+      ? { walk_in_account_claimed_at: input.walkInAccountClaimedAt }
+      : {}),
     intake_source: input.intakeSource,
     visit_status: input.visitStatus,
     ...(input.lastClinicVisitAt !== undefined
@@ -2880,6 +2914,156 @@ export async function getPatientByQrCodeLiveOrDemo(qrCode: string) {
   }
 
   return data ? mapPatient(data) : null;
+}
+
+export async function getWalkInPatientByUniqueLoginIdLiveOrDemo(
+  uniqueLoginId: string,
+): Promise<WalkInUniqueLoginProfile | null> {
+  const normalizedUniqueId = uniqueLoginId.trim().toUpperCase();
+  if (!normalizedUniqueId) {
+    return null;
+  }
+
+  if (!isSupabaseConfigured) {
+    const patient = getWalkInPatientByUniqueLoginId(normalizedUniqueId);
+    if (!patient) {
+      return null;
+    }
+
+    return {
+      patientId: patient.id,
+      uniqueLoginId: patient.uniqueLoginId ?? normalizedUniqueId,
+      firstName: patient.firstName,
+      lastName: patient.lastName,
+      birthDate: patient.birthDate,
+      mobileNumber: patient.mobileNumber,
+      email: patient.email,
+      address: patient.address,
+      bloodType: patient.bloodType,
+      allergies: patient.allergies,
+      medicalHistory: patient.medicalHistory,
+      emergencyContactName: patient.emergencyContactName,
+      emergencyContactPhone: patient.emergencyContactPhone,
+      accountLinked: Boolean(patient.userId),
+    };
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await (client as any).rpc(
+    "portal_get_walk_in_patient_by_unique_id",
+    {
+      input_unique_id: normalizedUniqueId,
+    },
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  const row = ((data ?? []) as Array<{
+    patient_id: string;
+    unique_login_id: string;
+    first_name: string;
+    last_name: string;
+    birth_date: string;
+    mobile_number: string | null;
+    email: string | null;
+    address: string | null;
+    blood_type: string | null;
+    allergies: string | null;
+    medical_history: string | null;
+    emergency_contact_name: string | null;
+    emergency_contact_phone: string | null;
+    account_linked: boolean;
+  }>)[0];
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    patientId: row.patient_id,
+    uniqueLoginId: row.unique_login_id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    birthDate: row.birth_date,
+    mobileNumber: row.mobile_number ?? "",
+    email: row.email ?? "",
+    address: row.address ?? "",
+    bloodType: row.blood_type ?? "",
+    allergies: row.allergies ?? "",
+    medicalHistory: row.medical_history ?? "",
+    emergencyContactName: row.emergency_contact_name ?? "",
+    emergencyContactPhone: row.emergency_contact_phone ?? "",
+    accountLinked: row.account_linked === true,
+  };
+}
+
+export async function claimWalkInPatientAccountLiveOrDemo(input: {
+  uniqueLoginId: string;
+  email: string;
+  password: string;
+  phone: string;
+  address: string;
+  allergies: string;
+  medicalHistory: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+}) {
+  const normalizedUniqueId = input.uniqueLoginId.trim().toUpperCase();
+  if (!normalizedUniqueId) {
+    throw new Error("Unique ID is required.");
+  }
+
+  if (!isSupabaseConfigured) {
+    const patient = claimWalkInPatientAccount({
+      uniqueLoginId: normalizedUniqueId,
+      email: input.email,
+      phone: input.phone,
+      address: input.address,
+      allergies: input.allergies,
+      medicalHistory: input.medicalHistory,
+      emergencyContactName: input.emergencyContactName,
+      emergencyContactPhone: input.emergencyContactPhone,
+    });
+
+    if (!patient?.userId) {
+      throw new Error("Unable to claim this walk-in patient account.");
+    }
+
+    return {
+      userId: patient.userId,
+      email: input.email.trim().toLowerCase(),
+    };
+  }
+
+  const response = await invokeSupabaseFunction<{
+    success?: boolean;
+    user?: {
+      id: string;
+      email: string;
+      fullName: string;
+    };
+  }>("claim-walk-in-patient", {
+    uniqueLoginId: normalizedUniqueId,
+    email: input.email,
+    password: input.password,
+    phone: input.phone,
+    address: input.address,
+    allergies: input.allergies,
+    medicalHistory: input.medicalHistory,
+    emergencyContactName: input.emergencyContactName,
+    emergencyContactPhone: input.emergencyContactPhone,
+  });
+
+  if (!response.user?.id || !response.user.email) {
+    throw new Error("Unable to claim this walk-in patient account.");
+  }
+
+  return {
+    userId: response.user.id,
+    email: response.user.email,
+  };
 }
 
 export async function ensurePatientForUser(user: User) {

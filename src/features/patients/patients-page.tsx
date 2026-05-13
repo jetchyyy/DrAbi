@@ -169,7 +169,7 @@ export function PatientsPage() {
   const filteredPatients = useMemo(
     () =>
       patients.filter((patient) =>
-        `${patient.firstName} ${patient.lastName} ${patient.email} ${patient.mobileNumber} ${patient.qrCode} ${patient.intakeSource} ${patient.visitStatus}`
+        `${patient.firstName} ${patient.lastName} ${patient.email} ${patient.mobileNumber} ${patient.qrCode} ${patient.uniqueLoginId ?? ''} ${patient.intakeSource} ${patient.visitStatus}`
           .toLowerCase()
           .includes(deferredSearch.toLowerCase()),
       ),
@@ -356,7 +356,7 @@ export function PatientsPage() {
         setFeedbackModal({
           open: true,
           title: 'Walk-in patient added',
-          message: 'The patient record was created successfully and is now available in the registry.',
+          message: `The patient record was created successfully. Unique ID: ${createdPatient.uniqueLoginId ?? 'Not generated'}`,
           variant: 'success',
         });
 
@@ -500,7 +500,7 @@ export function PatientsPage() {
                     setSearch(event.target.value);
                     setCurrentPage(1);
                   }}
-                  placeholder="Search patient, email, QR code..."
+                  placeholder="Search patient, email, QR, unique ID..."
                   value={search}
                 />
               </div>
@@ -547,6 +547,7 @@ export function PatientsPage() {
                     <th className={INTERNAL_TH}>Birth date</th>
                     <th className={INTERNAL_TH}>Source</th>
                     <th className={INTERNAL_TH}>Visit status</th>
+                    <th className={INTERNAL_TH}>Unique ID</th>
                     <th className={INTERNAL_TH}>QR code</th>
                     <th className={cn(INTERNAL_TH, 'text-right')}>Actions</th>
                   </tr>
@@ -592,6 +593,11 @@ export function PatientsPage() {
                             Not visited yet
                           </span>
                         )}
+                      </td>
+                      <td className={INTERNAL_TD}>
+                        <span className="font-mono text-xs text-slate-500">
+                          {patient.uniqueLoginId || '—'}
+                        </span>
                       </td>
                       <td className={INTERNAL_TD}>
                         <span className="font-mono text-xs text-slate-500">{patient.qrCode || '—'}</span>

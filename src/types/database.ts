@@ -268,6 +268,8 @@ export interface Database {
           id: string;
           user_id: string | null;
           qr_code: string;
+          unique_login_id: string | null;
+          walk_in_account_claimed_at: string | null;
           intake_source: string;
           visit_status: string;
           last_clinic_visit_at: string | null;
@@ -298,6 +300,8 @@ export interface Database {
         Insert: {
           user_id?: string | null;
           qr_code?: string;
+          unique_login_id?: string | null;
+          walk_in_account_claimed_at?: string | null;
           intake_source?: string;
           visit_status?: string;
           last_clinic_visit_at?: string | null;

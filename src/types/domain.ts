@@ -200,6 +200,8 @@ export interface Service extends BaseRecord {
 export interface Patient extends BaseRecord {
   userId?: string | null;
   qrCode: string;
+  uniqueLoginId?: string | null;
+  walkInAccountClaimedAt?: string | null;
   intakeSource: PatientIntakeSource;
   visitStatus: PatientVisitStatus;
   lastClinicVisitAt?: string | null;

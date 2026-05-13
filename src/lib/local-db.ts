@@ -43,6 +43,7 @@ import {
   generateId,
   generateInventoryQrCode,
   generatePatientQrCode,
+  generateWalkInUniqueLoginId,
 } from "./utils";
 import { hashSecret } from "./utils";
 
@@ -961,11 +962,18 @@ export function upsertPatient(
   input: Omit<Patient, "id" | "createdAt" | "updatedAt">,
 ) {
   const timestamp = new Date().toISOString();
+  const intakeSource = input.intakeSource ?? "staff_walk_in";
   return updateDatabase((draft) => {
     draft.patients.unshift({
       ...input,
       qrCode: input.qrCode || generatePatientQrCode(),
-      intakeSource: input.intakeSource ?? "staff_walk_in",
+      uniqueLoginId:
+        input.uniqueLoginId ??
+        (intakeSource === "staff_walk_in"
+          ? generateWalkInUniqueLoginId()
+          : null),
+      walkInAccountClaimedAt: input.walkInAccountClaimedAt ?? null,
+      intakeSource,
       visitStatus: input.visitStatus ?? "visited_clinic",
       lastClinicVisitAt: input.lastClinicVisitAt ?? null,
       id: generateId("pat"),
@@ -1037,6 +1045,105 @@ export function getPatientById(patientId: string) {
 export function getPatientByQrCode(qrCode: string) {
   return (
     getDatabase().patients.find((patient) => patient.qrCode === qrCode) ?? null
+  );
+}
+
+export function getWalkInPatientByUniqueLoginId(uniqueLoginId: string) {
+  const normalizedUniqueId = uniqueLoginId.trim().toUpperCase();
+  if (!normalizedUniqueId) {
+    return null;
+  }
+
+  return (
+    getDatabase().patients.find(
+      (patient) =>
+        patient.intakeSource === "staff_walk_in" &&
+        !patient.deletedAt &&
+        (patient.uniqueLoginId ?? "").trim().toUpperCase() ===
+          normalizedUniqueId,
+    ) ?? null
+  );
+}
+
+export function claimWalkInPatientAccount(input: {
+  uniqueLoginId: string;
+  email: string;
+  phone: string;
+  address: string;
+  allergies: string;
+  medicalHistory: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+}) {
+  const normalizedUniqueId = input.uniqueLoginId.trim().toUpperCase();
+  const normalizedEmail = input.email.trim().toLowerCase();
+
+  if (!normalizedUniqueId) {
+    throw new Error("Unique ID is required.");
+  }
+
+  if (!normalizedEmail) {
+    throw new Error("Email is required.");
+  }
+
+  const timestamp = new Date().toISOString();
+
+  return (
+    updateDatabase((draft) => {
+      const patient = draft.patients.find(
+        (item) =>
+          item.intakeSource === "staff_walk_in" &&
+          !item.deletedAt &&
+          (item.uniqueLoginId ?? "").trim().toUpperCase() ===
+            normalizedUniqueId,
+      );
+
+      if (!patient) {
+        throw new Error("Unique ID was not found.");
+      }
+
+      if (patient.userId) {
+        throw new Error(
+          "This Unique ID already has an account. Please use patient login.",
+        );
+      }
+
+      const hasExistingEmail = draft.users.some(
+        (user) => user.email.trim().toLowerCase() === normalizedEmail,
+      );
+      if (hasExistingEmail) {
+        throw new Error(
+          "That email is already in use. Please use a different email.",
+        );
+      }
+
+      const userId = generateId("user");
+      draft.users.unshift({
+        id: userId,
+        authUserId: `demo_${normalizedEmail}`,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        email: normalizedEmail,
+        fullName: `${patient.firstName} ${patient.lastName}`.trim(),
+        role: "patient",
+        phone: input.phone.trim(),
+      });
+
+      patient.userId = userId;
+      patient.email = normalizedEmail;
+      patient.mobileNumber = input.phone.trim();
+      patient.address = input.address.trim();
+      patient.allergies = input.allergies.trim();
+      patient.medicalHistory = input.medicalHistory.trim();
+      patient.emergencyContactName = input.emergencyContactName.trim();
+      patient.emergencyContactPhone = input.emergencyContactPhone.trim();
+      patient.walkInAccountClaimedAt = timestamp;
+      patient.updatedAt = timestamp;
+    }).patients.find(
+      (patient) =>
+        (patient.uniqueLoginId ?? "").trim().toUpperCase() ===
+        normalizedUniqueId,
+    ) ?? null
   );
 }
 
@@ -2162,6 +2269,8 @@ export function createPatientProfileAccount(
     draft.patients.unshift({
       ...patient,
       qrCode: patient.qrCode || generatePatientQrCode(),
+      uniqueLoginId: patient.uniqueLoginId ?? null,
+      walkInAccountClaimedAt: patient.walkInAccountClaimedAt ?? null,
       intakeSource: patient.intakeSource ?? "online_registration",
       visitStatus: patient.visitStatus ?? "registered_no_visit",
       lastClinicVisitAt: patient.lastClinicVisitAt ?? null,
@@ -2240,6 +2349,12 @@ function normalizeDatabase(database: AppDatabase) {
     patients: database.patients.map((patient) => ({
       ...patient,
       qrCode: patient.qrCode || generatePatientQrCode(),
+      uniqueLoginId:
+        patient.uniqueLoginId ??
+        (patient.intakeSource === "staff_walk_in"
+          ? generateWalkInUniqueLoginId()
+          : null),
+      walkInAccountClaimedAt: patient.walkInAccountClaimedAt ?? null,
       intakeSource:
         patient.intakeSource ??
         (patient.userId ? "online_registration" : "staff_walk_in"),

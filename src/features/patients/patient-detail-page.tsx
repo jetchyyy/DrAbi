@@ -2579,6 +2579,14 @@ export function PatientDetailPage() {
                     {patient.qrCode}
                   </span>
                 </p>
+                {patient.uniqueLoginId ? (
+                  <p className="mt-1 text-sm text-slate-500">
+                    Walk-In Unique ID:{" "}
+                    <span className="font-mono font-semibold text-slate-700">
+                      {patient.uniqueLoginId}
+                    </span>
+                  </p>
+                ) : null}
               </div>
               <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
                 {canClinicalActions ? (

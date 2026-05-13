@@ -4,6 +4,9 @@ verify_jwt = false
 [functions.admin-create-user]
 verify_jwt = false
 
+[functions.claim-walk-in-patient]
+verify_jwt = false
+
 [functions.booking-notifications]
 enabled = true
 verify_jwt = true

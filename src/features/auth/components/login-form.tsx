@@ -136,6 +136,13 @@ export function LoginForm({ defaultRedirectTo }: LoginFormProps) {
         >
           Patient registration
         </Link>
+        {' '}|{' '}
+        <Link
+          className="font-medium text-slate-500 underline-offset-[3px] transition-colors hover:text-slate-800 hover:underline"
+          to="/portal/walk-in/login"
+        >
+          Walk-in Unique ID
+        </Link>
       </p>
     </form>
   );

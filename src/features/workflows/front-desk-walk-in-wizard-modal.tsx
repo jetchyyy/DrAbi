@@ -618,7 +618,9 @@ export function WalkInWizardModal({
     });
     setInvoicePatientSearch(`${patient.firstName} ${patient.lastName}`);
     setStage("appointment");
-    toast.success("Patient added. Continue to appointment setup.");
+    toast.success(
+      `Patient added. Unique ID: ${patient.uniqueLoginId ?? "Not generated"}. Continue to appointment setup.`,
+    );
   };
 
   const handleAppointmentStep = async () => {
