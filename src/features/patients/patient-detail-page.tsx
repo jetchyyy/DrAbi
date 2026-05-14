@@ -35,7 +35,10 @@ import {
 import { getDatabase } from "../../lib/local-db";
 import { printHtmlDocument } from "../../lib/print";
 import { queryKeys } from "../../lib/query-keys";
-import { listInventoryItemsLiveOrDemo } from "../../lib/supabase-clinic";
+import {
+  listInventoryItemsLiveOrDemo,
+  type DoctorDirectoryItem,
+} from "../../lib/supabase-clinic";
 import { formatDateLabel, formatDateTimeLabel } from "../../lib/utils";
 import type { MedicalCertificate, Prescription } from "../../types/domain";
 import { useAuth } from "../auth/auth-context";
@@ -342,7 +345,7 @@ function resolveDoctorPostNominals(input: {
 }
 
 function findProviderByConsultationDoctorId(
-  providers: Array<{ id: string; profileId: string }>,
+  providers: DoctorDirectoryItem[],
   doctorId: string | null | undefined,
 ) {
   const normalizedDoctorId = (doctorId ?? "").trim();
