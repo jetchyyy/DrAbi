@@ -100,9 +100,9 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
 
   const signatureHtml = `
         <aside class="signature-panel">
-          <div class="signature-row">
-            <span class="label">Doctor's Name and Signature</span>
-            <span class="line upper">${escapeHtml(input.doctorName || ' ')}</span>
+          <div class="signature-row doctor-name-row">
+            <span class="line doctor-name-line">${escapeHtml(input.doctorName || ' ')}</span>
+            <span class="label doctor-name-label">Doctor's Name and Signature</span>
           </div>
           <div class="signature-row">
             <span class="label">License no.</span>
@@ -471,39 +471,105 @@ export function buildPrescriptionPrintDocument(input: PrescriptionPrintDocumentI
         justify-content: flex-end;
       }
 
+
       .signature-panel {
-        width: 320px;
+        width: 360px;
+        max-width: 100%;
         font-size: 13px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
       }
+
+
+
 
       .signature-row {
         display: flex;
-        align-items: flex-end;
-        gap: 6px;
-        min-height: 22px;
+        align-items: center;
+        gap: 0px;
+        min-height: 18px;
+        justify-content: flex-end;
       }
+
+
+
 
       .signature-row .label {
-        width: 152px;
+        width: 90px;
         font-weight: 700;
         font-size: 12px;
+        margin-bottom: 0;
+        padding-bottom: 0;
+        line-height: 1.1;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-right: 6px;
       }
 
+
+
+
       .signature-row .line {
-        flex: 1;
+        flex: 0 0 188px;
+        width: 188px;
+        max-width: 188px;
         border-bottom: 1px solid #111827;
         min-height: 14px;
-        padding: 0 2px;
+        padding: 0 2px 0 2px;
         font-weight: 600;
         font-size: 12px;
+        margin-bottom: 0;
+        line-height: 1.1;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        text-align: left;
       }
 
       .signature-row .line.upper {
         text-transform: uppercase;
       }
 
+
+      .doctor-name-row {
+        display: block;
+        min-height: auto;
+        padding-left: 158px;
+        margin-bottom: 0px;
+      }
+
+      .signature-row .doctor-name-label {
+        display: block;
+        width: 100%;
+        margin-top: 0px;
+        margin-bottom: 2px;
+        font-size: 11px;
+        font-weight: 700;
+        text-align: center;
+        white-space: nowrap;
+        line-height: 1.1;
+      }
+
+
+      .doctor-name-line {
+        display: block;
+        width: 320px;
+        max-width: 320px;
+        min-height: 16px;
+        white-space: nowrap;
+        text-align: center;
+        letter-spacing: 0.01em;
+        border-bottom: 1px solid #111827;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 0 2px;
+      }
+
+
       .signature-row + .signature-row {
-        margin-top: 1px;
+        margin-top: 2px;
       }
 
       .debug-note {

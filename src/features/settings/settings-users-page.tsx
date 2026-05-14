@@ -14,6 +14,7 @@ import { roleLabels } from '../../config/permissions';
 import {
   clearUserPermissionOverride,
 } from '../../lib/local-db';
+import { queryKeys } from '../../lib/query-keys';
 import {
   assignAccessRoleToProfileLiveOrDemo,
   createAdminUserLiveOrDemo,
@@ -155,6 +156,7 @@ export function SettingsUsersPage() {
     mutationFn: createAdminUserLiveOrDemo,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['settings-users'] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.providers });
     },
   });
 
@@ -184,6 +186,7 @@ export function SettingsUsersPage() {
       });
       await queryClient.invalidateQueries({ queryKey: ['settings-users'] });
       await queryClient.invalidateQueries({ queryKey: ['access-roles'] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.providers });
     },
   });
 

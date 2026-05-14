@@ -280,19 +280,28 @@ Deno.serve(async (request) => {
           storedPrcIdPath = finalPrcIdPath;
         }
 
-        const { error: doctorError } = await admin.from('doctors').upsert(
-          {
-            profile_id: createdUser.user.id,
-            license_number: payload.prcLicenseNumber,
-            license_expiry: payload.prcLicenseExpiry,
-            bir_number: payload.birNumber,
-            ptr_number: payload.ptrNumber,
-            prc_id_path: finalPrcIdPath,
-            consultation_fee: payload.consultationFee,
-            follow_up_fee: payload.followUpFee,
-          },
-          { onConflict: 'profile_id' },
-        );
+        const doctorPayload = {
+          profile_id: createdUser.user.id,
+          license_number: payload.prcLicenseNumber,
+          license_expiry: payload.prcLicenseExpiry,
+          bir_number: payload.birNumber,
+          ptr_number: payload.ptrNumber,
+          prc_id_path: finalPrcIdPath,
+          consultation_fee: payload.consultationFee,
+          follow_up_fee: payload.followUpFee,
+        };
+
+        let { error: doctorError } = await admin
+          .from('doctors')
+          .upsert(doctorPayload, { onConflict: 'profile_id' });
+
+        if (doctorError && doctorError.message.toLowerCase().includes('ptr_number')) {
+          const { ptr_number: _unusedPtrNumber, ...legacyDoctorPayload } = doctorPayload;
+          const legacyInsertResult = await admin
+            .from('doctors')
+            .upsert(legacyDoctorPayload, { onConflict: 'profile_id' });
+          doctorError = legacyInsertResult.error;
+        }
 
         if (doctorError) {
           throw new Error(doctorError.message);

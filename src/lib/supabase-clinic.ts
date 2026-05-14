@@ -2771,9 +2771,26 @@ export async function saveDoctorFeeSettingsForProfileLiveOrDemo(
   profileId: string,
   input: DoctorFeeSettings,
 ) {
-  const doctor = await getCurrentDoctor(profileId);
+  let doctor = await getCurrentDoctor(profileId);
   if (!doctor) {
-    throw new Error("Doctor record not found for this profile.");
+    if (!isSupabaseConfigured) {
+      throw new Error("Doctor record not found for this profile.");
+    }
+
+    const client = requireSupabase();
+    const { error: bootstrapDoctorError } = await client
+      .from("doctors")
+      .upsert({ profile_id: profileId } as never, {
+        onConflict: "profile_id",
+      });
+    if (bootstrapDoctorError) {
+      throw bootstrapDoctorError;
+    }
+
+    doctor = await getCurrentDoctor(profileId);
+    if (!doctor) {
+      throw new Error("Doctor record not found for this profile.");
+    }
   }
 
   if (!isSupabaseConfigured) {
