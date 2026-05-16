@@ -44,7 +44,9 @@ const walkInWizardSchema = z.object({
     sex: z.enum(["male", "female", "other"]),
     birthDate: z.string().min(1, "Birth date is required."),
     age: z.string().optional(),
-    mobileNumber: z.string().min(5, "Mobile number is required."),
+    mobileNumber: z
+      .string()
+      .regex(/^\d{11}$/, "Mobile number must be exactly 11 digits."),
     email: z.string().email("Enter a valid email address."),
     address: z.string().min(4, "Address is required."),
     bloodType: z.string().min(1, "Blood type is required."),
@@ -53,7 +55,7 @@ const walkInWizardSchema = z.object({
     emergencyContactName: z.string().min(2, "Emergency contact is required."),
     emergencyContactPhone: z
       .string()
-      .min(5, "Emergency contact phone is required."),
+      .regex(/^\d{11}$/, "Emergency contact phone must be exactly 11 digits."),
     temperature: z.string().optional(),
     bloodPressure: z.string().optional(),
     heartRate: z.string().optional(),
@@ -153,11 +155,7 @@ function getAgeLabelFromBirthDate(birthDate: string) {
     return "";
   }
 
-  const todayStart = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  );
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const birthDayStart = new Date(
     birthDateValue.getFullYear(),
     birthDateValue.getMonth(),
@@ -165,7 +163,9 @@ function getAgeLabelFromBirthDate(birthDate: string) {
   );
   const millisecondsPerDay = 24 * 60 * 60 * 1000;
   const dayDifference = Math.max(
-    Math.floor((todayStart.getTime() - birthDayStart.getTime()) / millisecondsPerDay),
+    Math.floor(
+      (todayStart.getTime() - birthDayStart.getTime()) / millisecondsPerDay,
+    ),
     0,
   );
 
@@ -616,6 +616,10 @@ function getVitalAlertPriority(level: VitalAlertLevel) {
   return 1;
 }
 
+function sanitizeMobileNumber(value: string) {
+  return value.replace(/\D/g, "").slice(0, 11);
+}
+
 export function WalkInWizardModal({
   open,
   onClose,
@@ -748,7 +752,8 @@ export function WalkInWizardModal({
   const currentDay = today.getDate();
   const currentMonthPadded = padToTwoDigits(currentMonth);
   const birthYearOptions = useMemo(
-    () => Array.from({ length: 121 }, (_, index) => String(currentYear - index)),
+    () =>
+      Array.from({ length: 121 }, (_, index) => String(currentYear - index)),
     [currentYear],
   );
   const maxBirthMonth =
@@ -760,7 +765,11 @@ export function WalkInWizardModal({
   );
   const daysInSelectedBirthMonth =
     selectedBirthYear && selectedBirthMonth
-      ? new Date(Number(selectedBirthYear), Number(selectedBirthMonth), 0).getDate()
+      ? new Date(
+          Number(selectedBirthYear),
+          Number(selectedBirthMonth),
+          0,
+        ).getDate()
       : 31;
   const maxBirthDay =
     selectedBirthYear === String(currentYear) &&
@@ -768,7 +777,10 @@ export function WalkInWizardModal({
       ? Math.min(daysInSelectedBirthMonth, currentDay)
       : daysInSelectedBirthMonth;
   const birthDayOptions = useMemo(
-    () => Array.from({ length: maxBirthDay }, (_, index) => padToTwoDigits(index + 1)),
+    () =>
+      Array.from({ length: maxBirthDay }, (_, index) =>
+        padToTwoDigits(index + 1),
+      ),
     [maxBirthDay],
   );
   const vitalAlerts = useMemo(
@@ -798,7 +810,8 @@ export function WalkInWizardModal({
       const existing = alertMap.get(alert.key);
       if (
         !existing ||
-        getVitalAlertPriority(alert.level) > getVitalAlertPriority(existing.level)
+        getVitalAlertPriority(alert.level) >
+          getVitalAlertPriority(existing.level)
       ) {
         alertMap.set(alert.key, alert);
       }
@@ -963,7 +976,8 @@ export function WalkInWizardModal({
       0,
     ).getDate();
     const dateDayLimit =
-      inputYear === String(currentYear) && normalizedMonth === currentMonthPadded
+      inputYear === String(currentYear) &&
+      normalizedMonth === currentMonthPadded
         ? Math.min(monthDayLimit, currentDay)
         : monthDayLimit;
     const normalizedDay = padToTwoDigits(
@@ -972,10 +986,14 @@ export function WalkInWizardModal({
 
     setSelectedBirthMonth(normalizedMonth);
     setSelectedBirthDay(normalizedDay);
-    form.setValue("patient.birthDate", `${inputYear}-${normalizedMonth}-${normalizedDay}`, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
+    form.setValue(
+      "patient.birthDate",
+      `${inputYear}-${normalizedMonth}-${normalizedDay}`,
+      {
+        shouldDirty: true,
+        shouldValidate: true,
+      },
+    );
   };
 
   useEffect(() => {
@@ -1052,7 +1070,8 @@ export function WalkInWizardModal({
       return;
     }
 
-    const [year = "", month = "", day = ""] = selectedPatientBirthDate.split("-");
+    const [year = "", month = "", day = ""] =
+      selectedPatientBirthDate.split("-");
     setSelectedBirthYear(year);
     setSelectedBirthMonth(month);
     setSelectedBirthDay(day);
@@ -1063,11 +1082,15 @@ export function WalkInWizardModal({
       return;
     }
 
-    form.setValue("patient.age", getAgeLabelFromBirthDate(selectedPatientBirthDate), {
-      shouldDirty: false,
-      shouldValidate: false,
-      shouldTouch: false,
-    });
+    form.setValue(
+      "patient.age",
+      getAgeLabelFromBirthDate(selectedPatientBirthDate),
+      {
+        shouldDirty: false,
+        shouldValidate: false,
+        shouldTouch: false,
+      },
+    );
   }, [form, open, selectedPatientBirthDate]);
 
   useEffect(() => {
@@ -1447,7 +1470,7 @@ export function WalkInWizardModal({
       receptionistName: profile?.fullName ?? "N/A",
       paymentMethod:
         values.paymentStatus === "paid"
-          ? values.paymentType ?? "cash"
+          ? (values.paymentType ?? "cash")
           : createdInvoice.paymentStatus,
       paymentReference:
         values.paymentStatus === "paid" && values.paymentType !== "cash"
@@ -1736,7 +1759,10 @@ export function WalkInWizardModal({
                   label="Birth date"
                 >
                   <div className="space-y-2">
-                    <Input type="hidden" {...form.register("patient.birthDate")} />
+                    <Input
+                      type="hidden"
+                      {...form.register("patient.birthDate")}
+                    />
                     <div className="grid grid-cols-3 gap-2">
                       <Select
                         aria-label="Birth month"
@@ -1807,8 +1833,22 @@ export function WalkInWizardModal({
                 >
                   <Input
                     disabled={isUsingExistingPatient}
+                    inputMode="numeric"
+                    maxLength={11}
+                    pattern="[0-9]*"
                     placeholder="09XXXXXXXXX"
-                    {...form.register("patient.mobileNumber")}
+                    {...form.register("patient.mobileNumber", {
+                      setValueAs: (value) =>
+                        sanitizeMobileNumber(String(value ?? "")),
+                      onChange: (event) => {
+                        const sanitized = sanitizeMobileNumber(
+                          event.target.value,
+                        );
+                        if (sanitized !== event.target.value) {
+                          event.target.value = sanitized;
+                        }
+                      },
+                    })}
                   />
                 </FormField>
                 <FormField
@@ -1896,8 +1936,22 @@ export function WalkInWizardModal({
                 >
                   <Input
                     disabled={isUsingExistingPatient}
+                    inputMode="numeric"
+                    maxLength={11}
+                    pattern="[0-9]*"
                     placeholder="09XXXXXXXXX"
-                    {...form.register("patient.emergencyContactPhone")}
+                    {...form.register("patient.emergencyContactPhone", {
+                      setValueAs: (value) =>
+                        sanitizeMobileNumber(String(value ?? "")),
+                      onChange: (event) => {
+                        const sanitized = sanitizeMobileNumber(
+                          event.target.value,
+                        );
+                        if (sanitized !== event.target.value) {
+                          event.target.value = sanitized;
+                        }
+                      },
+                    })}
                   />
                 </FormField>
               </div>
@@ -1998,8 +2052,7 @@ export function WalkInWizardModal({
                       {vitalAlertsByKey.get("o2Sat") ? (
                         <p
                           className={`text-[11px] ${
-                            vitalAlertsByKey.get("o2Sat")?.level ===
-                            "critical"
+                            vitalAlertsByKey.get("o2Sat")?.level === "critical"
                               ? "text-rose-600"
                               : vitalAlertsByKey.get("o2Sat")?.level ===
                                   "warning"

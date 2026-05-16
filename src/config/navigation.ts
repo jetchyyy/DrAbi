@@ -57,6 +57,13 @@ export const appNavigation: NavItem[] = [
     moduleKey: "patient_management",
   },
   {
+    label: "Adding Bulk Patient",
+    to: "/app/patients/bulk",
+    icon: ClipboardPlus,
+    permission: "patients.manage",
+    moduleKey: "patient_management",
+  },
+  {
     label: "Patient Logs",
     to: "/app/patients/logs",
     icon: ClipboardList,

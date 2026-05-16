@@ -85,6 +85,20 @@ export interface DoctorDirectoryItem {
   followUpFee: number;
 }
 
+export interface PatientMedicalHistoryEntryInput {
+  patientId: string;
+  providerId: string | null;
+  actor: string | null;
+  historyText?: string;
+  findingsText?: string;
+  diagnosesText?: string;
+  treatmentSummaryText?: string;
+  soapNotesText: string;
+  supplementaryDocsText?: string;
+  appointmentId?: string | null;
+  consultationId?: string | null;
+}
+
 export interface BookingListItem {
   id: string;
   patientId: string;
@@ -1158,6 +1172,55 @@ export async function createPatientLiveOrDemo(
   }
 
   return mapPatient(data);
+}
+
+export async function createPatientMedicalHistoryEntryLiveOrDemo(
+  input: PatientMedicalHistoryEntryInput,
+) {
+  if (!isSupabaseConfigured) {
+    const { createPatientMedicalHistoryEntry } = await import("./local-db");
+    return createPatientMedicalHistoryEntry({
+      patientId: input.patientId,
+      providerId: input.providerId ?? null,
+      actor: input.actor ?? null,
+      historyText: input.historyText ?? "",
+      findingsText: input.findingsText ?? "",
+      diagnosesText: input.diagnosesText ?? "",
+      treatmentSummaryText: input.treatmentSummaryText ?? "",
+      soapNotesText: input.soapNotesText,
+      supplementaryDocsText: input.supplementaryDocsText ?? "",
+      appointmentId: input.appointmentId ?? null,
+      consultationId: input.consultationId ?? null,
+    });
+  }
+
+  const client = requireSupabase();
+  const payload: Database["public"]["Tables"]["patient_medical_history_entries"]["Insert"] =
+    {
+      patient_id: input.patientId,
+      consultation_id: input.consultationId ?? null,
+      appointment_id: input.appointmentId ?? null,
+      provider_id: input.providerId ?? null,
+      history_text: input.historyText ?? "",
+      findings_text: input.findingsText ?? "",
+      diagnoses_text: input.diagnosesText ?? "",
+      treatment_summary_text: input.treatmentSummaryText ?? "",
+      soap_notes_text: input.soapNotesText,
+      supplementary_docs_text: input.supplementaryDocsText ?? "",
+      actor: input.actor ?? null,
+    };
+
+  const { data, error } = await client
+    .from("patient_medical_history_entries")
+    .insert(payload as never)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
 }
 
 export async function updatePatientLiveOrDemo(
@@ -2977,22 +3040,24 @@ export async function getWalkInPatientByUniqueLoginIdLiveOrDemo(
     throw error;
   }
 
-  const row = ((data ?? []) as Array<{
-    patient_id: string;
-    unique_login_id: string;
-    first_name: string;
-    last_name: string;
-    birth_date: string;
-    mobile_number: string | null;
-    email: string | null;
-    address: string | null;
-    blood_type: string | null;
-    allergies: string | null;
-    medical_history: string | null;
-    emergency_contact_name: string | null;
-    emergency_contact_phone: string | null;
-    account_linked: boolean;
-  }>)[0];
+  const row = (
+    (data ?? []) as Array<{
+      patient_id: string;
+      unique_login_id: string;
+      first_name: string;
+      last_name: string;
+      birth_date: string;
+      mobile_number: string | null;
+      email: string | null;
+      address: string | null;
+      blood_type: string | null;
+      allergies: string | null;
+      medical_history: string | null;
+      emergency_contact_name: string | null;
+      emergency_contact_phone: string | null;
+      account_linked: boolean;
+    }>
+  )[0];
 
   if (!row) {
     return null;

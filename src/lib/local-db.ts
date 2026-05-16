@@ -49,6 +49,8 @@ import { hashSecret } from "./utils";
 
 const STORAGE_KEY = "odyssey-clinic-demo-db-v2";
 const PATIENT_ACTION_LOGS_KEY = "odyssey-clinic-patient-action-logs-v1";
+const PATIENT_MEDICAL_HISTORY_ENTRIES_KEY =
+  "odyssey-clinic-patient-medical-history-entries-v1";
 const USER_PERMISSION_OVERRIDES_KEY =
   "odyssey-clinic-user-permission-overrides-v1";
 const ACCESS_ROLE_TEMPLATES_KEY = "odyssey-clinic-access-role-templates-v1";
@@ -72,6 +74,23 @@ interface UserPinCredential {
   userId?: string;
   email: string;
   pinHash: string;
+  updatedAt: string;
+}
+
+interface PatientMedicalHistoryEntry {
+  id: string;
+  patientId: string;
+  consultationId: string | null;
+  appointmentId: string | null;
+  providerId: string | null;
+  historyText: string;
+  findingsText: string;
+  diagnosesText: string;
+  treatmentSummaryText: string;
+  soapNotesText: string;
+  supplementaryDocsText: string;
+  actor: string | null;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -145,6 +164,36 @@ function getPatientActionLogsStorage(): PatientActionLog[] {
 function savePatientActionLogs(logs: PatientActionLog[]) {
   if (canUseStorage()) {
     window.localStorage.setItem(PATIENT_ACTION_LOGS_KEY, JSON.stringify(logs));
+  }
+}
+
+function getPatientMedicalHistoryEntriesStorage(): PatientMedicalHistoryEntry[] {
+  if (!canUseStorage()) {
+    return [];
+  }
+
+  const stored = window.localStorage.getItem(
+    PATIENT_MEDICAL_HISTORY_ENTRIES_KEY,
+  );
+  if (!stored) {
+    return [];
+  }
+
+  try {
+    return JSON.parse(stored) as PatientMedicalHistoryEntry[];
+  } catch {
+    return [];
+  }
+}
+
+function savePatientMedicalHistoryEntriesStorage(
+  entries: PatientMedicalHistoryEntry[],
+) {
+  if (canUseStorage()) {
+    window.localStorage.setItem(
+      PATIENT_MEDICAL_HISTORY_ENTRIES_KEY,
+      JSON.stringify(entries),
+    );
   }
 }
 
@@ -1030,6 +1079,24 @@ export function createPatientActionLog(
   void queryClient.invalidateQueries({ queryKey: ["patient-action-logs"] });
 
   return nextLog;
+}
+
+export function createPatientMedicalHistoryEntry(
+  input: Omit<PatientMedicalHistoryEntry, "id" | "createdAt" | "updatedAt">,
+) {
+  const timestamp = new Date().toISOString();
+  const nextEntry: PatientMedicalHistoryEntry = {
+    ...input,
+    id: generateId("medhist"),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  const nextEntries = [nextEntry, ...getPatientMedicalHistoryEntriesStorage()];
+  savePatientMedicalHistoryEntriesStorage(nextEntries);
+  void queryClient.invalidateQueries();
+
+  return nextEntry;
 }
 
 export function listPatients() {

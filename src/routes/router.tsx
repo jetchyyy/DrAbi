@@ -33,6 +33,7 @@ import { PosPage } from "../features/pos/pos-page";
 import { PatientDetailPage } from "../features/patients/patient-detail-page";
 import { PatientActionLogsPage } from "../features/patients/patient-action-logs-page";
 import { PatientQrLookupPage } from "../features/patients/patient-qr-lookup-page";
+import { PatientsBulkAddPage } from "../features/patients/patients-bulk-add-page";
 import { PatientsPage } from "../features/patients/patients-page";
 import { StaffProfilePage } from "../features/staff/staff-profile-page";
 import { SettingsClinicPage } from "../features/settings/settings-clinic-page";
@@ -259,6 +260,15 @@ export const router = createBrowserRouter([
                       },
                     ],
                   },
+                  {
+                    element: <PermissionGate permission="patients.manage" />,
+                    children: [
+                      {
+                        path: "patients/bulk",
+                        element: <PatientsBulkAddPage />,
+                      },
+                    ],
+                  },
                 ],
               },
               {
@@ -428,8 +438,14 @@ export const router = createBrowserRouter([
                     element: <PermissionGate permission="hmo.view" />,
                     children: [
                       { path: "hmo", element: <HmoDashboardPage /> },
-                      { path: "hmo/accounts", element: <PatientHmoAccountsPage /> },
-                      { path: "hmo/authorizations", element: <HmoAuthorizationsPage /> },
+                      {
+                        path: "hmo/accounts",
+                        element: <PatientHmoAccountsPage />,
+                      },
+                      {
+                        path: "hmo/authorizations",
+                        element: <HmoAuthorizationsPage />,
+                      },
                     ],
                   },
                   {
@@ -440,9 +456,7 @@ export const router = createBrowserRouter([
                       { path: "hmo/payments", element: <HmoPaymentsPage /> },
                       {
                         element: (
-                          <ProtectedRoute
-                            allowedRoles={["owner_admin"]}
-                          />
+                          <ProtectedRoute allowedRoles={["owner_admin"]} />
                         ),
                         children: [
                           { path: "hmo/reports", element: <HmoReportsPage /> },
