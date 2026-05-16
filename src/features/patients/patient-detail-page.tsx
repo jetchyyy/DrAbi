@@ -40,6 +40,7 @@ import {
   type DoctorDirectoryItem,
 } from "../../lib/supabase-clinic";
 import { formatDateLabel, formatDateTimeLabel } from "../../lib/utils";
+import { evaluateVitalsAlerts } from "../../lib/vitals-alerts";
 import type { MedicalCertificate, Prescription } from "../../types/domain";
 import { useAuth } from "../auth/auth-context";
 import { LabResultsDisplay } from "../consultation/components/lab-results-display";
@@ -183,6 +184,16 @@ function parseVitalsFromText(text: string): VitalsData {
   }
 
   return vitals;
+}
+
+function getVitalAlertPriority(level: "normal" | "warning" | "critical") {
+  if (level === "critical") {
+    return 3;
+  }
+  if (level === "warning") {
+    return 2;
+  }
+  return 1;
 }
 
 function truncateText(value: string | null | undefined, maxLength = 120) {
@@ -1134,38 +1145,79 @@ export function PatientDetailPage() {
   const latestPatientVitals = [
     {
       label: "Temperature",
+      alertKey: "temperature",
       value: patient?.temperature ? `${patient.temperature} °C` : null,
     },
     {
       label: "Blood Pressure",
+      alertKey: "bloodPressure",
       value: patient?.bloodPressure ? `${patient.bloodPressure} mmHg` : null,
     },
     {
       label: "Heart Rate",
+      alertKey: "heartRate",
       value: patient?.heartRate ? `${patient.heartRate} bpm` : null,
     },
     {
       label: "O2sat",
+      alertKey: "o2Sat",
       value: patient?.o2Sat ? `${patient.o2Sat} %` : null,
     },
     {
       label: "Respiratory Rate",
+      alertKey: "respiratoryRate",
       value: patient?.respiratoryRate
         ? `${patient.respiratoryRate} breaths/min`
         : null,
     },
     {
       label: "Weight",
+      alertKey: "bmi",
       value: patient?.weight ? `${patient.weight} kg` : null,
     },
     {
       label: "Height",
+      alertKey: "bmi",
       value: patient?.height ? `${patient.height} cm` : null,
     },
   ] as const;
   const hasLatestPatientVitals = latestPatientVitals.some(
     (item) => item.value !== null,
   );
+  const latestPatientVitalAlerts = useMemo(
+    () =>
+      evaluateVitalsAlerts({
+        temperature: patient?.temperature ?? "",
+        bloodPressure: patient?.bloodPressure ?? "",
+        heartRate: patient?.heartRate ?? "",
+        o2Sat: patient?.o2Sat ?? "",
+        respiratoryRate: patient?.respiratoryRate ?? "",
+        weight: patient?.weight ?? "",
+        height: patient?.height ?? "",
+      }),
+    [
+      patient?.temperature,
+      patient?.bloodPressure,
+      patient?.heartRate,
+      patient?.o2Sat,
+      patient?.respiratoryRate,
+      patient?.weight,
+      patient?.height,
+    ],
+  );
+  const latestPatientVitalAlertsByKey = useMemo(() => {
+    const alertMap = new Map<string, (typeof latestPatientVitalAlerts)[number]>();
+    for (const alert of latestPatientVitalAlerts) {
+      const existing = alertMap.get(alert.key);
+      if (
+        !existing ||
+        getVitalAlertPriority(alert.level) > getVitalAlertPriority(existing.level)
+      ) {
+        alertMap.set(alert.key, alert);
+      }
+    }
+    return alertMap;
+  }, [latestPatientVitalAlerts]);
 
   const TABS = [
     { id: "overview", label: "Overview" },
@@ -2764,6 +2816,21 @@ export function PatientDetailPage() {
                     <p className="mt-0.5 text-sm font-semibold text-slate-900">
                       {item.value ?? "Not recorded"}
                     </p>
+                    {item.value && latestPatientVitalAlertsByKey.get(item.alertKey) ? (
+                      <p
+                        className={`mt-1 text-[11px] ${
+                          latestPatientVitalAlertsByKey.get(item.alertKey)
+                            ?.level === "critical"
+                            ? "text-rose-600"
+                            : latestPatientVitalAlertsByKey.get(item.alertKey)
+                                  ?.level === "warning"
+                              ? "text-amber-600"
+                              : "text-emerald-600"
+                        }`}
+                      >
+                        {latestPatientVitalAlertsByKey.get(item.alertKey)?.status}
+                      </p>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -3029,90 +3096,272 @@ export function PatientDetailPage() {
                                       );
                                     }
 
+                                    const vitalsAlerts = evaluateVitalsAlerts({
+                                      temperature: vitals.temperature ?? "",
+                                      bloodPressure: vitals.bloodPressure ?? "",
+                                      heartRate: vitals.heartRate ?? "",
+                                      o2Sat: vitals.o2Sat ?? "",
+                                      respiratoryRate:
+                                        vitals.respiratoryRate ?? "",
+                                      weight: vitals.weight ?? "",
+                                      height: vitals.height ?? "",
+                                    });
+                                    const vitalsAlertsByKey = new Map<
+                                      string,
+                                      (typeof vitalsAlerts)[number]
+                                    >();
+                                    for (const alert of vitalsAlerts) {
+                                      const existing = vitalsAlertsByKey.get(
+                                        alert.key,
+                                      );
+                                      if (
+                                        !existing ||
+                                        getVitalAlertPriority(alert.level) >
+                                          getVitalAlertPriority(existing.level)
+                                      ) {
+                                        vitalsAlertsByKey.set(alert.key, alert);
+                                      }
+                                    }
+
                                     return (
-                                      <div className="grid gap-2 sm:grid-cols-2">
-                                        {vitals.temperature && (
-                                          <div className="text-sm">
-                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                                              Temperature
-                                            </p>
-                                            <p className="mt-0.5 font-semibold text-slate-900">
-                                              {vitals.temperature} °C
-                                            </p>
-                                          </div>
-                                        )}
-                                        {vitals.bloodPressure && (
-                                          <div className="text-sm">
-                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                                              Blood Pressure
-                                            </p>
-                                            <p className="mt-0.5 font-semibold text-slate-900">
-                                              {vitals.bloodPressure} mmHg
-                                            </p>
-                                          </div>
-                                        )}
-                                        {vitals.heartRate && (
-                                          <div className="text-sm">
-                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                                              Heart Rate
-                                            </p>
-                                            <p className="mt-0.5 font-semibold text-slate-900">
-                                              {vitals.heartRate} bpm
-                                            </p>
-                                          </div>
-                                        )}
-                                        {vitals.o2Sat && (
-                                          <div className="text-sm">
-                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                                              O2sat
-                                            </p>
-                                            <p className="mt-0.5 font-semibold text-slate-900">
-                                              {vitals.o2Sat} %
-                                            </p>
-                                          </div>
-                                        )}
-                                        {vitals.respiratoryRate && (
-                                          <div className="text-sm">
-                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                                              Respiratory Rate
-                                            </p>
-                                            <p className="mt-0.5 font-semibold text-slate-900">
-                                              {vitals.respiratoryRate}{" "}
-                                              breaths/min
-                                            </p>
-                                          </div>
-                                        )}
-                                        {vitals.weight && (
-                                          <div className="text-sm">
-                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                                              Weight
-                                            </p>
-                                            <p className="mt-0.5 font-semibold text-slate-900">
-                                              {vitals.weight} kg
-                                            </p>
-                                          </div>
-                                        )}
-                                        {vitals.height && (
-                                          <div className="text-sm">
-                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                                              Height
-                                            </p>
-                                            <p className="mt-0.5 font-semibold text-slate-900">
-                                              {vitals.height} cm
-                                            </p>
-                                          </div>
-                                        )}
-                                        {vitals.vitalsRecordedAt && (
-                                          <div className="col-span-full text-sm">
-                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                                              Recorded at Intake
-                                            </p>
-                                            <p className="mt-0.5 text-slate-600">
-                                              {vitals.vitalsRecordedAt}
-                                            </p>
-                                          </div>
-                                        )}
-                                      </div>
+                                      <>
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                          {vitals.temperature && (
+                                            <div className="text-sm">
+                                              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                                                Temperature
+                                              </p>
+                                              <p className="mt-0.5 font-semibold text-slate-900">
+                                                {vitals.temperature} °C
+                                              </p>
+                                              {vitalsAlertsByKey.get(
+                                                "temperature",
+                                              ) ? (
+                                                <p
+                                                  className={`mt-1 text-[11px] ${
+                                                    vitalsAlertsByKey.get(
+                                                      "temperature",
+                                                    )?.level === "critical"
+                                                      ? "text-rose-600"
+                                                      : vitalsAlertsByKey.get(
+                                                            "temperature",
+                                                          )?.level === "warning"
+                                                        ? "text-amber-600"
+                                                        : "text-emerald-600"
+                                                  }`}
+                                                >
+                                                  {
+                                                    vitalsAlertsByKey.get(
+                                                      "temperature",
+                                                    )?.status
+                                                  }
+                                                </p>
+                                              ) : null}
+                                            </div>
+                                          )}
+                                          {vitals.bloodPressure && (
+                                            <div className="text-sm">
+                                              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                                                Blood Pressure
+                                              </p>
+                                              <p className="mt-0.5 font-semibold text-slate-900">
+                                                {vitals.bloodPressure} mmHg
+                                              </p>
+                                              {vitalsAlertsByKey.get(
+                                                "bloodPressure",
+                                              ) ? (
+                                                <p
+                                                  className={`mt-1 text-[11px] ${
+                                                    vitalsAlertsByKey.get(
+                                                      "bloodPressure",
+                                                    )?.level === "critical"
+                                                      ? "text-rose-600"
+                                                      : vitalsAlertsByKey.get(
+                                                            "bloodPressure",
+                                                          )?.level === "warning"
+                                                        ? "text-amber-600"
+                                                        : "text-emerald-600"
+                                                  }`}
+                                                >
+                                                  {
+                                                    vitalsAlertsByKey.get(
+                                                      "bloodPressure",
+                                                    )?.status
+                                                  }
+                                                </p>
+                                              ) : null}
+                                            </div>
+                                          )}
+                                          {vitals.heartRate && (
+                                            <div className="text-sm">
+                                              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                                                Heart Rate
+                                              </p>
+                                              <p className="mt-0.5 font-semibold text-slate-900">
+                                                {vitals.heartRate} bpm
+                                              </p>
+                                              {vitalsAlertsByKey.get(
+                                                "heartRate",
+                                              ) ? (
+                                                <p
+                                                  className={`mt-1 text-[11px] ${
+                                                    vitalsAlertsByKey.get(
+                                                      "heartRate",
+                                                    )?.level === "critical"
+                                                      ? "text-rose-600"
+                                                      : vitalsAlertsByKey.get(
+                                                            "heartRate",
+                                                          )?.level === "warning"
+                                                        ? "text-amber-600"
+                                                        : "text-emerald-600"
+                                                  }`}
+                                                >
+                                                  {
+                                                    vitalsAlertsByKey.get(
+                                                      "heartRate",
+                                                    )?.status
+                                                  }
+                                                </p>
+                                              ) : null}
+                                            </div>
+                                          )}
+                                          {vitals.o2Sat && (
+                                            <div className="text-sm">
+                                              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                                                O2sat
+                                              </p>
+                                              <p className="mt-0.5 font-semibold text-slate-900">
+                                                {vitals.o2Sat} %
+                                              </p>
+                                              {vitalsAlertsByKey.get("o2Sat") ? (
+                                                <p
+                                                  className={`mt-1 text-[11px] ${
+                                                    vitalsAlertsByKey.get(
+                                                      "o2Sat",
+                                                    )?.level === "critical"
+                                                      ? "text-rose-600"
+                                                      : vitalsAlertsByKey.get(
+                                                            "o2Sat",
+                                                          )?.level === "warning"
+                                                        ? "text-amber-600"
+                                                        : "text-emerald-600"
+                                                  }`}
+                                                >
+                                                  {
+                                                    vitalsAlertsByKey.get(
+                                                      "o2Sat",
+                                                    )?.status
+                                                  }
+                                                </p>
+                                              ) : null}
+                                            </div>
+                                          )}
+                                          {vitals.respiratoryRate && (
+                                            <div className="text-sm">
+                                              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                                                Respiratory Rate
+                                              </p>
+                                              <p className="mt-0.5 font-semibold text-slate-900">
+                                                {vitals.respiratoryRate}{" "}
+                                                breaths/min
+                                              </p>
+                                              {vitalsAlertsByKey.get(
+                                                "respiratoryRate",
+                                              ) ? (
+                                                <p
+                                                  className={`mt-1 text-[11px] ${
+                                                    vitalsAlertsByKey.get(
+                                                      "respiratoryRate",
+                                                    )?.level === "critical"
+                                                      ? "text-rose-600"
+                                                      : vitalsAlertsByKey.get(
+                                                            "respiratoryRate",
+                                                          )?.level === "warning"
+                                                        ? "text-amber-600"
+                                                        : "text-emerald-600"
+                                                  }`}
+                                                >
+                                                  {
+                                                    vitalsAlertsByKey.get(
+                                                      "respiratoryRate",
+                                                    )?.status
+                                                  }
+                                                </p>
+                                              ) : null}
+                                            </div>
+                                          )}
+                                          {vitals.weight && (
+                                            <div className="text-sm">
+                                              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                                                Weight
+                                              </p>
+                                              <p className="mt-0.5 font-semibold text-slate-900">
+                                                {vitals.weight} kg
+                                              </p>
+                                              {vitalsAlertsByKey.get("bmi") ? (
+                                                <p
+                                                  className={`mt-1 text-[11px] ${
+                                                    vitalsAlertsByKey.get("bmi")
+                                                      ?.level === "critical"
+                                                      ? "text-rose-600"
+                                                      : vitalsAlertsByKey.get(
+                                                            "bmi",
+                                                          )?.level === "warning"
+                                                        ? "text-amber-600"
+                                                        : "text-emerald-600"
+                                                  }`}
+                                                >
+                                                  BMI:{" "}
+                                                  {
+                                                    vitalsAlertsByKey.get("bmi")
+                                                      ?.status
+                                                  }
+                                                </p>
+                                              ) : null}
+                                            </div>
+                                          )}
+                                          {vitals.height && (
+                                            <div className="text-sm">
+                                              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                                                Height
+                                              </p>
+                                              <p className="mt-0.5 font-semibold text-slate-900">
+                                                {vitals.height} cm
+                                              </p>
+                                              {vitalsAlertsByKey.get("bmi") ? (
+                                                <p
+                                                  className={`mt-1 text-[11px] ${
+                                                    vitalsAlertsByKey.get("bmi")
+                                                      ?.level === "critical"
+                                                      ? "text-rose-600"
+                                                      : vitalsAlertsByKey.get(
+                                                            "bmi",
+                                                          )?.level === "warning"
+                                                        ? "text-amber-600"
+                                                        : "text-emerald-600"
+                                                  }`}
+                                                >
+                                                  BMI:{" "}
+                                                  {
+                                                    vitalsAlertsByKey.get("bmi")
+                                                      ?.status
+                                                  }
+                                                </p>
+                                              ) : null}
+                                            </div>
+                                          )}
+                                          {vitals.vitalsRecordedAt && (
+                                            <div className="col-span-full text-sm">
+                                              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                                                Recorded at Intake
+                                              </p>
+                                              <p className="mt-0.5 text-slate-600">
+                                                {vitals.vitalsRecordedAt}
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </>
                                     );
                                   })()}
                                 </div>

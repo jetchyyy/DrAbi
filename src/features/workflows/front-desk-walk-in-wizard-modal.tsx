@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -43,6 +43,7 @@ const walkInWizardSchema = z.object({
     lastName: z.string().min(2, "Last name is required."),
     sex: z.enum(["male", "female", "other"]),
     birthDate: z.string().min(1, "Birth date is required."),
+    age: z.string().optional(),
     mobileNumber: z.string().min(5, "Mobile number is required."),
     email: z.string().email("Enter a valid email address."),
     address: z.string().min(4, "Address is required."),
@@ -137,6 +138,484 @@ function getDefaultWalkInScheduledAtValue() {
   return `${getPhilippineDateKey()}T${getPhilippineTimeKey().slice(0, 5)}`;
 }
 
+function getAgeLabelFromBirthDate(birthDate: string) {
+  if (!birthDate) {
+    return "";
+  }
+
+  const birthDateValue = new Date(`${birthDate}T00:00:00`);
+  if (Number.isNaN(birthDateValue.getTime())) {
+    return "";
+  }
+
+  const now = new Date();
+  if (birthDateValue > now) {
+    return "";
+  }
+
+  const todayStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+  const birthDayStart = new Date(
+    birthDateValue.getFullYear(),
+    birthDateValue.getMonth(),
+    birthDateValue.getDate(),
+  );
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+  const dayDifference = Math.max(
+    Math.floor((todayStart.getTime() - birthDayStart.getTime()) / millisecondsPerDay),
+    0,
+  );
+
+  let years = now.getFullYear() - birthDateValue.getFullYear();
+  const birthdayThisYear = new Date(
+    now.getFullYear(),
+    birthDateValue.getMonth(),
+    birthDateValue.getDate(),
+  );
+  if (now < birthdayThisYear) {
+    years -= 1;
+  }
+
+  if (years >= 1) {
+    return String(years);
+  }
+
+  let months =
+    (now.getFullYear() - birthDateValue.getFullYear()) * 12 +
+    (now.getMonth() - birthDateValue.getMonth());
+  if (now.getDate() < birthDateValue.getDate()) {
+    months -= 1;
+  }
+
+  const normalizedMonths = Math.max(months, 0);
+  if (normalizedMonths >= 1) {
+    return `${normalizedMonths} month${normalizedMonths === 1 ? "" : "s"} old`;
+  }
+
+  const weeks = Math.floor(dayDifference / 7);
+  if (weeks >= 1) {
+    return `${weeks} week${weeks === 1 ? "" : "s"} old`;
+  }
+
+  return `${dayDifference} day${dayDifference === 1 ? "" : "s"} old`;
+}
+
+function getEmailNamePart(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+const birthMonthOptions = [
+  { value: "01", label: "Jan" },
+  { value: "02", label: "Feb" },
+  { value: "03", label: "Mar" },
+  { value: "04", label: "Apr" },
+  { value: "05", label: "May" },
+  { value: "06", label: "Jun" },
+  { value: "07", label: "Jul" },
+  { value: "08", label: "Aug" },
+  { value: "09", label: "Sep" },
+  { value: "10", label: "Oct" },
+  { value: "11", label: "Nov" },
+  { value: "12", label: "Dec" },
+] as const;
+
+function padToTwoDigits(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+type VitalAlertLevel = "normal" | "warning" | "critical";
+
+type VitalAlert = {
+  key: string;
+  label: string;
+  level: VitalAlertLevel;
+  status: string;
+  message: string;
+};
+
+type PatientVitalsValues = Pick<
+  WalkInWizardFormValues["patient"],
+  | "temperature"
+  | "bloodPressure"
+  | "heartRate"
+  | "o2Sat"
+  | "respiratoryRate"
+  | "weight"
+  | "height"
+>;
+
+function parseNumericInput(value: string) {
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseBloodPressureInput(value: string) {
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const match = normalized.match(/^(\d{2,3})\+?\s*\/\s*(\d{2,3})\+?$/);
+  if (!match) {
+    return null;
+  }
+
+  const systolic = Number(match[1]);
+  const diastolic = Number(match[2]);
+  if (!Number.isFinite(systolic) || !Number.isFinite(diastolic)) {
+    return null;
+  }
+
+  return { systolic, diastolic };
+}
+
+function getVitalAlerts(vitals: PatientVitalsValues) {
+  const alerts: VitalAlert[] = [];
+
+  const temperature = vitals.temperature?.trim() ?? "";
+  if (temperature) {
+    const value = parseNumericInput(temperature);
+    if (value == null) {
+      alerts.push({
+        key: "temperature",
+        label: "Temperature",
+        level: "warning",
+        status: "Invalid format",
+        message: "Enter a numeric value in Celsius, for example 36.8.",
+      });
+    } else if (value < 35) {
+      alerts.push({
+        key: "temperature",
+        label: "Temperature",
+        level: "critical",
+        status: "Severe hypothermia",
+        message: `${value.toFixed(1)} C is critically low.`,
+      });
+    } else if (value < 36) {
+      alerts.push({
+        key: "temperature",
+        label: "Temperature",
+        level: "warning",
+        status: "Low temperature",
+        message: `${value.toFixed(1)} C is below normal range.`,
+      });
+    } else if (value <= 37.5) {
+      alerts.push({
+        key: "temperature",
+        label: "Temperature",
+        level: "normal",
+        status: "Normal",
+        message: `${value.toFixed(1)} C is within normal range.`,
+      });
+    } else if (value < 38.5) {
+      alerts.push({
+        key: "temperature",
+        label: "Temperature",
+        level: "warning",
+        status: "Fever",
+        message: `${value.toFixed(1)} C indicates elevated temperature.`,
+      });
+    } else {
+      alerts.push({
+        key: "temperature",
+        label: "Temperature",
+        level: "critical",
+        status: "High fever",
+        message: `${value.toFixed(1)} C requires urgent attention.`,
+      });
+    }
+  }
+
+  const bloodPressure = vitals.bloodPressure?.trim() ?? "";
+  if (bloodPressure) {
+    const parsed = parseBloodPressureInput(bloodPressure);
+    if (!parsed) {
+      alerts.push({
+        key: "bloodPressure",
+        label: "Blood pressure",
+        level: "warning",
+        status: "Invalid format",
+        message: "Use systolic/diastolic format, for example 120/80.",
+      });
+    } else if (parsed.systolic >= 180 || parsed.diastolic >= 120) {
+      alerts.push({
+        key: "bloodPressure",
+        label: "Blood pressure",
+        level: "critical",
+        status: "Hypertensive Crisis",
+        message: `${parsed.systolic}/${parsed.diastolic} is critically high.`,
+      });
+    } else if (parsed.systolic >= 140 || parsed.diastolic >= 90) {
+      alerts.push({
+        key: "bloodPressure",
+        label: "Blood pressure",
+        level: "warning",
+        status: "Hypertension Stage 2",
+        message: `${parsed.systolic}/${parsed.diastolic} is above safe range.`,
+      });
+    } else if (parsed.systolic >= 130 || parsed.diastolic >= 80) {
+      alerts.push({
+        key: "bloodPressure",
+        label: "Blood pressure",
+        level: "warning",
+        status: "Hypertension Stage 1",
+        message: `${parsed.systolic}/${parsed.diastolic} is mildly elevated.`,
+      });
+    } else if (parsed.systolic < 90 || parsed.diastolic < 60) {
+      alerts.push({
+        key: "bloodPressure",
+        label: "Blood pressure",
+        level: "warning",
+        status: "Hypotension",
+        message: `${parsed.systolic}/${parsed.diastolic} is below normal range.`,
+      });
+    } else {
+      alerts.push({
+        key: "bloodPressure",
+        label: "Blood pressure",
+        level: "normal",
+        status: "Normal",
+        message: `${parsed.systolic}/${parsed.diastolic} is within normal range.`,
+      });
+    }
+  }
+
+  const heartRate = vitals.heartRate?.trim() ?? "";
+  if (heartRate) {
+    const value = parseNumericInput(heartRate);
+    if (value == null) {
+      alerts.push({
+        key: "heartRate",
+        label: "Heart rate",
+        level: "warning",
+        status: "Invalid format",
+        message: "Enter beats per minute as a number.",
+      });
+    } else if (value < 40) {
+      alerts.push({
+        key: "heartRate",
+        label: "Heart rate",
+        level: "critical",
+        status: "Severe bradycardia",
+        message: `${Math.round(value)} bpm is critically low.`,
+      });
+    } else if (value < 60) {
+      alerts.push({
+        key: "heartRate",
+        label: "Heart rate",
+        level: "warning",
+        status: "Bradycardia",
+        message: `${Math.round(value)} bpm is below normal resting range.`,
+      });
+    } else if (value <= 100) {
+      alerts.push({
+        key: "heartRate",
+        label: "Heart rate",
+        level: "normal",
+        status: "Normal",
+        message: `${Math.round(value)} bpm is within normal range.`,
+      });
+    } else if (value <= 120) {
+      alerts.push({
+        key: "heartRate",
+        label: "Heart rate",
+        level: "warning",
+        status: "Tachycardia",
+        message: `${Math.round(value)} bpm is elevated.`,
+      });
+    } else {
+      alerts.push({
+        key: "heartRate",
+        label: "Heart rate",
+        level: "critical",
+        status: "Severe tachycardia",
+        message: `${Math.round(value)} bpm requires urgent review.`,
+      });
+    }
+  }
+
+  const o2Sat = vitals.o2Sat?.trim() ?? "";
+  if (o2Sat) {
+    const value = parseNumericInput(o2Sat);
+    if (value == null) {
+      alerts.push({
+        key: "o2Sat",
+        label: "O2 saturation",
+        level: "warning",
+        status: "Invalid format",
+        message: "Enter oxygen saturation as a percentage number.",
+      });
+    } else if (value < 90) {
+      alerts.push({
+        key: "o2Sat",
+        label: "O2 saturation",
+        level: "critical",
+        status: "Severe hypoxemia",
+        message: `${Math.round(value)}% is dangerously low.`,
+      });
+    } else if (value < 95) {
+      alerts.push({
+        key: "o2Sat",
+        label: "O2 saturation",
+        level: "warning",
+        status: "Low oxygen saturation",
+        message: `${Math.round(value)}% is below normal range.`,
+      });
+    } else {
+      alerts.push({
+        key: "o2Sat",
+        label: "O2 saturation",
+        level: "normal",
+        status: "Normal",
+        message: `${Math.round(value)}% is within normal range.`,
+      });
+    }
+  }
+
+  const respiratoryRate = vitals.respiratoryRate?.trim() ?? "";
+  if (respiratoryRate) {
+    const value = parseNumericInput(respiratoryRate);
+    if (value == null) {
+      alerts.push({
+        key: "respiratoryRate",
+        label: "Respiratory rate",
+        level: "warning",
+        status: "Invalid format",
+        message: "Enter breaths per minute as a number.",
+      });
+    } else if (value < 8) {
+      alerts.push({
+        key: "respiratoryRate",
+        label: "Respiratory rate",
+        level: "critical",
+        status: "Severe bradypnea",
+        message: `${Math.round(value)} breaths/min is critically low.`,
+      });
+    } else if (value < 12) {
+      alerts.push({
+        key: "respiratoryRate",
+        label: "Respiratory rate",
+        level: "warning",
+        status: "Bradypnea",
+        message: `${Math.round(value)} breaths/min is below normal range.`,
+      });
+    } else if (value <= 20) {
+      alerts.push({
+        key: "respiratoryRate",
+        label: "Respiratory rate",
+        level: "normal",
+        status: "Normal",
+        message: `${Math.round(value)} breaths/min is within normal range.`,
+      });
+    } else if (value <= 24) {
+      alerts.push({
+        key: "respiratoryRate",
+        label: "Respiratory rate",
+        level: "warning",
+        status: "Tachypnea",
+        message: `${Math.round(value)} breaths/min is elevated.`,
+      });
+    } else {
+      alerts.push({
+        key: "respiratoryRate",
+        label: "Respiratory rate",
+        level: "critical",
+        status: "Severe tachypnea",
+        message: `${Math.round(value)} breaths/min requires urgent review.`,
+      });
+    }
+  }
+
+  const weight = vitals.weight?.trim() ?? "";
+  const height = vitals.height?.trim() ?? "";
+  if (weight && height) {
+    const weightValue = parseNumericInput(weight);
+    const heightValue = parseNumericInput(height);
+    if (
+      weightValue == null ||
+      heightValue == null ||
+      weightValue <= 0 ||
+      heightValue <= 0
+    ) {
+      alerts.push({
+        key: "bmi",
+        label: "Weight and height",
+        level: "warning",
+        status: "Invalid format",
+        message: "Enter positive numeric values for weight and height.",
+      });
+    } else {
+      const heightMeters = heightValue / 100;
+      const bmi = weightValue / (heightMeters * heightMeters);
+      const roundedBmi = Math.round(bmi * 10) / 10;
+
+      if (bmi < 18.5) {
+        alerts.push({
+          key: "bmi",
+          label: "BMI",
+          level: "warning",
+          status: "Underweight",
+          message: `BMI ${roundedBmi} suggests underweight range.`,
+        });
+      } else if (bmi < 25) {
+        alerts.push({
+          key: "bmi",
+          label: "BMI",
+          level: "normal",
+          status: "Normal",
+          message: `BMI ${roundedBmi} is within normal range.`,
+        });
+      } else if (bmi < 30) {
+        alerts.push({
+          key: "bmi",
+          label: "BMI",
+          level: "warning",
+          status: "Overweight",
+          message: `BMI ${roundedBmi} is above normal range.`,
+        });
+      } else if (bmi < 40) {
+        alerts.push({
+          key: "bmi",
+          label: "BMI",
+          level: "warning",
+          status: "Obesity",
+          message: `BMI ${roundedBmi} indicates obesity.`,
+        });
+      } else {
+        alerts.push({
+          key: "bmi",
+          label: "BMI",
+          level: "critical",
+          status: "Severe obesity",
+          message: `BMI ${roundedBmi} is in high-risk range.`,
+        });
+      }
+    }
+  }
+
+  return alerts;
+}
+
+function getVitalAlertPriority(level: VitalAlertLevel) {
+  if (level === "critical") {
+    return 3;
+  }
+  if (level === "warning") {
+    return 2;
+  }
+  return 1;
+}
+
 export function WalkInWizardModal({
   open,
   onClose,
@@ -177,6 +656,10 @@ export function WalkInWizardModal({
     useState<Appointment | null>(null);
   const [billingReceiptPrintState, setBillingReceiptPrintState] =
     useState<BillingReceiptPrintState | null>(null);
+  const lastAutoGeneratedEmailRef = useRef("");
+  const [selectedBirthYear, setSelectedBirthYear] = useState("");
+  const [selectedBirthMonth, setSelectedBirthMonth] = useState("");
+  const [selectedBirthDay, setSelectedBirthDay] = useState("");
 
   const defaultDoctor = doctors[0];
   const defaultService = services[0];
@@ -191,6 +674,7 @@ export function WalkInWizardModal({
         lastName: "",
         sex: "female",
         birthDate: "",
+        age: "",
         mobileNumber: "",
         email: "",
         address: "",
@@ -244,9 +728,83 @@ export function WalkInWizardModal({
 
   const selectedDoctorId = form.watch("appointment.doctorId");
   const selectedServiceId = form.watch("appointment.serviceId");
+  const selectedPatientFirstName = form.watch("patient.firstName");
+  const selectedPatientLastName = form.watch("patient.lastName");
+  const selectedPatientEmail = form.watch("patient.email");
+  const selectedPatientBirthDate = form.watch("patient.birthDate");
+  const selectedPatientTemperature = form.watch("patient.temperature");
+  const selectedPatientBloodPressure = form.watch("patient.bloodPressure");
+  const selectedPatientHeartRate = form.watch("patient.heartRate");
+  const selectedPatientO2Sat = form.watch("patient.o2Sat");
+  const selectedPatientRespiratoryRate = form.watch("patient.respiratoryRate");
+  const selectedPatientWeight = form.watch("patient.weight");
+  const selectedPatientHeight = form.watch("patient.height");
   const selectedBillingPaymentStatus = form.watch("billing.paymentStatus");
   const selectedBillingPatientId = form.watch("billing.patientId");
   const billingLineItems = form.watch("billing.items");
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
+  const currentDay = today.getDate();
+  const currentMonthPadded = padToTwoDigits(currentMonth);
+  const birthYearOptions = useMemo(
+    () => Array.from({ length: 121 }, (_, index) => String(currentYear - index)),
+    [currentYear],
+  );
+  const maxBirthMonth =
+    selectedBirthYear === String(currentYear) ? currentMonth : 12;
+  const availableBirthMonthOptions = useMemo(
+    () =>
+      birthMonthOptions.filter((month) => Number(month.value) <= maxBirthMonth),
+    [maxBirthMonth],
+  );
+  const daysInSelectedBirthMonth =
+    selectedBirthYear && selectedBirthMonth
+      ? new Date(Number(selectedBirthYear), Number(selectedBirthMonth), 0).getDate()
+      : 31;
+  const maxBirthDay =
+    selectedBirthYear === String(currentYear) &&
+    selectedBirthMonth === currentMonthPadded
+      ? Math.min(daysInSelectedBirthMonth, currentDay)
+      : daysInSelectedBirthMonth;
+  const birthDayOptions = useMemo(
+    () => Array.from({ length: maxBirthDay }, (_, index) => padToTwoDigits(index + 1)),
+    [maxBirthDay],
+  );
+  const vitalAlerts = useMemo(
+    () =>
+      getVitalAlerts({
+        temperature: selectedPatientTemperature,
+        bloodPressure: selectedPatientBloodPressure,
+        heartRate: selectedPatientHeartRate,
+        o2Sat: selectedPatientO2Sat,
+        respiratoryRate: selectedPatientRespiratoryRate,
+        weight: selectedPatientWeight,
+        height: selectedPatientHeight,
+      }),
+    [
+      selectedPatientTemperature,
+      selectedPatientBloodPressure,
+      selectedPatientHeartRate,
+      selectedPatientO2Sat,
+      selectedPatientRespiratoryRate,
+      selectedPatientWeight,
+      selectedPatientHeight,
+    ],
+  );
+  const vitalAlertsByKey = useMemo(() => {
+    const alertMap = new Map<string, VitalAlert>();
+    for (const alert of vitalAlerts) {
+      const existing = alertMap.get(alert.key);
+      if (
+        !existing ||
+        getVitalAlertPriority(alert.level) > getVitalAlertPriority(existing.level)
+      ) {
+        alertMap.set(alert.key, alert);
+      }
+    }
+    return alertMap;
+  }, [vitalAlerts]);
   const selectedService =
     services.find((service) => service.id === selectedServiceId) ?? null;
   const selectedDoctor =
@@ -289,6 +847,7 @@ export function WalkInWizardModal({
   }, [existingPatientSearch, patients]);
 
   const applyExistingPatientToForm = (patient: Patient) => {
+    lastAutoGeneratedEmailRef.current = "";
     form.setValue("patient.firstName", patient.firstName, {
       shouldDirty: true,
       shouldValidate: true,
@@ -304,6 +863,10 @@ export function WalkInWizardModal({
     form.setValue("patient.birthDate", patient.birthDate, {
       shouldDirty: true,
       shouldValidate: true,
+    });
+    form.setValue("patient.age", getAgeLabelFromBirthDate(patient.birthDate), {
+      shouldDirty: true,
+      shouldValidate: false,
     });
     form.setValue("patient.mobileNumber", patient.mobileNumber, {
       shouldDirty: true,
@@ -369,6 +932,52 @@ export function WalkInWizardModal({
     });
   };
 
+  const handleBirthDatePartChange = (
+    part: "year" | "month" | "day",
+    value: string,
+  ) => {
+    const inputYear = part === "year" ? value : selectedBirthYear;
+    const inputMonth = part === "month" ? value : selectedBirthMonth;
+    const inputDay = part === "day" ? value : selectedBirthDay;
+
+    setSelectedBirthYear(inputYear);
+    setSelectedBirthMonth(inputMonth);
+    setSelectedBirthDay(inputDay);
+
+    if (!inputYear || !inputMonth || !inputDay) {
+      form.setValue("patient.birthDate", "", {
+        shouldDirty: true,
+        shouldValidate: false,
+      });
+      return;
+    }
+
+    const normalizedMonthNumber = Math.min(
+      Number(inputMonth),
+      inputYear === String(currentYear) ? currentMonth : 12,
+    );
+    const normalizedMonth = padToTwoDigits(normalizedMonthNumber);
+    const monthDayLimit = new Date(
+      Number(inputYear),
+      normalizedMonthNumber,
+      0,
+    ).getDate();
+    const dateDayLimit =
+      inputYear === String(currentYear) && normalizedMonth === currentMonthPadded
+        ? Math.min(monthDayLimit, currentDay)
+        : monthDayLimit;
+    const normalizedDay = padToTwoDigits(
+      Math.min(Number(inputDay), dateDayLimit),
+    );
+
+    setSelectedBirthMonth(normalizedMonth);
+    setSelectedBirthDay(normalizedDay);
+    form.setValue("patient.birthDate", `${inputYear}-${normalizedMonth}-${normalizedDay}`, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
   useEffect(() => {
     if (!open) {
       return;
@@ -389,16 +998,91 @@ export function WalkInWizardModal({
   }, [form, open, selectedDoctor?.specialtyId, selectedService?.specialtyId]);
 
   useEffect(() => {
+    if (!open || isUsingExistingPatient) {
+      return;
+    }
+
+    const firstNamePart = getEmailNamePart(selectedPatientFirstName ?? "");
+    const lastNamePart = getEmailNamePart(selectedPatientLastName ?? "");
+    const currentEmail = (selectedPatientEmail ?? "").trim().toLowerCase();
+    const previousAutoEmail = lastAutoGeneratedEmailRef.current;
+
+    if (!firstNamePart || !lastNamePart) {
+      if (currentEmail && currentEmail === previousAutoEmail) {
+        form.setValue("patient.email", "", {
+          shouldDirty: false,
+          shouldValidate: true,
+          shouldTouch: false,
+        });
+      }
+      lastAutoGeneratedEmailRef.current = "";
+      return;
+    }
+
+    const nextAutoEmail = `${firstNamePart}.${lastNamePart}@gmail.com`;
+    if (!currentEmail || currentEmail === previousAutoEmail) {
+      if (currentEmail !== nextAutoEmail) {
+        form.setValue("patient.email", nextAutoEmail, {
+          shouldDirty: false,
+          shouldValidate: true,
+          shouldTouch: false,
+        });
+      }
+    }
+
+    lastAutoGeneratedEmailRef.current = nextAutoEmail;
+  }, [
+    form,
+    isUsingExistingPatient,
+    open,
+    selectedPatientEmail,
+    selectedPatientFirstName,
+    selectedPatientLastName,
+  ]);
+
+  useEffect(() => {
     if (!open) {
       return;
     }
 
+    if (!selectedPatientBirthDate) {
+      setSelectedBirthYear("");
+      setSelectedBirthMonth("");
+      setSelectedBirthDay("");
+      return;
+    }
+
+    const [year = "", month = "", day = ""] = selectedPatientBirthDate.split("-");
+    setSelectedBirthYear(year);
+    setSelectedBirthMonth(month);
+    setSelectedBirthDay(day);
+  }, [open, selectedPatientBirthDate]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    form.setValue("patient.age", getAgeLabelFromBirthDate(selectedPatientBirthDate), {
+      shouldDirty: false,
+      shouldValidate: false,
+      shouldTouch: false,
+    });
+  }, [form, open, selectedPatientBirthDate]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    lastAutoGeneratedEmailRef.current = "";
     form.reset({
       patient: {
         firstName: "",
         lastName: "",
         sex: "female",
         birthDate: "",
+        age: "",
         mobileNumber: "",
         email: "",
         address: "",
@@ -1015,13 +1699,14 @@ export function WalkInWizardModal({
                 ) : null}
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 <FormField
                   error={form.formState.errors.patient?.firstName?.message}
                   label="First name"
                 >
                   <Input
                     disabled={isUsingExistingPatient}
+                    placeholder="Enter first name"
                     {...form.register("patient.firstName")}
                   />
                 </FormField>
@@ -1031,6 +1716,7 @@ export function WalkInWizardModal({
                 >
                   <Input
                     disabled={isUsingExistingPatient}
+                    placeholder="Enter last name"
                     {...form.register("patient.lastName")}
                   />
                 </FormField>
@@ -1049,10 +1735,68 @@ export function WalkInWizardModal({
                   error={form.formState.errors.patient?.birthDate?.message}
                   label="Birth date"
                 >
+                  <div className="space-y-2">
+                    <Input type="hidden" {...form.register("patient.birthDate")} />
+                    <div className="grid grid-cols-3 gap-2">
+                      <Select
+                        aria-label="Birth month"
+                        disabled={isUsingExistingPatient}
+                        onChange={(event) =>
+                          handleBirthDatePartChange("month", event.target.value)
+                        }
+                        value={selectedBirthMonth}
+                      >
+                        <option value="">Month</option>
+                        {availableBirthMonthOptions.map((month) => (
+                          <option key={month.value} value={month.value}>
+                            {month.label}
+                          </option>
+                        ))}
+                      </Select>
+                      <Select
+                        aria-label="Birth day"
+                        disabled={
+                          isUsingExistingPatient ||
+                          !selectedBirthYear ||
+                          !selectedBirthMonth
+                        }
+                        onChange={(event) =>
+                          handleBirthDatePartChange("day", event.target.value)
+                        }
+                        value={selectedBirthDay}
+                      >
+                        <option value="">Day</option>
+                        {birthDayOptions.map((day) => (
+                          <option key={day} value={day}>
+                            {day}
+                          </option>
+                        ))}
+                      </Select>
+                      <Select
+                        aria-label="Birth year"
+                        disabled={isUsingExistingPatient}
+                        onChange={(event) =>
+                          handleBirthDatePartChange("year", event.target.value)
+                        }
+                        value={selectedBirthYear}
+                      >
+                        <option value="">Year</option>
+                        {birthYearOptions.map((year) => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Choose Month, Day, and Year. Future dates are disabled.
+                    </p>
+                  </div>
+                </FormField>
+                <FormField label="Age">
                   <Input
-                    disabled={isUsingExistingPatient}
-                    type="date"
-                    {...form.register("patient.birthDate")}
+                    placeholder="Auto from birth date (editable)"
+                    {...form.register("patient.age")}
                   />
                 </FormField>
               </div>
@@ -1063,6 +1807,7 @@ export function WalkInWizardModal({
                 >
                   <Input
                     disabled={isUsingExistingPatient}
+                    placeholder="09XXXXXXXXX"
                     {...form.register("patient.mobileNumber")}
                   />
                 </FormField>
@@ -1072,6 +1817,7 @@ export function WalkInWizardModal({
                 >
                   <Input
                     disabled={isUsingExistingPatient}
+                    placeholder="Auto from first and last name"
                     {...form.register("patient.email")}
                   />
                 </FormField>
@@ -1082,6 +1828,7 @@ export function WalkInWizardModal({
               >
                 <Input
                   disabled={isUsingExistingPatient}
+                  placeholder="House no., street, barangay, city"
                   {...form.register("patient.address")}
                 />
               </FormField>
@@ -1112,6 +1859,7 @@ export function WalkInWizardModal({
                 >
                   <Input
                     disabled={isUsingExistingPatient}
+                    placeholder="None reported"
                     {...form.register("patient.allergies")}
                   />
                 </FormField>
@@ -1122,6 +1870,7 @@ export function WalkInWizardModal({
               >
                 <Textarea
                   disabled={isUsingExistingPatient}
+                  placeholder="Medical history details"
                   {...form.register("patient.medicalHistory")}
                 />
               </FormField>
@@ -1134,6 +1883,7 @@ export function WalkInWizardModal({
                 >
                   <Input
                     disabled={isUsingExistingPatient}
+                    placeholder="Enter contact person"
                     {...form.register("patient.emergencyContactName")}
                   />
                 </FormField>
@@ -1146,6 +1896,7 @@ export function WalkInWizardModal({
                 >
                   <Input
                     disabled={isUsingExistingPatient}
+                    placeholder="09XXXXXXXXX"
                     {...form.register("patient.emergencyContactPhone")}
                   />
                 </FormField>
@@ -1159,10 +1910,27 @@ export function WalkInWizardModal({
                     error={form.formState.errors.patient?.temperature?.message}
                     label="Temperature"
                   >
-                    <Input
-                      placeholder="36.8"
-                      {...form.register("patient.temperature")}
-                    />
+                    <div className="space-y-1.5">
+                      <Input
+                        placeholder="36.8"
+                        {...form.register("patient.temperature")}
+                      />
+                      {vitalAlertsByKey.get("temperature") ? (
+                        <p
+                          className={`text-[11px] ${
+                            vitalAlertsByKey.get("temperature")?.level ===
+                            "critical"
+                              ? "text-rose-600"
+                              : vitalAlertsByKey.get("temperature")?.level ===
+                                  "warning"
+                                ? "text-amber-600"
+                                : "text-emerald-600"
+                          }`}
+                        >
+                          {vitalAlertsByKey.get("temperature")?.status}
+                        </p>
+                      ) : null}
+                    </div>
                   </FormField>
                   <FormField
                     error={
@@ -1170,28 +1938,79 @@ export function WalkInWizardModal({
                     }
                     label="Blood pressure"
                   >
-                    <Input
-                      placeholder="120/80"
-                      {...form.register("patient.bloodPressure")}
-                    />
+                    <div className="space-y-1.5">
+                      <Input
+                        placeholder="120/80"
+                        {...form.register("patient.bloodPressure")}
+                      />
+                      {vitalAlertsByKey.get("bloodPressure") ? (
+                        <p
+                          className={`text-[11px] ${
+                            vitalAlertsByKey.get("bloodPressure")?.level ===
+                            "critical"
+                              ? "text-rose-600"
+                              : vitalAlertsByKey.get("bloodPressure")?.level ===
+                                  "warning"
+                                ? "text-amber-600"
+                                : "text-emerald-600"
+                          }`}
+                        >
+                          {vitalAlertsByKey.get("bloodPressure")?.status}
+                        </p>
+                      ) : null}
+                    </div>
                   </FormField>
                   <FormField
                     error={form.formState.errors.patient?.heartRate?.message}
                     label="Heart rate"
                   >
-                    <Input
-                      placeholder="76"
-                      {...form.register("patient.heartRate")}
-                    />
+                    <div className="space-y-1.5">
+                      <Input
+                        placeholder="76"
+                        {...form.register("patient.heartRate")}
+                      />
+                      {vitalAlertsByKey.get("heartRate") ? (
+                        <p
+                          className={`text-[11px] ${
+                            vitalAlertsByKey.get("heartRate")?.level ===
+                            "critical"
+                              ? "text-rose-600"
+                              : vitalAlertsByKey.get("heartRate")?.level ===
+                                  "warning"
+                                ? "text-amber-600"
+                                : "text-emerald-600"
+                          }`}
+                        >
+                          {vitalAlertsByKey.get("heartRate")?.status}
+                        </p>
+                      ) : null}
+                    </div>
                   </FormField>
                   <FormField
                     error={form.formState.errors.patient?.o2Sat?.message}
                     label="O2 saturation"
                   >
-                    <Input
-                      placeholder="99"
-                      {...form.register("patient.o2Sat")}
-                    />
+                    <div className="space-y-1.5">
+                      <Input
+                        placeholder="99"
+                        {...form.register("patient.o2Sat")}
+                      />
+                      {vitalAlertsByKey.get("o2Sat") ? (
+                        <p
+                          className={`text-[11px] ${
+                            vitalAlertsByKey.get("o2Sat")?.level ===
+                            "critical"
+                              ? "text-rose-600"
+                              : vitalAlertsByKey.get("o2Sat")?.level ===
+                                  "warning"
+                                ? "text-amber-600"
+                                : "text-emerald-600"
+                          }`}
+                        >
+                          {vitalAlertsByKey.get("o2Sat")?.status}
+                        </p>
+                      ) : null}
+                    </div>
                   </FormField>
                   <FormField
                     error={
@@ -1199,28 +2018,75 @@ export function WalkInWizardModal({
                     }
                     label="Respiratory rate"
                   >
-                    <Input
-                      placeholder="16"
-                      {...form.register("patient.respiratoryRate")}
-                    />
+                    <div className="space-y-1.5">
+                      <Input
+                        placeholder="16"
+                        {...form.register("patient.respiratoryRate")}
+                      />
+                      {vitalAlertsByKey.get("respiratoryRate") ? (
+                        <p
+                          className={`text-[11px] ${
+                            vitalAlertsByKey.get("respiratoryRate")?.level ===
+                            "critical"
+                              ? "text-rose-600"
+                              : vitalAlertsByKey.get("respiratoryRate")
+                                    ?.level === "warning"
+                                ? "text-amber-600"
+                                : "text-emerald-600"
+                          }`}
+                        >
+                          {vitalAlertsByKey.get("respiratoryRate")?.status}
+                        </p>
+                      ) : null}
+                    </div>
                   </FormField>
                   <FormField
                     error={form.formState.errors.patient?.weight?.message}
                     label="Weight"
                   >
-                    <Input
-                      placeholder="55"
-                      {...form.register("patient.weight")}
-                    />
+                    <div className="space-y-1.5">
+                      <Input
+                        placeholder="55"
+                        {...form.register("patient.weight")}
+                      />
+                      {vitalAlertsByKey.get("bmi") ? (
+                        <p
+                          className={`text-[11px] ${
+                            vitalAlertsByKey.get("bmi")?.level === "critical"
+                              ? "text-rose-600"
+                              : vitalAlertsByKey.get("bmi")?.level === "warning"
+                                ? "text-amber-600"
+                                : "text-emerald-600"
+                          }`}
+                        >
+                          BMI: {vitalAlertsByKey.get("bmi")?.status}
+                        </p>
+                      ) : null}
+                    </div>
                   </FormField>
                   <FormField
                     error={form.formState.errors.patient?.height?.message}
                     label="Height"
                   >
-                    <Input
-                      placeholder="160"
-                      {...form.register("patient.height")}
-                    />
+                    <div className="space-y-1.5">
+                      <Input
+                        placeholder="160"
+                        {...form.register("patient.height")}
+                      />
+                      {vitalAlertsByKey.get("bmi") ? (
+                        <p
+                          className={`text-[11px] ${
+                            vitalAlertsByKey.get("bmi")?.level === "critical"
+                              ? "text-rose-600"
+                              : vitalAlertsByKey.get("bmi")?.level === "warning"
+                                ? "text-amber-600"
+                                : "text-emerald-600"
+                          }`}
+                        >
+                          BMI: {vitalAlertsByKey.get("bmi")?.status}
+                        </p>
+                      ) : null}
+                    </div>
                   </FormField>
                 </div>
               </div>
@@ -1311,14 +2177,20 @@ export function WalkInWizardModal({
                 error={form.formState.errors.appointment?.reason?.message}
                 label="Reason"
               >
-                <Input {...form.register("appointment.reason")} />
+                <Input
+                  placeholder="Reason for visit"
+                  {...form.register("appointment.reason")}
+                />
               </FormField>
 
               <FormField
                 error={form.formState.errors.appointment?.notes?.message}
                 label="Notes"
               >
-                <Textarea {...form.register("appointment.notes")} />
+                <Textarea
+                  placeholder="Additional appointment notes"
+                  {...form.register("appointment.notes")}
+                />
               </FormField>
             </div>
           ) : null}
@@ -1610,6 +2482,7 @@ export function WalkInWizardModal({
                         label="Description"
                       >
                         <Input
+                          placeholder="Service description"
                           {...form.register(
                             `billing.items.${index}.description` as const,
                           )}
@@ -1641,6 +2514,7 @@ export function WalkInWizardModal({
                         label="Qty"
                       >
                         <Input
+                          placeholder="1"
                           type="number"
                           {...form.register(
                             `billing.items.${index}.quantity` as const,
@@ -1656,6 +2530,7 @@ export function WalkInWizardModal({
                         label="Unit price"
                       >
                         <Input
+                          placeholder="0.00"
                           type="number"
                           {...form.register(
                             `billing.items.${index}.unitPrice` as const,

@@ -10,7 +10,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { z } from "zod";
@@ -24,6 +24,7 @@ import { FeedbackModal } from "../../components/ui/feedback-modal";
 import { Select } from "../../components/ui/select";
 import { Textarea } from "../../components/ui/textarea";
 import { useProviderDirectory } from "../../hooks/use-clinic-data";
+import { evaluateVitalsAlerts } from "../../lib/vitals-alerts";
 import { formatDateLabel, formatDateTimeLabel } from "../../lib/utils";
 import { getHomePathForRole } from "../../lib/role-routing";
 import { useAuth } from "../auth/auth-context";
@@ -41,6 +42,16 @@ import {
   usePatientConsultations,
   usePatientDetail,
 } from "../patients/hooks/use-patients";
+
+function getVitalAlertPriority(level: "normal" | "warning" | "critical") {
+  if (level === "critical") {
+    return 3;
+  }
+  if (level === "warning") {
+    return 2;
+  }
+  return 1;
+}
 
 const consultationSchema = z
   .object({
@@ -489,6 +500,40 @@ export function ConsultationEntryPage() {
     profile?.id ??
     "user_owner";
   const intakeVitalsSnapshot = buildPatientVitalsSnapshot(patient);
+  const patientVitalAlerts = useMemo(
+    () =>
+      evaluateVitalsAlerts({
+        temperature: patient?.temperature ?? "",
+        bloodPressure: patient?.bloodPressure ?? "",
+        heartRate: patient?.heartRate ?? "",
+        o2Sat: patient?.o2Sat ?? "",
+        respiratoryRate: patient?.respiratoryRate ?? "",
+        weight: patient?.weight ?? "",
+        height: patient?.height ?? "",
+      }),
+    [
+      patient?.temperature,
+      patient?.bloodPressure,
+      patient?.heartRate,
+      patient?.o2Sat,
+      patient?.respiratoryRate,
+      patient?.weight,
+      patient?.height,
+    ],
+  );
+  const patientVitalAlertsByKey = useMemo(() => {
+    const alertMap = new Map<string, (typeof patientVitalAlerts)[number]>();
+    for (const alert of patientVitalAlerts) {
+      const existing = alertMap.get(alert.key);
+      if (
+        !existing ||
+        getVitalAlertPriority(alert.level) > getVitalAlertPriority(existing.level)
+      ) {
+        alertMap.set(alert.key, alert);
+      }
+    }
+    return alertMap;
+  }, [patientVitalAlerts]);
 
   const canProceedToNext = async () => {
     const fieldsToValidate = currentStep.fields as string[];
@@ -911,6 +956,21 @@ export function ConsultationEntryPage() {
                   <p className="mt-1 text-lg font-semibold text-slate-900">
                     {patient.temperature}°C
                   </p>
+                  {patientVitalAlertsByKey.get("temperature") ? (
+                    <p
+                      className={`mt-1 text-[11px] ${
+                        patientVitalAlertsByKey.get("temperature")?.level ===
+                        "critical"
+                          ? "text-rose-600"
+                          : patientVitalAlertsByKey.get("temperature")
+                                ?.level === "warning"
+                            ? "text-amber-600"
+                            : "text-emerald-600"
+                      }`}
+                    >
+                      {patientVitalAlertsByKey.get("temperature")?.status}
+                    </p>
+                  ) : null}
                 </div>
               )}
               {patient.bloodPressure && (
@@ -921,6 +981,21 @@ export function ConsultationEntryPage() {
                   <p className="mt-1 text-lg font-semibold text-slate-900">
                     {patient.bloodPressure} mmHg
                   </p>
+                  {patientVitalAlertsByKey.get("bloodPressure") ? (
+                    <p
+                      className={`mt-1 text-[11px] ${
+                        patientVitalAlertsByKey.get("bloodPressure")?.level ===
+                        "critical"
+                          ? "text-rose-600"
+                          : patientVitalAlertsByKey.get("bloodPressure")
+                                ?.level === "warning"
+                            ? "text-amber-600"
+                            : "text-emerald-600"
+                      }`}
+                    >
+                      {patientVitalAlertsByKey.get("bloodPressure")?.status}
+                    </p>
+                  ) : null}
                 </div>
               )}
               {patient.heartRate && (
@@ -931,6 +1006,21 @@ export function ConsultationEntryPage() {
                   <p className="mt-1 text-lg font-semibold text-slate-900">
                     {patient.heartRate} bpm
                   </p>
+                  {patientVitalAlertsByKey.get("heartRate") ? (
+                    <p
+                      className={`mt-1 text-[11px] ${
+                        patientVitalAlertsByKey.get("heartRate")?.level ===
+                        "critical"
+                          ? "text-rose-600"
+                          : patientVitalAlertsByKey.get("heartRate")?.level ===
+                                "warning"
+                            ? "text-amber-600"
+                            : "text-emerald-600"
+                      }`}
+                    >
+                      {patientVitalAlertsByKey.get("heartRate")?.status}
+                    </p>
+                  ) : null}
                 </div>
               )}
               {patient.o2Sat && (
@@ -939,6 +1029,21 @@ export function ConsultationEntryPage() {
                   <p className="mt-1 text-lg font-semibold text-slate-900">
                     {patient.o2Sat} %
                   </p>
+                  {patientVitalAlertsByKey.get("o2Sat") ? (
+                    <p
+                      className={`mt-1 text-[11px] ${
+                        patientVitalAlertsByKey.get("o2Sat")?.level ===
+                        "critical"
+                          ? "text-rose-600"
+                          : patientVitalAlertsByKey.get("o2Sat")?.level ===
+                                "warning"
+                            ? "text-amber-600"
+                            : "text-emerald-600"
+                      }`}
+                    >
+                      {patientVitalAlertsByKey.get("o2Sat")?.status}
+                    </p>
+                  ) : null}
                 </div>
               )}
               {patient.respiratoryRate && (
@@ -949,6 +1054,21 @@ export function ConsultationEntryPage() {
                   <p className="mt-1 text-lg font-semibold text-slate-900">
                     {patient.respiratoryRate} breaths/min
                   </p>
+                  {patientVitalAlertsByKey.get("respiratoryRate") ? (
+                    <p
+                      className={`mt-1 text-[11px] ${
+                        patientVitalAlertsByKey.get("respiratoryRate")
+                          ?.level === "critical"
+                          ? "text-rose-600"
+                          : patientVitalAlertsByKey.get("respiratoryRate")
+                                ?.level === "warning"
+                            ? "text-amber-600"
+                            : "text-emerald-600"
+                      }`}
+                    >
+                      {patientVitalAlertsByKey.get("respiratoryRate")?.status}
+                    </p>
+                  ) : null}
                 </div>
               )}
               {patient.weight && (
@@ -957,6 +1077,20 @@ export function ConsultationEntryPage() {
                   <p className="mt-1 text-lg font-semibold text-slate-900">
                     {patient.weight} kg
                   </p>
+                  {patientVitalAlertsByKey.get("bmi") ? (
+                    <p
+                      className={`mt-1 text-[11px] ${
+                        patientVitalAlertsByKey.get("bmi")?.level === "critical"
+                          ? "text-rose-600"
+                          : patientVitalAlertsByKey.get("bmi")?.level ===
+                                "warning"
+                            ? "text-amber-600"
+                            : "text-emerald-600"
+                      }`}
+                    >
+                      BMI: {patientVitalAlertsByKey.get("bmi")?.status}
+                    </p>
+                  ) : null}
                 </div>
               )}
               {patient.height && (
@@ -965,6 +1099,20 @@ export function ConsultationEntryPage() {
                   <p className="mt-1 text-lg font-semibold text-slate-900">
                     {patient.height} cm
                   </p>
+                  {patientVitalAlertsByKey.get("bmi") ? (
+                    <p
+                      className={`mt-1 text-[11px] ${
+                        patientVitalAlertsByKey.get("bmi")?.level === "critical"
+                          ? "text-rose-600"
+                          : patientVitalAlertsByKey.get("bmi")?.level ===
+                                "warning"
+                            ? "text-amber-600"
+                            : "text-emerald-600"
+                      }`}
+                    >
+                      BMI: {patientVitalAlertsByKey.get("bmi")?.status}
+                    </p>
+                  ) : null}
                 </div>
               )}
             </div>
