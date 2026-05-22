@@ -1,4 +1,4 @@
-﻿import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { queryClient } from "../../../app/query-client";
 import { getDatabase } from "../../../lib/local-db";
@@ -125,6 +125,8 @@ export function useCreateBooking(userId: string | null) {
         intakeNotes: payload.intakeNotes,
         feeType: payload.feeType,
         feeAmount: payload.feeAmount,
+        promoCodeId: payload.promoCodeId,
+        discountAmount: payload.discountAmount,
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.bookings });

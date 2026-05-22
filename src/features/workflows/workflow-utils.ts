@@ -199,14 +199,14 @@ export function buildFrontDeskWorkflowRows(input: FrontDeskWorkflowInput) {
   const patientMap = new Map(input.patients.map((patient) => [patient.id, patient]));
 
   return input.appointments
-    .filter((appointment) => isTodayAppointment(appointment, input.todayDateKey))
+    .filter((appointment) => isTodayAppointment(appointment, input.todayDateKey) && appointment.patientId)
     .filter(
       (appointment) =>
         appointment.status !== "cancelled" && appointment.status !== "no_show",
     )
     .toSorted((left, right) => left.scheduledAt.localeCompare(right.scheduledAt))
     .map<FrontDeskWorkflowRow>((appointment) => {
-      const patient = patientMap.get(appointment.patientId);
+      const patient = patientMap.get(appointment.patientId!);
       const booking = findLinkedBooking(appointment, input.bookings);
       const { invoice, paymentState, receiptCode } = getPaymentStateForAppointment(
         appointment,
@@ -225,7 +225,7 @@ export function buildFrontDeskWorkflowRows(input: FrontDeskWorkflowInput) {
         invoiceNumber: invoice?.invoiceNumber ?? null,
         isWalkInPatient: patient?.intakeSource === "staff_walk_in",
         missingVitals,
-        patientId: appointment.patientId,
+        patientId: appointment.patientId!,
         patientIntakeSource: patient?.intakeSource ?? "online_registration",
         patientName: getPatientName(patient),
         paymentState,
@@ -245,7 +245,7 @@ export function buildDoctorWorkflowRows(input: DoctorWorkflowInput) {
   const patientMap = new Map(input.patients.map((patient) => [patient.id, patient]));
 
   return input.appointments
-    .filter((appointment) => isTodayAppointment(appointment, input.todayDateKey))
+    .filter((appointment) => isTodayAppointment(appointment, input.todayDateKey) && appointment.patientId)
     .filter((appointment) =>
       input.doctorId ? appointment.doctorId === input.doctorId : true,
     )
@@ -257,7 +257,7 @@ export function buildDoctorWorkflowRows(input: DoctorWorkflowInput) {
     )
     .toSorted((left, right) => left.scheduledAt.localeCompare(right.scheduledAt))
     .map<DoctorWorkflowRow>((appointment) => {
-      const patient = patientMap.get(appointment.patientId);
+      const patient = patientMap.get(appointment.patientId!);
       const { paymentState } = getPaymentStateForAppointment(
         appointment,
         input.invoices,
@@ -278,7 +278,7 @@ export function buildDoctorWorkflowRows(input: DoctorWorkflowInput) {
         appointmentStatus: appointment.status,
         blockingReason,
         canStartConsultation,
-        patientId: appointment.patientId,
+        patientId: appointment.patientId!,
         patientName: getPatientName(patient),
         paymentState,
         reason: appointment.reason,

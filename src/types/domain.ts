@@ -228,7 +228,7 @@ export interface Patient extends BaseRecord {
 }
 
 export interface Appointment extends BaseRecord {
-  patientId: string;
+  patientId: string | null;
   doctorId: string;
   specialtyId: string;
   serviceId: string;
@@ -247,6 +247,7 @@ export interface Appointment extends BaseRecord {
   consultationId?: string | null;
   completedBy?: string | null;
   completedAt?: string | null;
+  additionalDoctorIds?: string[] | null;
 }
 
 export interface DoctorAvailability extends BaseRecord {
@@ -316,6 +317,18 @@ export interface LabRequestDocument extends BaseRecord {
   documentHtml: string | null;
 }
 
+export interface PromoCode extends BaseRecord {
+  code: string;
+  description: string;
+  maxUses: number;
+  usedCount: number;
+  discountType: "percentage" | "fixed" | "free";
+  discountValue: number;
+  applicableServiceId?: string | null;
+  active: boolean;
+  expiresAt?: string | null;
+}
+
 export interface Booking extends BaseRecord {
   patientId: string;
   serviceId: string;
@@ -330,6 +343,8 @@ export interface Booking extends BaseRecord {
   receiptCode: string;
   paymentStatus: BookingPaymentStatus;
   relatedReferral_id?: string | null;
+  promoCodeId?: string | null;
+  discountAmount?: number;
 }
 
 export interface Referral extends BaseRecord {

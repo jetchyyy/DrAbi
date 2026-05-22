@@ -8,7 +8,7 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Link, useSearchParams } from "react-router-dom";
 import { z } from "zod";
@@ -63,28 +63,35 @@ import {
   useUpdateAppointment,
 } from "./hooks/use-appointments";
 
-const appointmentSchema = z.object({
-  patientId: z.string().min(1, "Patient is required."),
-  doctorId: z.string().min(1, "Doctor is required."),
-  specialtyId: z.string().optional(),
-  serviceId: z.string().min(1, "Service is required."),
-  scheduledAt: z.string().min(1, "Scheduled time is required."),
-  status: z.enum([
-    "scheduled",
-    "confirmed",
-    "in_progress",
-    "completed",
-    "cancelled",
-    "no_show",
-  ]),
-  source: z.enum(["internal", "portal"]),
-  visitType: z.enum(["in_person", "teleconsultation"]),
-  reason: z.string().min(4, "Reason for visit must be at least 4 characters."),
-  notes: z.string().min(2, "Notes must be at least 2 characters."),
-  teleconsultationPlatform: z.string().optional(),
-  teleconsultationUrl: z.string().optional(),
-  teleconsultationAccessInstructions: z.string().optional(),
-});
+const appointmentSchema = z
+  .object({
+    patientId: z.string().optional(),
+    doctorId: z.string().min(1, "Doctor is required."),
+    specialtyId: z.string().optional(),
+    serviceId: z.string().min(1, "Service is required."),
+    scheduledAt: z.string().min(1, "Scheduled time is required."),
+    status: z.enum([
+      "scheduled",
+      "confirmed",
+      "in_progress",
+      "completed",
+      "cancelled",
+      "no_show",
+    ]),
+    source: z.enum(["internal", "portal"]),
+    visitType: z.enum(["in_person", "teleconsultation"]),
+    reason: z.string().min(4, "Reason for visit must be at least 4 characters."),
+    notes: z.string().min(2, "Notes must be at least 2 characters."),
+    teleconsultationPlatform: z.string().optional(),
+    teleconsultationUrl: z.string().optional(),
+    teleconsultationAccessInstructions: z.string().optional(),
+    isDoctorsOnly: z.boolean(),
+    additionalDoctorIds: z.array(z.string()),
+  })
+  .refine((data) => data.isDoctorsOnly || (data.patientId && data.patientId.length > 0), {
+    message: "Patient is required.",
+    path: ["patientId"],
+  });
 
 const APPOINTMENTS_PAGE_SIZE = 10;
 
@@ -147,6 +154,9 @@ export function AppointmentsPage() {
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] =
     useState<Appointment | null>(null);
+  const [isAddDoctorOpen, setIsAddDoctorOpen] = useState(false);
+  const [doctorSearchQuery, setDoctorSearchQuery] = useState("");
+  const doctorSearchInputRef = useRef<HTMLInputElement>(null);
 
   const [feedbackModal, setFeedbackModal] = useState<FeedbackModalState>({
     open: false,
@@ -171,10 +181,14 @@ export function AppointmentsPage() {
       teleconsultationPlatform: "Jitsi Meet",
       teleconsultationUrl: "",
       teleconsultationAccessInstructions: "",
+      isDoctorsOnly: false,
+      additionalDoctorIds: [],
     },
   });
 
   const visitType = useWatch({ control: form.control, name: "visitType" });
+  const isDoctorsOnly = useWatch({ control: form.control, name: "isDoctorsOnly" });
+  const additionalDoctorIds = useWatch({ control: form.control, name: "additionalDoctorIds" }) || [];
   const scheduledAtValue = useWatch({
     control: form.control,
     name: "scheduledAt",
@@ -272,12 +286,19 @@ export function AppointmentsPage() {
   const filteredAppointments = useMemo(
     () =>
       appointments.filter((appointment) => {
-        const patient = patientMap.get(appointment.patientId);
+        const patient = appointment.patientId ? patientMap.get(appointment.patientId) : null;
+        const patientName = patient
+          ? `${patient.firstName} ${patient.lastName}`
+          : "Doctors Collaboration Meeting";
         const doctor = doctorMap.get(appointment.doctorId);
         const service = serviceMap.get(appointment.serviceId);
         const specialty = specialtyMap.get(appointment.specialtyId);
 
-        return `${patient?.firstName ?? ""} ${patient?.lastName ?? ""} ${doctor?.fullName ?? ""} ${service?.name ?? ""} ${specialty?.name ?? ""} ${appointment.status} ${appointment.visitType} ${appointment.reason}`
+        const additionalDocsStr = (appointment.additionalDoctorIds || [])
+          .map((id) => doctorMap.get(id)?.fullName ?? "")
+          .join(" ");
+
+        return `${patientName} ${doctor?.fullName ?? ""} ${additionalDocsStr} ${service?.name ?? ""} ${specialty?.name ?? ""} ${appointment.status} ${appointment.visitType} ${appointment.reason}`
           .toLowerCase()
           .includes(deferredSearch.toLowerCase());
       }),
@@ -411,6 +432,8 @@ export function AppointmentsPage() {
       teleconsultationPlatform: "Jitsi Meet",
       teleconsultationUrl: "",
       teleconsultationAccessInstructions: "",
+      isDoctorsOnly: false,
+      additionalDoctorIds: [],
     });
     setEditingAppointment(null);
     setIsAppointmentModalOpen(true);
@@ -442,7 +465,7 @@ export function AppointmentsPage() {
   const openEditModal = (appointment: Appointment) => {
     const scheduledAt = toPhilippineDateTimeLocalValue(appointment.scheduledAt);
     form.reset({
-      patientId: appointment.patientId,
+      patientId: appointment.patientId || "",
       doctorId: appointment.doctorId,
       specialtyId: appointment.specialtyId,
       serviceId: appointment.serviceId,
@@ -457,6 +480,8 @@ export function AppointmentsPage() {
       teleconsultationUrl: appointment.teleconsultationUrl ?? "",
       teleconsultationAccessInstructions:
         appointment.teleconsultationAccessInstructions ?? "",
+      isDoctorsOnly: !appointment.patientId,
+      additionalDoctorIds: appointment.additionalDoctorIds || [],
     });
     setEditingAppointment(appointment);
     setIsAppointmentModalOpen(true);
@@ -465,6 +490,8 @@ export function AppointmentsPage() {
   const closeAppointmentModal = () => {
     setEditingAppointment(null);
     setIsAppointmentModalOpen(false);
+    setIsAddDoctorOpen(false);
+    setDoctorSearchQuery("");
   };
 
   const closeFeedbackModal = () => {
@@ -480,7 +507,7 @@ export function AppointmentsPage() {
       : new Date().toISOString();
 
     const basePayload = {
-      patientId: values.patientId,
+      patientId: values.isDoctorsOnly ? null : (values.patientId || null),
       doctorId: values.doctorId,
       specialtyId: values.specialtyId ?? "",
       serviceId: values.serviceId,
@@ -502,6 +529,7 @@ export function AppointmentsPage() {
         values.visitType === "teleconsultation"
           ? values.teleconsultationAccessInstructions || undefined
           : undefined,
+      additionalDoctorIds: values.additionalDoctorIds || [],
     };
 
     try {
@@ -583,17 +611,19 @@ export function AppointmentsPage() {
           variant: "success",
         });
 
-        const patient = patientMap.get(values.patientId);
+        const patient = values.patientId ? patientMap.get(values.patientId) : null;
         const patientName = patient
           ? `${patient.firstName} ${patient.lastName}`
-          : "Patient";
+          : (values.isDoctorsOnly ? "Doctors Collaboration Meeting" : "Patient");
 
-        openQueuePrint({
-          queueNumber,
-          scheduledAt: created?.scheduledAt ?? scheduledAtUtc,
-          estimatedEnd,
-          patientName,
-        });
+        if (!values.isDoctorsOnly) {
+          openQueuePrint({
+            queueNumber,
+            scheduledAt: created?.scheduledAt ?? scheduledAtUtc,
+            estimatedEnd,
+            patientName,
+          });
+        }
       }
 
       closeAppointmentModal();
@@ -613,7 +643,7 @@ export function AppointmentsPage() {
   });
 
   const handleDeleteAppointment = async (appointment: Appointment) => {
-    const patient = patientMap.get(appointment.patientId);
+    const patient = appointment.patientId ? patientMap.get(appointment.patientId) : null;
     const patientName = patient
       ? `${patient.firstName} ${patient.lastName}`
       : "this patient";
@@ -716,7 +746,7 @@ export function AppointmentsPage() {
               </thead>
               <tbody>
                 {paginatedAppointments.map((appointment) => {
-                  const patient = patientMap.get(appointment.patientId);
+                  const patient = appointment.patientId ? patientMap.get(appointment.patientId) : null;
                   const doctor = doctorMap.get(appointment.doctorId);
                   const service = serviceMap.get(appointment.serviceId);
 
@@ -725,7 +755,9 @@ export function AppointmentsPage() {
                       <td className={INTERNAL_TD}>
                         <div className="space-y-0.5">
                           <p className="font-semibold text-slate-900">
-                            {patient?.firstName} {patient?.lastName}
+                            {patient
+                              ? `${patient.firstName} ${patient.lastName}`
+                              : "Doctors Collaboration Meeting"}
                           </p>
                           <p className="text-xs text-slate-500">
                             {appointment.reason}
@@ -734,7 +766,14 @@ export function AppointmentsPage() {
                       </td>
                       <td className={INTERNAL_TD}>
                         <div className="space-y-0.5 text-sm">
-                          <p className="text-slate-700">{doctor?.fullName}</p>
+                          <p className="text-slate-700">
+                            {doctor?.fullName}
+                            {appointment.additionalDoctorIds && appointment.additionalDoctorIds.length > 0 && (
+                              <span className="ml-1.5 inline-flex items-center rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-600/10">
+                                +{appointment.additionalDoctorIds.length} doctor{appointment.additionalDoctorIds.length > 1 ? "s" : ""}
+                              </span>
+                            )}
+                          </p>
                           <p className="text-xs text-slate-500">
                             {service?.name}
                           </p>
@@ -902,23 +941,38 @@ export function AppointmentsPage() {
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                     Patient and Provider
                   </p>
-                  <FormField
-                    error={form.formState.errors.patientId?.message}
-                    label="Patient"
-                  >
-                    <Select {...form.register("patientId")}>
-                      <option value="">Select patient</option>
-                      {patients.map((patient) => (
-                        <option key={patient.id} value={patient.id}>
-                          {patient.firstName} {patient.lastName}
-                        </option>
-                      ))}
-                    </Select>
-                  </FormField>
+                  {/* Doctors-Only Meeting toggle */}
+                  <div className="flex items-center gap-2 pb-2">
+                    <input
+                      id="isDoctorsOnly"
+                      type="checkbox"
+                      className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 size-4"
+                      {...form.register("isDoctorsOnly")}
+                    />
+                    <label htmlFor="isDoctorsOnly" className="text-sm font-medium text-slate-700">
+                      Doctors-Only Meeting (Collaboration)
+                    </label>
+                  </div>
+
+                  {!isDoctorsOnly && (
+                    <FormField
+                      error={form.formState.errors.patientId?.message}
+                      label="Patient"
+                    >
+                      <Select {...form.register("patientId")}>
+                        <option value="">Select patient</option>
+                        {patients.map((patient) => (
+                          <option key={patient.id} value={patient.id}>
+                            {patient.firstName} {patient.lastName}
+                          </option>
+                        ))}
+                      </Select>
+                    </FormField>
+                  )}
                   <div className="grid gap-4 md:grid-cols-2">
                     <FormField
                       error={form.formState.errors.doctorId?.message}
-                      label="Doctor"
+                      label="Primary Doctor"
                     >
                       <Select {...form.register("doctorId")}>
                         <option value="">Select doctor</option>
@@ -942,6 +996,121 @@ export function AppointmentsPage() {
                         ))}
                       </Select>
                     </FormField>
+                  </div>
+
+                  {/* Additional Doctors */}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-slate-700">
+                        Additional Doctors
+                      </label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700"
+                          onClick={() => {
+                            setIsAddDoctorOpen(!isAddDoctorOpen);
+                            setDoctorSearchQuery("");
+                            setTimeout(() => doctorSearchInputRef.current?.focus(), 50);
+                          }}
+                        >
+                          <Plus className="size-3.5" />
+                          Add Doctor
+                        </button>
+
+                        {isAddDoctorOpen && (
+                          <div className="absolute right-0 top-full z-20 mt-1.5 w-64 rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5">
+                            <div className="border-b border-slate-100 p-2">
+                              <div className="relative">
+                                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+                                <input
+                                  ref={doctorSearchInputRef}
+                                  type="text"
+                                  className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                                  placeholder="Search doctors..."
+                                  value={doctorSearchQuery}
+                                  onChange={(e) => setDoctorSearchQuery(e.target.value)}
+                                />
+                              </div>
+                            </div>
+                            <ul className="max-h-44 overflow-y-auto p-1.5">
+                              {doctors
+                                .filter(
+                                  (doctor) =>
+                                    doctor.id !== selectedDoctorId &&
+                                    !additionalDoctorIds.includes(doctor.id) &&
+                                    doctor.fullName
+                                      .toLowerCase()
+                                      .includes(doctorSearchQuery.toLowerCase()),
+                                )
+                                .map((doctor) => (
+                                  <li key={doctor.id}>
+                                    <button
+                                      type="button"
+                                      className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-800"
+                                      onClick={() => {
+                                        const currentIds = form.getValues("additionalDoctorIds") || [];
+                                        form.setValue("additionalDoctorIds", [...currentIds, doctor.id]);
+                                        setIsAddDoctorOpen(false);
+                                        setDoctorSearchQuery("");
+                                      }}
+                                    >
+                                      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-700">
+                                        {doctor.fullName.split(" ").map((w) => w[0]).join("").slice(0, 2)}
+                                      </span>
+                                      <span className="truncate font-medium">{doctor.fullName}</span>
+                                    </button>
+                                  </li>
+                                ))}
+                              {doctors.filter(
+                                (doctor) =>
+                                  doctor.id !== selectedDoctorId &&
+                                  !additionalDoctorIds.includes(doctor.id) &&
+                                  doctor.fullName
+                                    .toLowerCase()
+                                    .includes(doctorSearchQuery.toLowerCase()),
+                              ).length === 0 && (
+                                <li className="px-3 py-4 text-center text-xs text-slate-400 italic">
+                                  {doctorSearchQuery ? "No matching doctors" : "All doctors already added"}
+                                </li>
+                              )}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Selected doctors chips */}
+                    {additionalDoctorIds.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {additionalDoctorIds.map((docId) => {
+                          const doc = doctors.find((d) => d.id === docId);
+                          if (!doc) return null;
+                          return (
+                            <span
+                              key={docId}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 py-1 pl-1 pr-2.5 text-sm font-medium text-emerald-800 ring-1 ring-emerald-200/80 transition hover:ring-emerald-300"
+                            >
+                              <span className="flex size-5 items-center justify-center rounded-full bg-emerald-200 text-[9px] font-bold text-emerald-800">
+                                {doc.fullName.split(" ").map((w) => w[0]).join("").slice(0, 2)}
+                              </span>
+                              {doc.fullName}
+                              <button
+                                type="button"
+                                className="ml-0.5 inline-flex items-center justify-center rounded-full p-0.5 text-emerald-600 transition hover:bg-emerald-200 hover:text-emerald-900"
+                                onClick={() => {
+                                  const currentIds = form.getValues("additionalDoctorIds") || [];
+                                  form.setValue("additionalDoctorIds", currentIds.filter((id) => id !== docId));
+                                }}
+                                aria-label={`Remove ${doc.fullName}`}
+                              >
+                                <X className="size-3" />
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
 

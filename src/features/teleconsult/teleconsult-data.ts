@@ -35,6 +35,7 @@ interface NormalizedAppointmentInput extends AppointmentInput {
   teleconsultationPlatform: string | null;
   teleconsultationUrl: string | null;
   teleconsultationAccessInstructions: string | null;
+  additionalDoctorIds?: string[] | null;
 }
 
 export interface TeleconsultAppointmentSummary {
@@ -58,39 +59,18 @@ function getClient() {
 }
 
 function createTeleconsultationRoomName() {
-  return `odc-${crypto.randomUUID().replaceAll("-", "")}`;
-}
-
-function getTeleconsultJoinPath(role: Role, appointmentId: string) {
-  return role === "patient"
-    ? `/portal/teleconsult/${appointmentId}`
-    : `/app/teleconsult/${appointmentId}`;
+  return `room-${Math.random().toString(36).substring(2, 11)}`;
 }
 
 function getTeleconsultationPlatformLabel(platform?: string | null) {
-  return platform?.trim() || "Jitsi Meet";
-}
-
-function getEffectiveTeleconsultationRoomName(
-  appointmentId: string,
-  roomName?: string | null,
-) {
-  return roomName?.trim() || `odc-teleconsult-${appointmentId}`;
+  if (!platform) return "Jitsi Meet";
+  return platform;
 }
 
 function normalizeTimeOnlyValue(value?: string | null) {
-  if (!value) {
-    return null;
-  }
-
-  if (/^\d{2}:\d{2}(:\d{2})?$/.test(value)) {
-    return value.length === 5 ? `${value}:00` : value;
-  }
-
+  if (!value) return null;
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
+  if (Number.isNaN(parsed.getTime())) return null;
 
   return new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Manila",
@@ -162,6 +142,7 @@ function mapAppointmentRow(
     teleconsultationProvider:
       row.teleconsultation_provider === "jitsi" ? "jitsi" : null,
     teleconsultationRoomName: row.teleconsultation_room_name ?? null,
+    additionalDoctorIds: (row as any).additional_doctor_ids ?? [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
@@ -170,11 +151,18 @@ function mapAppointmentRow(
 
 function buildTeleconsultSummary(
   appointment: AppointmentWithTeleconsult,
-  role: Role,
+  _role: Role,
   patientName: string,
   doctorName: string,
   serviceName: string,
 ): TeleconsultAppointmentSummary {
+  const roomName = appointment.teleconsultationRoomName || "";
+  const platform = appointment.teleconsultationPlatform || "Jitsi Meet";
+  const access = appointment.teleconsultationAccessInstructions;
+  const targetPath = platform === "Jitsi Meet"
+    ? `/app/teleconsult/${appointment.id}`
+    : `/app/teleconsult/${appointment.id}`;
+
   return {
     id: appointment.id,
     scheduledAt: appointment.scheduledAt,
@@ -182,18 +170,134 @@ function buildTeleconsultSummary(
     patientName,
     doctorName,
     serviceName,
-    teleconsultationPlatform: getTeleconsultationPlatformLabel(
-      appointment.teleconsultationPlatform,
-    ),
-    teleconsultationAccessInstructions:
-      appointment.teleconsultationAccessInstructions ??
-      "Use the in-app Join teleconsult button a few minutes before your scheduled appointment.",
-    roomName: getEffectiveTeleconsultationRoomName(
-      appointment.id,
-      appointment.teleconsultationRoomName,
-    ),
-    joinPath: getTeleconsultJoinPath(role, appointment.id),
+    teleconsultationPlatform: platform,
+    teleconsultationAccessInstructions: access ?? null,
+    roomName,
+    joinPath: targetPath,
   };
+}
+
+export async function listAppointmentsLiveOrDemo(): Promise<Appointment[]> {
+  if (!isSupabaseConfigured) {
+    return listAppointments();
+  }
+
+  const client = getClient();
+  const { data, error } = await client
+    .from("appointments")
+    .select("*")
+    .order("scheduled_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as AppointmentRowLoose[]).map(mapAppointmentRow);
+}
+
+export async function createAppointmentLiveOrDemo(input: AppointmentInput) {
+  const normalized = normalizeAppointmentInput(input);
+
+  if (!isSupabaseConfigured) {
+    return createAppointment(normalized);
+  }
+
+  const client = getClient();
+  const payload = {
+    patient_id: normalized.patientId || null,
+    doctor_id: normalized.doctorId || null,
+    specialty_id: normalized.specialtyId || null,
+    service_id: normalized.serviceId || null,
+    scheduled_at: normalized.scheduledAt,
+    queue_number: (normalized as any).queue_number ?? null,
+    estimated_end: normalizeTimeOnlyValue((normalized as any).estimated_end),
+    status: normalized.status,
+    source: normalized.source,
+    visit_type: normalized.visitType,
+    reason: normalized.reason,
+    notes: normalized.notes,
+    teleconsultation_provider: normalized.teleconsultationProvider,
+    teleconsultation_room_name: normalized.teleconsultationRoomName,
+    teleconsultation_platform: normalized.teleconsultationPlatform,
+    teleconsultation_url: normalized.teleconsultationUrl,
+    teleconsultation_access_instructions:
+      normalized.teleconsultationAccessInstructions,
+    additional_doctor_ids: (normalized as any).additionalDoctorIds || [],
+  };
+
+  const { data, error } = await client
+    .from("appointments")
+    .insert(payload as never)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapAppointmentRow(data as AppointmentRowLoose);
+}
+
+export async function updateAppointmentLiveOrDemo(
+  appointmentId: string,
+  input: AppointmentInput,
+) {
+  const normalized = normalizeAppointmentInput(input);
+
+  if (!isSupabaseConfigured) {
+    return updateAppointmentRecord(appointmentId, normalized);
+  }
+
+  const client = getClient();
+  const payload = {
+    patient_id: normalized.patientId || null,
+    doctor_id: normalized.doctorId || null,
+    specialty_id: normalized.specialtyId || null,
+    service_id: normalized.serviceId || null,
+    scheduled_at: normalized.scheduledAt,
+    queue_number: (normalized as any).queue_number ?? null,
+    estimated_end: normalizeTimeOnlyValue((normalized as any).estimated_end),
+    status: normalized.status,
+    source: normalized.source,
+    visit_type: normalized.visitType,
+    reason: normalized.reason,
+    notes: normalized.notes,
+    teleconsultation_provider: normalized.teleconsultationProvider,
+    teleconsultation_room_name: normalized.teleconsultationRoomName,
+    teleconsultation_platform: normalized.teleconsultationPlatform,
+    teleconsultation_url: normalized.teleconsultationUrl,
+    teleconsultation_access_instructions:
+      normalized.teleconsultationAccessInstructions,
+    additional_doctor_ids: (normalized as any).additionalDoctorIds || [],
+  };
+
+  const { data, error } = await client
+    .from("appointments")
+    .update(payload as never)
+    .eq("id", appointmentId)
+    .select("*")
+    .single();
+  if (error) {
+    throw error;
+  }
+
+  return mapAppointmentRow(data as AppointmentRowLoose);
+}
+
+export async function deleteAppointmentLiveOrDemo(appointmentId: string) {
+  if (!isSupabaseConfigured) {
+    return deleteAppointmentRecord(appointmentId);
+  }
+
+  const client = getClient();
+  const { error } = await client
+    .from("appointments")
+    .update({ deleted_at: new Date().toISOString() } as never)
+    .eq("id", appointmentId);
+
+  if (error) {
+    throw error;
+  }
 }
 
 function getDemoPatientByIdentity(
@@ -242,129 +346,6 @@ export function isTeleconsultJoinableStatus(status: Appointment["status"]) {
   return ["scheduled", "confirmed", "in_progress"].includes(status);
 }
 
-export async function listAppointmentsLiveOrDemo(): Promise<
-  AppointmentWithTeleconsult[]
-> {
-  if (!isSupabaseConfigured) {
-    return listAppointments() as AppointmentWithTeleconsult[];
-  }
-
-  const client = getClient();
-  const { data, error } = await client
-    .from("appointments")
-    .select("*")
-    .order("scheduled_at", { ascending: true });
-
-  if (error) {
-    throw error;
-  }
-
-  return ((data ?? []) as AppointmentRowLoose[]).map(mapAppointmentRow);
-}
-
-export async function createAppointmentLiveOrDemo(input: AppointmentInput) {
-  const normalized = normalizeAppointmentInput(input);
-
-  if (!isSupabaseConfigured) {
-    return createAppointment(normalized);
-  }
-
-  const client = getClient();
-  const payload = {
-    patient_id: normalized.patientId,
-    doctor_id: normalized.doctorId || null,
-    specialty_id: normalized.specialtyId || null,
-    service_id: normalized.serviceId || null,
-    scheduled_at: normalized.scheduledAt,
-    queue_number: (normalized as any).queue_number ?? null,
-    estimated_end: normalizeTimeOnlyValue((normalized as any).estimated_end),
-    status: normalized.status,
-    source: normalized.source,
-    visit_type: normalized.visitType,
-    reason: normalized.reason,
-    notes: normalized.notes,
-    teleconsultation_provider: normalized.teleconsultationProvider,
-    teleconsultation_room_name: normalized.teleconsultationRoomName,
-    teleconsultation_platform: normalized.teleconsultationPlatform,
-    teleconsultation_url: normalized.teleconsultationUrl,
-    teleconsultation_access_instructions:
-      normalized.teleconsultationAccessInstructions,
-  };
-
-  const { data, error } = await client
-    .from("appointments")
-    .insert(payload as never)
-    .select("*")
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  return mapAppointmentRow(data as AppointmentRowLoose);
-}
-
-export async function updateAppointmentLiveOrDemo(
-  appointmentId: string,
-  input: AppointmentInput,
-) {
-  const normalized = normalizeAppointmentInput(input);
-
-  if (!isSupabaseConfigured) {
-    return updateAppointmentRecord(appointmentId, normalized);
-  }
-
-  const client = getClient();
-  const payload = {
-    patient_id: normalized.patientId,
-    doctor_id: normalized.doctorId || null,
-    specialty_id: normalized.specialtyId || null,
-    service_id: normalized.serviceId || null,
-    scheduled_at: normalized.scheduledAt,
-    queue_number: (normalized as any).queue_number ?? null,
-    estimated_end: normalizeTimeOnlyValue((normalized as any).estimated_end),
-    status: normalized.status,
-    source: normalized.source,
-    visit_type: normalized.visitType,
-    reason: normalized.reason,
-    notes: normalized.notes,
-    teleconsultation_provider: normalized.teleconsultationProvider,
-    teleconsultation_room_name: normalized.teleconsultationRoomName,
-    teleconsultation_platform: normalized.teleconsultationPlatform,
-    teleconsultation_url: normalized.teleconsultationUrl,
-    teleconsultation_access_instructions:
-      normalized.teleconsultationAccessInstructions,
-  };
-
-  const { data, error } = await client
-    .from("appointments")
-    .update(payload as never)
-    .eq("id", appointmentId)
-    .select("*")
-    .single();
-  if (error) {
-    throw error;
-  }
-
-  return mapAppointmentRow(data as AppointmentRowLoose);
-}
-
-export async function deleteAppointmentLiveOrDemo(appointmentId: string) {
-  if (!isSupabaseConfigured) {
-    deleteAppointmentRecord(appointmentId);
-    return;
-  }
-
-  const client = getClient();
-  const { error } = await client
-    .from("appointments")
-    .update({ deleted_at: new Date().toISOString() } as never)
-    .eq("id", appointmentId);
-  if (error) {
-    throw error;
-  }
-}
-
 export async function getTeleconsultAppointmentsForUser(input: {
   userId: string | null;
   email?: string | null;
@@ -392,7 +373,12 @@ export async function getTeleconsultAppointmentsForUser(input: {
           return appointment.patientId === patient?.id;
         }
 
-        return appointment.doctorId === input.userId;
+        return (
+          appointment.doctorId === input.userId ||
+          (input.userId != null &&
+            appointment.additionalDoctorIds &&
+            appointment.additionalDoctorIds.includes(input.userId))
+        );
       })
       .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt));
 
@@ -412,7 +398,7 @@ export async function getTeleconsultAppointmentsForUser(input: {
         role,
         linkedPatient
           ? `${linkedPatient.firstName} ${linkedPatient.lastName}`
-          : "Patient",
+          : "Doctors Collaboration Meeting",
         linkedDoctor?.fullName ?? "Doctor",
         linkedService?.name ?? "Consultation",
       );
@@ -449,7 +435,7 @@ export async function getTeleconsultAppointmentsForUser(input: {
     if (!doctorId) {
       return [];
     }
-    query = query.eq("doctor_id", doctorId);
+    query = query.or(`doctor_id.eq.${doctorId},additional_doctor_ids.cs.{${doctorId}}`);
   }
 
   const { data, error } = await query;
@@ -470,9 +456,10 @@ export async function getTeleconsultAppointmentsForUser(input: {
     ),
   ];
   const doctorIds = [
-    ...new Set(
-      appointments.map((appointment) => appointment.doctorId).filter(Boolean),
-    ),
+    ...new Set([
+      ...appointments.map((appointment) => appointment.doctorId).filter(Boolean),
+      ...appointments.flatMap((appointment) => appointment.additionalDoctorIds || []).filter(Boolean),
+    ]),
   ];
   const serviceIds = [
     ...new Set(
@@ -568,12 +555,14 @@ export async function getTeleconsultAppointmentsForUser(input: {
     buildTeleconsultSummary(
       appointment,
       role,
-      patientMap.get(appointment.patientId) ?? "Patient",
+      patientMap.get(appointment.patientId || "") ??
+        (!appointment.patientId ? "Doctors Collaboration Meeting" : "Patient"),
       doctorMap.get(appointment.doctorId) ?? "Doctor",
       serviceMap.get(appointment.serviceId) ?? "Consultation",
     ),
   );
 }
+
 
 export async function getAuthorizedTeleconsultAppointmentForUser(input: {
   appointmentId: string;

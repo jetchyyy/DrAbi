@@ -363,14 +363,16 @@ export function DashboardPage() {
             ) : (
               <div className="grid h-full grid-cols-3 gap-3">
                 {todaysAppointments.slice(0, 3).map((appointment) => {
-                  const patient = patientMap.get(appointment.patientId);
+                  const patient = appointment.patientId ? patientMap.get(appointment.patientId) : null;
                   const service = serviceMap.get(appointment.serviceId);
                   const timeLabel = new Date(appointment.scheduledAt).toLocaleTimeString('en-PH', {
                     hour: 'numeric',
                     minute: '2-digit',
                     hour12: true,
                   });
-                  const initials = `${patient?.firstName?.[0] ?? ''}${patient?.lastName?.[0] ?? ''}`;
+                  const initials = patient
+                    ? `${patient.firstName?.[0] ?? ''}${patient.lastName?.[0] ?? ''}`
+                    : 'DC';
                   const sexLabel = patient?.sex
                     ? patient.sex.charAt(0).toUpperCase() + patient.sex.slice(1)
                     : null;
@@ -417,6 +419,7 @@ export function DashboardPage() {
                   const metaChips = [
                     sexLabel ? { label: sexLabel, icon: UserRound } : null,
                     patient?.bloodType ? { label: patient.bloodType, icon: Droplet } : null,
+                    !patient ? { label: 'Doctors Only', icon: Users } : null,
                   ].filter((item): item is { label: string; icon: typeof UserRound } => Boolean(item));
 
                   return (
@@ -431,7 +434,9 @@ export function DashboardPage() {
                         </div>
                         <div className="min-w-0 flex-1 py-0.5">
                           <p className="truncate text-base font-semibold leading-tight text-slate-900">
-                            {patient?.firstName ?? 'Unknown'} {patient?.lastName ?? 'Patient'}
+                            {patient
+                              ? `${patient.firstName} ${patient.lastName}`
+                              : 'Doctors Collaboration'}
                           </p>
                           <div className="mt-1.5 flex flex-wrap gap-1.5">
                             {metaChips.map((chip) => (
@@ -468,13 +473,25 @@ export function DashboardPage() {
                           </span>
                           <p className="text-lg font-semibold tabular-nums text-slate-700">{timeLabel}</p>
                         </div>
-                        <NavLink
-                          className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-slate-700 transition hover:text-slate-900"
-                          to="/app/appointments"
-                        >
-                          <span>View appointment</span>
-                          <ArrowUpRight className="size-4 text-[var(--color-primary)]" />
-                        </NavLink>
+                        <div className="flex flex-col items-end gap-1.5">
+                          {appointment.visitType === 'teleconsultation' &&
+                          ['scheduled', 'confirmed', 'in_progress'].includes(appointment.status) ? (
+                            <NavLink
+                              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-[color-mix(in_srgb,var(--color-primary)_85%,black)]"
+                              to={`/app/teleconsult/${appointment.id}`}
+                            >
+                              <span>Join Call</span>
+                              <ArrowUpRight className="size-3.5 text-white" />
+                            </NavLink>
+                          ) : null}
+                          <NavLink
+                            className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-600 transition hover:text-slate-900 hover:underline"
+                            to="/app/appointments"
+                          >
+                            <span>Details</span>
+                            <ArrowRight className="size-3 text-[var(--color-primary)]" />
+                          </NavLink>
+                        </div>
                       </div>
                     </div>
                   );

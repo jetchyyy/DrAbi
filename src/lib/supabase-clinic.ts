@@ -555,6 +555,7 @@ function mapAppointment(row: AppointmentRow): Appointment {
     consultationId: row.consultation_id,
     completedBy: row.completed_by,
     completedAt: row.completed_at,
+    additionalDoctorIds: row.additional_doctor_ids ?? [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
@@ -634,6 +635,8 @@ function mapBooking(row: BookingRow): Booking {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
+    promoCodeId: (row as any).promo_code_id ?? null,
+    discountAmount: (row as any).discount_amount ? Number((row as any).discount_amount) : 0,
   };
 }
 
@@ -996,8 +999,8 @@ export async function listPatientsLiveOrDemo() {
     const database = getDatabase();
     const patientIdsWithAppointment = new Set(
       database.appointments
-        .filter((appointment) => hasConsultationAppointment(appointment.status))
-        .map((appointment) => appointment.patientId),
+        .filter((appointment) => appointment.patientId && hasConsultationAppointment(appointment.status))
+        .map((appointment) => appointment.patientId as string),
     );
     const patientIdsWithBooking = new Set(
       database.bookings
@@ -3467,6 +3470,8 @@ export async function createBookingLiveOrDemo(input: {
   feeAmount: number;
   receiptCode?: string;
   paymentStatus?: BookingPaymentStatus;
+  promoCodeId?: string | null;
+  discountAmount?: number;
 }) {
   if (!isSupabaseConfigured) {
     const { createBooking } = await import("./local-db");
@@ -3485,7 +3490,7 @@ export async function createBookingLiveOrDemo(input: {
   }
 
   const client = requireSupabase();
-  const payload: Database["public"]["Tables"]["bookings"]["Insert"] = {
+  const payload: any = {
     patient_id: input.patientId,
     service_id: input.serviceId,
     doctor_id: input.doctorId,
@@ -3497,6 +3502,8 @@ export async function createBookingLiveOrDemo(input: {
     fee_amount: input.feeAmount,
     receipt_code: input.receiptCode ?? generateBookingReceiptCode(),
     payment_status: input.paymentStatus ?? "pending_cashier",
+    promo_code_id: input.promoCodeId ?? null,
+    discount_amount: input.discountAmount ?? 0,
   };
 
   const { data, error } = await client
@@ -5353,5 +5360,199 @@ export async function checkoutPosSaleLiveOrDemo(input: {
   return {
     sale: payload?.sale ? mapPosSaleRow(payload.sale) : null,
     items: (payload?.items ?? []).map(mapPosSaleItemRow),
+  };
+}
+
+export async function getPromoCodes(): Promise<PromoCode[]> {
+  if (!isSupabaseConfigured) {
+    return [];
+  }
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("promo_codes")
+    .select("*")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    code: row.code,
+    description: row.description,
+    maxUses: row.max_uses,
+    usedCount: row.used_count,
+    discountType: row.discount_type,
+    discountValue: Number(row.discount_value ?? 0),
+    applicableServiceId: row.applicable_service_id,
+    active: row.active,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
+}
+
+export async function createPromoCode(values: {
+  code: string;
+  description: string;
+  maxUses: number;
+  discountType: "percentage" | "fixed" | "free";
+  discountValue: number;
+  applicableServiceId?: string | null;
+  active: boolean;
+  expiresAt?: string | null;
+}): Promise<PromoCode> {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("promo_codes")
+    .insert({
+      code: values.code.trim().toUpperCase(),
+      description: values.description.trim(),
+      max_uses: values.maxUses,
+      discount_type: values.discountType,
+      discount_value: values.discountValue,
+      applicable_service_id: values.applicableServiceId ?? null,
+      active: values.active,
+      expires_at: values.expiresAt ?? null,
+    } as any)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  const row = data as any;
+  return {
+    id: row.id,
+    code: row.code,
+    description: row.description,
+    maxUses: row.max_uses,
+    usedCount: row.used_count,
+    discountType: row.discount_type,
+    discountValue: Number(row.discount_value ?? 0),
+    applicableServiceId: row.applicable_service_id,
+    active: row.active,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export async function updatePromoCode(
+  id: string,
+  values: {
+    code: string;
+    description: string;
+    maxUses: number;
+    discountType: "percentage" | "fixed" | "free";
+    discountValue: number;
+    applicableServiceId?: string | null;
+    active: boolean;
+    expiresAt?: string | null;
+  }
+): Promise<PromoCode> {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("promo_codes")
+    .update({
+      code: values.code.trim().toUpperCase(),
+      description: values.description.trim(),
+      max_uses: values.maxUses,
+      discount_type: values.discountType,
+      discount_value: values.discountValue,
+      applicable_service_id: values.applicableServiceId ?? null,
+      active: values.active,
+      expires_at: values.expiresAt ?? null,
+      updated_at: new Date().toISOString(),
+    } as any)
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  const row = data as any;
+  return {
+    id: row.id,
+    code: row.code,
+    description: row.description,
+    maxUses: row.max_uses,
+    usedCount: row.used_count,
+    discountType: row.discount_type,
+    discountValue: Number(row.discount_value ?? 0),
+    applicableServiceId: row.applicable_service_id,
+    active: row.active,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export async function deletePromoCode(id: string): Promise<void> {
+  const client = requireSupabase();
+  const { error } = await client
+    .from("promo_codes")
+    .update({
+      deleted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as any)
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function validatePromoCode(
+  code: string,
+  serviceId: string
+): Promise<PromoCode> {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("promo_codes")
+    .select("*")
+    .ilike("code", code.trim())
+    .is("deleted_at", null)
+    .single();
+
+  if (error || !data) {
+    throw new Error("Promo code not found.");
+  }
+
+  const row = data as any;
+  if (!row.active) {
+    throw new Error("This promo code is inactive.");
+  }
+
+  if (row.expires_at && new Date(row.expires_at) < new Date()) {
+    throw new Error("This promo code has expired.");
+  }
+
+  if (row.used_count >= row.max_uses) {
+    throw new Error("This promo code has reached its usage limit.");
+  }
+
+  if (row.applicable_service_id && row.applicable_service_id !== serviceId) {
+    throw new Error("This promo code is not applicable to the selected service.");
+  }
+
+  return {
+    id: row.id,
+    code: row.code,
+    description: row.description,
+    maxUses: row.max_uses,
+    usedCount: row.used_count,
+    discountType: row.discount_type,
+    discountValue: Number(row.discount_value ?? 0),
+    applicableServiceId: row.applicable_service_id,
+    active: row.active,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }

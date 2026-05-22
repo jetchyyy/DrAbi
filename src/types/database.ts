@@ -429,7 +429,7 @@ export interface Database {
       appointments: {
         Row: {
           id: string;
-          patient_id: string;
+          patient_id: string | null;
           doctor_id: string | null;
           specialty_id: string | null;
           service_id: string | null;
@@ -449,6 +449,7 @@ export interface Database {
           related_referral_id: string | null;
           completed_by: string | null;
           completed_at: string | null;
+          additional_doctor_ids: string[] | null;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;

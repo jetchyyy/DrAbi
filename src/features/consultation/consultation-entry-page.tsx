@@ -410,6 +410,55 @@ export function ConsultationEntryPage() {
     };
   }, [patientId, profile?.role, retryToken, searchParams, form]);
 
+  const selectedAppointmentId = form.watch("appointmentId");
+  const selectedAppointment =
+    visits.find((visit: any) => visit.id === selectedAppointmentId) ?? null;
+  const latestBookingWithDoctor = activeConsultationBookings.find(
+    (booking: any) => Boolean(booking.doctorId),
+  );
+
+  const soapDoctorId =
+    currentDoctor?.id ??
+    selectedAppointment?.doctorId ??
+    latestBookingWithDoctor?.doctorId ??
+    profile?.id ??
+    "user_owner";
+  const intakeVitalsSnapshot = buildPatientVitalsSnapshot(patient);
+  const patientVitalAlerts = useMemo(
+    () =>
+      evaluateVitalsAlerts({
+        temperature: patient?.temperature ?? "",
+        bloodPressure: patient?.bloodPressure ?? "",
+        heartRate: patient?.heartRate ?? "",
+        o2Sat: patient?.o2Sat ?? "",
+        respiratoryRate: patient?.respiratoryRate ?? "",
+        weight: patient?.weight ?? "",
+        height: patient?.height ?? "",
+      }),
+    [
+      patient?.temperature,
+      patient?.bloodPressure,
+      patient?.heartRate,
+      patient?.o2Sat,
+      patient?.respiratoryRate,
+      patient?.weight,
+      patient?.height,
+    ],
+  );
+  const patientVitalAlertsByKey = useMemo(() => {
+    const alertMap = new Map<string, (typeof patientVitalAlerts)[number]>();
+    for (const alert of patientVitalAlerts) {
+      const existing = alertMap.get(alert.key);
+      if (
+        !existing ||
+        getVitalAlertPriority(alert.level) > getVitalAlertPriority(existing.level)
+      ) {
+        alertMap.set(alert.key, alert);
+      }
+    }
+    return alertMap;
+  }, [patientVitalAlerts]);
+
   if (patientQuery.isLoading) {
     return (
       <Card>
@@ -485,55 +534,6 @@ export function ConsultationEntryPage() {
       </>
     );
   }
-
-  const selectedAppointmentId = form.watch("appointmentId");
-  const selectedAppointment =
-    visits.find((visit: any) => visit.id === selectedAppointmentId) ?? null;
-  const latestBookingWithDoctor = activeConsultationBookings.find(
-    (booking: any) => Boolean(booking.doctorId),
-  );
-
-  const soapDoctorId =
-    currentDoctor?.id ??
-    selectedAppointment?.doctorId ??
-    latestBookingWithDoctor?.doctorId ??
-    profile?.id ??
-    "user_owner";
-  const intakeVitalsSnapshot = buildPatientVitalsSnapshot(patient);
-  const patientVitalAlerts = useMemo(
-    () =>
-      evaluateVitalsAlerts({
-        temperature: patient?.temperature ?? "",
-        bloodPressure: patient?.bloodPressure ?? "",
-        heartRate: patient?.heartRate ?? "",
-        o2Sat: patient?.o2Sat ?? "",
-        respiratoryRate: patient?.respiratoryRate ?? "",
-        weight: patient?.weight ?? "",
-        height: patient?.height ?? "",
-      }),
-    [
-      patient?.temperature,
-      patient?.bloodPressure,
-      patient?.heartRate,
-      patient?.o2Sat,
-      patient?.respiratoryRate,
-      patient?.weight,
-      patient?.height,
-    ],
-  );
-  const patientVitalAlertsByKey = useMemo(() => {
-    const alertMap = new Map<string, (typeof patientVitalAlerts)[number]>();
-    for (const alert of patientVitalAlerts) {
-      const existing = alertMap.get(alert.key);
-      if (
-        !existing ||
-        getVitalAlertPriority(alert.level) > getVitalAlertPriority(existing.level)
-      ) {
-        alertMap.set(alert.key, alert);
-      }
-    }
-    return alertMap;
-  }, [patientVitalAlerts]);
 
   const canProceedToNext = async () => {
     const fieldsToValidate = currentStep.fields as string[];

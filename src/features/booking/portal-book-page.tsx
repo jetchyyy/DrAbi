@@ -35,8 +35,9 @@ import {
   useCurrentPatient,
   useMyBookings,
 } from "./hooks/use-bookings";
-import { listBookingsByPatientIdLiveOrDemo } from "../../lib/supabase-clinic";
+import { listBookingsByPatientIdLiveOrDemo, validatePromoCode } from "../../lib/supabase-clinic";
 import type { BookingPaymentStatus } from "../../types/domain";
+import { Check, X, Tag } from "lucide-react";
 
 const bookingSchema = z.object({
   serviceId: z.string().min(1),
@@ -184,6 +185,64 @@ export function PortalBookPage() {
       ) ?? null,
     [existingBookings],
   );
+
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [appliedPromoCode, setAppliedPromoCode] = useState<any | null>(null);
+  const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
+  const [isCheckingPromo, setIsCheckingPromo] = useState(false);
+
+  // Clear promo code on service selection change
+  useEffect(() => {
+    setAppliedPromoCode(null);
+    setPromoCodeError(null);
+    setPromoCodeInput("");
+  }, [selectedServiceId]);
+
+  const discountAmount = useMemo(() => {
+    if (!appliedPromoCode) return 0;
+    if (appliedPromoCode.discountType === "free") {
+      return selectedFeeAmount;
+    }
+    if (appliedPromoCode.discountType === "percentage") {
+      return Math.round((selectedFeeAmount * (appliedPromoCode.discountValue / 100)) * 100) / 100;
+    }
+    if (appliedPromoCode.discountType === "fixed") {
+      return Math.min(selectedFeeAmount, appliedPromoCode.discountValue);
+    }
+    return 0;
+  }, [appliedPromoCode, selectedFeeAmount]);
+
+  const finalFeeAmount = Math.max(0, selectedFeeAmount - discountAmount);
+
+  const handleApplyPromoCode = async () => {
+    if (!promoCodeInput.trim()) {
+      setPromoCodeError("Please enter a promo code.");
+      return;
+    }
+    if (!selectedServiceId) {
+      setPromoCodeError("Please select a service first.");
+      return;
+    }
+
+    try {
+      setIsCheckingPromo(true);
+      setPromoCodeError(null);
+      const promo = await validatePromoCode(promoCodeInput, selectedServiceId);
+      setAppliedPromoCode(promo);
+      toast.success(`Promo code "${promo.code.toUpperCase()}" applied!`);
+    } catch (error) {
+      setAppliedPromoCode(null);
+      setPromoCodeError(error instanceof Error ? error.message : "Invalid promo code.");
+    } finally {
+      setIsCheckingPromo(false);
+    }
+  };
+
+  const handleRemovePromoCode = () => {
+    setAppliedPromoCode(null);
+    setPromoCodeInput("");
+    setPromoCodeError(null);
+  };
 
   const allTimeSlots = useMemo(() => {
     if (!selectedDate || !selectedService) {
@@ -367,9 +426,11 @@ export function PortalBookPage() {
       preferredTime: values.preferredTime,
       intakeNotes: values.intakeNotes,
       feeType: derivedFeeType,
-      feeAmount: selectedFeeAmount,
+      feeAmount: finalFeeAmount,
       receiptCode: "",
       paymentStatus: "pending_cashier",
+      promoCodeId: appliedPromoCode ? appliedPromoCode.id : null,
+      discountAmount: discountAmount,
     });
 
     const receiptCode: string =
@@ -418,7 +479,7 @@ export function PortalBookPage() {
       intakeNotes: values.intakeNotes,
       createdAt,
       feeType: derivedFeeType,
-      feeAmount: selectedFeeAmount,
+      feeAmount: finalFeeAmount,
       receiptCode,
       paymentStatus,
     });
@@ -426,6 +487,9 @@ export function PortalBookPage() {
     toast.success(
       `Booking submitted. Present receipt ${receiptCode} at cashier before proceeding to staff.`,
     );
+    setAppliedPromoCode(null);
+    setPromoCodeInput("");
+    setPromoCodeError(null);
     form.reset({
       serviceId: values.serviceId,
       doctorId: requiresDoctor ? values.doctorId : "",
@@ -658,19 +722,88 @@ export function PortalBookPage() {
             </div>
           </FormField>
 
-          <FormField label="Booking charge">
-            <Input
-              disabled
-              readOnly
-              value={
-                requiresDoctor && !selectedDoctor
+          <div className="space-y-4 border border-slate-200 bg-slate-50 p-4">
+            <h4 className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-slate-400">Payment Breakdown</h4>
+            
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">Base Charge</span>
+              <span className="font-semibold text-slate-800 font-mono">
+                {requiresDoctor && !selectedDoctor
                   ? "Select a doctor first"
                   : selectedService
                     ? formatCurrency(selectedFeeAmount)
-                    : "Select a service first"
-              }
-            />
-          </FormField>
+                    : "Select a service first"}
+              </span>
+            </div>
+
+            {appliedPromoCode && (
+              <div className="flex justify-between text-sm text-emerald-700 font-medium">
+                <span className="flex items-center gap-1.5">
+                  <Tag className="size-3.5" />
+                  Discount ({appliedPromoCode.code})
+                </span>
+                <span className="font-mono">-{formatCurrency(discountAmount)}</span>
+              </div>
+            )}
+
+            <div className="border-t border-slate-200 pt-2 flex justify-between items-baseline">
+              <span className="text-sm font-bold text-slate-800">Total Booking Charge</span>
+              <span className="text-lg font-extrabold text-orange-600 font-mono">
+                {requiresDoctor && !selectedDoctor
+                  ? "—"
+                  : selectedService
+                    ? formatCurrency(finalFeeAmount)
+                    : "—"}
+              </span>
+            </div>
+
+            {/* Promo Code Input Block */}
+            {selectedService && (!requiresDoctor || selectedDoctor) && (
+              <div className="pt-2 border-t border-slate-200/60">
+                {!appliedPromoCode ? (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                      Have a Promo Code?
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="ENTER CODE"
+                        value={promoCodeInput}
+                        onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                        className="flex-1 border border-slate-200 bg-white px-3 py-1.5 text-xs uppercase outline-none focus:border-orange-500 font-mono tracking-wider"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void handleApplyPromoCode()}
+                        disabled={isCheckingPromo}
+                        className="bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-[10px] uppercase px-4 py-1.5 tracking-wider disabled:opacity-50"
+                      >
+                        {isCheckingPromo ? "..." : "Apply"}
+                      </button>
+                    </div>
+                    {promoCodeError && (
+                      <p className="text-xs font-semibold text-rose-600 mt-1">{promoCodeError}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-800 rounded font-medium">
+                    <span className="flex items-center gap-1.5">
+                      <Check className="size-3.5 text-emerald-600 animate-bounce" />
+                      Promo applied: <strong className="font-mono">{appliedPromoCode.code}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRemovePromoCode}
+                      className="text-slate-400 hover:text-slate-600 p-0.5"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {selectedDate &&
           allTimeSlots.length > 0 &&

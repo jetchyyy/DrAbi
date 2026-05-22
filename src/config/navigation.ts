@@ -22,6 +22,8 @@ import {
   Building2,
   Wallet,
   Receipt,
+  Ticket,
+  TrendingUp,
 } from "lucide-react";
 
 import type { ModuleKey, Permission, Role } from "../types/domain";
@@ -46,6 +48,13 @@ export const appNavigation: NavItem[] = [
     label: "Dashboard",
     to: "/app/dashboard",
     icon: LayoutDashboard,
+    permission: "dashboard.view",
+    moduleKey: "dashboard",
+  },
+  {
+    label: "Analytics",
+    to: "/app/analytics",
+    icon: TrendingUp,
     permission: "dashboard.view",
     moduleKey: "dashboard",
   },
@@ -226,6 +235,12 @@ export const appNavigation: NavItem[] = [
     permission: "settings.view",
   },
   {
+    label: "Promo Codes",
+    to: "/app/settings/promo-codes",
+    icon: Ticket,
+    permission: "settings.view",
+  },
+  {
     label: "Documents",
     to: "/app/settings/documents",
     icon: FileText,
@@ -349,4 +364,5 @@ export const settingsNavigation = [
   { label: "User Management", to: "/app/settings/users" },
   { label: "Role Management", to: "/app/settings/roles" },
   { label: "Supplier Management", to: "/app/settings/support" },
+  { label: "Promo Codes", to: "/app/settings/promo-codes" },
 ];
