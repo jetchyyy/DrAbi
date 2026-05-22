@@ -56,6 +56,7 @@ import type {
   Supplier,
   UserProfile,
   InventoryUsageLog,
+  PromoCode,
 } from "../types/domain";
 import type { Database } from "../types/database";
 import {
@@ -5368,7 +5369,7 @@ export async function getPromoCodes(): Promise<PromoCode[]> {
     return [];
   }
   const client = requireSupabase();
-  const { data, error } = await client
+  const { data, error } = await (client as any)
     .from("promo_codes")
     .select("*")
     .is("deleted_at", null)
@@ -5405,7 +5406,7 @@ export async function createPromoCode(values: {
   expiresAt?: string | null;
 }): Promise<PromoCode> {
   const client = requireSupabase();
-  const { data, error } = await client
+  const { data, error } = await (client as any)
     .from("promo_codes")
     .insert({
       code: values.code.trim().toUpperCase(),
@@ -5455,7 +5456,7 @@ export async function updatePromoCode(
   }
 ): Promise<PromoCode> {
   const client = requireSupabase();
-  const { data, error } = await client
+  const { data, error } = await (client as any)
     .from("promo_codes")
     .update({
       code: values.code.trim().toUpperCase(),
@@ -5495,7 +5496,7 @@ export async function updatePromoCode(
 
 export async function deletePromoCode(id: string): Promise<void> {
   const client = requireSupabase();
-  const { error } = await client
+  const { error } = await (client as any)
     .from("promo_codes")
     .update({
       deleted_at: new Date().toISOString(),
@@ -5513,7 +5514,7 @@ export async function validatePromoCode(
   serviceId: string
 ): Promise<PromoCode> {
   const client = requireSupabase();
-  const { data, error } = await client
+  const { data, error } = await (client as any)
     .from("promo_codes")
     .select("*")
     .ilike("code", code.trim())

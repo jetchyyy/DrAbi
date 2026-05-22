@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Ticket, Pencil, Plus, Search, Trash2, X, Percent, Calendar, Check, AlertCircle } from "lucide-react";
+import { Ticket, Pencil, Plus, Search, Trash2, X, Calendar } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -91,7 +91,7 @@ export function SettingsPromoCodesPage() {
   });
 
   const form = useForm<PromoCodeFormValues>({
-    resolver: zodResolver(promoCodeSchema),
+    resolver: zodResolver(promoCodeSchema) as any,
     defaultValues: {
       code: "",
       description: "",
@@ -162,13 +162,14 @@ export function SettingsPromoCodesPage() {
     setFeedbackModal((currentState) => ({ ...currentState, open: false }));
   };
 
-  const onSubmit = form.handleSubmit(async (values) => {
+  const onSubmit = form.handleSubmit(async (fieldValues) => {
+    const values = fieldValues as PromoCodeFormValues;
     try {
       const payload = {
         ...values,
         applicableServiceId: values.applicableServiceId || null,
         expiresAt: values.expiresAt || null,
-      };
+      } as any;
       if (editingId) {
         await updateMutation.mutateAsync({ id: editingId, values: payload });
         setFeedbackModal({

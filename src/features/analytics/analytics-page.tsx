@@ -6,10 +6,7 @@ import {
   TrendingUp,
   TrendingDown,
   Users,
-  CheckCircle,
-  XCircle,
   Activity,
-  ArrowUpRight,
   RefreshCw,
   ShoppingBag,
   CreditCard
@@ -658,7 +655,7 @@ export function AnalyticsDashboardPage() {
                 <XAxis dataKey="date" stroke="#94A3B8" fontSize={11} tickLine={false} />
                 <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} tickFormatter={(val) => `₱${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} />
                 <Tooltip
-                  formatter={(value: number) => [formatCurrency(value), '']}
+                  formatter={(value: any) => [formatCurrency(Number(value) || 0), '']}
                   contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }}
                 />
                 <Area type="monotone" dataKey="billing" name="Billing" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorBilling)" />
@@ -764,7 +761,7 @@ export function AnalyticsDashboardPage() {
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: number) => [formatCurrency(value), '']} />
+                      <Tooltip formatter={(value: any) => [formatCurrency(Number(value) || 0), '']} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
