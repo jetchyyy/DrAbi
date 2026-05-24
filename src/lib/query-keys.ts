@@ -101,4 +101,16 @@ export const queryKeys = {
   hmoPaymentsByClaim: (claimId: string | null) =>
     ["hmo-payments-by-claim", claimId] as const,
   hmoDashboard: ["hmo-dashboard"] as const,
+  // LIS (Laboratory Information System)
+  lisTestParameters: (serviceId: string | null) =>
+    ["lis-test-parameters", serviceId] as const,
+  lisResultEntries: (requestId: string | null) =>
+    ["lis-result-entries", requestId] as const,
+  lisAccession: (requestId: string | null) =>
+    ["lis-accession", requestId] as const,
+  lisAuditLog: (requestId: string | null) =>
+    ["lis-audit-log", requestId] as const,
+  lisReagentLinks: (serviceId: string | null) =>
+    ["lis-reagent-links", serviceId] as const,
+  lisTestPanels: ["lis-test-panels"] as const,
 };

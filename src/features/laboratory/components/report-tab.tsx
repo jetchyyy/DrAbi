@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Clock, AlertTriangle, TrendingUp, Activity } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 import {
@@ -25,6 +25,13 @@ function toReportStatus(status: string): ReportRequestStatus {
   if (status === 'cancelled') return 'Cancelled';
   if (status === 'in_progress') return 'Confirmed';
   return 'Pending';
+}
+
+function formatMinutes(mins: number): string {
+  if (mins < 60) return `${Math.round(mins)}m`;
+  const hours = Math.floor(mins / 60);
+  const remaining = Math.round(mins % 60);
+  return `${hours}h ${remaining}m`;
 }
 
 export function ReportTab() {
@@ -54,15 +61,55 @@ export function ReportTab() {
   const { data: liveRequests = [] } = useClinicLabQueue(isSupabaseConfigured ? resolvedClinicId : null);
   const database = getDatabase();
 
+  // TAT metrics from live requests
+  const { data: tatData = [] } = useQuery({
+    queryKey: ['lis-tat-metrics', resolvedClinicId],
+    queryFn: async () => {
+      if (!supabase || !resolvedClinicId) return [];
+      const { data, error } = await (supabase as any)
+        .from('service_requests')
+        .select('tat_minutes, service_category, created_at, completed_at')
+        .eq('clinic_id', resolvedClinicId)
+        .eq('status', 'completed')
+        .not('tat_minutes', 'is', null)
+        .order('completed_at', { ascending: false })
+        .limit(200);
+      if (error) return [];
+      return (data ?? []) as any[];
+    },
+    enabled: isSupabaseConfigured && Boolean(resolvedClinicId),
+  });
+
+  // Abnormal result rates
+  const { data: abnormalData = { total: 0, abnormal: 0 } } = useQuery({
+    queryKey: ['lis-abnormal-rates', resolvedClinicId],
+    queryFn: async () => {
+      if (!supabase) return { total: 0, abnormal: 0 };
+      const { data: allResults, error } = await (supabase as any)
+        .from('lab_result_entries')
+        .select('abnormal_flag')
+        .limit(1000);
+      if (error) return { total: 0, abnormal: 0 };
+      const entries = (allResults ?? []) as any[];
+      const abnormal = entries.filter((e: any) => e.abnormal_flag !== 'normal').length;
+      return { total: entries.length, abnormal };
+    },
+    enabled: isSupabaseConfigured,
+  });
+
   const requests = useMemo(
     () => [
       ...liveRequests.map((request) => ({
         labTestName: request.serviceName ?? request.serviceCategory,
         status: toReportStatus(request.status),
+        createdAt: request.createdAt,
+        completedAt: request.completedAt,
       })),
       ...localRequests.map((request) => ({
         labTestName: request.labTestName,
-        status: request.status,
+        status: request.status as ReportRequestStatus,
+        createdAt: request.createdAt,
+        completedAt: null as string | null,
       })),
     ],
     [liveRequests, localRequests],
@@ -104,6 +151,23 @@ export function ReportTab() {
 
   const maxOrders = ordersByService[0]?.[1] ?? 1;
 
+  // TAT computations
+  const tatMetrics = useMemo(() => {
+    if (tatData.length === 0) return { avg: 0, min: 0, max: 0, count: 0 };
+    const minutes = tatData.map((d: any) => Number(d.tat_minutes)).filter((m: number) => m > 0);
+    if (minutes.length === 0) return { avg: 0, min: 0, max: 0, count: 0 };
+    const avg = minutes.reduce((a: number, b: number) => a + b, 0) / minutes.length;
+    return { avg, min: Math.min(...minutes), max: Math.max(...minutes), count: minutes.length };
+  }, [tatData]);
+
+  // Completion rate
+  const completionRate = useMemo(() => {
+    const total = requests.length;
+    if (total === 0) return 0;
+    const completed = requests.filter((r) => r.status === 'Completed').length;
+    return Math.round((completed / total) * 100);
+  }, [requests]);
+
   const STATUS_COLORS: Record<string, string> = {
     Pending: 'bg-orange-400',
     Confirmed: 'bg-sky-400',
@@ -112,6 +176,7 @@ export function ReportTab() {
   };
 
   const totalRequests = requests.length;
+  const abnormalRate = abnormalData.total > 0 ? Math.round((abnormalData.abnormal / abnormalData.total) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -122,9 +187,9 @@ export function ReportTab() {
               <BarChart3 className="size-5" strokeWidth={2} />
             </div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Laboratory</p>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900">Reports</h2>
-              <p className="mt-1 text-sm leading-relaxed text-slate-600">Operational snapshot of laboratory request flow and service demand.</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Laboratory Information System</p>
+              <h2 className="text-xl font-bold tracking-tight text-slate-900">LIS Analytics</h2>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">Complete operational analytics including TAT, abnormal rates, and test demand.</p>
             </div>
           </div>
           <div className="rounded-xl border border-slate-100/90 bg-slate-50/80 px-5 py-3 text-right shadow-inner">
@@ -133,11 +198,12 @@ export function ReportTab() {
           </div>
         </div>
         <div className={cn(INTERNAL_SURFACE_FOOTER, 'px-6 py-2.5')}>
-          <span className="text-xs font-medium text-slate-600">Live workflow analytics</span>
+          <span className="text-xs font-medium text-slate-600">Live LIS workflow analytics</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {/* Key Metrics Row */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         {Object.entries(statusBreakdown).map(([status, count]) => (
           <div key={status} className={INTERNAL_SURFACE_PADDING}>
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{status}</p>
@@ -145,6 +211,79 @@ export function ReportTab() {
             <p className="mt-1 text-xs text-slate-500">{totalRequests > 0 ? Math.round((count / totalRequests) * 100) : 0}% of requests</p>
           </div>
         ))}
+        {/* Completion Rate */}
+        <div className={INTERNAL_SURFACE_PADDING}>
+          <div className="flex items-center gap-1.5">
+            <TrendingUp className="size-3.5 text-emerald-600" />
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Completion Rate</p>
+          </div>
+          <p className="mt-2 text-3xl font-bold tabular-nums text-emerald-700">{completionRate}%</p>
+          <p className="mt-1 text-xs text-slate-500">of all requests</p>
+        </div>
+        {/* Abnormal Rate */}
+        <div className={INTERNAL_SURFACE_PADDING}>
+          <div className="flex items-center gap-1.5">
+            <AlertTriangle className="size-3.5 text-amber-600" />
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-700">Abnormal Rate</p>
+          </div>
+          <p className="mt-2 text-3xl font-bold tabular-nums text-amber-700">{abnormalRate}%</p>
+          <p className="mt-1 text-xs text-slate-500">{abnormalData.abnormal} of {abnormalData.total} results</p>
+        </div>
+      </div>
+
+      {/* TAT Analytics */}
+      <div className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
+        <div className="border-b border-slate-100/90 px-6 py-4">
+          <div className="flex items-center gap-2">
+            <Clock className="size-4 text-sky-600" />
+            <p className="font-extrabold text-sm uppercase tracking-wide text-slate-950">Turnaround Time (TAT) Analytics</p>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-0.5">Average time from lab order creation to completion</p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-4">
+          <div className="text-center">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Average TAT</p>
+            <p className="mt-1 text-2xl font-bold text-sky-700">{tatMetrics.count > 0 ? formatMinutes(tatMetrics.avg) : '—'}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Fastest</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-700">{tatMetrics.count > 0 ? formatMinutes(tatMetrics.min) : '—'}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Slowest</p>
+            <p className="mt-1 text-2xl font-bold text-rose-700">{tatMetrics.count > 0 ? formatMinutes(tatMetrics.max) : '—'}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Completed Tests</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{tatMetrics.count}</p>
+          </div>
+        </div>
+        {tatMetrics.count > 0 && (
+          <div className="px-6 py-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">TAT Distribution</p>
+            <div className="h-3 rounded-full bg-slate-100 overflow-hidden flex">
+              <div
+                className="h-full bg-emerald-500"
+                style={{ width: `${Math.min(100, (tatMetrics.min / tatMetrics.max) * 100)}%` }}
+                title={`Min: ${formatMinutes(tatMetrics.min)}`}
+              />
+              <div
+                className="h-full bg-sky-500"
+                style={{ width: `${Math.min(100, ((tatMetrics.avg - tatMetrics.min) / tatMetrics.max) * 100)}%` }}
+                title={`Avg: ${formatMinutes(tatMetrics.avg)}`}
+              />
+              <div
+                className="h-full bg-rose-400 flex-1"
+                title={`Max: ${formatMinutes(tatMetrics.max)}`}
+              />
+            </div>
+            <div className="flex justify-between mt-1 text-[9px] text-slate-400">
+              <span>Min: {formatMinutes(tatMetrics.min)}</span>
+              <span>Avg: {formatMinutes(tatMetrics.avg)}</span>
+              <span>Max: {formatMinutes(tatMetrics.max)}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -201,7 +340,10 @@ export function ReportTab() {
 
       <div className={INTERNAL_SURFACE}>
         <div className="border-b border-slate-100/90 px-6 py-4">
-          <p className="font-extrabold text-sm uppercase tracking-wide text-slate-950">Lab Orders by Service</p>
+          <div className="flex items-center gap-2">
+            <Activity className="size-4 text-slate-600" />
+            <p className="font-extrabold text-sm uppercase tracking-wide text-slate-950">Lab Orders by Service</p>
+          </div>
           <p className="text-[11px] text-slate-400 mt-0.5">From the workflow module</p>
         </div>
         <div className="px-6 py-5 space-y-3">

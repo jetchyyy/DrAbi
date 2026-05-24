@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import jsQR from 'jsqr';
-import { AlertTriangle, Camera, FileUp, FlaskConical, Paperclip, Pencil, Plus, QrCode, Search, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Camera, FileText, FileUp, FlaskConical, Paperclip, Pencil, Plus, QrCode, Search, Trash2, X } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'react-router-dom';
@@ -41,6 +41,9 @@ import { cn } from '../../../lib/utils';
 import { toLabRequestDisplayStatus } from './lab-request-status';
 import { LabStatusPill } from './lab-status-pill';
 import { extractLabServiceReceiptRequestId } from '../lab-service-receipt';
+import { ResultEntryModal } from './result-entry-modal';
+import { buildLabResultReport } from '../lab-result-report';
+import { listResultEntries, getAccession } from '../lis-service';
 
 const labOrderSchema = z.object({
   patientId: z.string().min(1, 'Patient is required.'),
@@ -146,6 +149,7 @@ export function WorkflowTab() {
   const [requestLookupValue, setRequestLookupValue] = useState('');
   const [lookupResolvedRequest, setLookupResolvedRequest] = useState<LabRequestRecord | null>(null);
   const [isIntakeCameraOpen, setIsIntakeCameraOpen] = useState(false);
+  const [resultEntryRequest, setResultEntryRequest] = useState<LabRequestRecord | null>(null);
   const [intakeCameraMessage, setIntakeCameraMessage] = useState('');
   const [intakeCameraError, setIntakeCameraError] = useState('');
   const intakeVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -861,6 +865,59 @@ export function WorkflowTab() {
     closeCameraModal();
   };
 
+  const handlePrintReport = async (order: LabRequestRecord) => {
+    try {
+      const [results, accession] = await Promise.all([
+        listResultEntries(order.id),
+        getAccession(order.id),
+      ]);
+
+      // Get clinic settings for report header
+      let clinicName = 'Clinic';
+      let clinicAddress = '';
+      let clinicContact = '';
+      let clinicEmail = '';
+      if (supabase) {
+        const { data: settings } = await (supabase as any).from('clinic_settings').select('clinic_name, address, contact_number, email').limit(1).maybeSingle();
+        if (settings) {
+          clinicName = settings.clinic_name ?? 'Clinic';
+          clinicAddress = settings.address ?? '';
+          clinicContact = settings.contact_number ?? '';
+          clinicEmail = settings.email ?? '';
+        }
+      }
+
+      const html = buildLabResultReport({
+        clinicName,
+        clinicAddress,
+        clinicContactNumber: clinicContact,
+        clinicEmail,
+        patientName: order.patientName ?? 'Unknown Patient',
+        accession,
+        serviceName: order.serviceName ?? order.serviceCategory,
+        requestedByName: order.requestedByName ?? 'Unknown',
+        completedByName: order.completedByName ?? 'Lab Staff',
+        requestDate: order.createdAt,
+        completedDate: order.completedAt ?? new Date().toISOString(),
+        tatMinutes: null,
+        results,
+      });
+
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(html);
+        printWindow.document.close();
+      }
+    } catch (error) {
+      setFeedbackModal({
+        open: true,
+        title: 'Report generation failed',
+        message: error instanceof Error ? error.message : 'Unable to generate the lab result report.',
+        variant: 'error',
+      });
+    }
+  };
+
   return (
     <>
       <div className="space-y-6">
@@ -1033,6 +1090,25 @@ export function WorkflowTab() {
                                   <Pencil className="size-3.5" />
                                   Process
                                 </button>
+                                <button
+                                  className="inline-flex items-center gap-1 text-emerald-600 hover:underline disabled:cursor-not-allowed disabled:text-emerald-400"
+                                  onClick={() => setResultEntryRequest(order)}
+                                  type="button"
+                                  disabled={order.paymentStatus !== 'paid'}
+                                >
+                                  <FlaskConical className="size-3.5" />
+                                  Results
+                                </button>
+                                {order.status === 'completed' && (
+                                  <button
+                                    className="inline-flex items-center gap-1 text-sky-600 hover:underline"
+                                    onClick={() => void handlePrintReport(order)}
+                                    type="button"
+                                  >
+                                    <FileText className="size-3.5" />
+                                    Report
+                                  </button>
+                                )}
                                 <button className="inline-flex items-center gap-1 text-rose-600 hover:underline" onClick={() => void handleDeleteOrder(order.id)} type="button">
                                   <Trash2 className="size-3.5" />
                                   Cancel
@@ -1356,6 +1432,15 @@ export function WorkflowTab() {
           </div>
         </div>
       ) : null}
+
+      {resultEntryRequest && (
+        <ResultEntryModal
+          request={resultEntryRequest}
+          open={Boolean(resultEntryRequest)}
+          onClose={() => setResultEntryRequest(null)}
+          onCompleted={() => setResultEntryRequest(null)}
+        />
+      )}
 
       <FeedbackModal
         autoCloseMs={3000}

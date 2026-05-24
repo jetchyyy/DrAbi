@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Pencil, Plus, Search, TestTube2, Trash2, X } from 'lucide-react';
+import { FlaskConical, Pencil, Plus, Search, TestTube2, Trash2, X } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -27,6 +27,7 @@ import {
 import { isSupabaseConfigured, supabase } from '../../../lib/supabase';
 import { cn, formatCurrency } from '../../../lib/utils';
 import type { LabServiceCategory } from '../../../types/domain';
+import { TestParametersModal } from './test-parameters-modal';
 
 const catalogSchema = z.object({
   name: z.string().min(2, 'Service name must be at least 2 characters.'),
@@ -74,6 +75,8 @@ export function CatalogTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [configServiceId, setConfigServiceId] = useState<string | null>(null);
+  const [configServiceName, setConfigServiceName] = useState('');
   const [feedbackModal, setFeedbackModal] = useState<FeedbackModalState>({
     open: false,
     title: '',
@@ -450,6 +453,10 @@ export function CatalogTab() {
                       <td className={cn(INTERNAL_TD, 'text-sm font-semibold text-slate-900')}>{formatCurrency(service.price)}</td>
                       <td className={cn(INTERNAL_TD, 'text-right')}>
                         <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide">
+                          <button className="inline-flex items-center gap-1 text-emerald-600 hover:underline" onClick={() => { setConfigServiceId(service.id); setConfigServiceName(service.name); }} type="button">
+                            <FlaskConical className="size-3.5" />
+                            Parameters
+                          </button>
                           <button className="inline-flex items-center gap-1 text-slate-600 hover:underline" onClick={() => openEditModal(service.id)} type="button">
                             <Pencil className="size-3.5" />
                             Edit
@@ -550,6 +557,13 @@ export function CatalogTab() {
           </div>
         </div>
       ) : null}
+
+      <TestParametersModal
+        serviceId={configServiceId ?? ''}
+        serviceName={configServiceName}
+        open={Boolean(configServiceId)}
+        onClose={() => setConfigServiceId(null)}
+      />
 
       <FeedbackModal
         autoCloseMs={3000}
