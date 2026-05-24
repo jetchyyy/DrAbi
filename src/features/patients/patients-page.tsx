@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ClipboardList,
+  ClipboardPlus,
   Pencil,
   QrCode,
   Search,
@@ -542,6 +543,16 @@ export function PatientsPage() {
                 >
                   <UserRoundPlus className="size-4" />
                   Add walk-in patient
+                </Button>
+              ) : null}
+              {can("patients.manage") ? (
+                <Button
+                  className="gap-2"
+                  onClick={() => navigate("/app/patients/bulk")}
+                  variant="secondary"
+                >
+                  <ClipboardPlus className="size-4" />
+                  Bulk add patients
                 </Button>
               ) : null}
               <Link
