@@ -6,7 +6,9 @@ export const invoiceItemSchema = z.object({
   description: z.string().min(2, 'Description must be at least 2 characters.'),
   category: z.enum(['consultation', 'laboratory', 'medicine', 'other']),
   quantity: z.number().min(1, 'Quantity must be at least 1.'),
-  unitPrice: z.number().min(1, 'Unit price must be at least 1.'),
+  unitPrice: z.number().min(0, 'Unit price must be at least 0.'),
+  referenceId: z.string().nullable().optional(),
+  referenceType: z.enum(['consultation', 'inventory_usage', 'lab_order']).nullable().optional(),
 });
 
 export const billingSchema = z.object({
@@ -17,6 +19,9 @@ export const billingSchema = z.object({
   paymentStatus: z.enum(['unpaid', 'paid']).default('unpaid'),
   paymentType: z.enum(['cash', 'gcash', 'card']).default('cash'),
   referenceNumber: z.string().optional(),
+  discountType: z.enum(['none', 'senior', 'pwd', 'philhealth', 'custom']).default('none'),
+  discountAmount: z.number().optional().nullable(),
+  taxAmount: z.number().optional().nullable(),
 }).superRefine((values, context) => {
   if (values.paymentStatus !== 'paid') {
     return;

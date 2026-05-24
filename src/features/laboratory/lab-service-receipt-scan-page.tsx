@@ -208,6 +208,8 @@ export function LabServiceReceiptScanPage() {
               quantity: 1,
               unitPrice: amount,
               category: 'laboratory',
+              referenceId: currentRequest.id,
+              referenceType: 'lab_order',
             },
           ],
         );

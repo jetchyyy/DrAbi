@@ -154,7 +154,12 @@ export function useCreateInvoice() {
       const markAsPaid = values.paymentStatus === 'paid';
       const paymentType = values.paymentType ?? 'cash';
       const referenceNumber = paymentType === 'cash' ? null : values.referenceNumber?.trim() || null;
-      const total = values.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+      
+      const subtotal = values.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+      const discountAmount = values.discountAmount ?? 0;
+      const taxAmount = values.taxAmount ?? 0;
+      const total = Math.max(0, subtotal - discountAmount);
+
       const taggedBooking = bookings.find((booking) => booking.id === values.bookingId) ?? null;
       
       // Get existing invoices to generate sequential invoice number
@@ -170,7 +175,10 @@ export function useCreateInvoice() {
           appointmentId,
           invoiceNumber,
           paymentStatus: markAsPaid ? 'paid' : 'unpaid',
-          subtotal: total,
+          subtotal,
+          discountType: values.discountType ?? 'none',
+          discountAmount,
+          taxAmount,
           total,
         },
         values.items.map((item) => ({
@@ -178,6 +186,8 @@ export function useCreateInvoice() {
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           category: item.category,
+          referenceId: item.referenceId ?? null,
+          referenceType: item.referenceType ?? null,
         })),
       );
 
@@ -197,6 +207,17 @@ export function useCreateInvoice() {
             await deleteInvoiceLiveOrDemo(createdInvoice.id).catch(() => undefined);
             throw paymentError;
           }
+
+          // Mark linked lab orders as paid
+          for (const item of values.items) {
+            if (item.category === 'laboratory' && item.referenceType === 'lab_order' && item.referenceId) {
+              try {
+                await labRequestService.markRequestAsPaid(item.referenceId, createdInvoice.invoiceNumber);
+              } catch (err) {
+                console.error('Failed to mark lab request paid:', err);
+              }
+            }
+          }
         } else {
           createPaymentRecord({
             invoiceId: createdInvoice.id,
@@ -214,6 +235,8 @@ export function useCreateInvoice() {
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoiceItems });
       await queryClient.invalidateQueries({ queryKey: ['payments', createdInvoice.id] });
+      await queryClient.invalidateQueries({ queryKey: ['patient-requests'] });
+      await queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
     },
   });
 }
@@ -226,7 +249,12 @@ export function useUpdateInvoice() {
       const markAsPaid = values.paymentStatus === 'paid';
       const paymentType = values.paymentType ?? 'cash';
       const referenceNumber = paymentType === 'cash' ? '' : values.referenceNumber?.trim() || '';
-      const total = values.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+      
+      const subtotal = values.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+      const discountAmount = values.discountAmount ?? 0;
+      const taxAmount = values.taxAmount ?? 0;
+      const total = Math.max(0, subtotal - discountAmount);
+
       const taggedBooking = bookings.find((booking) => booking.id === values.bookingId) ?? null;
       
       // Keep existing invoice number or generate new one
@@ -242,7 +270,10 @@ export function useUpdateInvoice() {
           appointmentId,
           invoiceNumber,
           paymentStatus: markAsPaid ? 'paid' : 'unpaid',
-          subtotal: total,
+          subtotal,
+          discountType: values.discountType ?? 'none',
+          discountAmount,
+          taxAmount,
           total,
         },
         values.items.map((item) => ({
@@ -250,6 +281,8 @@ export function useUpdateInvoice() {
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           category: item.category,
+          referenceId: item.referenceId ?? null,
+          referenceType: item.referenceType ?? null,
         })),
       );
 
@@ -299,6 +332,17 @@ export function useUpdateInvoice() {
               throw paymentInsertError;
             }
           }
+
+          // Mark linked lab orders as paid
+          for (const item of values.items) {
+            if (item.category === 'laboratory' && item.referenceType === 'lab_order' && item.referenceId) {
+              try {
+                await labRequestService.markRequestAsPaid(item.referenceId, updatedInvoice.invoiceNumber);
+              } catch (err) {
+                console.error('Failed to mark lab request paid:', err);
+              }
+            }
+          }
         } else {
           upsertLatestPaymentRecord({
             invoiceId,
@@ -316,6 +360,8 @@ export function useUpdateInvoice() {
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoiceItems });
       await queryClient.invalidateQueries({ queryKey: ['payments', updatedInvoice.id] });
+      await queryClient.invalidateQueries({ queryKey: ['patient-requests'] });
+      await queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
     },
   });
 }
@@ -499,6 +545,8 @@ export function useUpdatePayment() {
         category: item.category,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        referenceId: item.referenceId ?? null,
+        referenceType: item.referenceType ?? null,
       }));
 
       // Update the invoice status

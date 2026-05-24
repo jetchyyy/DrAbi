@@ -60,6 +60,7 @@ import {
   useRecordInventoryUsage,
   useUpdatePatient,
   useUpdatePrescription,
+  usePatientInventoryUsageLogs,
 } from "./hooks/use-patients";
 import { buildMedicalCertificatePrintDocument } from "./medical-certificate-print-document";
 import { buildPrescriptionPrintDocument } from "./prescription-print-document";
@@ -569,11 +570,9 @@ export function PatientDetailPage() {
   const labOrders = patient
     ? database.labOrders.filter((order) => order.patientId === patient.id)
     : [];
-  const inventoryUsageLogs = patient
-    ? database.inventoryUsageLogs
-        .filter((log) => log.patientId === patient.id)
-        .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-    : [];
+  const { data: inventoryUsageLogs = [] } = usePatientInventoryUsageLogs(
+    patientId || null,
+  );
   const [labSearch, setLabSearch] = useState("");
   const [labStatusFilter, setLabStatusFilter] = useState("all");
   const [labExpanded, setLabExpanded] = useState(false);

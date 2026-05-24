@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 
 import { FormField } from '../../components/forms/form-field';
 import { Button } from '../../components/ui/button';
@@ -17,10 +18,11 @@ import { useClinicSettingsData } from '../../hooks/use-clinic-data';
 import { useAppointments } from '../appointments/hooks/use-appointments';
 import { LabServiceReceiptCard } from '../laboratory/components/lab-service-receipt-card';
 import { printHtmlDocument } from '../../lib/print';
-import { getDoctorDirectoryLiveOrDemo, listConsultationsByPatientIdLiveOrDemo } from '../../lib/supabase-clinic';
+import { getDoctorDirectoryLiveOrDemo, listConsultationsByPatientIdLiveOrDemo, listInventoryUsageLogsByPatientIdLiveOrDemo } from '../../lib/supabase-clinic';
 import { formatCurrency } from '../../lib/utils';
-// import { labRequestService } from '../../lab-requests/api/lab-request-service';
-// import type { LabRequestRecord } from '../../lab-requests/types';
+import { labRequestService } from '../lab-requests/api/lab-request-service';
+import type { LabRequestRecord } from '../lab-requests/types';
+import { usePatientLabResults } from '../lab-requests/hooks/use-lab-requests';
 import { PaymentBadge } from './payment-badge';
 import { PaymentUpdateModal } from './components/payment-update-modal';
 import { buildBillingReceiptPrintDocument } from './lib/billing-receipt-print-document';
@@ -59,6 +61,9 @@ type InvoiceReceiptState = {
   paymentReference: string | null;
   issuedAt: string;
   subtotal: number;
+  discountType?: string;
+  discountAmount?: number;
+  taxAmount?: number;
   total: number;
   items: Array<{
     description: string;
@@ -219,6 +224,124 @@ export function BillingPage() {
   const selectedPatientId = form.watch('patientId');
   const selectedInvoicePaymentStatus = form.watch('paymentStatus');
   const selectedInvoicePaymentType = form.watch('paymentType');
+
+  // Query patient unbilled resources and clinic directory
+  const { data: doctors = [] } = useQuery({
+    queryKey: ['doctors'],
+    queryFn: () => getDoctorDirectoryLiveOrDemo(),
+  });
+
+  const { data: patientConsultations = [] } = useQuery({
+    queryKey: ['patient-consultations', selectedPatientId],
+    queryFn: () => listConsultationsByPatientIdLiveOrDemo(selectedPatientId),
+    enabled: !!selectedPatientId,
+  });
+
+  const { data: inventoryLogs = [] } = useQuery({
+    queryKey: ['patient-inventory-logs', selectedPatientId],
+    queryFn: () => listInventoryUsageLogsByPatientIdLiveOrDemo(selectedPatientId),
+    enabled: !!selectedPatientId,
+  });
+
+  const { data: patientRequests = [] } = useQuery({
+    queryKey: ['patient-requests', selectedPatientId],
+    queryFn: () => labRequestService.getPatientRequests(selectedPatientId),
+    enabled: !!selectedPatientId,
+  });
+
+  const alreadyBilledItemIds = useMemo(() => {
+    return new Set(invoiceItems.map((item) => item.referenceId).filter(Boolean));
+  }, [invoiceItems]);
+
+  const currentFormItems = form.watch('items') || [];
+  const currentFormItemRefs = useMemo(() => {
+    return new Set(currentFormItems.map((item) => item.referenceId).filter(Boolean));
+  }, [currentFormItems]);
+
+  const unbilledConsultations = useMemo(() => {
+    if (!selectedPatientId) return [];
+    return patientConsultations.filter(
+      (c) => !alreadyBilledItemIds.has(c.id) && !currentFormItemRefs.has(c.id)
+    );
+  }, [patientConsultations, selectedPatientId, alreadyBilledItemIds, currentFormItemRefs]);
+
+  const unbilledInventoryLogs = useMemo(() => {
+    if (!selectedPatientId) return [];
+    return inventoryLogs.filter(
+      (log) => !alreadyBilledItemIds.has(log.id) && !currentFormItemRefs.has(log.id)
+    );
+  }, [inventoryLogs, selectedPatientId, alreadyBilledItemIds, currentFormItemRefs]);
+
+  const unbilledLabRequests = useMemo(() => {
+    if (!selectedPatientId) return [];
+    return patientRequests.filter(
+      (req) => req.paymentStatus !== 'paid' && !alreadyBilledItemIds.has(req.id) && !currentFormItemRefs.has(req.id)
+    );
+  }, [patientRequests, selectedPatientId, alreadyBilledItemIds, currentFormItemRefs]);
+
+  const totalUnbilledCount = unbilledConsultations.length + unbilledInventoryLogs.length + unbilledLabRequests.length;
+
+  const importConsultation = (c: any) => {
+    const doctorId = c.doctorId;
+    const matchedDoctor = doctors.find((d) => d.id === doctorId);
+    const fee = matchedDoctor?.consultationFee ?? 800;
+
+    itemsFieldArray.append({
+      description: `Consultation - ${c.consultationType} (Dr. ${matchedDoctor?.fullName ?? c.providerName ?? 'Staff'})`,
+      category: 'consultation',
+      quantity: 1,
+      unitPrice: fee,
+      referenceId: c.id,
+      referenceType: 'consultation',
+    });
+    toast.success('Consultation imported successfully');
+  };
+
+  const importInventoryLog = (log: any) => {
+    itemsFieldArray.append({
+      description: `Item - ${log.itemId} (Qty: ${log.quantity})`,
+      category: 'medicine',
+      quantity: log.quantity,
+      unitPrice: log.unitPrice ?? 0,
+      referenceId: log.id,
+      referenceType: 'inventory_usage',
+    });
+    toast.success('Inventory log imported successfully');
+  };
+
+  const importLabRequest = (req: any) => {
+    const matchedService = labServiceOptions.find((s: any) => s.id === req.serviceId || s.name === req.serviceName);
+    const fee = matchedService?.serviceFee ?? 0;
+
+    itemsFieldArray.append({
+      description: `Laboratory - ${req.serviceName || 'Service'}`,
+      category: 'laboratory',
+      quantity: 1,
+      unitPrice: fee,
+      referenceId: req.id,
+      referenceType: 'lab_order',
+    });
+    toast.success('Lab order imported successfully');
+  };
+
+  const formItems = form.watch('items') || [];
+  const discountType = form.watch('discountType') || 'none';
+  const discountAmount = form.watch('discountAmount') || 0;
+  const taxAmount = form.watch('taxAmount') || 0;
+
+  const subtotal = useMemo(() => {
+    return formItems.reduce((sum, item) => sum + (item.quantity || 0) * (item.unitPrice || 0), 0);
+  }, [formItems]);
+
+  useEffect(() => {
+    if (discountType === 'senior' || discountType === 'pwd') {
+      const calculated = Math.round(subtotal * 0.20 * 100) / 100;
+      form.setValue('discountAmount', calculated, { shouldDirty: true, shouldValidate: true });
+    } else if (discountType === 'none') {
+      form.setValue('discountAmount', 0, { shouldDirty: true, shouldValidate: true });
+    }
+  }, [discountType, subtotal, form]);
+
   const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId) ?? null;
   const selectedLabServiceId = payServiceForm.watch('serviceId');
   const selectedLabService = labServiceOptions.find((service: any) => service.id === selectedLabServiceId) ?? null;
@@ -298,6 +421,9 @@ export function BillingPage() {
       paymentReference: latestPayment?.referenceNumber ?? null,
       issuedAt: viewedInvoice.createdAt,
       subtotal: viewedInvoice.subtotal,
+      discountType: viewedInvoice.discountType,
+      discountAmount: viewedInvoice.discountAmount,
+      taxAmount: viewedInvoice.taxAmount,
       total: viewedInvoice.total,
       items: viewedInvoiceItems.map((item) => ({
         description: item.description,
@@ -458,6 +584,9 @@ export function BillingPage() {
       paymentStatus: 'unpaid',
       paymentType: 'cash',
       referenceNumber: '',
+      discountType: 'none',
+      discountAmount: 0,
+      taxAmount: 0,
       items: [
         {
           description: 'General Consultation',
@@ -497,11 +626,16 @@ export function BillingPage() {
       paymentStatus: invoice.paymentStatus === 'paid' ? 'paid' : 'unpaid',
       paymentType: 'cash',
       referenceNumber: '',
+      discountType: invoice.discountType ?? 'none',
+      discountAmount: invoice.discountAmount ?? 0,
+      taxAmount: invoice.taxAmount ?? 0,
       items: items.map((item) => ({
         description: item.description,
         category: item.category,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        referenceId: item.referenceId ?? null,
+        referenceType: item.referenceType ?? null,
       })),
     });
     const selectedPatient = patients.find((patient) => patient.id === invoice.patientId) ?? null;
@@ -590,6 +724,9 @@ export function BillingPage() {
           paymentReference: markAsPaidOnCreate ? referenceOnCreate : null,
           issuedAt: createdInvoice.createdAt,
           subtotal: createdInvoice.subtotal,
+          discountType: createdInvoice.discountType,
+          discountAmount: createdInvoice.discountAmount,
+          taxAmount: createdInvoice.taxAmount,
           total: createdInvoice.total,
           items: values.items.map((item) => ({
             description: item.description,
@@ -1102,6 +1239,70 @@ export function BillingPage() {
                   <p className="text-xs text-slate-500">Linking to an appointment ensures payment verification is tied to the specific session, preventing old invoices from authorizing access.</p>
                 </div>
 
+                {selectedPatientId && totalUnbilledCount > 0 ? (
+                  <div className="space-y-4 border-t border-slate-100 px-4 py-5 sm:px-6 bg-amber-50/50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-amber-800">Unbilled Items Detected</p>
+                        <p className="text-xs text-amber-700">The patient has completed consultations, laboratory orders, or inventory items that haven't been added to this invoice yet.</p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                        {totalUnbilledCount} items
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5 max-h-48 overflow-y-auto">
+                      {unbilledConsultations.map((c) => (
+                        <div key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white p-2.5 shadow-sm text-xs">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 truncate">Consultation Fee ({c.consultationType})</p>
+                            <p className="text-[10px] text-slate-500">Dr. {c.providerName || 'Staff'} • {c.consultationDate}</p>
+                          </div>
+                          <Button
+                            onClick={() => importConsultation(c)}
+                            type="button"
+                            className="rounded bg-amber-600 hover:bg-amber-700 text-[10px] font-bold text-white uppercase px-2 py-1 h-auto"
+                          >
+                            Import
+                          </Button>
+                        </div>
+                      ))}
+
+                      {unbilledLabRequests.map((req) => (
+                        <div key={req.id} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white p-2.5 shadow-sm text-xs">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 truncate">Laboratory Order: {req.serviceName}</p>
+                            <p className="text-[10px] text-slate-500">Status: {req.status} • {new Date(req.createdAt).toLocaleDateString()}</p>
+                          </div>
+                          <Button
+                            onClick={() => importLabRequest(req)}
+                            type="button"
+                            className="rounded bg-amber-600 hover:bg-amber-700 text-[10px] font-bold text-white uppercase px-2 py-1 h-auto"
+                          >
+                            Import
+                          </Button>
+                        </div>
+                      ))}
+
+                      {unbilledInventoryLogs.map((log) => (
+                        <div key={log.id} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white p-2.5 shadow-sm text-xs">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 truncate">Medical Supplies: {log.itemId}</p>
+                            <p className="text-[10px] text-slate-500">Qty: {log.quantity} • Scanned: {log.scannedCode || 'N/A'}</p>
+                          </div>
+                          <Button
+                            onClick={() => importInventoryLog(log)}
+                            type="button"
+                            className="rounded bg-amber-600 hover:bg-amber-700 text-[10px] font-bold text-white uppercase px-2 py-1 h-auto"
+                          >
+                            Import
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="space-y-4 border-t border-slate-100 px-4 py-5 sm:px-6">
                   <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Payment</p>
                   <FormField error={form.formState.errors.paymentStatus?.message} label="Payment Status">
@@ -1157,6 +1358,8 @@ export function BillingPage() {
 
                   {itemsFieldArray.fields.map((field, index) => (
                     <div key={field.id} className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <input type="hidden" {...form.register(`items.${index}.referenceId` as const)} />
+                      <input type="hidden" {...form.register(`items.${index}.referenceType` as const)} />
                       <div className="flex items-start justify-between gap-3">
                         <p className="text-sm font-semibold text-slate-900">Item {index + 1}</p>
                         {itemsFieldArray.fields.length > 1 ? (
@@ -1196,6 +1399,60 @@ export function BillingPage() {
                       </p>
                     </div>
                   ))}
+                </div>
+
+                <div className="space-y-4 border-t border-slate-100 px-4 py-5 sm:px-6 bg-slate-50/70">
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Invoice Summary</p>
+                  
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <FormField error={form.formState.errors.discountType?.message} label="Discount Type">
+                      <Select {...form.register('discountType')}>
+                        <option value="none">None</option>
+                        <option value="senior">Senior Citizen (20%)</option>
+                        <option value="pwd">PWD (20%)</option>
+                        <option value="philhealth">PhilHealth</option>
+                        <option value="custom">Custom Discount</option>
+                      </Select>
+                    </FormField>
+
+                    <FormField error={form.formState.errors.discountAmount?.message} label="Discount Amount (PHP)">
+                      <Input
+                        type="number"
+                        disabled={discountType === 'none' || discountType === 'senior' || discountType === 'pwd'}
+                        {...form.register('discountAmount', { valueAsNumber: true })}
+                      />
+                    </FormField>
+
+                    <FormField error={form.formState.errors.taxAmount?.message} label="Tax Amount (PHP)">
+                      <Input
+                        type="number"
+                        {...form.register('taxAmount', { valueAsNumber: true })}
+                      />
+                    </FormField>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-2">
+                    <div className="flex justify-between text-sm text-slate-600">
+                      <span>Subtotal</span>
+                      <span className="font-semibold text-slate-900">{formatCurrency(subtotal)}</span>
+                    </div>
+                    {discountAmount > 0 ? (
+                      <div className="flex justify-between text-sm text-rose-600">
+                        <span>Discount ({discountType.toUpperCase()})</span>
+                        <span className="font-semibold">- {formatCurrency(discountAmount)}</span>
+                      </div>
+                    ) : null}
+                    {taxAmount > 0 ? (
+                      <div className="flex justify-between text-sm text-slate-600">
+                        <span>Tax / VAT</span>
+                        <span className="font-semibold">{formatCurrency(taxAmount)}</span>
+                      </div>
+                    ) : null}
+                    <div className="border-t border-slate-100 pt-2 flex justify-between text-base font-extrabold text-slate-900">
+                      <span>Total Amount Due</span>
+                      <span className="text-emerald-600">{formatCurrency(Math.max(0, subtotal - discountAmount))}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 

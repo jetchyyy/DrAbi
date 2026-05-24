@@ -1,4 +1,4 @@
-﻿import { queryClient } from "../app/query-client";
+import { queryClient } from "../app/query-client";
 import { defaultClinicSettings } from "../config/clinic";
 import { createSeedDatabase } from "../data/seed";
 import type {
@@ -1283,6 +1283,7 @@ export function createConsultation(
   return updateDatabase((draft) => {
     draft.consultations.unshift({
       ...input,
+      payoutStatus: "pending",
       id: generateId("consult"),
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -1291,6 +1292,17 @@ export function createConsultation(
       createAuditLog(input.doctorId, "create", "consultation"),
     );
   }).consultations[0];
+}
+
+export function settleConsultationsInDemo(consultationIds: string[]) {
+  return updateDatabase((draft) => {
+    draft.consultations.forEach((c) => {
+      if (consultationIds.includes(c.id)) {
+        c.payoutStatus = "paid";
+        c.payoutSettledAt = new Date().toISOString();
+      }
+    });
+  }).consultations;
 }
 
 export function createPrescription(

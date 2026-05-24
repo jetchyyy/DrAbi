@@ -4,7 +4,6 @@ import { queryClient } from "../../../app/query-client";
 import {
   createPatientActionLog,
   listPatientActionLogs,
-  recordInventoryUsage,
 } from "../../../lib/local-db";
 import { queryKeys } from "../../../lib/query-keys";
 import {
@@ -24,6 +23,8 @@ import {
   listPatientsLiveOrDemo,
   listPatientTeleconsultAppointmentsForCurrentUserLiveOrDemo,
   listPrescriptionsByPatientIdLiveOrDemo,
+  recordInventoryUsageLiveOrDemo,
+  listInventoryUsageLogsByPatientIdLiveOrDemo,
 } from "../../../lib/supabase-clinic";
 import type {
   InventoryUsageLog,
@@ -186,10 +187,13 @@ export function useRecordInventoryUsage() {
   return useMutation({
     mutationFn: async (
       payload: Omit<InventoryUsageLog, "id" | "createdAt" | "updatedAt">,
-    ) => recordInventoryUsage(payload),
-    onSuccess: () => {
+    ) => recordInventoryUsageLiveOrDemo(payload),
+    onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.patients });
       void queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
+      void queryClient.invalidateQueries({
+        queryKey: ["patient-inventory-usage-logs", variables.patientId],
+      });
     },
   });
 }
@@ -298,5 +302,16 @@ export function usePatientTeleconsultAppointments() {
         email,
       }),
     enabled: profile?.role === "patient" && Boolean(userId || email),
+  });
+}
+
+export function usePatientInventoryUsageLogs(patientId: string | null) {
+  return useQuery({
+    queryKey: ["patient-inventory-usage-logs", patientId],
+    queryFn: async () => {
+      if (!patientId) return [];
+      return listInventoryUsageLogsByPatientIdLiveOrDemo(patientId);
+    },
+    enabled: Boolean(patientId),
   });
 }

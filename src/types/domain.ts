@@ -149,6 +149,7 @@ export interface UserProfile extends BaseRecord {
   title?: string | null;
   consultationFee?: number | null;
   followUpFee?: number | null;
+  doctorSharePercentage?: number | null;
 }
 
 export interface AccessRoleTemplate extends BaseRecord {
@@ -174,6 +175,7 @@ export interface AdminCreateUserInput {
   prcIdFile?: File | null;
   consultationFee?: number;
   followUpFee?: number;
+  doctorSharePercentage?: number;
 }
 
 export interface DoctorFeeSettings {
@@ -281,6 +283,8 @@ export interface Consultation extends BaseRecord {
   assessment?: string;
   plan?: string;
   outcome?: string;
+  payoutStatus?: 'pending' | 'paid';
+  payoutSettledAt?: string | null;
 }
 
 export interface Prescription extends BaseRecord {
@@ -374,6 +378,8 @@ export interface InvoiceItem extends BaseRecord {
   quantity: number;
   unitPrice: number;
   category: "consultation" | "laboratory" | "medicine" | "other";
+  referenceId?: string | null;
+  referenceType?: 'consultation' | 'inventory_usage' | 'lab_order' | null;
 }
 
 export interface Invoice extends BaseRecord {
@@ -382,8 +388,12 @@ export interface Invoice extends BaseRecord {
   invoiceNumber: string;
   paymentStatus: PaymentStatus;
   subtotal: number;
+  discountType?: 'none' | 'senior' | 'pwd' | 'philhealth' | 'custom' | null;
+  discountAmount?: number | null;
+  taxAmount?: number | null;
   total: number;
 }
+
 
 export interface Payment extends BaseRecord {
   invoiceId: string;

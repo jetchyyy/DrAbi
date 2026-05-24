@@ -25,6 +25,7 @@ import { ConsultationEntryPage } from "../features/consultation/consultation-ent
 import { DashboardPage } from "../features/dashboard/dashboard-page";
 import { AnalyticsDashboardPage } from "../features/analytics/analytics-page";
 import { DoctorAvailabilityPage } from "../features/doctor/doctor-availability-page";
+import { DoctorPayoutsPage } from "../features/doctor/doctor-payouts-page";
 import { SpecialistReferralsPage } from "../features/referrals/specialist-referrals-page";
 import { ReferralsListPage } from "../features/referrals/specialist-frontdesk-list-page";
 import { InventoryPage } from "../features/inventory/inventory-page";
@@ -393,6 +394,12 @@ export const router = createBrowserRouter([
                   {
                     element: <PermissionGate permission="billing.view" />,
                     children: [{ path: "billing", element: <BillingPage /> }],
+                  },
+                  {
+                    element: <PermissionGate permission="appointments.view" />,
+                    children: [
+                      { path: "doctor-payouts", element: <DoctorPayoutsPage /> },
+                    ],
                   },
                 ],
               },

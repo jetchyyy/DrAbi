@@ -51,6 +51,7 @@ const userSchema = z
     }).optional(),
     consultationFee: z.number().min(0, 'Consultation fee must be 0 or higher.').optional(),
     followUpFee: z.number().min(0, 'Follow-up fee must be 0 or higher.').optional(),
+    doctorSharePercentage: z.number().min(0, 'Share % must be 0 or higher.').max(100, 'Share % cannot exceed 100.').optional(),
   })
   .superRefine((value, ctx) => {
     if (value.mode === 'create') {
@@ -133,6 +134,7 @@ function buildCreateUserInput(values: UserFormValues, accessRole: AccessRoleTemp
     ptrNumber: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.ptrNumber?.trim() ?? '' : undefined,
     consultationFee: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.consultationFee ?? 0 : undefined,
     followUpFee: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.followUpFee ?? 0 : undefined,
+    doctorSharePercentage: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.doctorSharePercentage ?? 100 : undefined,
     prcIdFile: values.staffRole === 'doctor' || values.staffRole === 'specialist' ? values.prcIdFile ?? null : null,
   };
 }
@@ -176,6 +178,7 @@ export function SettingsUsersPage() {
         ptrNumber: values.ptrNumber?.trim(),
         consultationFee: values.consultationFee ?? 0,
         followUpFee: values.followUpFee ?? 0,
+        doctorSharePercentage: values.doctorSharePercentage ?? 100,
     }),
     onSuccess: async (_updatedUser, variables) => {
       clearUserPermissionOverride({ userId: variables.id, email: variables.values.email.trim().toLowerCase() });
@@ -217,6 +220,7 @@ export function SettingsUsersPage() {
       prcIdFile: null,
       consultationFee: 0,
       followUpFee: 0,
+      doctorSharePercentage: 100,
     },
   });
 
@@ -277,6 +281,7 @@ export function SettingsUsersPage() {
       prcIdFile: null,
       consultationFee: 0,
       followUpFee: 0,
+      doctorSharePercentage: 100,
     });
     setEditingUser(null);
     setIsUserModalOpen(true);
@@ -304,6 +309,7 @@ export function SettingsUsersPage() {
       prcIdFile: null,
       consultationFee: user.consultationFee ?? 0,
       followUpFee: user.followUpFee ?? 0,
+      doctorSharePercentage: user.doctorSharePercentage ?? 100,
     });
     setEditingUser(user);
     setIsUserModalOpen(true);
@@ -637,12 +643,15 @@ export function SettingsUsersPage() {
                     ) : (
                       <p className="text-xs text-orange-700">Doctor credential fields stay read-only during edit to avoid breaking the verified doctor setup.</p>
                     )}
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 md:grid-cols-3">
                       <FormField label="Consultation fee">
                         <Input min="0" step="0.01" type="number" {...form.register('consultationFee', { valueAsNumber: true })} />
                       </FormField>
                       <FormField label="Follow-up fee">
                         <Input min="0" step="0.01" type="number" {...form.register('followUpFee', { valueAsNumber: true })} />
+                      </FormField>
+                      <FormField label="Doctor Share %">
+                        <Input min="0" max="100" step="1" type="number" {...form.register('doctorSharePercentage', { valueAsNumber: true })} />
                       </FormField>
                     </div>
                   </div>

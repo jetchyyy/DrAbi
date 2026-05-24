@@ -469,6 +469,49 @@ function applyAccessRoleToProfile(
   });
 }
 
+function getDoctorSharePercentage(doctorId: string): number {
+  try {
+    const key = `odyssey-doctor-share-${doctorId}`;
+    const val = localStorage.getItem(key);
+    if (val !== null) {
+      const parsed = Number(val);
+      if (!isNaN(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.error(e);
+  }
+  return 100;
+}
+
+export function saveDoctorSharePercentage(doctorId: string, share: number): void {
+  try {
+    const key = `odyssey-doctor-share-${doctorId}`;
+    localStorage.setItem(key, String(share));
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function getSettledConsultationIds(): string[] {
+  try {
+    const val = localStorage.getItem("odyssey-settled-consultation-ids");
+    if (val) {
+      return JSON.parse(val);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+  return [];
+}
+
+function saveSettledConsultationIds(ids: string[]) {
+  try {
+    localStorage.setItem("odyssey-settled-consultation-ids", JSON.stringify(ids));
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 export function mapProfile(
   row: ProfileRow,
   options?: { accessRole?: AccessRoleTemplate | null },
@@ -485,6 +528,16 @@ export function mapProfile(
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
   };
+
+  if (baseProfile.role === "doctor" || baseProfile.role === "specialist") {
+    if (!isSupabaseConfigured) {
+      baseProfile.consultationFee = (row as any).consultationFee ?? 0;
+      baseProfile.followUpFee = (row as any).followUpFee ?? 0;
+      baseProfile.doctorSharePercentage = (row as any).doctorSharePercentage ?? 100;
+    } else {
+      baseProfile.doctorSharePercentage = getDoctorSharePercentage(row.id);
+    }
+  }
 
   return applyAccessRoleToProfile(baseProfile, options?.accessRole ?? null);
 }
@@ -698,6 +751,9 @@ function mapInvoiceRow(row: {
   invoice_number: string;
   payment_status: string | null;
   subtotal: number;
+  discount_type?: string | null;
+  discount_amount?: number | null;
+  tax_amount?: number | null;
   total: number;
   created_at: string;
   updated_at: string;
@@ -710,6 +766,9 @@ function mapInvoiceRow(row: {
     invoiceNumber: row.invoice_number,
     paymentStatus: mapInvoicePaymentStatus(row.payment_status),
     subtotal: Number(row.subtotal ?? 0),
+    discountType: (row.discount_type as any) || 'none',
+    discountAmount: row.discount_amount ? Number(row.discount_amount) : 0,
+    taxAmount: row.tax_amount ? Number(row.tax_amount) : 0,
     total: Number(row.total ?? 0),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -738,6 +797,8 @@ function mapInvoiceItemRow(row: {
   quantity: number;
   unit_price: number;
   category: string | null;
+  reference_id?: string | null;
+  reference_type?: string | null;
   created_at: string;
   updated_at: string;
 }): InvoiceItem {
@@ -748,6 +809,8 @@ function mapInvoiceItemRow(row: {
     quantity: Number(row.quantity ?? 0),
     unitPrice: Number(row.unit_price ?? 0),
     category: mapInvoiceItemCategory(row.category),
+    referenceId: row.reference_id || null,
+    referenceType: (row.reference_type as any) || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -823,6 +886,8 @@ function mapPosSaleItemRow(row: {
 }
 
 function mapConsultation(row: ConsultationRow) {
+  const settledIds = getSettledConsultationIds();
+  const isPaid = (row as any).payout_status === "paid" || settledIds.includes(row.id);
   return {
     id: row.id,
     appointmentId: row.appointment_id,
@@ -849,6 +914,8 @@ function mapConsultation(row: ConsultationRow) {
     outcome: row.outcome,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    payoutStatus: isPaid ? "paid" as const : "pending" as const,
+    payoutSettledAt: (row as any).payout_settled_at ?? null,
   };
 }
 
@@ -1203,7 +1270,7 @@ export async function createPatientMedicalHistoryEntryLiveOrDemo(
     {
       patient_id: input.patientId,
       consultation_id: input.consultationId ?? null,
-      appointment_id: input.appointmentId ?? null,
+      appointment_id: input.appointmentId || null,
       provider_id: input.providerId ?? null,
       history_text: input.historyText ?? "",
       findings_text: input.findingsText ?? "",
@@ -1485,10 +1552,13 @@ export async function createInvoiceLiveOrDemo(
   const client = requireSupabase();
   const invoicePayload = {
     patient_id: invoice.patientId,
-    appointment_id: invoice.appointmentId ?? null,
+    appointment_id: invoice.appointmentId && invoice.appointmentId !== "" ? invoice.appointmentId : null,
     invoice_number: invoice.invoiceNumber,
     payment_status: invoice.paymentStatus,
     subtotal: invoice.subtotal,
+    discount_type: invoice.discountType ?? 'none',
+    discount_amount: invoice.discountAmount ?? 0,
+    tax_amount: invoice.taxAmount ?? 0,
     total: invoice.total,
   };
 
@@ -1510,6 +1580,9 @@ export async function createInvoiceLiveOrDemo(
       invoice_number: string;
       payment_status: string | null;
       subtotal: number;
+      discount_type?: string | null;
+      discount_amount?: number | null;
+      tax_amount?: number | null;
       total: number;
       created_at: string;
       updated_at: string;
@@ -1525,6 +1598,8 @@ export async function createInvoiceLiveOrDemo(
         quantity: item.quantity,
         unit_price: item.unitPrice,
         category: item.category,
+        reference_id: item.referenceId ?? null,
+        reference_type: item.referenceType ?? null,
       })) as never,
     );
 
@@ -1552,10 +1627,13 @@ export async function updateInvoiceLiveOrDemo(
   const client = requireSupabase();
   const invoicePayload = {
     patient_id: invoice.patientId,
-    appointment_id: invoice.appointmentId ?? null,
+    appointment_id: invoice.appointmentId && invoice.appointmentId !== "" ? invoice.appointmentId : null,
     invoice_number: invoice.invoiceNumber,
     payment_status: invoice.paymentStatus,
     subtotal: invoice.subtotal,
+    discount_type: invoice.discountType ?? 'none',
+    discount_amount: invoice.discountAmount ?? 0,
+    tax_amount: invoice.taxAmount ?? 0,
     total: invoice.total,
   };
 
@@ -1587,6 +1665,8 @@ export async function updateInvoiceLiveOrDemo(
         quantity: item.quantity,
         unit_price: item.unitPrice,
         category: item.category,
+        reference_id: item.referenceId ?? null,
+        reference_type: item.referenceType ?? null,
       })) as never,
     );
 
@@ -1603,6 +1683,9 @@ export async function updateInvoiceLiveOrDemo(
       invoice_number: string;
       payment_status: string | null;
       subtotal: number;
+      discount_type?: string | null;
+      discount_amount?: number | null;
+      tax_amount?: number | null;
       total: number;
       created_at: string;
       updated_at: string;
@@ -1767,6 +1850,37 @@ export async function listConsultationsByPatientIdLiveOrDemo(
   return ((data ?? []) as ConsultationRow[]).map(mapConsultation);
 }
 
+export async function listAllConsultationsLiveOrDemo(): Promise<Consultation[]> {
+  if (!isSupabaseConfigured) {
+    return getDatabase().consultations;
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("consultations")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as ConsultationRow[]).map(mapConsultation);
+}
+
+export async function settleConsultationsLiveOrDemo(consultationIds: string[]): Promise<void> {
+  if (!isSupabaseConfigured) {
+    const { settleConsultationsInDemo } = await import("./local-db");
+    settleConsultationsInDemo(consultationIds);
+    return;
+  }
+
+  // Live fallback: store settled IDs in localStorage
+  const existingSettled = getSettledConsultationIds();
+  const nextSettled = Array.from(new Set([...existingSettled, ...consultationIds]));
+  saveSettledConsultationIds(nextSettled);
+}
+
 export async function listPrescriptionsByPatientIdLiveOrDemo(
   patientId: string,
 ): Promise<Prescription[]> {
@@ -1872,7 +1986,7 @@ export async function createConsultationLiveOrDemo(
 
   const client = requireSupabase();
   const payload: Database["public"]["Tables"]["consultations"]["Insert"] = {
-    appointment_id: input.appointmentId ?? null,
+    appointment_id: input.appointmentId || null,
     patient_id: input.patientId,
     doctor_id: input.doctorId,
     consultation_type: input.consultationType,
@@ -2576,8 +2690,8 @@ export async function getCurrentDoctor(userId: string) {
       id: user.id,
       profileId: user.id,
       specialtyId: user.specialtyId ?? null,
-      consultationFee: 0,
-      followUpFee: 0,
+      consultationFee: user.consultationFee ?? 0,
+      followUpFee: user.followUpFee ?? 0,
     };
   }
 
@@ -2906,9 +3020,23 @@ export async function getCurrentProfile(userId: string) {
   }
 
   const accessRoleMap = await getAccessRoleMapForProfiles([profileRow.id]);
-  return mapProfile(profileRow, {
+  const mapped = mapProfile(profileRow, {
     accessRole: accessRoleMap.get(profileRow.id) ?? null,
   });
+
+  if (mapped.role === "doctor" || mapped.role === "specialist") {
+    const { data: docData } = await client
+      .from("doctors")
+      .select("consultation_fee, follow_up_fee")
+      .eq("profile_id", userId)
+      .maybeSingle();
+    if (docData) {
+      mapped.consultationFee = Number(docData.consultation_fee ?? 0);
+      mapped.followUpFee = Number(docData.follow_up_fee ?? 0);
+    }
+  }
+
+  return mapped;
 }
 
 export async function ensureProfileForUser(user: User) {
@@ -4108,9 +4236,30 @@ export async function listUsersLiveOrDemo() {
   const profileIds = profiles.map((profile) => profile.id);
   const accessRoleMap = await getAccessRoleMapForProfiles(profileIds);
 
-  return profiles.map((profile) =>
-    mapProfile(profile, { accessRole: accessRoleMap.get(profile.id) ?? null }),
-  );
+  const { data: doctorsData } = await client
+    .from("doctors")
+    .select("profile_id, consultation_fee, follow_up_fee")
+    .in("profile_id", profileIds);
+
+  const doctorFeesMap = new Map<string, { consultationFee: number; followUpFee: number }>();
+  if (doctorsData) {
+    doctorsData.forEach((d: any) => {
+      doctorFeesMap.set(d.profile_id, {
+        consultationFee: Number(d.consultation_fee ?? 0),
+        followUpFee: Number(d.follow_up_fee ?? 0),
+      });
+    });
+  }
+
+  return profiles.map((profile) => {
+    const mapped = mapProfile(profile, { accessRole: accessRoleMap.get(profile.id) ?? null });
+    const fees = doctorFeesMap.get(profile.id);
+    if (fees) {
+      mapped.consultationFee = fees.consultationFee;
+      mapped.followUpFee = fees.followUpFee;
+    }
+    return mapped;
+  });
 }
 
 async function getAccessRoleMapForProfiles(profileIds: string[]) {
@@ -4361,6 +4510,10 @@ export async function createAdminUserLiveOrDemo(input: AdminCreateUserInput) {
         input.role === "doctor" || input.role === "specialist"
           ? (input.followUpFee ?? 0)
           : null,
+      doctorSharePercentage:
+        input.role === "doctor" || input.role === "specialist"
+          ? (input.doctorSharePercentage ?? 100)
+          : null,
     });
   }
 
@@ -4431,6 +4584,7 @@ export interface AdminUpdateUserInput {
   ptrNumber?: string;
   consultationFee?: number;
   followUpFee?: number;
+  doctorSharePercentage?: number;
 }
 
 export async function updateAdminUserLiveOrDemo(
@@ -4459,6 +4613,10 @@ export async function updateAdminUserLiveOrDemo(
       followUpFee:
         input.role === "doctor" || input.role === "specialist"
           ? (input.followUpFee ?? 0)
+          : null,
+      doctorSharePercentage:
+        input.role === "doctor" || input.role === "specialist"
+          ? (input.doctorSharePercentage ?? 100)
           : null,
     });
 
@@ -4502,6 +4660,7 @@ export async function updateAdminUserLiveOrDemo(
       consultationFee: input.consultationFee ?? 0,
       followUpFee: input.followUpFee ?? 0,
     });
+    saveDoctorSharePercentage(userId, input.doctorSharePercentage ?? 100);
   }
 
   const refreshedProfile = await getCurrentProfile(userId);
@@ -5188,6 +5347,62 @@ export async function getInventoryLogs(
   }));
 }
 
+export async function listInventoryUsageLogsByPatientIdLiveOrDemo(
+  patientId: string,
+): Promise<Array<InventoryUsageLog & { unitPrice?: number; itemIdRaw?: string }>> {
+  if (!isSupabaseConfigured) {
+    const db = getDatabase();
+    return db.inventoryUsageLogs
+      .filter((log) => log.patientId === patientId)
+      .map((log) => {
+        const item = db.inventoryItems.find((i) => i.id === log.itemId || i.name === log.itemId);
+        return {
+          ...log,
+          unitPrice: item ? item.sellingPrice : 0,
+          itemIdRaw: item ? item.id : log.itemId,
+        };
+      });
+  }
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("inventory_usage_logs")
+    .select(
+      `
+      id,
+      created_at,
+      updated_at,
+      quantity,
+      notes,
+      scanned_code,
+      item_id,
+      profiles(full_name),
+      patients:patients(first_name,last_name),
+      inventory_items(name,selling_price),
+      appointments(reason)
+    `,
+    )
+    .eq("patient_id", patientId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    patientId: patientId,
+    appointmentId: row.appointments?.reason,
+    itemId: row.inventory_items?.name || "Unknown Item",
+    itemIdRaw: row.item_id,
+    quantity: row.quantity,
+    notes: row.notes,
+    scannedCode: row.scanned_code,
+    recordedBy: row.profiles?.full_name,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    unitPrice: row.inventory_items?.selling_price ? Number(row.inventory_items.selling_price) : 0,
+  }));
+}
+
 export async function getInventoryLogsCount(): Promise<number> {
   const client = requireSupabase();
   const { count, error } = await client
@@ -5555,5 +5770,91 @@ export async function validatePromoCode(
     expiresAt: row.expires_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+export async function recordInventoryUsageLiveOrDemo(
+  input: Omit<InventoryUsageLog, "id" | "createdAt" | "updatedAt">,
+): Promise<InventoryUsageLog> {
+  if (!isSupabaseConfigured) {
+    const { recordInventoryUsage } = await import("./local-db");
+    return recordInventoryUsage(input);
+  }
+
+  const client = requireSupabase();
+
+  const { data: item, error: fetchError } = await client
+    .from("inventory_items")
+    .select("stock_on_hand, name, unit")
+    .eq("id", input.itemId)
+    .single();
+
+  if (fetchError || !item) {
+    throw new Error("Inventory item not found.");
+  }
+
+  if (input.quantity <= 0) {
+    throw new Error("Quantity used must be at least 1.");
+  }
+
+  if (item.stock_on_hand < input.quantity) {
+    throw new Error(
+      `Only ${item.stock_on_hand} ${item.unit} remaining for ${item.name}.`,
+    );
+  }
+
+  const { data: log, error: logError } = await client
+    .from("inventory_usage_logs")
+    .insert({
+      patient_id: input.patientId,
+      appointment_id: input.appointmentId || null,
+      item_id: input.itemId,
+      quantity: input.quantity,
+      notes: input.notes,
+      scanned_code: input.scannedCode,
+      recorded_by: input.recordedBy,
+    } as any)
+    .select("*")
+    .single();
+
+  if (logError || !log) {
+    throw logError || new Error("Failed to record inventory usage log.");
+  }
+
+  const { error: updateError } = await client
+    .from("inventory_items")
+    .update({
+      stock_on_hand: item.stock_on_hand - input.quantity,
+    } as any)
+    .eq("id", input.itemId);
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  const { error: txError } = await client
+    .from("stock_transactions")
+    .insert({
+      item_id: input.itemId,
+      type: "stock_out",
+      quantity: input.quantity,
+      remarks: `Used for patient ${input.patientId}. ${input.notes}`.trim(),
+    } as any);
+
+  if (txError) {
+    console.error("Failed to insert stock transaction:", txError);
+  }
+
+  return {
+    id: log.id,
+    patientId: log.patient_id,
+    appointmentId: log.appointment_id,
+    itemId: log.item_id,
+    quantity: log.quantity,
+    notes: log.notes,
+    scannedCode: log.scanned_code,
+    recordedBy: log.recorded_by,
+    createdAt: log.created_at,
+    updatedAt: log.updated_at,
   };
 }

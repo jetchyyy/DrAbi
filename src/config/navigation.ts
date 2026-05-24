@@ -184,6 +184,14 @@ export const appNavigation: NavItem[] = [
     moduleKey: "pos",
   },
   {
+    label: "Doctor Payouts",
+    to: "/app/doctor-payouts",
+    icon: Wallet,
+    permission: "appointments.view",
+    roles: ["owner_admin", "doctor", "specialist"],
+    moduleKey: "billing",
+  },
+  {
     label: "Inventory",
     to: "/app/inventory",
     icon: Package2,

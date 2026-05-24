@@ -16,6 +16,9 @@ interface BillingReceiptPrintDocumentInput {
   paymentReference: string | null;
   issuedAt: string;
   subtotal: number;
+  discountType?: string | null;
+  discountAmount?: number | null;
+  taxAmount?: number | null;
   total: number;
   items: BillingReceiptLineItem[];
 }
@@ -361,6 +364,18 @@ export function buildBillingReceiptPrintDocument(
               <span class="total-label">Subtotal</span>
               <span class="total-line">${formatCurrency(input.subtotal)}</span>
             </div>
+            ${input.discountAmount && input.discountAmount > 0 ? `
+            <div class="total-row">
+              <span class="total-label">Discount (${escapeHtml(input.discountType || 'discount')}):</span>
+              <span class="total-line" style="color: #b91c1c;">-${formatCurrency(input.discountAmount)}</span>
+            </div>
+            ` : ''}
+            ${input.taxAmount && input.taxAmount > 0 ? `
+            <div class="total-row">
+              <span class="total-label">Tax / VAT:</span>
+              <span class="total-line">${formatCurrency(input.taxAmount)}</span>
+            </div>
+            ` : ''}
             <div class="total-row">
               <span class="total-label">Total:</span>
               <span class="total-line">${formatCurrency(input.total)}</span>
