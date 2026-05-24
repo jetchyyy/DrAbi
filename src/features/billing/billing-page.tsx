@@ -21,8 +21,6 @@ import { printHtmlDocument } from '../../lib/print';
 import { getDoctorDirectoryLiveOrDemo, listConsultationsByPatientIdLiveOrDemo, listInventoryUsageLogsByPatientIdLiveOrDemo } from '../../lib/supabase-clinic';
 import { formatCurrency } from '../../lib/utils';
 import { labRequestService } from '../lab-requests/api/lab-request-service';
-import type { LabRequestRecord } from '../lab-requests/types';
-import { usePatientLabResults } from '../lab-requests/hooks/use-lab-requests';
 import { PaymentBadge } from './payment-badge';
 import { PaymentUpdateModal } from './components/payment-update-modal';
 import { buildBillingReceiptPrintDocument } from './lib/billing-receipt-print-document';
@@ -421,9 +419,9 @@ export function BillingPage() {
       paymentReference: latestPayment?.referenceNumber ?? null,
       issuedAt: viewedInvoice.createdAt,
       subtotal: viewedInvoice.subtotal,
-      discountType: viewedInvoice.discountType,
-      discountAmount: viewedInvoice.discountAmount,
-      taxAmount: viewedInvoice.taxAmount,
+      discountType: viewedInvoice.discountType ?? undefined,
+      discountAmount: viewedInvoice.discountAmount ?? undefined,
+      taxAmount: viewedInvoice.taxAmount ?? undefined,
       total: viewedInvoice.total,
       items: viewedInvoiceItems.map((item) => ({
         description: item.description,
@@ -724,9 +722,9 @@ export function BillingPage() {
           paymentReference: markAsPaidOnCreate ? referenceOnCreate : null,
           issuedAt: createdInvoice.createdAt,
           subtotal: createdInvoice.subtotal,
-          discountType: createdInvoice.discountType,
-          discountAmount: createdInvoice.discountAmount,
-          taxAmount: createdInvoice.taxAmount,
+          discountType: createdInvoice.discountType ?? undefined,
+          discountAmount: createdInvoice.discountAmount ?? undefined,
+          taxAmount: createdInvoice.taxAmount ?? undefined,
           total: createdInvoice.total,
           items: values.items.map((item) => ({
             description: item.description,

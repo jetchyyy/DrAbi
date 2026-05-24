@@ -5781,7 +5781,7 @@ export async function recordInventoryUsageLiveOrDemo(
     return recordInventoryUsage(input);
   }
 
-  const client = requireSupabase();
+  const client = requireSupabase() as any;
 
   const { data: item, error: fetchError } = await client
     .from("inventory_items")

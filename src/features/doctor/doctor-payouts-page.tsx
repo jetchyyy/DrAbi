@@ -13,7 +13,6 @@ import { Card, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
 import {
-  Wallet,
   TrendingUp,
   Search,
   Users,
@@ -21,11 +20,9 @@ import {
   Clock,
   ArrowLeft,
   DollarSign,
-  Calendar,
-  Filter,
-  ArrowRightLeft
+  Filter
 } from 'lucide-react';
-import type { UserProfile, Consultation, Patient } from '../../types/domain';
+import type { UserProfile, Consultation } from '../../types/domain';
 
 type DatePreset = 'all_time' | 'this_month' | 'last_30_days' | 'custom';
 
@@ -34,7 +31,7 @@ export function DoctorPayoutsPage() {
   const queryClient = useQueryClient();
 
   const isAdmin = profile?.role === 'owner_admin';
-  const doctorProfileId = !isAdmin ? profile?.id : null;
+  const doctorProfileId = !isAdmin ? (profile?.id ?? null) : null;
 
   // Selected doctor ID for Admin drill-down view
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(doctorProfileId);
@@ -536,7 +533,7 @@ export function DoctorPayoutsPage() {
                               pendingConsultations.length > 0 &&
                               selectedConsultationIds.length === pendingConsultations.length
                             }
-                            onChange={handleToggleToggleSelectAll}
+                            onChange={handleToggleSelectAll}
                             disabled={pendingConsultations.length === 0}
                             className="rounded border-slate-300 text-orange-500 focus:ring-orange-500 size-4 cursor-pointer"
                           />
