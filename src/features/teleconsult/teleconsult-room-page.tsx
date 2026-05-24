@@ -9,6 +9,7 @@ import { formatDateTimeLabel } from '../../lib/utils';
 import { useAuth } from '../auth/auth-context';
 import { useAuthorizedTeleconsultAppointment } from './hooks/use-teleconsult';
 import { supabase } from '../../lib/supabase';
+import { TeleconsultDoctorPanel } from './teleconsult-doctor-panel';
 
 type ScriptState = 'loading' | 'ready' | 'error';
 type JitsiApiHandle = { dispose: () => void };
@@ -446,6 +447,7 @@ export function TeleconsultRoomPage() {
     }
   };
 
+  const isDoctor = profile?.role === 'doctor';
   const backPath = profile?.role === 'patient' ? '/portal/my-bookings' : '/app/appointments';
 
   if (isLoading) {
@@ -479,7 +481,11 @@ export function TeleconsultRoomPage() {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[0.34fr_1fr]">
+    <div className={`grid gap-6 ${
+      isDoctor
+        ? 'xl:grid-cols-[280px_1fr_420px]'
+        : 'xl:grid-cols-[280px_1fr]'
+    }`}>
       <Card className="h-fit">
         <Badge intent="info">Secure teleconsult</Badge>
         <CardTitle className="mt-4 text-2xl">{appointment.serviceName}</CardTitle>
@@ -514,8 +520,8 @@ export function TeleconsultRoomPage() {
                 {teleconsultMode === 'custom_webrtc' ? 'In-house Secure Call' : 'In-app teleconsult room'}
               </p>
               <p className="text-sm text-slate-500">
-                {teleconsultMode === 'custom_webrtc' 
-                  ? 'Private, peer-to-peer encrypted connection.' 
+                {teleconsultMode === 'custom_webrtc'
+                  ? 'Private, peer-to-peer encrypted connection.'
                   : 'Only authenticated participants assigned to this appointment can enter.'}
               </p>
             </div>
@@ -577,7 +583,11 @@ export function TeleconsultRoomPage() {
 
                 <button
                   onClick={joinCall}
-                  className="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white px-6 py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-150 shadow-lg flex items-center gap-2"
+                  className="active:scale-95 text-white px-6 py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-150 shadow-lg flex items-center gap-2 hover:brightness-95"
+                  style={{
+                    backgroundColor: 'var(--color-primary)',
+                    boxShadow: '0 8px 20px -6px color-mix(in srgb, var(--color-primary) 50%, transparent)',
+                  }}
                 >
                   <Video className="size-4 animate-pulse" />
                   Join Secure Call
@@ -658,7 +668,7 @@ export function TeleconsultRoomPage() {
 
                 {/* Users Count Status */}
                 <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md border border-slate-800 px-3 py-1 rounded-lg flex items-center gap-2 text-xs font-semibold text-slate-300">
-                  <Users className="size-3 text-emerald-500" />
+                  <Users className="size-3" style={{ color: 'var(--color-primary)' }} />
                   <span>{Object.keys(peers).length + 1} online</span>
                 </div>
               </div>
@@ -682,6 +692,13 @@ export function TeleconsultRoomPage() {
           </div>
         )}
       </Card>
+
+      {/* ── DOCTOR CLINICAL PANEL ── */}
+      {isDoctor && (
+        <div className="h-fit">
+          <TeleconsultDoctorPanel appointment={appointment} />
+        </div>
+      )}
     </div>
   );
 }

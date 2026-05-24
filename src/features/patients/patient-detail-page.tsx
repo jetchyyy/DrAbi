@@ -641,6 +641,7 @@ export function PatientDetailPage() {
     testName: "",
     instruction: "",
   });
+  const [labRequestConsultationId, setLabRequestConsultationId] = useState("");
   const [
     isViewingLatestLabRequestDocumentFile,
     setIsViewingLatestLabRequestDocumentFile,
@@ -2076,7 +2077,7 @@ export function PatientDetailPage() {
     try {
       await createLabRequestDocument.mutateAsync({
         patientId: patient.id,
-        consultationId: null,
+        consultationId: labRequestConsultationId.trim() || null,
         requestedBy: profile?.id ?? null,
         targetLaboratory: "",
         requestedTests: requestedTestsText,
@@ -2092,6 +2093,7 @@ export function PatientDetailPage() {
     setShowLabRequestDocumentStatusModal(true);
     setPendingLabTests([]);
     setDraftLabTest({ testName: "", instruction: "" });
+    setLabRequestConsultationId("");
   };
 
   const handleViewLatestLabRequestDocumentFile = () => {
@@ -5181,6 +5183,21 @@ export function PatientDetailPage() {
                     void handleCreateLabRequestDocument();
                   }}
                 >
+                  <FormField label="Consultation record (optional)">
+                    <Select
+                      value={labRequestConsultationId}
+                      onChange={(e) => setLabRequestConsultationId(e.target.value)}
+                    >
+                      <option value="">Select consultation (optional)</option>
+                      {consultations.map((consultation) => (
+                        <option key={consultation.id} value={consultation.id}>
+                          {consultation.consultationDate}{" "}
+                          {consultation.consultationTime} -{" "}
+                          {consultation.diagnosis || consultation.consultationType}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormField>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-semibold text-slate-700">

@@ -359,13 +359,8 @@ export function AppointmentsPage() {
     }
 
     if (availableTimeSlots.length === 0) {
-      if (!isEditingCurrentScheduledAt && scheduledAtValue) {
-        form.setValue("scheduledAt", "", {
-          shouldDirty: true,
-          shouldTouch: true,
-          shouldValidate: true,
-        });
-      }
+      // Schedule controls are hidden in this modal; keep the existing required
+      // value so submit is not silently blocked when no same-day slots remain.
       return;
     }
 

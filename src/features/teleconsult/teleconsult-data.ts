@@ -42,6 +42,7 @@ export interface TeleconsultAppointmentSummary {
   id: string;
   scheduledAt: string;
   status: Appointment["status"];
+  patientId: string | null;
   patientName: string;
   doctorName: string;
   serviceName: string;
@@ -167,6 +168,7 @@ function buildTeleconsultSummary(
     id: appointment.id,
     scheduledAt: appointment.scheduledAt,
     status: appointment.status,
+    patientId: appointment.patientId || null,
     patientName,
     doctorName,
     serviceName,
