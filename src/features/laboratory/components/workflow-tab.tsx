@@ -1438,7 +1438,6 @@ export function WorkflowTab() {
           request={resultEntryRequest}
           open={Boolean(resultEntryRequest)}
           onClose={() => setResultEntryRequest(null)}
-          onCompleted={() => setResultEntryRequest(null)}
         />
       )}
 

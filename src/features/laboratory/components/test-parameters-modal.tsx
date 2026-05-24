@@ -26,7 +26,7 @@ import {
   createReagentLink,
   deleteReagentLink,
 } from '../lis-service';
-import type { LabTestParameter, LabParameterDataType, LabReagentLink } from '../lis-types';
+import type { LabTestParameter, LabParameterDataType } from '../lis-types';
 
 interface TestParametersModalProps {
   serviceId: string;

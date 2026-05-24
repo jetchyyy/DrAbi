@@ -9,14 +9,13 @@ import { Select } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
 import { cn } from '../../../lib/utils';
 import { listTestParameters, listResultEntries, saveResultEntry, computeAbnormalFlag, insertAuditEntry, getAccession, createAccession } from '../lis-service';
-import type { LabTestParameter, LabResultEntry, AbnormalFlag } from '../lis-types';
+import type { AbnormalFlag } from '../lis-types';
 import type { LabRequestRecord } from '../../lab-requests/types';
 
 interface ResultEntryModalProps {
   request: LabRequestRecord;
   open: boolean;
   onClose: () => void;
-  onCompleted?: () => void;
 }
 
 interface FeedbackState {
@@ -47,7 +46,7 @@ const SPECIMEN_TYPES = [
   'Synovial Fluid', 'Other',
 ];
 
-export function ResultEntryModal({ request, open, onClose, onCompleted }: ResultEntryModalProps) {
+export function ResultEntryModal({ request, open, onClose }: ResultEntryModalProps) {
   const qc = useQueryClient();
   const [resultValues, setResultValues] = useState<Map<string, ResultValue>>(new Map());
   const [feedback, setFeedback] = useState<FeedbackState>({ open: false, title: '', message: '', variant: 'success' });
