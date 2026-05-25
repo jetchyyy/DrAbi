@@ -47,6 +47,8 @@ import { SettingsPromoCodesPage } from "../features/settings/settings-promo-code
 import { NotFoundPage } from "../features/shared/not-found-page";
 import { OdcPage } from "../features/shared/odc-page";
 import { TeleconsultRoomPage } from "../features/teleconsult/teleconsult-room-page";
+import { DoctorMeetingsPage } from "../features/teleconsult/doctor-meetings-page";
+import { DoctorMeetingRoomPage } from "../features/teleconsult/doctor-meeting-room-page";
 import { ModuleGate, PermissionGate, ProtectedRoute } from "./guards";
 import { SystemAvailabilityGate } from "./system-availability-gate";
 import { DoctorWorkflowPage } from "../features/workflows/doctor-workflow-page";
@@ -320,6 +322,14 @@ export const router = createBrowserRouter([
                   {
                     path: "teleconsult/:appointmentId",
                     element: <TeleconsultRoomPage />,
+                  },
+                  {
+                    path: "meetings",
+                    element: <DoctorMeetingsPage />,
+                  },
+                  {
+                    path: "meetings/:meetingId",
+                    element: <DoctorMeetingRoomPage />,
                   },
                 ],
               },

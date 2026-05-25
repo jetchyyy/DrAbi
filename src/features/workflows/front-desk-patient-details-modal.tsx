@@ -1170,15 +1170,50 @@ export function FrontDeskPatientDetailsModal({
                   </FormField>
                 ) : null}
 
-                <FormField
-                  error={billingForm.formState.errors.paymentStatus?.message}
-                  label="Payment Status"
-                >
-                  <Select {...billingForm.register("paymentStatus")}>
-                    <option value="unpaid">Unpaid</option>
-                    <option value="paid">Paid</option>
-                  </Select>
-                </FormField>
+                {/* Hidden paymentStatus field keeps RHF registration */}
+                <input type="hidden" {...billingForm.register("paymentStatus")} />
+
+                <div>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    Payment
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      className={cn(
+                        "rounded-xl border px-4 py-3 text-left transition-colors",
+                        billingPaymentStatus === "paid"
+                          ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,white)]"
+                          : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white",
+                      )}
+                      onClick={() => billingForm.setValue("paymentStatus", "paid")}
+                      type="button"
+                    >
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-600">
+                        Collect Now
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Patient pays at the counter today.
+                      </p>
+                    </button>
+                    <button
+                      className={cn(
+                        "rounded-xl border px-4 py-3 text-left transition-colors",
+                        billingPaymentStatus === "unpaid"
+                          ? "border-slate-400 bg-slate-100"
+                          : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white",
+                      )}
+                      onClick={() => billingForm.setValue("paymentStatus", "unpaid")}
+                      type="button"
+                    >
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-600">
+                        Pay Later
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Save invoice now, collect payment later.
+                      </p>
+                    </button>
+                  </div>
+                </div>
 
                 {billingPaymentStatus === "paid" ? (
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -1344,18 +1379,19 @@ export function FrontDeskPatientDetailsModal({
 
                 <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
                   <Button
-                    className="gap-2 rounded-none bg-emerald-600 hover:bg-emerald-700"
+                    className="gap-2"
                     disabled={
                       createInvoiceMutation.isPending || updateInvoiceMutation.isPending
                     }
                     type="submit"
+                    variant="primary"
                   >
                     <Save className="size-4" />
                     {createInvoiceMutation.isPending || updateInvoiceMutation.isPending
                       ? "Saving..."
                       : activeInvoice
-                        ? "Update Billing"
-                        : "Create Invoice"}
+                        ? billingPaymentStatus === "paid" ? "Update & Mark Paid" : "Update Invoice"
+                        : billingPaymentStatus === "paid" ? "Collect & Create Invoice" : "Save as Unpaid"}
                   </Button>
                   <Button
                     className="gap-2 rounded-none"

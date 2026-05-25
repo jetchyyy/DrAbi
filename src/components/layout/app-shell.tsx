@@ -53,7 +53,8 @@ function getNavigationSection(item: NavItem): NavigationSection {
   // Workflow pages
   if (
     item.to === "/app/front-desk-workflow" ||
-    item.to === "/app/doctor-workflow"
+    item.to === "/app/doctor-workflow" ||
+    item.to === "/app/meetings"
   ) {
     return "Workflows";
   }

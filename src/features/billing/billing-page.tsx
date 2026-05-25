@@ -289,6 +289,22 @@ export function BillingPage() {
 
   const totalUnbilledCount = unbilledConsultations.length + unbilledInventoryLogs.length + unbilledLabRequests.length;
 
+  const importAllUnbilled = () => {
+    unbilledConsultations.forEach((c) => {
+      const matchedDoctor = doctors.find((d: any) => d.id === c.doctorId);
+      const fee = matchedDoctor?.consultationFee ?? 800;
+      itemsFieldArray.append({ description: `Consultation - ${c.consultationType} (Dr. ${matchedDoctor?.fullName ?? c.providerName ?? 'Staff'})`, category: 'consultation', quantity: 1, unitPrice: fee, referenceId: c.id, referenceType: 'consultation' });
+    });
+    unbilledLabRequests.forEach((req) => {
+      const matchedService = labServiceOptions.find((s: any) => s.id === req.serviceId || s.name === req.serviceName);
+      itemsFieldArray.append({ description: `Laboratory - ${req.serviceName || 'Service'}`, category: 'laboratory', quantity: 1, unitPrice: matchedService?.serviceFee ?? 0, referenceId: req.id, referenceType: 'lab_order' });
+    });
+    unbilledInventoryLogs.forEach((log) => {
+      itemsFieldArray.append({ description: `Item - ${log.itemId} (Qty: ${log.quantity})`, category: 'medicine', quantity: log.quantity, unitPrice: log.unitPrice ?? 0, referenceId: log.id, referenceType: 'inventory_usage' });
+    });
+    toast.success(`${totalUnbilledCount} item${totalUnbilledCount !== 1 ? 's' : ''} imported`);
+  };
+
   const importConsultation = (c: any) => {
     const doctorId = c.doctorId;
     const matchedDoctor = doctors.find((d) => d.id === doctorId);
@@ -895,11 +911,20 @@ export function BillingPage() {
           </div>
           <div className={cn(INTERNAL_SURFACE_FOOTER, 'flex flex-wrap items-center gap-2 px-6 py-2.5')}>
             <span className="text-xs font-medium text-slate-500">{filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''} found</span>
+            <button
+              className={cn(
+                'rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 transition',
+                search === 'unpaid'
+                  ? 'bg-slate-800 text-white ring-slate-700'
+                  : 'bg-slate-100 text-slate-600 ring-slate-200 hover:bg-slate-200',
+              )}
+              onClick={() => { setSearch(search === 'unpaid' ? '' : 'unpaid'); setCurrentPage(1); }}
+              type="button"
+            >
+              {invoiceSummary.unpaid} outstanding
+            </button>
             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">
               {invoiceSummary.paid} paid
-            </span>
-            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">
-              {invoiceSummary.unpaid} unpaid
             </span>
             {invoiceSummary.partial > 0 ? (
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">
@@ -912,7 +937,7 @@ export function BillingPage() {
                 onClick={() => { setSearch(''); setCurrentPage(1); }}
                 type="button"
               >
-                Reset filter
+                Clear filter
               </button>
             ) : null}
           </div>
@@ -1244,14 +1269,24 @@ export function BillingPage() {
 
                 {selectedPatientId && totalUnbilledCount > 0 ? (
                   <div className="space-y-4 border-t border-slate-100 px-4 py-5 sm:px-6 bg-slate-50/60">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-600">Unbilled Items Detected</p>
                         <p className="text-xs text-slate-500">Completed consultations, lab orders, or supplies not yet added to this invoice.</p>
                       </div>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
-                        {totalUnbilledCount} items
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                          {totalUnbilledCount} items
+                        </span>
+                        <Button
+                          className="text-[10px] px-3 py-1.5 h-auto"
+                          onClick={importAllUnbilled}
+                          type="button"
+                          variant="primary"
+                        >
+                          Import All
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="space-y-2.5 max-h-48 overflow-y-auto">

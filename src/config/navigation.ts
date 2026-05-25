@@ -24,6 +24,7 @@ import {
   Wallet,
   Receipt,
   Ticket,
+  Video,
 } from "lucide-react";
 
 import type { ModuleKey, Permission, Role } from "../types/domain";
@@ -68,6 +69,14 @@ export const appNavigation: NavItem[] = [
     permission: "appointments.view",
     roles: ["owner_admin", "front_desk_cashier"],
     moduleKey: "booking_appointments",
+  },
+  {
+    label: "Meetings",
+    to: "/app/meetings",
+    icon: Video,
+    permission: "consultations.manage",
+    roles: ["owner_admin", "doctor"],
+    moduleKey: "teleconsult",
   },
 
   // ── Patients ──────────────────────────────────────────────
