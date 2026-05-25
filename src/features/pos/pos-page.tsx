@@ -656,14 +656,12 @@ export function PosPage() {
       <div className="border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 bg-orange-600 p-2.5 text-white">
-              <ShoppingCart className="size-5" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+              <ShoppingCart className="size-5" style={{color:'var(--color-primary)'}} />
             </div>
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
-                Point of Sale
-              </p>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-950">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Point of Sale</p>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">
                 Inventory-based Checkout
               </h1>
               <p className="mt-1 text-sm text-slate-500">
@@ -673,7 +671,7 @@ export function PosPage() {
             </div>
           </div>
           <div className="inline-flex items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700">
-            <CircleDashed className="size-4 text-orange-600" />
+            <CircleDashed className="size-4 text-[var(--color-primary)]" />
             <span>{cameraStatusLabel}</span>
           </div>
         </div>
@@ -807,7 +805,7 @@ export function PosPage() {
             ) : null}
 
             {lookupError ? (
-              <div className="mt-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <div className="mt-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                 <AlertCircle className="mt-0.5 size-4 shrink-0" />
                 <p>{lookupError}</p>
               </div>
@@ -846,9 +844,9 @@ export function PosPage() {
                           <p
                             className={`mt-0.5 text-[10px] font-semibold ${
                               outOfStock
-                                ? "text-rose-500"
+                                ? "text-red-500"
                                 : item.stockOnHand <= item.reorderLevel
-                                  ? "text-amber-500"
+                                  ? "text-yellow-500"
                                   : "text-emerald-600"
                             }`}
                           >
@@ -874,14 +872,14 @@ export function PosPage() {
                   Cart
                 </p>
                 {cart.length > 0 ? (
-                  <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-bold text-orange-700">
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                     {cart.length} line{cart.length !== 1 ? "s" : ""}
                   </span>
                 ) : null}
               </div>
               {cart.length > 0 ? (
                 <button
-                  className="text-xs font-semibold text-slate-400 transition hover:text-rose-600"
+                  className="text-xs font-semibold text-slate-400 transition hover:text-red-600"
                   onClick={() => setCart([])}
                   type="button"
                 >
@@ -938,7 +936,7 @@ export function PosPage() {
                           <span
                             className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                               entry.item.stockOnHand <= entry.item.reorderLevel
-                                ? "bg-rose-100 text-rose-700"
+                                ? "bg-red-100 text-red-700"
                                 : "bg-emerald-100 text-emerald-700"
                             }`}
                           >
@@ -971,7 +969,7 @@ export function PosPage() {
                         <td className="py-3 pl-3 text-right">
                           <button
                             aria-label={`Remove ${entry.item.name}`}
-                            className="text-slate-300 transition hover:text-rose-500"
+                            className="text-slate-300 transition hover:text-red-500"
                             onClick={() =>
                               setCart((currentCart) =>
                                 currentCart.filter(
@@ -1057,7 +1055,7 @@ export function PosPage() {
                       <button
                         className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${
                           !patientId
-                            ? "bg-orange-50 text-orange-800"
+                            ? "bg-slate-100 text-slate-700"
                             : "text-slate-700"
                         }`}
                         onMouseDown={() => selectCustomer("")}
@@ -1070,7 +1068,7 @@ export function PosPage() {
                           <button
                             className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${
                               patientId === patient.id
-                                ? "bg-orange-50 text-orange-800"
+                                ? "bg-slate-100 text-slate-700"
                                 : "text-slate-700"
                             }`}
                             key={patient.id}
@@ -1132,7 +1130,7 @@ export function PosPage() {
                     ? "Cash notes"
                     : "Payment reference"}
                   {paymentReferenceRequired ? (
-                    <span className="ml-1 text-rose-500">*</span>
+                    <span className="ml-1 text-red-500">*</span>
                   ) : null}
                 </label>
                 <Input
@@ -1223,19 +1221,19 @@ export function PosPage() {
             className="w-full max-w-md border border-slate-200 bg-white shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-3 bg-orange-600 px-5 py-4 text-white">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-5">
               <div>
-                <p className="text-[11px] font-extrabold uppercase tracking-widest text-orange-100">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                   Add to cart
                 </p>
-                <p className="mt-1 text-sm font-bold">{pendingItem.name}</p>
-                <p className="text-xs text-orange-100">
+                <p className="mt-1 text-base font-bold text-slate-900">{pendingItem.name}</p>
+                <p className="text-xs text-slate-500">
                   {formatCurrency(pendingItem.sellingPrice)} each · {pendingItem.stockOnHand} {pendingItem.unit} available
                 </p>
               </div>
               <button
                 aria-label="Close quantity modal"
-                className="border border-orange-200/40 bg-white/10 p-1.5 text-white transition hover:bg-white/20"
+                className="border border-slate-200 p-1.5 text-slate-500 transition hover:bg-slate-50"
                 onClick={closeQuantityModal}
                 type="button"
               >

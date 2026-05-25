@@ -163,8 +163,8 @@ export function SettingsSupportPage() {
         <div className="border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="shrink-0 bg-orange-600 p-2.5 text-white">
-                <Boxes className="size-5" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+                <Boxes className="size-5" style={{color:'var(--color-primary)'}} />
               </div>
               <div>
                 <h1 className="text-xl font-extrabold tracking-tight text-slate-950">Supplier Management</h1>
@@ -172,7 +172,7 @@ export function SettingsSupportPage() {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Button className="rounded-none bg-orange-600 px-4 py-2.5 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700" onClick={openCreateModal}>
+              <Button variant="primary" onClick={openCreateModal}>
                 <Plus className="mr-2 size-4" />
                 Add supplier
               </Button>
@@ -255,12 +255,12 @@ Email: ${clinic.email}`} />
       {isSupplierModalOpen ? (
         <div aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4 sm:p-6" onClick={closeSupplierModal} role="dialog">
           <div className="my-auto flex w-full max-w-xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <div className="bg-orange-600 px-6 py-4 flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">Supplier Form</p>
-                <p className="text-sm font-bold text-white mt-0.5">{editingSupplierId ? 'Edit supplier' : 'Add supplier'}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Settings</p>
+                <h2 className="mt-1 text-base font-bold text-slate-900">{editingSupplierId ? 'Edit supplier' : 'Add supplier'}</h2>
               </div>
-              <button aria-label="Close supplier modal" className="inline-flex items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20" onClick={closeSupplierModal} type="button">
+              <button aria-label="Close supplier modal" className="inline-flex shrink-0 items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50" onClick={closeSupplierModal} type="button">
                 <X className="size-4" />
               </button>
             </div>
@@ -280,8 +280,8 @@ Email: ${clinic.email}`} />
                 </FormField>
               </div>
               <div className="pt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <Button className="w-full rounded-none sm:w-auto" onClick={closeSupplierModal} type="button" variant="secondary">Cancel</Button>
-                <Button className="w-full rounded-none bg-orange-600 hover:bg-orange-700 sm:w-auto" disabled={createSupplierMutation.isPending || updateSupplierMutation.isPending} type="submit">
+                <Button className="w-full sm:w-auto" onClick={closeSupplierModal} type="button" variant="tertiary">Cancel</Button>
+                <Button className="w-full sm:w-auto" variant="primary" disabled={createSupplierMutation.isPending || updateSupplierMutation.isPending} type="submit">
                   {createSupplierMutation.isPending || updateSupplierMutation.isPending ? 'Saving...' : editingSupplierId ? 'Save Supplier' : 'Add Supplier'}
                 </Button>
               </div>

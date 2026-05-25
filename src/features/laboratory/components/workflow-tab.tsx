@@ -956,12 +956,12 @@ export function WorkflowTab() {
             <span className="text-xs text-slate-400">{workflowModeLabel}</span>
           </div>
           {!isSupabaseConfigured ? (
-            <div className="border-t border-amber-200 bg-amber-50 px-6 py-3 text-xs font-semibold text-amber-700">
+            <div className="border-t border-slate-200 bg-slate-50 px-6 py-3 text-xs font-semibold text-slate-600">
               Supabase is not configured. This screen requires VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.
             </div>
           ) : null}
           {clinicsError ? (
-            <div className="border-t border-rose-200 bg-rose-50 px-6 py-3 text-xs font-semibold text-rose-700">
+            <div className="border-t border-red-100 bg-red-50 px-6 py-3 text-xs font-semibold text-red-600">
               Unable to load clinic scope: {clinicsError instanceof Error ? clinicsError.message : 'Unknown clinics query error.'}
             </div>
           ) : null}
@@ -993,7 +993,7 @@ export function WorkflowTab() {
                   ) : null}
                 </div>
                 {intakeCameraMessage ? <p className="text-xs text-slate-500">{intakeCameraMessage}</p> : null}
-                {intakeCameraError ? <p className="text-xs text-rose-600">{intakeCameraError}</p> : null}
+                {intakeCameraError ? <p className="text-xs text-red-600">{intakeCameraError}</p> : null}
                 {isIntakeCameraOpen ? (
                   <div className="overflow-hidden border border-slate-200 bg-black">
                     <video className="aspect-video w-full object-cover" muted playsInline ref={intakeVideoRef} />
@@ -1048,7 +1048,7 @@ export function WorkflowTab() {
                         <td className={INTERNAL_TD}>
                           <div className="flex items-center gap-2">
                             <p className="font-bold text-sm text-slate-950">{order.serviceName ?? order.serviceCategory}</p>
-                            {order.urgentFlag ? <AlertTriangle className="size-3.5 text-rose-500" /> : null}
+                            {order.urgentFlag ? <AlertTriangle className="size-3.5 text-red-500" /> : null}
                           </div>
                           {order.patientNotes ? <p className="mt-1 text-xs italic text-slate-400">{order.patientNotes}</p> : null}
                         </td>
@@ -1063,7 +1063,7 @@ export function WorkflowTab() {
                             'rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ring-1',
                             order.paymentStatus === 'paid'
                               ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
-                              : 'bg-rose-50 text-rose-700 ring-rose-100',
+                              : 'bg-slate-100 text-slate-600 ring-slate-200',
                           )}>
                             {order.paymentStatus === 'paid' ? 'Paid' : 'Pending'}
                           </span>
@@ -1101,7 +1101,7 @@ export function WorkflowTab() {
                                 </button>
                                 {order.status === 'completed' && (
                                   <button
-                                    className="inline-flex items-center gap-1 text-sky-600 hover:underline"
+                                    className="inline-flex items-center gap-1 text-[var(--color-primary)] hover:underline"
                                     onClick={() => void handlePrintReport(order)}
                                     type="button"
                                   >
@@ -1109,7 +1109,7 @@ export function WorkflowTab() {
                                     Report
                                   </button>
                                 )}
-                                <button className="inline-flex items-center gap-1 text-rose-600 hover:underline" onClick={() => void handleDeleteOrder(order.id)} type="button">
+                                <button className="inline-flex items-center gap-1 text-red-600 hover:underline" onClick={() => void handleDeleteOrder(order.id)} type="button">
                                   <Trash2 className="size-3.5" />
                                   Cancel
                                 </button>
@@ -1176,7 +1176,7 @@ export function WorkflowTab() {
                       className={cn(
                         'inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide',
                         form.getValues('urgentFlag')
-                          ? 'bg-rose-500/25 text-rose-100 ring-1 ring-rose-300/40'
+                          ? 'bg-red-500/25 text-red-100 ring-1 ring-red-300/40'
                           : 'bg-white/15 text-emerald-50 ring-1 ring-white/20',
                       )}
                     >
@@ -1357,7 +1357,7 @@ export function WorkflowTab() {
                   ) : null}
                   {!isLabStaffProcessingExistingOrder ? (
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" className="accent-rose-500" {...form.register('urgentFlag')} />
+                      <input type="checkbox" className="accent-red-500" {...form.register('urgentFlag')} />
                       <span className="text-sm font-medium text-slate-700">Mark as urgent</span>
                     </label>
                   ) : null}
@@ -1419,7 +1419,7 @@ export function WorkflowTab() {
                 <video className="h-auto w-full" muted playsInline ref={videoPreviewRef} />
               </div>
               {cameraError ? (
-                <p className="text-sm font-medium text-rose-600">{cameraError}</p>
+                <p className="text-sm font-medium text-red-600">{cameraError}</p>
               ) : null}
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <Button className="w-full sm:w-auto" onClick={closeCameraModal} type="button" variant="tertiary">

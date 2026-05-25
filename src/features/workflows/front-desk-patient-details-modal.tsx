@@ -813,9 +813,9 @@ export function FrontDeskPatientDetailsModal({
           className="flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="flex items-start justify-between gap-4 border-b border-orange-100 bg-orange-50 px-6 py-5">
+          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
             <div className="min-w-0">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Front Desk Patient Details
               </p>
               <h2 className="mt-1 text-lg font-extrabold text-slate-950">
@@ -840,8 +840,8 @@ export function FrontDeskPatientDetailsModal({
               <form className="space-y-5" onSubmit={handleSavePatient}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <UserRound className="size-4 text-orange-600" />
-                    <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
+                    <UserRound className="size-4" style={{color:'var(--color-primary)'}} />
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                       Patient Information
                     </p>
                   </div>

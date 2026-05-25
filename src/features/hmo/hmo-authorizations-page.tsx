@@ -104,7 +104,7 @@ export function HmoAuthorizationsPage() {
       <section className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}>
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 rounded-xl bg-teal-600 p-2.5 text-white"><FileText className="size-5" /></div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}><FileText className="size-5" style={{color:'var(--color-primary)'}} /></div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">HMO Management</p>
               <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Authorizations</h1>

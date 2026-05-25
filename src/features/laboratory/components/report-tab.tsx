@@ -169,10 +169,10 @@ export function ReportTab() {
   }, [requests]);
 
   const STATUS_COLORS: Record<string, string> = {
-    Pending: 'bg-orange-400',
-    Confirmed: 'bg-sky-400',
+    Pending: 'bg-slate-400',
+    Confirmed: 'bg-slate-500',
     Completed: 'bg-emerald-500',
-    Cancelled: 'bg-rose-400',
+    Cancelled: 'bg-red-400',
   };
 
   const totalRequests = requests.length;
@@ -223,10 +223,10 @@ export function ReportTab() {
         {/* Abnormal Rate */}
         <div className={INTERNAL_SURFACE_PADDING}>
           <div className="flex items-center gap-1.5">
-            <AlertTriangle className="size-3.5 text-amber-600" />
+            <AlertTriangle className="size-3.5 text-slate-500" />
             <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-700">Abnormal Rate</p>
           </div>
-          <p className="mt-2 text-3xl font-bold tabular-nums text-amber-700">{abnormalRate}%</p>
+          <p className="mt-2 text-3xl font-bold tabular-nums text-slate-900">{abnormalRate}%</p>
           <p className="mt-1 text-xs text-slate-500">{abnormalData.abnormal} of {abnormalData.total} results</p>
         </div>
       </div>
@@ -235,7 +235,7 @@ export function ReportTab() {
       <div className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
         <div className="border-b border-slate-100/90 px-6 py-4">
           <div className="flex items-center gap-2">
-            <Clock className="size-4 text-sky-600" />
+            <Clock className="size-4 text-slate-500" />
             <p className="font-extrabold text-sm uppercase tracking-wide text-slate-950">Turnaround Time (TAT) Analytics</p>
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5">Average time from lab order creation to completion</p>
@@ -243,7 +243,7 @@ export function ReportTab() {
         <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-4">
           <div className="text-center">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Average TAT</p>
-            <p className="mt-1 text-2xl font-bold text-sky-700">{tatMetrics.count > 0 ? formatMinutes(tatMetrics.avg) : '—'}</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{tatMetrics.count > 0 ? formatMinutes(tatMetrics.avg) : '—'}</p>
           </div>
           <div className="text-center">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Fastest</p>
@@ -251,7 +251,7 @@ export function ReportTab() {
           </div>
           <div className="text-center">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Slowest</p>
-            <p className="mt-1 text-2xl font-bold text-rose-700">{tatMetrics.count > 0 ? formatMinutes(tatMetrics.max) : '—'}</p>
+            <p className="mt-1 text-2xl font-bold text-red-600">{tatMetrics.count > 0 ? formatMinutes(tatMetrics.max) : '—'}</p>
           </div>
           <div className="text-center">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Completed Tests</p>
@@ -268,12 +268,12 @@ export function ReportTab() {
                 title={`Min: ${formatMinutes(tatMetrics.min)}`}
               />
               <div
-                className="h-full bg-sky-500"
+                className="h-full bg-green-500"
                 style={{ width: `${Math.min(100, ((tatMetrics.avg - tatMetrics.min) / tatMetrics.max) * 100)}%` }}
                 title={`Avg: ${formatMinutes(tatMetrics.avg)}`}
               />
               <div
-                className="h-full bg-rose-400 flex-1"
+                className="h-full bg-red-400 flex-1"
                 title={`Max: ${formatMinutes(tatMetrics.max)}`}
               />
             </div>

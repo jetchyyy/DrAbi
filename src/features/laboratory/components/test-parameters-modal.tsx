@@ -416,7 +416,7 @@ export function TestParametersModal({ serviceId, serviceName, open, onClose }: T
                                   <button className="inline-flex items-center gap-1 text-slate-600 hover:underline" onClick={() => openEditForm(param)} type="button">
                                     <Pencil className="size-3.5" /> Edit
                                   </button>
-                                  <button className="inline-flex items-center gap-1 text-rose-600 hover:underline" onClick={() => { if (window.confirm('Remove this parameter?')) deleteMutation.mutate(param.id); }} type="button">
+                                  <button className="inline-flex items-center gap-1 text-red-600 hover:underline" onClick={() => { if (window.confirm('Remove this parameter?')) deleteMutation.mutate(param.id); }} type="button">
                                     <Trash2 className="size-3.5" /> Remove
                                   </button>
                                 </div>
@@ -486,7 +486,7 @@ export function TestParametersModal({ serviceId, serviceName, open, onClose }: T
                               <td className={cn(INTERNAL_TD, 'text-sm text-slate-900 font-mono')}>{link.quantityPerTest}</td>
                               <td className={cn(INTERNAL_TD, 'text-right')}>
                                 <button
-                                  className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-rose-600 hover:underline"
+                                  className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-red-600 hover:underline"
                                   onClick={() => { if (window.confirm('Unlink this reagent?')) removeReagentMutation.mutate(link.id); }}
                                   type="button"
                                 >

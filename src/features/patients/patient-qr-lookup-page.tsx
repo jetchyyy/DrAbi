@@ -96,7 +96,7 @@ function PatientSearchResultRow({
       <div className="flex shrink-0 items-center gap-3">
         {paymentBadge}
         {isPending ? null : (
-          <span className="text-xs font-semibold text-orange-600">View chart →</span>
+          <span className="text-xs font-semibold" style={{color:'var(--color-primary)'}}>View chart →</span>
         )}
       </div>
     </div>
@@ -112,7 +112,7 @@ function PatientSearchResultRow({
 
   return (
     <Link
-      className="block border-b border-slate-100 transition hover:bg-orange-50 last:border-b-0"
+      className="block border-b border-slate-100 transition hover:bg-slate-50 last:border-b-0"
       to={`/app/patients/${patient.id}`}
     >
       {content}
@@ -440,7 +440,7 @@ export function PatientQrLookupPage() {
           <div className="space-y-4">
             <Card>
               <CardTitle>Search patients by name</CardTitle>
-              <div className="mt-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
+              <div className="mt-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-100 transition-all">
                 <Search className="size-4 shrink-0 text-slate-400" />
                 <input
                   autoFocus

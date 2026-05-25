@@ -666,8 +666,8 @@ function PrescriptionTab({
   return (
     <div className="space-y-4">
       {!linkedConsultation && (
-        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-          <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+        <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+          <AlertCircle className="mt-0.5 size-4 shrink-0 text-slate-400" />
           Save a consultation first to link this prescription to the visit.
         </div>
       )}
@@ -834,8 +834,8 @@ function MedicalCertificateTab({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       {!linkedConsultation && (
-        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-          <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+        <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+          <AlertCircle className="mt-0.5 size-4 shrink-0 text-slate-400" />
           Save a consultation first to link this certificate.
         </div>
       )}
@@ -979,8 +979,8 @@ function LabRequestDocumentTab({
   return (
     <div className="space-y-4">
       {!linkedConsultation && (
-        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-          <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+        <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+          <AlertCircle className="mt-0.5 size-4 shrink-0 text-slate-400" />
           Save a consultation first to link this lab request to the visit.
         </div>
       )}

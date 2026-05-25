@@ -206,11 +206,11 @@ export function SettingsInventoryCatalogPage() {
         <div className="border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="shrink-0 bg-orange-600 p-2.5 text-white">
-                <Package2 className="size-5" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+                <Package2 className="size-5" style={{color:'var(--color-primary)'}} />
               </div>
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                   Administration
                 </p>
                 <h1 className="text-xl font-extrabold tracking-tight text-slate-950">
@@ -224,7 +224,7 @@ export function SettingsInventoryCatalogPage() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Button
-                className="rounded-none bg-orange-600 px-4 py-2.5 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700"
+                variant="primary"
                 onClick={openCreateModal}
               >
                 <Plus className="mr-2 size-4" />
@@ -315,7 +315,7 @@ export function SettingsInventoryCatalogPage() {
               creation form under Inventory. Keep them short and familiar so
               staff can classify stock quickly.
             </p>
-            <div className="mt-6 rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3 text-sm text-orange-950">
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
               Categories with inventory items attached cannot be deleted.
             </div>
           </div>
@@ -333,22 +333,16 @@ export function SettingsInventoryCatalogPage() {
             className="my-auto flex w-full max-w-xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 bg-orange-600 px-6 py-4">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">
-                  Inventory Category Form
-                </p>
-                <p className="mt-0.5 text-sm font-bold text-white">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Settings</p>
+                <h2 className="mt-1 text-base font-bold text-slate-900">
                   {editingCategoryId ? "Edit category" : "Add category"}
-                </p>
-                <p className="mt-2 max-w-2xl text-sm text-orange-50">
-                  Create the category values that appear in inventory item
-                  classification.
-                </p>
+                </h2>
               </div>
               <button
                 aria-label="Close inventory category modal"
-                className="inline-flex shrink-0 items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                className="inline-flex shrink-0 items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50"
                 onClick={closeCategoryModal}
                 type="button"
               >
@@ -376,7 +370,7 @@ export function SettingsInventoryCatalogPage() {
                   Cancel
                 </Button>
                 <Button
-                  className="rounded-none bg-orange-600 px-4 py-2.5 text-xs font-extrabold uppercase tracking-widest hover:bg-orange-700"
+                  variant="primary"
                   type="submit"
                 >
                   {editingCategoryId ? "Save changes" : "Add category"}

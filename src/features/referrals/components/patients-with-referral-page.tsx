@@ -49,7 +49,7 @@ export function PatientsWithReferralsPage({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Search patient or doctor…"
-          className="w-full rounded-none border border-slate-200 bg-slate-50 py-2 pl-8 pr-8 text-xs text-slate-800 placeholder:text-slate-400 focus:border-orange-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-orange-200"
+          className="w-full rounded-none border border-slate-200 bg-slate-50 py-2 pl-8 pr-8 text-xs text-slate-800 placeholder:text-slate-400 focus:border-green-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-green-100"
         />
         {searchQuery && (
           <button
@@ -116,7 +116,7 @@ export function PatientsWithReferralsPage({
       <p className="text-[11px] text-slate-400">
         Page {currentPage} of {totalPages}
         {searchQuery && (
-          <span className="ml-1 text-orange-500">
+          <span className="ml-1 text-slate-500">
             · {filteredCount} result{filteredCount !== 1 ? "s" : ""}
           </span>
         )}
@@ -125,7 +125,7 @@ export function PatientsWithReferralsPage({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="flex h-6 w-6 items-center justify-center border border-slate-200 text-slate-500 transition-colors hover:border-orange-300 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex h-6 w-6 items-center justify-center border border-slate-200 text-slate-500 transition-colors hover:border-green-300 hover:text-green-600 disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Previous page"
         >
           <ChevronLeft className="size-3.5" />
@@ -158,8 +158,8 @@ export function PatientsWithReferralsPage({
                 onClick={() => onPageChange(item as number)}
                 className={`flex h-6 min-w-[24px] items-center justify-center border px-1.5 text-[11px] font-bold transition-colors ${
                   currentPage === item
-                    ? "border-orange-500 bg-orange-500 text-white"
-                    : "border-slate-200 text-slate-500 hover:border-orange-300 hover:text-orange-600"
+                    ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                    : "border-slate-200 text-slate-500 hover:border-green-300 hover:text-green-600"
                 }`}
               >
                 {item}
@@ -170,7 +170,7 @@ export function PatientsWithReferralsPage({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="flex h-6 w-6 items-center justify-center border border-slate-200 text-slate-500 transition-colors hover:border-orange-300 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex h-6 w-6 items-center justify-center border border-slate-200 text-slate-500 transition-colors hover:border-green-300 hover:text-green-600 disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Next page"
         >
           <ChevronRight className="size-3.5" />
@@ -203,7 +203,7 @@ export function PatientsWithReferralsPage({
                 key={patient.referralId}
                 onClick={() => onSelectPatient(patient)}
                 className={`w-full px-6 py-4 text-left transition-colors hover:bg-slate-50 ${
-                  isSelected ? "bg-orange-50" : ""
+                  isSelected ? "bg-green-50/30" : ""
                 }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -212,8 +212,8 @@ export function PatientsWithReferralsPage({
                     <div
                       className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center border text-xs font-extrabold ${
                         isSelected
-                          ? "border-orange-200 bg-orange-100 text-orange-700"
-                          : "border-orange-100 bg-orange-50 text-orange-700"
+                          ? "border-green-200 bg-green-100 text-green-800"
+                          : "border-slate-200 bg-slate-100 text-slate-600"
                       }`}
                     >
                       {getInitials(patient.patient.fullName)}
@@ -236,11 +236,11 @@ export function PatientsWithReferralsPage({
 
                   <div className="shrink-0 text-right">
                     {isSelected ? (
-                      <span className="bg-orange-600 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-white">
+                      <span className="bg-[var(--color-primary)] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-white">
                         Selected
                       </span>
                     ) : (
-                      <span className="bg-orange-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+                      <span className="bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-600">
                         Pending
                       </span>
                     )}

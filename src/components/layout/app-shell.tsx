@@ -484,18 +484,18 @@ export function AppShell() {
       {isPinGateOpen ? (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-4">
           <div className="relative w-full max-w-md overflow-hidden border border-slate-200 bg-white shadow-2xl">
-            <div className="bg-orange-600 px-6 py-4 text-white">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">
+            <div className="border-b border-slate-100 px-6 py-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                 {pinVerificationRequired
                   ? "Security PIN Verification"
                   : "Security PIN Required"}
               </p>
-              <h2 className="mt-1 text-lg font-extrabold tracking-tight">
+              <h2 className="mt-1 text-lg font-extrabold tracking-tight text-slate-900">
                 {pinVerificationRequired
                   ? "Enter your 6-digit PIN to continue"
                   : "Set your 6-digit PIN to continue"}
               </h2>
-              <p className="mt-2 text-sm text-orange-50">
+              <p className="mt-2 text-sm text-slate-500">
                 {pinVerificationRequired
                   ? "Your password was accepted. Type your security PIN to unlock the system."
                   : "Your account needs a security PIN before you can continue using the system."}
@@ -516,7 +516,7 @@ export function AppShell() {
                       activePinField === "pin"
                         ? pinVerificationRequired
                           ? "border-emerald-500 bg-emerald-50"
-                          : "border-orange-500 bg-orange-50"
+                          : "border-green-400 bg-green-50/40"
                         : "border-slate-200 bg-slate-50",
                     )}
                     onClick={() => {
@@ -537,7 +537,7 @@ export function AppShell() {
                             index < pin.length
                               ? pinVerificationRequired
                                 ? "border-emerald-600 bg-emerald-600"
-                                : "border-orange-600 bg-orange-600"
+                                : "border-[var(--color-primary)] bg-[var(--color-primary)]"
                               : "border-slate-300 bg-white",
                           )}
                         />
@@ -550,7 +550,7 @@ export function AppShell() {
                       className={cn(
                         "rounded-2xl border px-4 py-3 text-left transition-colors",
                         activePinField === "confirm"
-                          ? "border-orange-500 bg-orange-50"
+                          ? "border-green-400 bg-green-50/40"
                           : "border-slate-200 bg-slate-50",
                       )}
                       onClick={() => {
@@ -569,7 +569,7 @@ export function AppShell() {
                             className={cn(
                               "size-3 rounded-full border",
                               index < confirmPin.length
-                                ? "border-orange-600 bg-orange-600"
+                                ? "border-[var(--color-primary)] bg-[var(--color-primary)]"
                                 : "border-slate-300 bg-white",
                             )}
                           />
@@ -606,7 +606,7 @@ export function AppShell() {
                 {pinPadKeys.slice(0, 9).map((digit) => (
                   <button
                     key={digit}
-                    className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-extrabold text-slate-900 shadow-sm transition hover:border-orange-300 hover:bg-orange-50"
+                    className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-extrabold text-slate-900 shadow-sm transition hover:border-green-300 hover:bg-green-50"
                     onClick={() => handlePinDigit(digit)}
                     type="button"
                   >
@@ -615,14 +615,14 @@ export function AppShell() {
                 ))}
                 <div className="size-16" />
                 <button
-                  className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-extrabold text-slate-900 shadow-sm transition hover:border-orange-300 hover:bg-orange-50"
+                  className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-extrabold text-slate-900 shadow-sm transition hover:border-green-300 hover:bg-green-50"
                   onClick={() => handlePinDigit("0")}
                   type="button"
                 >
                   0
                 </button>
                 <button
-                  className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xs font-extrabold uppercase tracking-widest text-slate-600 shadow-sm transition hover:border-orange-300 hover:bg-orange-50"
+                  className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xs font-extrabold uppercase tracking-widest text-slate-600 shadow-sm transition hover:border-green-300 hover:bg-green-50"
                   onClick={handlePinBackspace}
                   type="button"
                 >
@@ -644,7 +644,7 @@ export function AppShell() {
                   Sign out
                 </Button>
                 <Button
-                  className="w-full bg-orange-600 hover:bg-orange-700 sm:w-auto"
+                  className="w-full bg-[var(--color-primary)] hover:brightness-95 sm:w-auto"
                   disabled={savingPin}
                   onClick={() => void handleSavePin()}
                   type="button"

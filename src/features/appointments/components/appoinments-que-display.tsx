@@ -44,7 +44,7 @@ const STATUS_CONFIG: Record<
   },
   called: {
     label: "Called",
-    className: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+    className: "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
   },
   "in-service": {
     label: "In Service",

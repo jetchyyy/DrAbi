@@ -4,20 +4,20 @@
 import { cn } from "../../../lib/utils";
 
 const approvalStatusStyles: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700 ring-amber-200",
-  approved: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  denied: "bg-rose-50 text-rose-700 ring-rose-200",
+  pending: "bg-slate-100 text-slate-600 ring-slate-200",
+  approved: "bg-slate-100 text-slate-600 ring-slate-200",
+  denied: "bg-red-50 text-red-700 ring-red-200",
   expired: "bg-slate-100 text-slate-600 ring-slate-200",
 };
 
 const claimStatusStyles: Record<string, string> = {
   draft: "bg-slate-100 text-slate-600 ring-slate-200",
-  pending_submission: "bg-amber-50 text-amber-700 ring-amber-200",
-  submitted: "bg-sky-50 text-sky-700 ring-sky-200",
-  processing: "bg-violet-50 text-violet-700 ring-violet-200",
-  paid: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  denied: "bg-rose-50 text-rose-700 ring-rose-200",
-  partial_payment: "bg-orange-50 text-orange-700 ring-orange-200",
+  pending_submission: "bg-slate-100 text-slate-600 ring-slate-200",
+  submitted: "bg-slate-100 text-slate-600 ring-slate-200",
+  processing: "bg-slate-100 text-slate-600 ring-slate-200",
+  paid: "bg-slate-100 text-slate-600 ring-slate-200",
+  denied: "bg-red-50 text-red-700 ring-red-200",
+  partial_payment: "bg-slate-100 text-slate-600 ring-slate-200",
   overdue: "bg-red-50 text-red-800 ring-red-300",
 };
 

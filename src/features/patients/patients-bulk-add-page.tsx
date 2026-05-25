@@ -362,7 +362,7 @@ export function PatientsBulkAddPage() {
       <div className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}>
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100/90">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] text-[var(--color-primary)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_30%,white)]">
               <Users className="size-5" strokeWidth={2} />
             </div>
             <div>
@@ -379,7 +379,7 @@ export function PatientsBulkAddPage() {
             </div>
           </div>
           <Button
-            className="gap-2 bg-indigo-600 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide hover:bg-indigo-700 ring-1 ring-indigo-700/20"
+            className="gap-2"
             onClick={() => append({ ...defaultPatientValues })}
             type="button"
           >
@@ -404,7 +404,7 @@ export function PatientsBulkAddPage() {
           >
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100/90 bg-slate-50/80 px-6 py-4">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-500">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                   Patient {index + 1}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
@@ -569,7 +569,7 @@ export function PatientsBulkAddPage() {
               </FormField>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-500">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                   SOAP Notes
                 </p>
                 <div className="mt-3 space-y-4">
@@ -806,7 +806,7 @@ export function PatientsBulkAddPage() {
             Add another patient
           </Button>
           <Button
-            className="w-full bg-indigo-600 px-5 py-3 text-sm font-semibold uppercase tracking-wide hover:bg-indigo-700 sm:w-auto"
+            className="w-full sm:w-auto"
             disabled={isSubmitting}
             type="submit"
           >

@@ -147,23 +147,14 @@ function ConfirmationModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 bg-orange-600 px-5 py-4">
-          <div className="flex items-start gap-3">
-            <div className="rounded-xl border border-white/25 bg-white/10 p-2 text-white">
-              <AlertCircle className="size-5" />
-            </div>
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">
-                Review Changes
-              </p>
-              <p className="mt-1 text-sm font-bold text-white">
-                Confirm Clinic Settings Update
-              </p>
-            </div>
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Review Changes</p>
+            <h2 className="mt-1 text-base font-bold text-slate-900">Confirm Clinic Settings Update</h2>
           </div>
           <button
             aria-label="Cancel"
-            className="inline-flex items-center justify-center rounded-xl border border-white/25 bg-white/10 p-2 text-white transition hover:bg-white/20"
+            className="inline-flex shrink-0 items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50"
             onClick={onCancel}
             type="button"
           >
@@ -217,16 +208,15 @@ function ConfirmationModal({
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
-              className="rounded-none font-bold"
               disabled={saving}
               onClick={onCancel}
               type="button"
-              variant="secondary"
+              variant="tertiary"
             >
               Cancel
             </Button>
             <Button
-              className="rounded-none bg-orange-600 hover:bg-orange-700 font-extrabold"
+              variant="primary"
               disabled={saving}
               onClick={onConfirm}
               type="button"
@@ -425,11 +415,11 @@ export function SettingsClinicPage() {
 
       {/* ── Page header ────────────────────────────────────── */}
       <div className="bg-white border border-slate-200 shadow-sm px-6 py-5 flex items-center gap-3">
-        <div className="p-2.5 bg-orange-600 text-white shrink-0">
-          <Building2 className="size-5" />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+          <Building2 className="size-5" style={{color:'var(--color-primary)'}} />
         </div>
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">Settings</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Settings</p>
           <h1 className="text-xl font-extrabold text-slate-950 tracking-tight">Clinic Profile &amp; Branding</h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Changes apply system-wide — sidebar, portals, print documents, and receipts.
@@ -577,7 +567,7 @@ export function SettingsClinicPage() {
           {/* Actions */}
           <div className="px-6 py-4 bg-slate-50 flex flex-wrap gap-3">
             <Button
-              className="rounded-none bg-orange-600 hover:bg-orange-700 font-extrabold uppercase tracking-widest text-sm"
+              variant="primary"
               disabled={mutation.isPending}
               type="submit"
             >

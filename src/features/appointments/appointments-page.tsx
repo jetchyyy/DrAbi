@@ -866,24 +866,21 @@ export function AppointmentsPage() {
             className="my-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 bg-emerald-600 px-4 py-4 sm:px-6">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
               <div className="min-w-0">
-                <p className="text-xs font-medium uppercase tracking-wide text-emerald-100">
-                  Appointment Form
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Appointments
                 </p>
-                <p className="mt-0.5 text-sm font-semibold text-white">
-                  {editingAppointment
-                    ? "Edit Appointment"
-                    : "Schedule Appointment"}
+                <p className="mt-1 text-base font-bold text-slate-900">
+                  {editingAppointment ? "Edit Appointment" : "Schedule Appointment"}
                 </p>
-                <p className="mt-1.5 max-w-2xl text-sm text-emerald-50/90">
-                  Manage the patient, provider, schedule, and teleconsult
-                  details from this modal.
+                <p className="mt-1 text-sm text-slate-500">
+                  Set patient, provider, schedule, and teleconsult details.
                 </p>
               </div>
               <button
                 aria-label="Close appointment modal"
-                className="inline-flex shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                className="inline-flex shrink-0 items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50"
                 onClick={closeAppointmentModal}
                 type="button"
               >

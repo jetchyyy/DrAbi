@@ -116,7 +116,7 @@ function DoctorQueueActions({ row }: { row: DoctorWorkflowRow }) {
       </Link>
       {row.canStartConsultation ? (
         <Link
-          className="inline-flex items-center bg-orange-600 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-orange-700"
+          className="inline-flex items-center bg-[var(--color-primary)] px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition hover:brightness-95"
           to={`/app/consultation/${row.patientId}?appointmentId=${row.appointmentId}`}
         >
           <Stethoscope className="mr-1 size-3.5" />
@@ -124,7 +124,7 @@ function DoctorQueueActions({ row }: { row: DoctorWorkflowRow }) {
         </Link>
       ) : (
         <button
-          className="inline-flex cursor-not-allowed items-center bg-orange-600 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white opacity-60"
+          className="inline-flex cursor-not-allowed items-center bg-[var(--color-primary)] px-3 py-2 text-xs font-bold uppercase tracking-wide text-white opacity-60"
           disabled
           type="button"
         >
@@ -500,7 +500,7 @@ export function DoctorWorkflowPage() {
                         </td>
                         <td className="px-4 py-3">
                           <Link
-                            className="font-bold text-slate-950 hover:text-orange-600 hover:underline"
+                            className="font-bold text-slate-950 hover:text-[var(--color-primary)] hover:underline"
                             to={`/app/patients/${row.patientId}`}
                           >
                             {row.patientName}

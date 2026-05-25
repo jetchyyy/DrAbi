@@ -35,9 +35,9 @@ type ResultValue = {
 
 const FLAG_STYLES: Record<AbnormalFlag, { bg: string; text: string; label: string }> = {
   normal: { bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Normal' },
-  low: { bg: 'bg-amber-50', text: 'text-amber-700', label: 'Low' },
-  high: { bg: 'bg-orange-50', text: 'text-orange-700', label: 'High' },
-  critical: { bg: 'bg-rose-50', text: 'text-rose-800', label: 'Critical' },
+  low: { bg: 'bg-slate-100', text: 'text-slate-700', label: 'Low' },
+  high: { bg: 'bg-red-50', text: 'text-red-700', label: 'High' },
+  critical: { bg: 'bg-red-50', text: 'text-red-800', label: 'Critical' },
 };
 
 const SPECIMEN_TYPES = [
@@ -199,17 +199,17 @@ export function ResultEntryModal({ request, open, onClose }: ResultEntryModalPro
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4">
+          <div className="border-b border-slate-100 px-6 py-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-emerald-100">Structured Result Entry</p>
-                <p className="mt-0.5 text-sm font-bold text-white">{request.serviceName ?? 'Lab Test'}</p>
-                <p className="mt-0.5 text-xs text-emerald-100">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Laboratory</p>
+                <h2 className="mt-1 text-base font-bold text-slate-900">{request.serviceName ?? 'Lab Test'}</h2>
+                <p className="mt-0.5 text-xs text-slate-500">
                   Patient: {request.patientName ?? 'Unknown'} · Requested by: {request.requestedByName ?? 'Unknown'}
                 </p>
               </div>
               <button
-                className="inline-flex shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                className="inline-flex shrink-0 items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50"
                 onClick={onClose}
                 type="button"
               >
@@ -219,7 +219,7 @@ export function ResultEntryModal({ request, open, onClose }: ResultEntryModalPro
 
             {/* Accession info bar */}
             {accession ? (
-              <div className="mt-3 rounded-lg bg-white/10 px-4 py-2 text-xs text-white">
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-700">
                 <span className="font-bold">Accession:</span> {accession.accessionNumber} ·{' '}
                 <span className="font-bold">Specimen:</span> {accession.specimenType} ·{' '}
                 <span className="font-bold">Condition:</span> {accession.specimenCondition}
@@ -227,7 +227,7 @@ export function ResultEntryModal({ request, open, onClose }: ResultEntryModalPro
             ) : (
               <button
                 type="button"
-                className="mt-3 rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/20 w-full text-left"
+                className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 w-full text-left"
                 onClick={() => setShowAccession(!showAccession)}
               >
                 <FlaskConical className="inline mr-1.5 size-3.5" />
@@ -238,8 +238,8 @@ export function ResultEntryModal({ request, open, onClose }: ResultEntryModalPro
 
           {/* Accession Form */}
           {showAccession && !accession && (
-            <div className="border-b border-slate-100 bg-amber-50/50 px-6 py-4 space-y-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-amber-800">Specimen Accession</p>
+            <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-4 space-y-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Specimen Accession</p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="text-[10px] font-semibold uppercase text-slate-500">Specimen Type</label>
@@ -266,7 +266,7 @@ export function ResultEntryModal({ request, open, onClose }: ResultEntryModalPro
                 <Textarea value={accessionNotes} onChange={(e) => setAccessionNotes(e.target.value)} rows={2} />
               </div>
               <Button
-                className="bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700"
+                variant="primary"
                 disabled={accessionMutation.isPending}
                 onClick={() => accessionMutation.mutate()}
               >
@@ -334,9 +334,9 @@ export function ResultEntryModal({ request, open, onClose }: ResultEntryModalPro
                           onChange={(e) => handleValueChange(param.id, 'valueNumeric', e.target.value)}
                           placeholder={`Enter value${param.unit ? ` (${param.unit})` : ''}`}
                           className={cn(
-                            flag === 'critical' && 'border-rose-300 ring-1 ring-rose-200',
-                            flag === 'high' && 'border-orange-300 ring-1 ring-orange-200',
-                            flag === 'low' && 'border-amber-300 ring-1 ring-amber-200',
+                            flag === 'critical' && 'border-red-300 ring-1 ring-red-200',
+                            flag === 'high' && 'border-red-200 ring-1 ring-red-100',
+                            flag === 'low' && 'border-slate-300 ring-1 ring-slate-200',
                           )}
                         />
                       ) : param.dataType === 'select' ? (
@@ -371,7 +371,7 @@ export function ResultEntryModal({ request, open, onClose }: ResultEntryModalPro
                 allSaved ? (
                   <span className="text-emerald-600 font-semibold">All results saved ✓</span>
                 ) : (
-                  <span className="text-amber-600 font-semibold">Unsaved changes</span>
+                  <span className="text-slate-600 font-semibold">Unsaved changes</span>
                 )
               ) : (
                 <span>Enter results for each parameter</span>

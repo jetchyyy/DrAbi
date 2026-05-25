@@ -51,27 +51,27 @@ function ReferralStatusBadge({ status }: { status: ReferralStatus }) {
     },
     sent: {
       label: "Sent",
-      className: "bg-orange-50 text-orange-700 border-orange-200",
+      className: "bg-slate-100 text-slate-600 border-slate-200",
     },
     pending: {
       label: "Pending",
-      className: "bg-sky-50 text-sky-600 border-sky-200",
+      className: "bg-slate-100 text-slate-600 border-slate-200",
     },
     scheduled: {
       label: "Scheduled",
-      className: "bg-indigo-50 text-indigo-600 border-indigo-200",
+      className: "bg-slate-100 text-slate-600 border-slate-200",
     },
     accepted: {
       label: "Accepted",
-      className: "bg-cyan-50 text-cyan-700 border-cyan-200",
+      className: "bg-slate-100 text-slate-600 border-slate-200",
     },
     confirmed: {
       label: "Confirmed",
-      className: "bg-orange-50 text-orange-700 border-orange-200",
+      className: "bg-slate-100 text-slate-600 border-slate-200",
     },
     completed: {
       label: "Completed",
-      className: "bg-indigo-50 text-indigo-600 border-indigo-200",
+      className: "bg-slate-100 text-slate-600 border-slate-200",
     },
     declined: {
       label: "Declined",
@@ -83,7 +83,7 @@ function ReferralStatusBadge({ status }: { status: ReferralStatus }) {
     },
     rescheduled: {
       label: "Rescheduled",
-      className: "bg-sky-50 text-sky-600 border-sky-200",
+      className: "bg-slate-100 text-slate-600 border-slate-200",
     },
   };
 
@@ -251,13 +251,14 @@ function EditReferralModal({
       />
       <div className="relative z-10 w-full max-w-lg border border-slate-200 bg-white shadow-2xl mx-4 max-h-[85vh] sm:max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between bg-orange-600 px-6 py-4">
-          <h2 className="text-sm font-bold text-white tracking-wide uppercase">
-            Edit Referral
-          </h2>
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Referrals</p>
+            <h2 className="mt-1 text-base font-bold text-slate-900">Edit Referral</h2>
+          </div>
           <button
             onClick={onClose}
-            className="inline-flex items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+            className="inline-flex shrink-0 items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50"
           >
             <svg
               className="h-4 w-4"
@@ -302,7 +303,7 @@ function EditReferralModal({
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as ReferralStatus)}
-              className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+              className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
             >
               {REFERRAL_STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -323,7 +324,7 @@ function EditReferralModal({
                 onChange={(e) => setCancelledReason(e.target.value)}
                 rows={3}
                 placeholder="Enter reason for cancellation..."
-                className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 resize-none"
+                className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100 resize-none"
               />
             </div>
           )}
@@ -339,7 +340,7 @@ function EditReferralModal({
                 onChange={(e) => setRescheduledReason(e.target.value)}
                 rows={3}
                 placeholder="Enter reason for rescheduling..."
-                className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 resize-none"
+                className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100 resize-none"
               />
             </div>
           )}
@@ -362,7 +363,7 @@ function EditReferralModal({
                     value={appointmentDate}
                     onChange={(e) => setAppointmentDate(e.target.value)}
                     min={todayPH}
-                    className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                    className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                   />
                 </div>
 
@@ -376,7 +377,7 @@ function EditReferralModal({
                       <select
                         value={appointmentTime}
                         onChange={(e) => setAppointmentTime(e.target.value)}
-                        className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                        className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                       >
                         <option value="">Select a time slot</option>
                         {availableSlots.map((slot) => (
@@ -407,7 +408,7 @@ function EditReferralModal({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
-              className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 resize-none"
+              className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100 resize-none"
             />
           </div>
 
@@ -420,7 +421,7 @@ function EditReferralModal({
               value={clinicalSummary}
               onChange={(e) => setClinicalSummary(e.target.value)}
               rows={2}
-              className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 resize-none"
+              className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100 resize-none"
             />
           </div>
 
@@ -433,7 +434,7 @@ function EditReferralModal({
               value={referralNotes}
               onChange={(e) => setReferralNotes(e.target.value)}
               rows={2}
-              className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 resize-none"
+              className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100 resize-none"
             />
           </div>
         </div>
@@ -450,7 +451,7 @@ function EditReferralModal({
           <button
             onClick={handleSave}
             disabled={isSaving || !canSave}
-            className="inline-flex items-center gap-2 bg-orange-600 px-4 py-2 text-sm font-extrabold uppercase tracking-widest text-white hover:bg-orange-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 bg-[var(--color-primary)] px-4 py-2 text-sm font-extrabold uppercase tracking-widest text-white hover:brightness-95 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Save Changes
@@ -631,11 +632,11 @@ export function ReferralsListPage() {
       <div className="border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 bg-orange-600 p-2.5 text-white">
-              <CalendarCheck2 className="size-5" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+              <CalendarCheck2 className="size-5" style={{color:'var(--color-primary)'}} />
             </div>
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Operations
               </p>
               <h1 className="text-xl font-extrabold tracking-tight text-slate-950">
@@ -667,7 +668,7 @@ export function ReferralsListPage() {
               onChange={(e) =>
                 setStatusFilter(e.target.value as "all" | ReferralStatus)
               }
-              className="border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+              className="border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
             >
               <option value="all">All Statuses</option>
               {REFERRAL_STATUS_OPTIONS.map((opt) => (
@@ -693,13 +694,13 @@ export function ReferralsListPage() {
             {filteredReferrals.length} referral
             {filteredReferrals.length !== 1 ? "s" : ""} found
           </span>
-          <span className="inline-flex items-center border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-sky-700">
+          <span className="inline-flex items-center border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-slate-600">
             {referralSummary.pending} pending
           </span>
-          <span className="inline-flex items-center border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-indigo-700">
+          <span className="inline-flex items-center border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-slate-600">
             {referralSummary.scheduled} scheduled
           </span>
-          <span className="inline-flex items-center border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+          <span className="inline-flex items-center border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-slate-600">
             {referralSummary.rescheduled} rescheduled
           </span>
           <span className="inline-flex items-center border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-red-600">
@@ -833,7 +834,7 @@ export function ReferralsListPage() {
                         </button>
                         <button
                           onClick={() => setDeletingReferral(referral)}
-                          className="inline-flex items-center gap-1 text-rose-600 hover:underline"
+                          className="inline-flex items-center gap-1 text-red-600 hover:underline"
                           title="Delete referral"
                         >
                           <Trash2 className="size-3.5" />
@@ -865,7 +866,7 @@ export function ReferralsListPage() {
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
-              className="border border-slate-200 px-3 py-1.5 text-xs font-extrabold uppercase tracking-widest text-orange-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="border border-slate-200 px-3 py-1.5 text-xs font-extrabold uppercase tracking-widest text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Previous
             </button>
@@ -878,7 +879,7 @@ export function ReferralsListPage() {
                 setCurrentPage((prev) => Math.min(totalPages, prev + 1))
               }
               disabled={currentPage === totalPages}
-              className="border border-slate-200 px-3 py-1.5 text-xs font-extrabold uppercase tracking-widest text-orange-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="border border-slate-200 px-3 py-1.5 text-xs font-extrabold uppercase tracking-widest text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Next
             </button>

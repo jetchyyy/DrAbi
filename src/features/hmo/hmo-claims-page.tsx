@@ -138,15 +138,15 @@ function HmoClaimsContent() {
       <section className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}>
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 rounded-xl bg-teal-600 p-2.5 text-white"><Receipt className="size-5" /></div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}><Receipt className="size-5" style={{color:'var(--color-primary)'}} /></div>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-teal-600">HMO Management</p>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-950">Claims</h1>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">HMO Management</p>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">Claims</h1>
               <p className="mt-1 text-sm text-slate-500">Track HMO claims from draft to payment.</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button className="rounded-xl bg-teal-600 hover:bg-teal-700" onClick={openCreate}><Plus className="mr-2 size-4" /> New Claim</Button>
+            <Button variant="primary" className="rounded-xl" onClick={openCreate}><Plus className="mr-2 size-4" /> New Claim</Button>
             <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-xl">
               <option value="all">All Statuses</option>
               {CLAIM_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -193,7 +193,7 @@ function HmoClaimsContent() {
                   <td className={INTERNAL_TD}><span className="font-semibold text-slate-900">{c.invoiceNumber || "—"}</span></td>
                   <td className={INTERNAL_TD}>{formatCurrency(c.totalAmount)}</td>
                   <td className={INTERNAL_TD}><span className="font-medium text-emerald-700">{formatCurrency(c.coveredAmount)}</span></td>
-                  <td className={INTERNAL_TD}><span className="font-medium text-amber-700">{formatCurrency(c.patientExcess)}</span></td>
+                  <td className={INTERNAL_TD}><span className="font-medium text-slate-700">{formatCurrency(c.patientExcess)}</span></td>
                   <td className={INTERNAL_TD}><HmoStatusBadge status={c.claimStatus} type="claim" /></td>
                   <td className={INTERNAL_TD}>{c.submissionDate ? new Date(c.submissionDate).toLocaleDateString("en-PH") : "—"}</td>
                   <td className={INTERNAL_TD}>
@@ -219,9 +219,12 @@ function HmoClaimsContent() {
       {modalOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4">
           <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 bg-teal-600 px-6 py-4 text-white">
-              <h2 className="text-lg font-bold">New Claim</h2>
-              <button className="rounded-lg p-1 transition hover:bg-teal-700" onClick={() => setModalOpen(false)} type="button"><X className="size-5" /></button>
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">HMO Management</p>
+                <h2 className="mt-1 text-base font-bold text-slate-900">New Claim</h2>
+              </div>
+              <button className="inline-flex items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50" onClick={() => setModalOpen(false)} type="button"><X className="size-4" /></button>
             </div>
             <div className="space-y-4 px-6 py-5">
               <FormField label="Authorization">
@@ -238,16 +241,16 @@ function HmoClaimsContent() {
                 <FormField label="HMO Coverage (₱)"><Input type="number" value={formCovered} onChange={(e) => setFormCovered(e.target.value)} min={0} /></FormField>
               </div>
               {/* Auto-computed patient excess */}
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Patient Excess (Auto-Computed)</p>
-                <p className="mt-1 text-xl font-bold text-amber-800">{formatCurrency(patientExcess)}</p>
-                <p className="mt-1 text-xs text-amber-600">Total Bill − HMO Coverage = Patient Pays</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Patient Excess (Auto-Computed)</p>
+                <p className="mt-1 text-xl font-bold text-slate-800">{formatCurrency(patientExcess)}</p>
+                <p className="mt-1 text-xs text-slate-500">Total Bill − HMO Coverage = Patient Pays</p>
               </div>
               <FormField label="Remarks"><Textarea value={formRemarks} onChange={(e) => setFormRemarks(e.target.value)} rows={2} /></FormField>
             </div>
             <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
               <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button className="bg-teal-600 hover:bg-teal-700" onClick={() => void handleCreate()} disabled={createMutation.isPending}>Create Claim</Button>
+              <Button variant="primary" onClick={() => void handleCreate()} disabled={createMutation.isPending}>Create Claim</Button>
             </div>
           </div>
         </div>
@@ -268,8 +271,8 @@ function HmoClaimsContent() {
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-semibold text-slate-500">Total</p><p className="text-lg font-bold">{formatCurrency(viewedClaim.totalAmount)}</p></div>
-                <div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] font-semibold text-emerald-600">Covered</p><p className="text-lg font-bold text-emerald-700">{formatCurrency(viewedClaim.coveredAmount)}</p></div>
-                <div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] font-semibold text-amber-600">Excess</p><p className="text-lg font-bold text-amber-700">{formatCurrency(viewedClaim.patientExcess)}</p></div>
+                <div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-semibold text-slate-500">Covered</p><p className="text-lg font-bold text-green-700">{formatCurrency(viewedClaim.coveredAmount)}</p></div>
+                <div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-semibold text-slate-500">Excess</p><p className="text-lg font-bold text-slate-700">{formatCurrency(viewedClaim.patientExcess)}</p></div>
               </div>
               {viewedAuth && (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -329,7 +332,7 @@ export function HmoClaimsPage() {
                 className={cn(
                   'flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-3 text-[11px] font-semibold uppercase tracking-wide transition',
                   isActive
-                    ? 'bg-teal-50 text-teal-900 shadow-sm ring-1 ring-teal-100'
+                    ? 'bg-green-50 text-green-900 shadow-sm ring-1 ring-green-100'
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800',
                 )}
                 key={tab.id}

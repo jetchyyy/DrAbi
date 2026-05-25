@@ -1243,20 +1243,20 @@ export function BillingPage() {
                 </div>
 
                 {selectedPatientId && totalUnbilledCount > 0 ? (
-                  <div className="space-y-4 border-t border-slate-100 px-4 py-5 sm:px-6 bg-amber-50/50">
+                  <div className="space-y-4 border-t border-slate-100 px-4 py-5 sm:px-6 bg-slate-50/60">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-amber-800">Unbilled Items Detected</p>
-                        <p className="text-xs text-amber-700">The patient has completed consultations, laboratory orders, or inventory items that haven't been added to this invoice yet.</p>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-600">Unbilled Items Detected</p>
+                        <p className="text-xs text-slate-500">Completed consultations, lab orders, or supplies not yet added to this invoice.</p>
                       </div>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
                         {totalUnbilledCount} items
                       </span>
                     </div>
 
                     <div className="space-y-2.5 max-h-48 overflow-y-auto">
                       {unbilledConsultations.map((c) => (
-                        <div key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white p-2.5 shadow-sm text-xs">
+                        <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm text-xs">
                           <div className="min-w-0">
                             <p className="font-semibold text-slate-900 truncate">Consultation Fee ({c.consultationType})</p>
                             <p className="text-[10px] text-slate-500">Dr. {c.providerName || 'Staff'} • {c.consultationDate}</p>
@@ -1273,7 +1273,7 @@ export function BillingPage() {
                       ))}
 
                       {unbilledLabRequests.map((req) => (
-                        <div key={req.id} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white p-2.5 shadow-sm text-xs">
+                        <div key={req.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm text-xs">
                           <div className="min-w-0">
                             <p className="font-semibold text-slate-900 truncate">Laboratory Order: {req.serviceName}</p>
                             <p className="text-[10px] text-slate-500">Status: {req.status} • {new Date(req.createdAt).toLocaleDateString()}</p>
@@ -1290,7 +1290,7 @@ export function BillingPage() {
                       ))}
 
                       {unbilledInventoryLogs.map((log) => (
-                        <div key={log.id} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white p-2.5 shadow-sm text-xs">
+                        <div key={log.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm text-xs">
                           <div className="min-w-0">
                             <p className="font-semibold text-slate-900 truncate">Medical Supplies: {log.itemId}</p>
                             <p className="text-[10px] text-slate-500">Qty: {log.quantity} • Scanned: {log.scannedCode || 'N/A'}</p>
@@ -1298,7 +1298,8 @@ export function BillingPage() {
                           <Button
                             onClick={() => importInventoryLog(log)}
                             type="button"
-                            className="rounded bg-amber-600 hover:bg-amber-700 text-[10px] font-bold text-white uppercase px-2 py-1 h-auto"
+                            className="text-[10px] px-2 py-1 h-auto"
+                            variant="primary"
                           >
                             Import
                           </Button>
@@ -1494,15 +1495,15 @@ export function BillingPage() {
             className="my-auto flex w-full max-w-2xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 bg-violet-700 px-4 py-4 sm:px-6">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
               <div className="min-w-0">
-                <p className="text-xs font-extrabold uppercase tracking-widest text-violet-200">Paid Lab Service</p>
-                <p className="mt-0.5 text-sm font-bold text-white">Pay for service</p>
-                <p className="mt-2 max-w-2xl text-sm text-violet-50">Choose a patient and laboratory service. The system will use the live service fee, create the paid invoice, generate the lab request, and prepare a QR receipt.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Laboratory</p>
+                <p className="mt-1 text-base font-bold text-slate-900">Pay for Lab Service</p>
+                <p className="mt-1 text-sm text-slate-500">Select a patient and service — creates the invoice, lab request, and QR receipt.</p>
               </div>
               <button
                 aria-label="Close paid service modal"
-                className="inline-flex shrink-0 items-center justify-center border border-violet-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                className="inline-flex shrink-0 items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50"
                 onClick={closePayForServiceModal}
                 type="button"
               >
@@ -1539,7 +1540,7 @@ export function BillingPage() {
                   </FormField>
 
                   {selectedLabService ? (
-                    <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-4 text-sm text-slate-700">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700">
                       <p className="font-semibold text-slate-950">{selectedLabService.name}</p>
                       <p className="mt-1">{selectedLabService.description ?? 'No service description available.'}</p>
                       <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -1549,7 +1550,7 @@ export function BillingPage() {
                         </div>
                         <div>
                           <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Declared fee</p>
-                          <p className="mt-1 font-semibold text-violet-800">{formatCurrency(selectedLabService.serviceFee)}</p>
+                          <p className="mt-1 font-semibold text-slate-900">{formatCurrency(selectedLabService.serviceFee)}</p>
                         </div>
                       </div>
                     </div>
@@ -1564,18 +1565,18 @@ export function BillingPage() {
                   </FormField>
 
                   <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                    <input className="accent-violet-700" type="checkbox" {...payServiceForm.register('urgentFlag')} />
+                    <input className="accent-[var(--color-primary)]" type="checkbox" {...payServiceForm.register('urgentFlag')} />
                     Mark as urgent
                   </label>
                 </div>
               </div>
 
               <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
-                <Button className="w-full rounded-none sm:w-auto" onClick={closePayForServiceModal} type="button" variant="secondary">
+                <Button className="w-full sm:w-auto" onClick={closePayForServiceModal} type="button" variant="tertiary">
                   Cancel
                 </Button>
                 <Button
-                  className="w-full rounded-none bg-violet-700 px-5 py-3 text-sm font-extrabold uppercase tracking-widest hover:bg-violet-800 sm:w-auto"
+                  className="w-full sm:w-auto"
                   disabled={payForServiceMutation.isPending || labServiceOptions.length === 0}
                   type="submit"
                 >
@@ -1725,7 +1726,7 @@ export function BillingPage() {
             </div>
 
             <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
-              <Button className="gap-2 rounded-none sm:w-auto" onClick={handleSaveViewedInvoiceAsPdf} type="button" variant="secondary">
+              <Button className="gap-2 sm:w-auto" onClick={handleSaveViewedInvoiceAsPdf} type="button" variant="tertiary">
                 <Receipt className="size-4" />
                 Save as PDF
               </Button>
@@ -1733,7 +1734,7 @@ export function BillingPage() {
                 <Printer className="size-4" />
                 Print receipt
               </Button>
-              <Button className="rounded-none" onClick={closeInvoiceViewModal} type="button" variant="secondary">
+              <Button onClick={closeInvoiceViewModal} type="button" variant="tertiary">
                 Close
               </Button>
             </div>

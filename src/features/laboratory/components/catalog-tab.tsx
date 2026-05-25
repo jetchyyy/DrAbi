@@ -397,12 +397,12 @@ export function CatalogTab() {
             <span className="text-xs font-medium text-slate-600">{filteredServices.length} service{filteredServices.length !== 1 ? 's' : ''} found</span>
           </div>
           {!isSupabaseConfigured ? (
-            <div className="border-t border-amber-200 bg-amber-50 px-6 py-3 text-xs font-semibold text-amber-700">
+            <div className="border-t border-slate-200 bg-slate-50 px-6 py-3 text-xs font-semibold text-slate-600">
               Supabase is not configured. Catalog entries cannot be saved to lab_services.
             </div>
           ) : null}
           {catalogError ? (
-            <div className="border-t border-rose-200 bg-rose-50 px-6 py-3 text-xs font-semibold text-rose-700">
+            <div className="border-t border-red-100 bg-red-50 px-6 py-3 text-xs font-semibold text-red-600">
               Unable to load lab_services: {catalogError instanceof Error ? catalogError.message : 'Unknown error.'}
             </div>
           ) : null}
@@ -461,7 +461,7 @@ export function CatalogTab() {
                             <Pencil className="size-3.5" />
                             Edit
                           </button>
-                          <button className="inline-flex items-center gap-1 text-rose-600 hover:underline" onClick={() => void handleDeleteService(service.id)} type="button">
+                          <button className="inline-flex items-center gap-1 text-red-600 hover:underline" onClick={() => void handleDeleteService(service.id)} type="button">
                             <Trash2 className="size-3.5" />
                             Delete
                           </button>

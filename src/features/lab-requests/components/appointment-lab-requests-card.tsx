@@ -219,13 +219,13 @@ export function AppointmentLabRequestsCard({
     <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-widest text-violet-700">{title}</p>
+          <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">{title}</p>
           <p className="mt-1 text-sm text-slate-500">
             {appointmentId ? 'This appointment-linked request history is shared between the doctor, lab, and patient record.' : 'Select an appointment first to create a lab request.'}
           </p>
         </div>
         {canCreate ? (
-          <Button className="rounded-none bg-violet-700 px-4 py-2.5 text-xs font-extrabold uppercase tracking-widest hover:bg-violet-800" type="button" onClick={() => setIsFormOpen((current) => !current)}>
+          <Button variant="primary" type="button" onClick={() => setIsFormOpen((current) => !current)}>
             <Plus className="mr-2 size-4" />
             {isFormOpen ? 'Hide request form' : 'Request service'}
           </Button>
@@ -296,7 +296,7 @@ export function AppointmentLabRequestsCard({
           </FormField>
 
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-            <input className="accent-violet-600" type="checkbox" {...form.register('urgentFlag')} />
+            <input className="accent-[var(--color-primary)]" type="checkbox" {...form.register('urgentFlag')} />
             Mark as urgent
           </label>
 
@@ -304,7 +304,7 @@ export function AppointmentLabRequestsCard({
             <Button className="rounded-none" type="button" variant="secondary" onClick={() => setIsFormOpen(false)}>
               Cancel
             </Button>
-            <Button className="rounded-none bg-violet-700 font-extrabold uppercase tracking-widest hover:bg-violet-800" disabled={createLabRequest.isPending} type="submit">
+            <Button variant="primary" disabled={createLabRequest.isPending} type="submit">
               {createLabRequest.isPending ? 'Sending...' : 'Send request'}
             </Button>
           </div>

@@ -91,11 +91,11 @@ function feeTypeLabel(type: string | null) {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-orange-50 text-orange-700 border-orange-200",
-  confirmed: "bg-indigo-50 text-indigo-600 border-indigo-200",
-  rescheduled: "bg-sky-50 text-sky-600 border-sky-200",
+  pending: "bg-slate-100 text-slate-600 border-slate-200",
+  confirmed: "bg-slate-100 text-slate-600 border-slate-200",
+  rescheduled: "bg-slate-100 text-slate-600 border-slate-200",
   cancelled: "bg-red-50 text-red-500 border-red-200",
-  completed: "bg-cyan-50 text-cyan-700 border-cyan-200",
+  completed: "bg-slate-100 text-slate-600 border-slate-200",
 };
 
 const PAYMENT_STYLES: Record<string, string> = {
@@ -327,18 +327,16 @@ function EditModal({
       />
       <div className="relative z-10 mx-4 flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex shrink-0 items-start justify-between gap-4 bg-orange-600 px-5 py-4">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-5 py-5">
           <div className="min-w-0">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-white">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Appointments</p>
+            <h2 className="mt-1 text-base font-bold text-slate-900">
               Edit Booking
             </h2>
-            <p className="mt-0.5 text-sm font-medium text-white/90">
-              Update booking status, timing, and notes.
-            </p>
           </div>
           <button
             aria-label="Close edit modal"
-            className="inline-flex shrink-0 items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+            className="inline-flex shrink-0 items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50"
             onClick={onClose}
             type="button"
           >
@@ -393,7 +391,7 @@ function EditModal({
                   Update Status
                 </label>
                 <select
-                  className="w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                  className="w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                   onChange={(e) => {
                     setStatus(e.target.value);
                     setError(null);
@@ -414,7 +412,7 @@ function EditModal({
                     Cancellation Reason <span className="text-red-500">*</span>
                   </label>
                   <textarea
-                    className="w-full resize-none border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                    className="w-full resize-none border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                     onChange={(e) => setCancelledReason(e.target.value)}
                     placeholder="Enter reason for cancellation…"
                     required
@@ -432,7 +430,7 @@ function EditModal({
                       Reschedule Reason <span className="text-red-500">*</span>
                     </label>
                     <textarea
-                      className="w-full resize-none border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                      className="w-full resize-none border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                       onChange={(e) => setRescheduledReason(e.target.value)}
                       placeholder="Enter reason for rescheduling…"
                       required
@@ -446,7 +444,7 @@ function EditModal({
                         New Date <span className="text-red-500">*</span>
                       </label>
                       <input
-                        className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                        className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                         min={todayDateKey}
                         onChange={(e) => {
                           setNewDate(e.target.value);
@@ -463,7 +461,7 @@ function EditModal({
                       </label>
                       {booking.doctorId && availableSlots.length > 0 ? (
                         <select
-                          className="w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                          className="w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                           onChange={(e) => setNewTime(e.target.value)}
                           required
                           value={newTime}
@@ -486,7 +484,7 @@ function EditModal({
                         </div>
                       ) : (
                         <input
-                          className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                          className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                           min={isRescheduleForToday ? currentTimeInputValue : undefined}
                           onChange={(e) => setNewTime(e.target.value)}
                           required
@@ -527,7 +525,7 @@ function EditModal({
               Cancel
             </button>
             <button
-              className="inline-flex items-center justify-center gap-2 bg-orange-600 px-4 py-2 text-sm font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={
                 updateMutation.isPending ||
                 selectedRescheduleTimeIsBlocked ||
@@ -886,21 +884,16 @@ export function BookingListModal({ open, onClose }: BookingListModalProps) {
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header — matches patient details modal */}
-          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-orange-700 bg-orange-600 px-6 py-5 text-white">
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
             <div className="min-w-0">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">
-                Front Desk — Online Bookings
-              </p>
-              <h2 className="mt-1 text-lg font-extrabold text-white">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Front Desk — Online Bookings</p>
+              <h2 className="mt-1 text-lg font-bold text-slate-900">
                 Patient Booking List
               </h2>
-              <p className="mt-1 text-sm text-orange-100">
-                Review schedules, update booking status, record vitals, and keep intake timing on track.
-              </p>
             </div>
             <button
               aria-label="Close booking list modal"
-              className="inline-flex items-center justify-center border border-orange-400/50 bg-white/10 p-2 transition hover:bg-white/20"
+              className="inline-flex items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50"
               onClick={onClose}
               type="button"
             >
@@ -915,13 +908,13 @@ export function BookingListModal({ open, onClose }: BookingListModalProps) {
               <span className="text-xs font-bold text-slate-500">
                 {filtered.length} booking{filtered.length !== 1 ? "s" : ""}
               </span>
-              <span className="inline-flex items-center border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+              <span className="inline-flex items-center border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
                 {summary.pending} pending
               </span>
-              <span className="inline-flex items-center border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-indigo-600">
+              <span className="inline-flex items-center border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
                 {summary.confirmed} confirmed
               </span>
-              <span className="inline-flex items-center border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-sky-600">
+              <span className="inline-flex items-center border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
                 {summary.rescheduled} rescheduled
               </span>
               <span className="inline-flex items-center border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-red-600">
@@ -952,7 +945,7 @@ export function BookingListModal({ open, onClose }: BookingListModalProps) {
                 )}
               </div>
               <select
-                className="border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                className="border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                 onChange={(e) => setStatusFilter(e.target.value)}
                 value={statusFilter}
               >

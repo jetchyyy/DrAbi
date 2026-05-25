@@ -153,7 +153,7 @@ export function SpecialistReferralsPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="border-orange-200 bg-gradient-to-r from-orange-50 via-white to-white">
+      <Card className="border-slate-200 bg-white">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <Badge intent="info">Specialist portal</Badge>
@@ -163,12 +163,12 @@ export function SpecialistReferralsPage() {
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-sm border border-orange-200 bg-white px-4 py-3">
-              <p className="text-[11px] font-extrabold uppercase tracking-widest text-orange-600">Assigned</p>
+            <div className="rounded-sm border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Assigned</p>
               <p className="mt-2 text-2xl font-extrabold text-slate-950">{referrals.length}</p>
             </div>
-            <div className="rounded-sm border border-amber-200 bg-white px-4 py-3">
-              <p className="text-[11px] font-extrabold uppercase tracking-widest text-amber-600">Open</p>
+            <div className="rounded-sm border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Open</p>
               <p className="mt-2 text-2xl font-extrabold text-slate-950">{pendingCount}</p>
             </div>
             <div className="rounded-sm border border-emerald-200 bg-white px-4 py-3">
@@ -208,8 +208,8 @@ export function SpecialistReferralsPage() {
                     key={referral.id}
                     className={`w-full rounded-sm border px-4 py-4 text-left transition-colors ${
                       isSelected
-                        ? 'border-orange-300 bg-orange-50'
-                        : 'border-slate-200 bg-slate-50 hover:border-orange-200 hover:bg-white'
+                        ? 'border-green-300 bg-green-50'
+                        : 'border-slate-200 bg-slate-50 hover:border-green-200 hover:bg-white'
                     }`}
                     onClick={() => setSelectedReferralId(referral.id)}
                     type="button"
@@ -242,7 +242,7 @@ export function SpecialistReferralsPage() {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <div className="flex items-center gap-3">
-                      <ClipboardCheck className="size-5 text-orange-600" />
+                      <ClipboardCheck className="size-5 text-[var(--color-primary)]" />
                       <CardTitle>Referral case summary</CardTitle>
                     </div>
                     <p className="mt-3 text-sm text-slate-500">
@@ -254,13 +254,13 @@ export function SpecialistReferralsPage() {
                       {selectedReferral.status.replace('_', ' ')}
                     </Badge>
                     <Link
-                      className="inline-flex items-center rounded-sm border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-orange-200 hover:text-orange-700"
+                      className="inline-flex items-center rounded-sm border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-green-200 hover:text-green-700"
                       to={`/specialist/patients/${selectedReferral.patientId}`}
                     >
                       Open patient chart
                     </Link>
                     <Link
-                      className="inline-flex items-center rounded-sm border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-800 transition hover:border-sky-300 hover:bg-sky-100"
+                      className="inline-flex items-center rounded-sm border border-[var(--color-primary)] bg-green-50 px-3 py-2 text-sm font-semibold text-green-800 transition hover:border-green-300 hover:bg-green-100"
                       to={`/specialist/consultation/${selectedReferral.patientId}`}
                     >
                       Document SOAP
@@ -344,7 +344,7 @@ export function SpecialistReferralsPage() {
 
               <Card>
                 <div className="flex items-center gap-3">
-                  <Stethoscope className="size-5 text-orange-600" />
+                  <Stethoscope className="size-5 text-[var(--color-primary)]" />
                   <CardTitle>Specialist update</CardTitle>
                 </div>
                 <p className="mt-3 text-sm text-slate-500">

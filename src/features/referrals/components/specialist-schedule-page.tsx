@@ -245,9 +245,9 @@ function MiniCalendar({
                 className={[
                   "w-8 h-8 text-xs font-bold transition-colors",
                   isSelected
-                    ? "bg-orange-600 text-white"
+                    ? "bg-[var(--color-primary)] text-white"
                     : isAvailable && !isPast
-                      ? "text-slate-800 hover:bg-orange-50 hover:text-orange-700"
+                      ? "text-slate-800 hover:bg-green-50 hover:text-green-700"
                       : "text-slate-300 cursor-default",
                 ].join(" ")}
               >
@@ -256,7 +256,7 @@ function MiniCalendar({
               {isAvailable && !isPast && (
                 <span
                   className={`w-1 h-1 rounded-full mt-0.5 ${
-                    isSelected ? "bg-orange-300" : "bg-orange-500"
+                    isSelected ? "bg-green-300" : "bg-green-500"
                   }`}
                 />
               )}
@@ -266,7 +266,7 @@ function MiniCalendar({
       </div>
 
       <p className="mt-3 text-[10px] text-slate-400 flex items-center gap-1.5">
-        <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500" />
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
         Dates with available slots
       </p>
     </div>
@@ -375,12 +375,12 @@ export function SpecialistScheduleListPage({
           {selectedPatient.patient.fullName} with Dr.{" "}
           {selectedPatient.doctor.fullName}
         </p>
-        <p className="mt-0.5 text-xs font-bold text-orange-700">
+        <p className="mt-0.5 text-xs font-bold text-slate-600">
           {formatDate(selectedDate)} · {formatTimeDisplay(selectedTime)}
         </p>
         <button
           onClick={onReset}
-          className="mt-5 bg-orange-600 px-5 py-2.5 text-xs font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-orange-700"
+          className="mt-5 bg-[var(--color-primary)] px-5 py-2.5 text-xs font-extrabold uppercase tracking-widest text-white transition-colors hover:brightness-95"
         >
           Book Another
         </button>
@@ -393,7 +393,7 @@ export function SpecialistScheduleListPage({
       {/* Doctor summary strip */}
       <div className="border-b border-slate-100 bg-slate-50 px-6 py-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center border border-orange-100 bg-orange-50 text-xs font-extrabold text-orange-700">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center border border-slate-200 bg-slate-100 text-xs font-extrabold text-slate-700">
             {selectedPatient.doctor.fullName
               .split(" ")
               .slice(0, 2)
@@ -444,7 +444,7 @@ export function SpecialistScheduleListPage({
               <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
                 Available Time Slots
               </p>
-              <span className="text-[10px] font-bold text-orange-600">
+              <span className="text-[10px] font-bold text-slate-500">
                 {formatDate(selectedDate)}
               </span>
             </div>
@@ -460,7 +460,7 @@ export function SpecialistScheduleListPage({
                 Past / Booked
               </span>
               <span className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
-                <span className="inline-block w-2 h-2 rounded-full bg-orange-500" />
+                <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
                 Selected
               </span>
             </div>
@@ -483,10 +483,10 @@ export function SpecialistScheduleListPage({
                       className={[
                         "border px-3 py-3 text-xs font-bold transition-colors text-center",
                         isSelected
-                          ? "border-orange-300 bg-orange-50 text-orange-800"
+                          ? "border-green-300 bg-green-50 text-green-800"
                           : isPastOrBooked
-                            ? "border-rose-100 bg-rose-50 text-rose-300 cursor-not-allowed"
-                            : "border-slate-200 bg-white text-slate-700 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700",
+                            ? "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed"
+                            : "border-slate-200 bg-white text-slate-700 hover:bg-green-50 hover:border-green-200 hover:text-green-700",
                       ].join(" ")}
                     >
                       {formatTimeDisplay(slot)}
@@ -528,7 +528,7 @@ export function SpecialistScheduleListPage({
             <button
               onClick={onBook}
               disabled={!selectedDate || !selectedTime || bookingLoading}
-              className="w-full bg-orange-600 py-4 text-sm font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+              className="w-full bg-[var(--color-primary)] py-4 text-sm font-extrabold uppercase tracking-widest text-white transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
             >
               {bookingLoading ? "Booking..." : "Confirm Appointment"}
             </button>

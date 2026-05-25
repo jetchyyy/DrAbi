@@ -25,6 +25,7 @@ import {
   useDeleteBooking,
   type PatientBookingRow,
 } from "./hooks/use-patients-booking";
+import { StatusPill } from "../../components/ui/status-pill";
 
 // ---------------------------------------------------------------------------
 // Tiny utility helpers
@@ -96,43 +97,6 @@ function feeTypeLabel(type: string | null) {
   }
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-orange-50 text-orange-700 border-orange-200",
-  confirmed: "bg-indigo-50 text-indigo-600 border-indigo-200",
-  rescheduled: "bg-sky-50 text-sky-600 border-sky-200",
-  cancelled: "bg-red-50 text-red-500 border-red-200",
-  completed: "bg-cyan-50 text-cyan-700 border-cyan-200",
-};
-
-const PAYMENT_STYLES: Record<string, string> = {
-  paid: "bg-orange-50 text-orange-700 border-orange-200",
-  pending_cashier: "bg-slate-100 text-slate-600 border-slate-200",
-};
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span
-      className={`inline-flex items-center border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest ${
-        STATUS_STYLES[status] ?? "bg-gray-100 text-gray-600 border-gray-200"
-      }`}
-    >
-      {status.replace("_", " ")}
-    </span>
-  );
-}
-
-function PaymentBadge({ status }: { status: string }) {
-  const label = status === "paid" ? "Paid" : "Pending";
-  return (
-    <span
-      className={`inline-flex items-center border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest ${
-        PAYMENT_STYLES[status] ?? "bg-gray-100 text-gray-600 border-gray-200"
-      }`}
-    >
-      {label}
-    </span>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Delete confirmation dialog
@@ -350,19 +314,17 @@ function EditModal({ booking, onClose }: EditModalProps) {
       />
       <div className="relative z-10 w-full max-w-lg border border-slate-200 bg-white shadow-2xl mx-4 max-h-[85vh] sm:max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 bg-orange-600 px-4 py-4 sm:px-6">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-5 sm:px-6">
           <div className="min-w-0">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-white">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Appointments</p>
+            <h2 className="mt-1 text-base font-bold text-slate-900">
               Edit Booking
             </h2>
-            <p className="mt-0.5 text-sm font-medium text-white/90">
-              Update the booking status, timing, and notes.
-            </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex shrink-0 items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+            className="inline-flex shrink-0 items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50"
           >
             <svg
               className="h-4 w-4"
@@ -412,7 +374,7 @@ function EditModal({ booking, onClose }: EditModalProps) {
                     setStatus(e.target.value);
                     setError(null);
                   }}
-                  className="w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                  className="w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                 >
                   <option value="pending">Pending</option>
                   <option value="confirmed">Confirmed</option>
@@ -433,7 +395,7 @@ function EditModal({ booking, onClose }: EditModalProps) {
                     value={cancelledReason}
                     onChange={(e) => setCancelledReason(e.target.value)}
                     placeholder="Enter reason for cancellation…"
-                    className="w-full resize-none border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                    className="w-full resize-none border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                   />
                 </div>
               )}
@@ -451,7 +413,7 @@ function EditModal({ booking, onClose }: EditModalProps) {
                       value={rescheduledReason}
                       onChange={(e) => setRescheduledReason(e.target.value)}
                       placeholder="Enter reason for rescheduling…"
-                      className="w-full resize-none border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                      className="w-full resize-none border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                     />
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -468,7 +430,7 @@ function EditModal({ booking, onClose }: EditModalProps) {
                           setNewDate(e.target.value);
                           setNewTime("");
                         }}
-                        className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                        className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                       />
                     </div>
                     <div>
@@ -480,7 +442,7 @@ function EditModal({ booking, onClose }: EditModalProps) {
                           required
                           value={newTime}
                           onChange={(e) => setNewTime(e.target.value)}
-                          className="w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                          className="w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                         >
                           <option value="">Select time</option>
                           {availableSlots.map((slot) => (
@@ -513,7 +475,7 @@ function EditModal({ booking, onClose }: EditModalProps) {
                               : undefined
                           }
                           onChange={(e) => setNewTime(e.target.value)}
-                          className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                          className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                         />
                       )}
                     </div>
@@ -558,7 +520,7 @@ function EditModal({ booking, onClose }: EditModalProps) {
                 selectedRescheduleTimeIsPast ||
                 isRescheduleDateInPast
               }
-              className="inline-flex w-full items-center justify-center gap-2 bg-orange-600 px-4 py-2 text-sm font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
               {updateMutation.isPending ? "Saving…" : "Save Changes"}
             </button>
@@ -724,20 +686,14 @@ export function PatientBookingPageList() {
       <div className="border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 bg-orange-600 p-2.5 text-white">
-              <CalendarCheck2 className="size-5" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+              <CalendarCheck2 className="size-5" style={{color:'var(--color-primary)'}} />
             </div>
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
-                Operations
-              </p>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-950">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Operations</p>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">
                 Patient Booking List
               </h1>
-              <p className="mt-1 text-sm text-slate-500">
-                Review schedules, update booking status, and keep intake timing
-                on track.
-              </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -754,7 +710,7 @@ export function PatientBookingPageList() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+              className="border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
             >
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
@@ -778,16 +734,16 @@ export function PatientBookingPageList() {
           <span className="text-xs font-bold text-slate-500">
             {filtered.length} booking{filtered.length !== 1 ? "s" : ""} found
           </span>
-          <span className="inline-flex items-center border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+          <span className="inline-flex items-center border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
             {bookingSummary.pending} pending
           </span>
-          <span className="inline-flex items-center border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-indigo-600">
+          <span className="inline-flex items-center border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
             {bookingSummary.confirmed} confirmed
           </span>
-          <span className="inline-flex items-center border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-sky-600">
+          <span className="inline-flex items-center border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
             {bookingSummary.rescheduled} rescheduled
           </span>
-          <span className="inline-flex items-center border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-red-600">
+          <span className="inline-flex items-center border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
             {bookingSummary.cancelled} cancelled
           </span>
         </div>
@@ -858,7 +814,7 @@ export function PatientBookingPageList() {
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
-              className="border border-slate-200 px-3 py-1.5 text-xs font-extrabold uppercase tracking-widest text-orange-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Previous
             </button>
@@ -871,7 +827,7 @@ export function PatientBookingPageList() {
                 setCurrentPage((prev) => Math.min(totalPages, prev + 1))
               }
               disabled={currentPage === totalPages}
-              className="border border-slate-200 px-3 py-1.5 text-xs font-extrabold uppercase tracking-widest text-orange-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Next
             </button>
@@ -960,12 +916,12 @@ function BookingTableRow({
 
       {/* Booking status */}
       <td className="px-4 py-3 align-top">
-        <StatusBadge status={booking.status} />
+        <StatusPill status={booking.status} />
       </td>
 
       {/* Payment status */}
       <td className="px-4 py-3 align-top">
-        <PaymentBadge status={booking.paymentStatus} />
+        <StatusPill status={booking.paymentStatus} />
       </td>
 
       {/* Cancelled reason */}

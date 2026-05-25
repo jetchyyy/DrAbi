@@ -296,7 +296,7 @@ export function DoctorPayoutsPage() {
     return (
       <div className="flex h-[450px] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="size-10 animate-spin rounded-full border-4 border-slate-200 border-t-orange-500" />
+          <div className="size-10 animate-spin rounded-full border-4 border-slate-200 border-t-green-500" />
           <p className="text-sm font-medium text-slate-500">Loading payout records...</p>
         </div>
       </div>
@@ -396,7 +396,7 @@ export function DoctorPayoutsPage() {
 
         {/* Metrics Grid */}
         <div className="grid gap-6 md:grid-cols-4">
-          <Card className="border-l-4 border-l-orange-500 shadow-sm">
+          <Card className="border border-slate-200 shadow-sm">
             <div className="pt-6">
               <div className="flex items-start justify-between">
                 <div>
@@ -404,8 +404,8 @@ export function DoctorPayoutsPage() {
                   <p className="mt-2 text-3xl font-extrabold text-slate-900">{metrics.totalConsultationsCount}</p>
                   <p className="mt-1 text-xs text-slate-400">Total counted visits</p>
                 </div>
-                <div className="rounded-xl bg-orange-50 p-2 text-orange-600">
-                  <Users className="size-6" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+                  <Users className="size-6" style={{color:'var(--color-primary)'}} />
                 </div>
               </div>
             </div>
@@ -441,7 +441,7 @@ export function DoctorPayoutsPage() {
             </div>
           </Card>
 
-          <Card className="border-l-4 border-l-amber-500 shadow-sm">
+          <Card className="border border-slate-200 shadow-sm">
             <div className="pt-6">
               <div className="flex items-start justify-between">
                 <div>
@@ -449,7 +449,7 @@ export function DoctorPayoutsPage() {
                   <p className="mt-2 text-3xl font-extrabold text-slate-900">₱{metrics.pendingPayoutAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   <p className="mt-1 text-xs text-slate-400">Awaiting clinic payout</p>
                 </div>
-                <div className="rounded-xl bg-amber-50 p-2 text-amber-600">
+                <div className="rounded-xl bg-slate-100 p-2 text-slate-600">
                   <Clock className="size-6" />
                 </div>
               </div>
@@ -535,7 +535,7 @@ export function DoctorPayoutsPage() {
                             }
                             onChange={handleToggleSelectAll}
                             disabled={pendingConsultations.length === 0}
-                            className="rounded border-slate-300 text-orange-500 focus:ring-orange-500 size-4 cursor-pointer"
+                            className="rounded border-slate-300 text-[var(--color-primary)] focus:ring-green-400 size-4 cursor-pointer"
                           />
                         </th>
                       )}
@@ -558,7 +558,7 @@ export function DoctorPayoutsPage() {
                         <tr
                           key={c.id}
                           className={`hover:bg-slate-50/50 transition-colors ${
-                            isSelected ? 'bg-orange-50/20' : ''
+                            isSelected ? 'bg-green-50/20' : ''
                           }`}
                         >
                           {isAdmin && (
@@ -568,7 +568,7 @@ export function DoctorPayoutsPage() {
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => handleToggleSelectOne(c.id)}
-                                  className="rounded border-slate-300 text-orange-500 focus:ring-orange-500 size-4 cursor-pointer"
+                                  className="rounded border-slate-300 text-[var(--color-primary)] focus:ring-green-400 size-4 cursor-pointer"
                                 />
                               ) : (
                                 <div className="size-4 mx-auto bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center">
@@ -687,7 +687,7 @@ export function DoctorPayoutsPage() {
 
       {/* Global metrics grid */}
       <div className="grid gap-6 md:grid-cols-4">
-        <Card className="border-l-4 border-l-orange-500 shadow-sm">
+        <Card className="border border-slate-200 shadow-sm">
           <div className="pt-6">
             <div className="flex items-start justify-between">
               <div>
@@ -695,8 +695,8 @@ export function DoctorPayoutsPage() {
                 <p className="mt-2 text-3xl font-extrabold text-slate-900">{metrics.totalConsultationsCount}</p>
                 <p className="mt-1 text-xs text-slate-400">All registered appointments</p>
               </div>
-              <div className="rounded-xl bg-orange-50 p-2 text-orange-600">
-                <Users className="size-6" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+                <Users className="size-6" style={{color:'var(--color-primary)'}} />
               </div>
             </div>
           </div>
@@ -732,7 +732,7 @@ export function DoctorPayoutsPage() {
           </div>
         </Card>
 
-        <Card className="border-l-4 border-l-amber-500 shadow-sm">
+        <Card className="border border-slate-200 shadow-sm">
           <div className="pt-6">
             <div className="flex items-start justify-between">
               <div>
@@ -740,7 +740,7 @@ export function DoctorPayoutsPage() {
                 <p className="mt-2 text-3xl font-extrabold text-slate-900">₱{metrics.pendingPayoutAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 <p className="mt-1 text-xs text-slate-400">Outstanding clinic payout</p>
               </div>
-              <div className="rounded-xl bg-amber-50 p-2 text-amber-600">
+              <div className="rounded-xl bg-slate-100 p-2 text-slate-600">
                 <Clock className="size-6" />
               </div>
             </div>
@@ -790,7 +790,7 @@ export function DoctorPayoutsPage() {
                     <th className="p-4 text-center">Consultations</th>
                     <th className="p-4 text-right">Consultation Fee</th>
                     <th className="p-4 text-center">Doctor Share %</th>
-                    <th className="p-4 text-right text-amber-600">Pending Payout</th>
+                    <th className="p-4 text-right text-slate-600">Pending Payout</th>
                     <th className="p-4 text-right text-emerald-600">Settled Payout</th>
                     <th className="p-4 text-right">Total Entitlement</th>
                     <th className="p-4 text-center">Action</th>
@@ -810,7 +810,7 @@ export function DoctorPayoutsPage() {
                         ₱{(doctor.consultationFee ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="p-4 text-center font-bold text-slate-500">{doctor.doctorSharePercentage ?? 100}%</td>
-                      <td className="p-4 text-right font-bold text-amber-600">
+                      <td className="p-4 text-right font-bold text-slate-600">
                         ₱{pendingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="p-4 text-right font-semibold text-emerald-600">
@@ -826,7 +826,7 @@ export function DoctorPayoutsPage() {
                             setSelectedDoctorId(doctor.id);
                             setSelectedConsultationIds([]);
                           }}
-                          className="rounded-xl px-3 py-1.5 text-xs inline-flex items-center gap-1 hover:bg-orange-50 hover:text-orange-600 hover:ring-orange-200"
+                          className="rounded-xl px-3 py-1.5 text-xs inline-flex items-center gap-1 hover:bg-green-50 hover:text-green-700 hover:ring-green-200"
                         >
                           View Details
                         </Button>

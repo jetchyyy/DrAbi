@@ -223,10 +223,10 @@ export function RequestsTab() {
 
   const STATUS_FILTERS: Array<{ label: string; value: 'All' | LabBookingStatus; color: string; activeColor: string }> = [
     { label: `All (${counts.total})`, value: 'All', color: 'border-slate-200 bg-white text-slate-600', activeColor: 'bg-slate-800 text-white border-slate-800' },
-    { label: `Pending (${counts.Pending})`, value: 'Pending', color: 'border-orange-200 bg-orange-50 text-orange-700', activeColor: 'bg-orange-600 text-white border-orange-600' },
-    { label: `Confirmed (${counts.Confirmed})`, value: 'Confirmed', color: 'border-sky-200 bg-sky-50 text-sky-700', activeColor: 'bg-sky-600 text-white border-sky-600' },
-    { label: `Completed (${counts.Completed})`, value: 'Completed', color: 'border-emerald-200 bg-emerald-50 text-emerald-700', activeColor: 'bg-emerald-600 text-white border-emerald-600' },
-    { label: `Cancelled (${counts.Cancelled})`, value: 'Cancelled', color: 'border-rose-200 bg-rose-50 text-rose-700', activeColor: 'bg-rose-600 text-white border-rose-600' },
+    { label: `Pending (${counts.Pending})`, value: 'Pending', color: 'border-slate-200 bg-white text-slate-600', activeColor: 'bg-slate-700 text-white border-slate-700' },
+    { label: `Confirmed (${counts.Confirmed})`, value: 'Confirmed', color: 'border-slate-200 bg-white text-slate-600', activeColor: 'bg-slate-700 text-white border-slate-700' },
+    { label: `Completed (${counts.Completed})`, value: 'Completed', color: 'border-slate-200 bg-white text-slate-600', activeColor: 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' },
+    { label: `Cancelled (${counts.Cancelled})`, value: 'Cancelled', color: 'border-slate-200 bg-white text-slate-600', activeColor: 'bg-slate-700 text-white border-slate-700' },
   ];
   const STATUS_OPTIONS: LabBookingStatus[] = role === 'front_desk_cashier'
     ? ['Pending', 'Confirmed', 'Cancelled']
@@ -322,8 +322,8 @@ export function RequestsTab() {
                       <span className={cn(
                         'rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1',
                         req.paymentStatus === 'paid'
-                          ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
-                          : 'bg-rose-50 text-rose-700 ring-rose-100',
+                          ? 'bg-green-50 text-green-700 ring-green-100'
+                          : 'bg-slate-100 text-slate-600 ring-slate-200',
                       )}>
                         {req.paymentStatus === 'paid' ? 'Paid' : 'Pending'}
                       </span>
@@ -357,7 +357,7 @@ export function RequestsTab() {
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(req)}
-                          className="rounded-lg border border-transparent p-1.5 text-rose-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                          className="rounded-lg border border-transparent p-1.5 text-red-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                         >
                           <Trash2 className="size-3.5" />
                         </button>
@@ -448,7 +448,7 @@ export function RequestsTab() {
               <button
                 type="button"
                 onClick={() => setDeleteTarget(viewModal)}
-                className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-rose-500 hover:text-rose-700"
+                className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-red-500 hover:text-red-700"
               >
                 <Trash2 className="size-3.5" /> Delete
               </button>
@@ -461,8 +461,8 @@ export function RequestsTab() {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-xl">
-            <div className="bg-rose-600 px-6 py-4">
-              <p className="text-sm font-bold text-white">Confirm deletion</p>
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <p className="text-base font-bold text-slate-900">Confirm deletion</p>
             </div>
             <div className="px-6 py-5">
               <p className="text-sm text-slate-700">
@@ -479,7 +479,7 @@ export function RequestsTab() {
                 type="button"
                 disabled={deleteMutation.isPending}
                 onClick={() => void deleteMutation.mutate(deleteTarget)}
-                className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-rose-700 disabled:opacity-60"
+                className="rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-red-700 disabled:opacity-60"
               >
                 {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
               </button>

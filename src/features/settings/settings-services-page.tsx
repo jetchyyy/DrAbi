@@ -311,8 +311,8 @@ export function SettingsServicesPage() {
         <div className="border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="shrink-0 bg-orange-600 p-2.5 text-white">
-                <BriefcaseBusiness className="size-5" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+                <BriefcaseBusiness className="size-5" style={{color:'var(--color-primary)'}} />
               </div>
               <div>
                 <h1 className="text-xl font-extrabold tracking-tight text-slate-950">Service Catalog</h1>
@@ -320,7 +320,7 @@ export function SettingsServicesPage() {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Button className="rounded-none bg-orange-600 px-4 py-2.5 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700" onClick={openCreateServiceModal}>
+              <Button variant="primary" onClick={openCreateServiceModal}>
                 <Plus className="mr-2 size-4" />
                 Add service
               </Button>
@@ -427,12 +427,12 @@ export function SettingsServicesPage() {
       {isServiceModalOpen ? (
         <div aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4 sm:p-6" onClick={() => setIsServiceModalOpen(false)} role="dialog">
           <div className="my-auto flex w-full max-w-2xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]" onClick={(event) => event.stopPropagation()}>
-            <div className="bg-orange-600 px-6 py-4 flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">Service Form</p>
-                <p className="text-sm font-bold text-white mt-0.5">{editingServiceId ? 'Edit service' : 'Add service'}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Service Form</p>
+                <p className="text-sm font-bold text-slate-900 mt-0.5">{editingServiceId ? 'Edit service' : 'Add service'}</p>
               </div>
-              <button aria-label="Close service modal" className="inline-flex items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20" onClick={() => setIsServiceModalOpen(false)} type="button">
+              <button aria-label="Close service modal" className="inline-flex items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50" onClick={() => setIsServiceModalOpen(false)} type="button">
                 <X className="size-4" />
               </button>
             </div>
@@ -487,7 +487,7 @@ export function SettingsServicesPage() {
               </div>
               <div className="px-6 py-4 bg-slate-50 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <Button className="w-full rounded-none sm:w-auto" onClick={() => setIsServiceModalOpen(false)} type="button" variant="secondary">Cancel</Button>
-                <Button className="w-full rounded-none bg-orange-600 hover:bg-orange-700 sm:w-auto" disabled={createServiceMutation.isPending || updateServiceMutation.isPending} type="submit">
+                <Button variant="primary" className="w-full sm:w-auto" disabled={createServiceMutation.isPending || updateServiceMutation.isPending} type="submit">
                   {createServiceMutation.isPending || updateServiceMutation.isPending ? 'Saving...' : editingServiceId ? 'Save Service' : 'Add Service'}
                 </Button>
               </div>
@@ -499,12 +499,12 @@ export function SettingsServicesPage() {
       {isSpecialtyModalOpen ? (
         <div aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4 sm:p-6" onClick={() => setIsSpecialtyModalOpen(false)} role="dialog">
           <div className="my-auto flex w-full max-w-xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <div className="bg-orange-600 px-6 py-4 flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">Specialty Form</p>
-                <p className="text-sm font-bold text-white mt-0.5">{editingSpecialty ? 'Edit specialty' : 'Add specialty'}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Specialty Form</p>
+                <p className="text-sm font-bold text-slate-900 mt-0.5">{editingSpecialty ? 'Edit specialty' : 'Add specialty'}</p>
               </div>
-              <button aria-label="Close specialty modal" className="inline-flex items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20" onClick={() => setIsSpecialtyModalOpen(false)} type="button">
+              <button aria-label="Close specialty modal" className="inline-flex items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50" onClick={() => setIsSpecialtyModalOpen(false)} type="button">
                 <X className="size-4" />
               </button>
             </div>
@@ -517,7 +517,7 @@ export function SettingsServicesPage() {
               </FormField>
               <div className="pt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <Button className="w-full rounded-none sm:w-auto" onClick={() => setIsSpecialtyModalOpen(false)} type="button" variant="secondary">Cancel</Button>
-                <Button className="w-full rounded-none bg-orange-600 hover:bg-orange-700 sm:w-auto" disabled={createSpecialtyMutation.isPending || updateSpecialtyMutation.isPending} type="submit">
+                <Button variant="primary" className="w-full sm:w-auto" disabled={createSpecialtyMutation.isPending || updateSpecialtyMutation.isPending} type="submit">
                   {createSpecialtyMutation.isPending || updateSpecialtyMutation.isPending ? 'Saving...' : editingSpecialty ? 'Save Specialty' : 'Add Specialty'}
                 </Button>
               </div>

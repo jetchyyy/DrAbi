@@ -453,15 +453,15 @@ export function SettingsDocumentsPage() {
       <div className="border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 bg-orange-600 p-2.5 text-white">
-              <FileText className="size-5" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+              <FileText className="size-5" style={{color:'var(--color-primary)'}} />
             </div>
             <div>
               <h1 className="text-xl font-extrabold tracking-tight text-slate-950">Documents</h1>
               <p className="mt-1 text-sm text-slate-500">Administration document templates with static inputs for print-preview debugging.</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-bold uppercase tracking-widest text-orange-700">
+          <div className="flex items-center gap-2 border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-bold uppercase tracking-widest text-slate-600">
             <Eye className="size-3.5" />
             Debug Preview Enabled
           </div>

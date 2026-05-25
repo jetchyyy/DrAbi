@@ -202,8 +202,8 @@ export function SettingsRolesPage() {
         <div className="border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="shrink-0 bg-orange-600 p-2.5 text-white">
-                <KeyRound className="size-5" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+                <KeyRound className="size-5" style={{color:'var(--color-primary)'}} />
               </div>
               <div>
                 <h1 className="text-xl font-extrabold tracking-tight text-slate-950">Role Management</h1>
@@ -211,7 +211,7 @@ export function SettingsRolesPage() {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Button className="rounded-none bg-orange-600 px-4 py-2.5 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700" onClick={openCreateModal}>
+              <Button variant="primary" onClick={openCreateModal}>
                 <Plus className="mr-2 size-4" />
                 Add role
               </Button>
@@ -244,7 +244,7 @@ export function SettingsRolesPage() {
                     <td className="px-6 py-4 align-top">
                       <p className="font-bold text-slate-950">{role.name}</p>
                       <p className="mt-1 text-sm text-slate-500">{role.description}</p>
-                      {role.isSystem ? <p className="mt-2 text-xs font-bold uppercase tracking-widest text-orange-600">System role</p> : null}
+                      {role.isSystem ? <p className="mt-2 text-xs font-bold uppercase tracking-widest text-slate-400">System role</p> : null}
                     </td>
                     <td className="px-6 py-4 align-top text-sm text-slate-600">{role.permissions.join(', ')}</td>
                     <td className="px-6 py-4 align-top">
@@ -281,12 +281,12 @@ export function SettingsRolesPage() {
       {isRoleModalOpen ? (
         <div aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4 sm:p-6" onClick={closeRoleModal} role="dialog">
           <div className="my-auto flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl sm:max-h-[80vh]" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-start justify-between gap-4 bg-orange-600 px-6 py-4">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">Role Form</p>
-                <p className="mt-0.5 text-sm font-bold text-white">{editingRole ? 'Edit access role' : 'Add access role'}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Settings</p>
+                <h2 className="mt-1 text-base font-bold text-slate-900">{editingRole ? 'Edit access role' : 'Add access role'}</h2>
               </div>
-              <button aria-label="Close role modal" className="inline-flex items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20" onClick={closeRoleModal} type="button">
+              <button aria-label="Close role modal" className="inline-flex shrink-0 items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50" onClick={closeRoleModal} type="button">
                 <X className="size-4" />
               </button>
             </div>
@@ -333,10 +333,10 @@ export function SettingsRolesPage() {
               </div>
 
               <div className="flex flex-col-reverse gap-3 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
-                <Button className="w-full rounded-none sm:w-auto" onClick={closeRoleModal} type="button" variant="secondary">
+                <Button className="w-full sm:w-auto" onClick={closeRoleModal} type="button" variant="tertiary">
                   Cancel
                 </Button>
-                <Button className="w-full rounded-none bg-orange-600 hover:bg-orange-700 sm:w-auto" disabled={createRoleMutation.isPending || updateRoleMutation.isPending} type="submit">
+                <Button className="w-full sm:w-auto" variant="primary" disabled={createRoleMutation.isPending || updateRoleMutation.isPending} type="submit">
                   {createRoleMutation.isPending || updateRoleMutation.isPending ? 'Saving...' : editingRole ? 'Save Role' : 'Add Role'}
                 </Button>
               </div>

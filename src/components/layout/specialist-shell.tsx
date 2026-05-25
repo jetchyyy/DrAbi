@@ -40,7 +40,7 @@ export function SpecialistShell() {
           cn(
             'flex w-full min-w-0 items-center gap-3 overflow-hidden px-3 py-2.5 text-sm font-semibold transition-all duration-150',
             isActive
-              ? 'bg-orange-50 text-orange-700 border-l-[3px] border-orange-600 font-extrabold'
+              ? 'bg-green-50/60 text-slate-900 border-l-[3px] border-[var(--color-primary)] font-extrabold'
               : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-[3px] border-transparent',
           )
         }
@@ -73,11 +73,11 @@ export function SpecialistShell() {
       >
         <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 pb-5 pt-6">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 bg-orange-600 p-2 text-white">
-              <Stethoscope className="size-4" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+              <Stethoscope className="size-4" style={{color:'var(--color-primary)'}} />
             </div>
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-orange-600">{clinic.shortCode || 'Clinic OS'}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">{clinic.shortCode || 'Clinic OS'}</p>
               <h1 className="text-sm font-extrabold leading-tight text-slate-950">{clinic.clinicName}</h1>
             </div>
           </div>
@@ -98,7 +98,7 @@ export function SpecialistShell() {
 
         <div className="space-y-2 border-t border-slate-100 px-4 py-4">
           <div className="flex items-center gap-3 px-1">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-orange-600 text-xs font-extrabold text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-slate-900 text-xs font-extrabold text-white">
               {getInitials(profile?.fullName ?? 'Specialist User')}
             </div>
             <div className="min-w-0">
@@ -123,11 +123,11 @@ export function SpecialistShell() {
         {/* Brand */}
         <div className="px-5 pt-6 pb-5 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-600 text-white shrink-0">
-              <Stethoscope className="size-4" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+              <Stethoscope className="size-4" style={{color:'var(--color-primary)'}} />
             </div>
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-orange-600">{clinic.shortCode || 'Clinic OS'}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">{clinic.shortCode || 'Clinic OS'}</p>
               <h1 className="text-sm font-extrabold leading-tight text-slate-950">{clinic.clinicName}</h1>
             </div>
           </div>
@@ -142,7 +142,7 @@ export function SpecialistShell() {
         {/* User profile footer */}
         <div className="border-t border-slate-100 px-4 py-4 space-y-2">
           <div className="flex items-center gap-3 px-1">
-            <div className="flex h-8 w-8 items-center justify-center bg-orange-600 text-white text-xs font-extrabold shrink-0">
+            <div className="flex h-8 w-8 items-center justify-center bg-slate-900 text-white text-xs font-extrabold shrink-0">
               {getInitials(profile?.fullName ?? 'Specialist User')}
             </div>
             <div className="min-w-0">
@@ -179,7 +179,7 @@ export function SpecialistShell() {
 
           <div className="flex items-center gap-2">
             <div className="hidden md:flex items-center gap-2.5 border border-slate-200 bg-white px-3 py-2">
-              <div className="flex h-8 w-8 items-center justify-center bg-orange-600 text-white text-xs font-extrabold shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center bg-slate-900 text-white text-xs font-extrabold shrink-0">
                 {getInitials(profile?.fullName ?? 'Specialist User')}
               </div>
               <div>

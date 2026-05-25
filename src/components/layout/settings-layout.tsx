@@ -17,7 +17,7 @@ export function SettingsLayout() {
               className={({ isActive }) =>
                 cn(
                   'block rounded-sm px-3 py-2.5 text-sm text-slate-600 transition hover:bg-slate-50',
-                  isActive && 'bg-orange-50 font-medium text-orange-700',
+                  isActive && 'bg-green-50/60 font-semibold text-slate-900 border-l-2 border-[var(--color-primary)]',
                 )
               }
               to={item.to}

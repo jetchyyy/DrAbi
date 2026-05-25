@@ -125,19 +125,19 @@ export function ResetPasswordPage() {
               'repeating-linear-gradient(0deg, transparent, transparent 39px, #fff 39px, #fff 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #fff 39px, #fff 40px)',
           }}
         />
-        <div className="absolute top-0 left-0 right-0 h-1 bg-orange-600" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-[var(--color-primary)]" />
 
         <div className="relative z-10 flex flex-col h-full px-12 py-12">
           <div className="animate-slide-left">
             <img src="/odc.jpg" alt="Odyssey Clinic Logo" className="h-16 w-16 object-contain" />
-            <p className="mt-4 text-[10px] font-extrabold uppercase tracking-[0.3em] text-orange-400">Clinic OS Access</p>
+            <p className="mt-4 text-[10px] font-extrabold uppercase tracking-[0.3em] text-slate-400">Clinic OS Access</p>
             <h1 className="mt-1.5 text-2xl font-extrabold text-white leading-tight">
               Odyssey Clinic<br />Operations System
             </h1>
           </div>
           <div className="mt-auto animate-fade-up delay-200">
             <div className="p-5 bg-white/5 border border-white/10 inline-block mb-6">
-              <KeyRound className="size-10 text-orange-500" />
+              <KeyRound className="size-10" style={{color:'var(--color-primary)'}} />
             </div>
             <p className="text-base font-semibold text-white max-w-xs leading-relaxed">
               Set a strong new password to secure your clinic account.
@@ -153,7 +153,7 @@ export function ResetPasswordPage() {
 
       {/* ── Right content panel ──────────────────────────────── */}
       <div className="flex-1 flex flex-col items-center justify-center bg-white px-6 py-12 relative">
-        <div className="lg:hidden absolute top-0 left-0 right-0 h-1 bg-orange-600" />
+        <div className="lg:hidden absolute top-0 left-0 right-0 h-1 bg-[var(--color-primary)]" />
         <div className="lg:hidden absolute top-6 left-6 flex items-center gap-3">
           <img src="/odc.jpg" alt="ODC Logo" className="h-9 w-9 object-contain" />
           <p className="text-sm font-extrabold text-slate-950 uppercase tracking-widest">Odyssey Clinic</p>
@@ -169,14 +169,14 @@ export function ResetPasswordPage() {
           </Link>
 
           <div className="mb-8">
-            <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">Password Update</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Password Update</p>
             <h2 className="mt-2 text-3xl font-extrabold text-slate-950 tracking-tight">Create new password</h2>
           </div>
 
           {/* ── Not configured (local / missing env) ── */}
           {!isSupabaseConfigured && (
-            <div className="bg-orange-50 border border-orange-200 px-5 py-4 mb-6">
-              <p className="text-xs font-bold text-orange-800 leading-relaxed">
+            <div className="border border-slate-200 bg-slate-50 px-5 py-4 mb-6">
+              <p className="text-xs font-bold text-slate-700 leading-relaxed">
                 Configure your <span className="font-extrabold">VITE_SUPABASE_URL</span> and{' '}
                 <span className="font-extrabold">VITE_SUPABASE_ANON_KEY</span> environment variables to activate
                 live password reset.
@@ -187,7 +187,7 @@ export function ResetPasswordPage() {
           {/* ── Waiting for the PASSWORD_RECOVERY event ── */}
           {pageState === 'waiting' && (
             <div className="flex flex-col items-center gap-4 py-10 text-slate-500">
-              <Loader2 className="size-8 animate-spin text-orange-500" />
+              <Loader2 className="size-8 animate-spin" style={{color:'var(--color-primary)'}} />
               <p className="text-sm font-semibold text-center">
                 Verifying your reset link…
               </p>
@@ -252,7 +252,7 @@ export function ResetPasswordPage() {
               </div>
 
               <Button
-                className="w-full gap-2 rounded-xl bg-orange-600 hover:bg-orange-700 font-extrabold uppercase tracking-widest text-sm py-5 transition-colors"
+                className="w-full gap-2 rounded-xl bg-[var(--color-primary)] hover:brightness-95 font-extrabold uppercase tracking-widest text-sm py-5 transition-colors"
                 type="submit"
               >
                 <KeyRound className="size-4" />
@@ -264,7 +264,7 @@ export function ResetPasswordPage() {
           {/* ── Submitting ── */}
           {pageState === 'submitting' && (
             <div className="flex flex-col items-center gap-4 py-10 text-slate-500">
-              <Loader2 className="size-8 animate-spin text-orange-500" />
+              <Loader2 className="size-8 animate-spin" style={{color:'var(--color-primary)'}} />
               <p className="text-sm font-semibold">Updating your password…</p>
             </div>
           )}

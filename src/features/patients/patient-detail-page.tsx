@@ -1233,7 +1233,7 @@ export function PatientDetailPage() {
     return (
       <Card>
         <div className="flex items-center gap-3 py-2">
-          <div className="size-5 animate-spin rounded-full border-2 border-slate-200 border-t-sky-500" />
+          <div className="size-5 animate-spin rounded-full border-2 border-slate-200 border-t-green-500" />
           <CardTitle className="text-slate-500">
             Loading patient record...
           </CardTitle>
@@ -2331,22 +2331,16 @@ export function PatientDetailPage() {
             className="my-auto flex w-full max-w-5xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 bg-orange-600 px-4 py-4 sm:px-6">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-5 sm:px-6">
               <div className="min-w-0">
-                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">
-                  Prescription History
-                </p>
-                <p className="mt-0.5 text-sm font-bold text-white">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Prescription History</p>
+                <h2 className="mt-1 text-base font-bold text-slate-900">
                   Edit Prescription Tray
-                </p>
-                <p className="mt-2 max-w-2xl text-sm text-orange-50">
-                  Update all medications in this selected tray. Changes are
-                  saved to the same historical records.
-                </p>
+                </h2>
               </div>
               <button
                 aria-label="Close edit prescription modal"
-                className="inline-flex shrink-0 items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                className="inline-flex shrink-0 items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50"
                 onClick={closeEditPrescriptionModal}
                 type="button"
               >
@@ -2356,7 +2350,7 @@ export function PatientDetailPage() {
 
             <div className="min-h-0 flex-1 overflow-y-auto">
               <div className="border-b border-slate-100 bg-slate-50 px-4 py-2 sm:px-6">
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
                   Vertical scroll with horizontal card layout
                 </p>
               </div>
@@ -2601,7 +2595,7 @@ export function PatientDetailPage() {
                 Cancel
               </Button>
               <Button
-                className="w-full rounded-none bg-orange-600 px-5 py-3 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700 sm:w-auto"
+                variant="primary"
                 disabled={updatePrescription.isPending}
                 onClick={() => {
                   void handleSaveEditedPrescription();
@@ -2631,7 +2625,7 @@ export function PatientDetailPage() {
 
       <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr] xl:items-start">
         <div className="space-y-4">
-          <Card className="border-slate-200/80 bg-gradient-to-br from-white via-white to-sky-50/50 shadow-md">
+          <Card className="border-slate-200/80 bg-white shadow-md">
             <div className="flex flex-wrap items-start gap-5 lg:flex-nowrap lg:justify-between">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-primary)] text-lg font-bold text-white shadow-md ring-4 ring-white">
                 {patient.firstName[0]}
@@ -2686,47 +2680,47 @@ export function PatientDetailPage() {
             </div>
           </Card>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Card className="border-sky-300/80 bg-sky-100/80 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <Card className="border-slate-200 bg-white shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-sky-200 p-2">
-                  <FileText className="size-4 text-sky-700" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+                  <FileText className="size-4" style={{color:'var(--color-primary)'}} />
                 </div>
                 <CardTitle className="text-base">Consultations</CardTitle>
               </div>
-              <p className="mt-3 text-3xl font-bold leading-none text-sky-950">
+              <p className="mt-3 text-3xl font-bold leading-none text-slate-900">
                 {consultations.length}
               </p>
             </Card>
-            <Card className="border-emerald-300/80 bg-emerald-100/80 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <Card className="border-slate-200 bg-white shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-emerald-200 p-2">
-                  <Pill className="size-4 text-emerald-700" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+                  <Pill className="size-4" style={{color:'var(--color-primary)'}} />
                 </div>
                 <CardTitle className="text-base">Prescriptions</CardTitle>
               </div>
-              <p className="mt-3 text-3xl font-bold leading-none text-emerald-950">
+              <p className="mt-3 text-3xl font-bold leading-none text-slate-900">
                 {prescriptions.length}
               </p>
             </Card>
-            <Card className="border-amber-300/80 bg-amber-100/80 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <Card className="border-slate-200 bg-white shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-amber-200 p-2">
-                  <QrCode className="size-4 text-amber-700" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+                  <QrCode className="size-4" style={{color:'var(--color-primary)'}} />
                 </div>
                 <CardTitle className="text-base">Items used</CardTitle>
               </div>
-              <p className="mt-3 text-3xl font-bold leading-none text-amber-950">
+              <p className="mt-3 text-3xl font-bold leading-none text-slate-900">
                 {inventoryUsageLogs.length}
               </p>
             </Card>
-            <Card className="border-violet-300/80 bg-violet-100/80 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <Card className="border-slate-200 bg-white shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-violet-200 p-2">
-                  <TestTubeDiagonal className="size-4 text-violet-700" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+                  <TestTubeDiagonal className="size-4" style={{color:'var(--color-primary)'}} />
                 </div>
                 <CardTitle className="text-base">Lab orders</CardTitle>
               </div>
-              <p className="mt-3 text-3xl font-bold leading-none text-violet-950">
+              <p className="mt-3 text-3xl font-bold leading-none text-slate-900">
                 {labOrders.length}
               </p>
             </Card>
@@ -2885,8 +2879,8 @@ export function PatientDetailPage() {
                       key={visit.id}
                       className={`rounded-2xl border bg-slate-50/70 p-4 ${
                         consultationAppointmentIds.has(visit.id)
-                          ? "border-emerald-200"
-                          : "border-amber-200"
+                          ? "border-green-200"
+                          : "border-slate-200"
                       }`}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2948,14 +2942,14 @@ export function PatientDetailPage() {
                         key={consultation.id}
                         className={`group rounded-3xl border p-4 transition-all ${
                           isExpanded
-                            ? "border-sky-200 bg-gradient-to-br from-sky-50 via-white to-white shadow-sm"
+                            ? "border-green-200 bg-green-50/30 shadow-sm"
                             : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
                         }`}
                       >
                         <button
                           aria-controls={trayContentId}
                           aria-expanded={isExpanded}
-                          className="flex w-full items-start justify-between gap-3 rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+                          className="flex w-full items-start justify-between gap-3 rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
                           onClick={() =>
                             setExpandedConsultationId((current) =>
                               (current === undefined
@@ -2993,7 +2987,7 @@ export function PatientDetailPage() {
                             <span
                               className={`rounded-full p-1.5 transition-colors ${
                                 isExpanded
-                                  ? "bg-sky-100 text-sky-700"
+                                  ? "bg-green-100 text-green-700"
                                   : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
                               }`}
                             >
@@ -3008,7 +3002,7 @@ export function PatientDetailPage() {
 
                         {isExpanded ? (
                           <div
-                            className="mt-4 space-y-4 border-t border-sky-100 pt-4"
+                            className="mt-4 space-y-4 border-t border-slate-100 pt-4"
                             id={trayContentId}
                           >
                             <div className="grid gap-3 md:grid-cols-2">
@@ -3585,7 +3579,7 @@ export function PatientDetailPage() {
                       key={batchKey}
                       className={`rounded-xl border transition-all ${
                         isExpanded
-                          ? "border-sky-200 bg-sky-50/40"
+                          ? "border-green-200 bg-green-50/20"
                           : "border-slate-200 bg-white hover:border-slate-300"
                       }`}
                     >
@@ -3610,7 +3604,7 @@ export function PatientDetailPage() {
                           type="button"
                         >
                           <span
-                            className={`flex-shrink-0 rounded-full p-0.5 transition-colors ${isExpanded ? "text-sky-600" : "text-slate-400 group-hover:text-slate-600"}`}
+                            className={`flex-shrink-0 rounded-full p-0.5 transition-colors ${isExpanded ? "text-green-600" : "text-slate-400 group-hover:text-slate-600"}`}
                           >
                             <ChevronDown
                               className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`}
@@ -3628,7 +3622,7 @@ export function PatientDetailPage() {
                             </span>
                           </span>
                           {group.length > 1 && (
-                            <span className="flex-shrink-0 rounded-md bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                            <span className="flex-shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
                               {group.length} meds
                             </span>
                           )}
@@ -3661,7 +3655,7 @@ export function PatientDetailPage() {
                       {/* Expanded body */}
                       {isExpanded && (
                         <div
-                          className="border-t border-sky-100 px-3 pb-3 pt-2"
+                          className="border-t border-slate-100 px-3 pb-3 pt-2"
                           id={trayContentId}
                         >
                           {group.map((prescription, index) => (
@@ -3672,7 +3666,7 @@ export function PatientDetailPage() {
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex items-baseline gap-1.5">
                                   {group.length > 1 && (
-                                    <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider text-sky-500">
+                                    <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                       #{index + 1}
                                     </span>
                                   )}
@@ -3800,15 +3794,15 @@ export function PatientDetailPage() {
 
                     {pendingMedications.map((med, index) => (
                       <div
-                        className="flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 p-3"
+                        className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3"
                         key={med.id}
                       >
                         <div className="min-w-0 flex-1 space-y-0.5">
                           <div className="flex items-center gap-2">
-                            <p className="text-xs font-bold uppercase tracking-wide text-sky-600">
+                            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                               #{index + 1}
                             </p>
-                            <span className="text-xs font-semibold text-sky-700">
+                            <span className="text-xs font-semibold text-slate-600">
                               #{med.numberOfMedications}
                             </span>
                           </div>
@@ -4025,7 +4019,7 @@ export function PatientDetailPage() {
                         />
                       </FormField>
                       <button
-                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-sky-300 bg-white py-2 text-sm font-semibold text-sky-600 hover:bg-sky-50"
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
                         onClick={() => {
                           const errors = {
                             genericName:
@@ -4678,26 +4672,26 @@ export function PatientDetailPage() {
                   const trayContentId = `referral-tray-${referral.id}`;
                   const statusClass =
                     referral.status === "completed"
-                      ? "bg-emerald-100 text-emerald-700"
+                      ? "bg-green-100 text-green-700"
                       : referral.status === "accepted"
-                        ? "bg-sky-100 text-sky-700"
+                        ? "bg-slate-100 text-slate-600"
                         : referral.status === "confirmed"
-                          ? "bg-indigo-100 text-indigo-700"
-                          : "bg-amber-100 text-amber-700";
+                          ? "bg-slate-100 text-slate-600"
+                          : "bg-slate-100 text-slate-600";
 
                   return (
                     <div
                       key={referral.id}
                       className={`rounded-3xl border p-4 transition-all ${
                         isExpanded
-                          ? "border-indigo-200 bg-indigo-50/40 shadow-sm"
+                          ? "border-green-200 bg-green-50/20 shadow-sm"
                           : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
                       }`}
                     >
                       <button
                         aria-controls={trayContentId}
                         aria-expanded={isExpanded}
-                        className="group flex w-full items-start justify-between gap-3 rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                        className="group flex w-full items-start justify-between gap-3 rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
                         onClick={() =>
                           setExpandedReferralId((current) =>
                             (current === undefined
@@ -4730,7 +4724,7 @@ export function PatientDetailPage() {
                           <span
                             className={`rounded-full p-1.5 transition-colors ${
                               isExpanded
-                                ? "bg-indigo-100 text-indigo-700"
+                                ? "bg-green-100 text-green-700"
                                 : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
                             }`}
                           >
@@ -4742,7 +4736,7 @@ export function PatientDetailPage() {
                       </button>
                       {isExpanded ? (
                         <div
-                          className="mt-4 space-y-3 border-t border-indigo-100 pt-4"
+                          className="mt-4 space-y-3 border-t border-slate-100 pt-4"
                           id={trayContentId}
                         >
                           <div className="grid gap-3 md:grid-cols-2">
@@ -4781,8 +4775,8 @@ export function PatientDetailPage() {
                           </div>
                           {referral.specialistFindings ? (
                             <div className="grid gap-3 md:grid-cols-2">
-                              <div className="rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2">
-                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-700">
+                              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
                                   Specialist Findings
                                 </p>
                                 <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
@@ -4791,8 +4785,8 @@ export function PatientDetailPage() {
                                   )}
                                 </p>
                               </div>
-                              <div className="rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2">
-                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-700">
+                              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
                                   Recommendations
                                 </p>
                                 <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
@@ -4911,9 +4905,9 @@ export function PatientDetailPage() {
             ) : null}
 
             {canDoctorActions && waitingFrontDeskReferral ? (
-              <Card className="border-amber-200 bg-amber-50/70">
+              <Card className="border-slate-200 bg-slate-50/70">
                 <CardTitle>Awaiting front desk confirmation</CardTitle>
-                <p className="mt-2 text-sm text-amber-800">
+                <p className="mt-2 text-sm text-slate-700">
                   This referral must be confirmed by front desk (specialist
                   schedule and patient confirmation) before specialist update
                   can proceed.
@@ -4967,7 +4961,7 @@ export function PatientDetailPage() {
           <Card>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <FlaskConical className="size-5 text-violet-600" />
+                <FlaskConical className="size-5 text-slate-500" />
                 <CardTitle>Lab test history</CardTitle>
               </div>
               <Badge intent={labOrders.length > 0 ? "info" : "neutral"}>
@@ -4978,13 +4972,13 @@ export function PatientDetailPage() {
             {labOrders.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-3">
                 <input
-                  className="flex-1 min-w-40 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  className="flex-1 min-w-40 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
                   placeholder="Search test name…"
                   value={labSearch}
                   onChange={(e) => setLabSearch(e.target.value)}
                 />
                 <select
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
                   value={labStatusFilter}
                   onChange={(e) => setLabStatusFilter(e.target.value)}
                 >
@@ -5029,23 +5023,23 @@ export function PatientDetailPage() {
                     order.status === "released"
                       ? "bg-emerald-100 text-emerald-700"
                       : order.status === "ready"
-                        ? "bg-sky-100 text-sky-700"
+                        ? "bg-slate-100 text-slate-600"
                         : order.status === "processing"
-                          ? "bg-violet-100 text-violet-700"
-                          : "bg-amber-100 text-amber-700";
+                          ? "bg-slate-100 text-slate-600"
+                          : "bg-slate-100 text-slate-600";
                   return (
                     <div
                       key={order.id}
                       className={`rounded-2xl border p-4 transition-all ${
                         isExpanded
-                          ? "border-violet-200 bg-violet-50/40 shadow-sm"
+                          ? "border-green-200 bg-green-50/20 shadow-sm"
                           : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
                       }`}
                     >
                       <button
                         aria-controls={trayContentId}
                         aria-expanded={isExpanded}
-                        className="group flex w-full items-start justify-between gap-3 rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
+                        className="group flex w-full items-start justify-between gap-3 rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
                         onClick={() =>
                           setExpandedLabOrderId((current) =>
                             (current === undefined
@@ -5084,7 +5078,7 @@ export function PatientDetailPage() {
                           <span
                             className={`rounded-full p-1.5 transition-colors ${
                               isExpanded
-                                ? "bg-violet-100 text-violet-700"
+                                ? "bg-slate-100 text-slate-600"
                                 : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
                             }`}
                           >
@@ -5097,7 +5091,7 @@ export function PatientDetailPage() {
 
                       {isExpanded ? (
                         <div
-                          className="mt-4 space-y-3 border-t border-violet-100 pt-4"
+                          className="mt-4 space-y-3 border-t border-slate-100 pt-4"
                           id={trayContentId}
                         >
                           <div className="grid gap-3 md:grid-cols-2">
@@ -5139,7 +5133,7 @@ export function PatientDetailPage() {
             {filteredLabOrders.length > 10 && (
               <button
                 type="button"
-                className="mt-4 text-xs font-bold uppercase tracking-widest text-violet-600 hover:text-violet-800 transition-colors"
+                className="mt-4 text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-slate-700 transition-colors"
                 onClick={() => setLabExpanded((v) => !v)}
               >
                 {labExpanded
@@ -5206,11 +5200,11 @@ export function PatientDetailPage() {
 
                     {pendingLabTests.map((test, index) => (
                       <div
-                        className="flex items-start gap-2 rounded-lg border border-violet-200 bg-violet-50 p-3"
+                        className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3"
                         key={test.id}
                       >
                         <div className="min-w-0 flex-1 space-y-0.5">
-                          <p className="text-xs font-bold uppercase tracking-wide text-violet-600">
+                          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                             #{index + 1}
                           </p>
                           <p className="text-sm font-semibold text-slate-900">
@@ -5265,7 +5259,7 @@ export function PatientDetailPage() {
                         />
                       </FormField>
                       <button
-                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-violet-300 bg-white py-2 text-sm font-semibold text-violet-600 hover:bg-violet-50"
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
                         onClick={() => {
                           if (!draftLabTest.testName.trim()) return;
                           setPendingLabTests((prev) => [

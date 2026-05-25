@@ -15,7 +15,7 @@ export function SystemDisabledPage({ message }: SystemDisabledPageProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#08142c_0%,#10295e_45%,#eef5ff_45%,#f7f3e9_100%)] px-4 py-10">
       <Card className="max-w-2xl p-10 text-center">
-        <div className={`mx-auto flex size-16 items-center justify-center rounded-full ${isMaintenance ? 'bg-orange-100 text-orange-600' : 'bg-rose-100 text-rose-600'}`}>
+        <div className={`mx-auto flex size-16 items-center justify-center rounded-full ${isMaintenance ? 'bg-slate-100 text-slate-500' : 'bg-rose-100 text-rose-600'}`}>
           {isMaintenance ? <Wrench className="size-7" /> : <ShieldAlert className="size-7" />}
         </div>
         <p className="mt-5 text-sm uppercase tracking-[0.2em] text-slate-400">

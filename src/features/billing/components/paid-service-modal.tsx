@@ -41,15 +41,15 @@ export function PaidServiceModal({
         className="my-auto flex w-full max-w-2xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 bg-violet-700 px-4 py-4 sm:px-6">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
           <div className="min-w-0">
-            <p className="text-xs font-extrabold uppercase tracking-widest text-violet-200">Paid Lab Service</p>
-            <p className="mt-0.5 text-sm font-bold text-white">Pay for service</p>
-            <p className="mt-2 max-w-2xl text-sm text-violet-50">Choose a patient and laboratory service. The system will use the live service fee, create the paid invoice, generate the lab request, and prepare a QR receipt.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Paid Lab Service</p>
+            <h2 className="mt-1 text-base font-bold text-slate-900">Pay for service</h2>
+            <p className="mt-1.5 max-w-2xl text-sm text-slate-500">Choose a patient and laboratory service. The system will use the live service fee, create the paid invoice, generate the lab request, and prepare a QR receipt.</p>
           </div>
           <button
             aria-label="Close paid service modal"
-            className="inline-flex shrink-0 items-center justify-center border border-violet-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+            className="inline-flex shrink-0 items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50"
             onClick={onClose}
             type="button"
           >
@@ -86,7 +86,7 @@ export function PaidServiceModal({
               </FormField>
 
               {selectedLabService ? (
-                <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-4 text-sm text-slate-700">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700">
                   <p className="font-semibold text-slate-950">{selectedLabService.name}</p>
                   <p className="mt-1">{selectedLabService.description ?? 'No service description available.'}</p>
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -96,7 +96,7 @@ export function PaidServiceModal({
                     </div>
                     <div>
                       <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Declared fee</p>
-                      <p className="mt-1 font-semibold text-violet-800">{formatCurrency(selectedLabService.serviceFee)}</p>
+                      <p className="mt-1 font-semibold text-slate-900">{formatCurrency(selectedLabService.serviceFee)}</p>
                     </div>
                   </div>
                 </div>
@@ -111,18 +111,19 @@ export function PaidServiceModal({
               </FormField>
 
               <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                <input className="accent-violet-700" type="checkbox" {...payServiceForm.register('urgentFlag')} />
+                <input className="accent-[var(--color-primary)]" type="checkbox" {...payServiceForm.register('urgentFlag')} />
                 Mark as urgent
               </label>
             </div>
           </div>
 
           <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
-            <Button className="w-full rounded-none sm:w-auto" onClick={onClose} type="button" variant="secondary">
+            <Button className="w-full sm:w-auto" onClick={onClose} type="button" variant="tertiary">
               Cancel
             </Button>
             <Button
-              className="w-full rounded-none bg-violet-700 px-5 py-3 text-sm font-extrabold uppercase tracking-widest hover:bg-violet-800 sm:w-auto"
+              variant="primary"
+              className="w-full sm:w-auto"
               disabled={payForServiceMutation.isPending || labServiceOptions.length === 0}
               type="submit"
             >

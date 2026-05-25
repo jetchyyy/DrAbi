@@ -648,7 +648,7 @@ export function ScheduleTab() {
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-bold text-sm text-slate-950">{order.serviceLabel}</p>
-                        {order.urgentFlag && <AlertTriangle className="size-3.5 text-rose-500" />}
+                        {order.urgentFlag && <AlertTriangle className="size-3.5 text-red-500" />}
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5">{order.patientLabel}</p>
                     </div>
@@ -749,7 +749,7 @@ export function ScheduleTab() {
                             ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'
                             : 'border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 cursor-pointer',
                           isSelected && 'border-emerald-600 bg-emerald-700 text-white',
-                          conflicted && !disabled && 'bg-rose-50 border-rose-200 text-rose-300',
+                          conflicted && !disabled && 'bg-red-50 border-red-200 text-red-300',
                         )}
                         onClick={() => { setSelectedTime(slot); setError(''); }}
                       >
@@ -759,14 +759,14 @@ export function ScheduleTab() {
                   })}
                 </div>
                 <p className="mt-2 text-[10px] text-slate-400">
-                  <span className="inline-block w-3 h-3 bg-rose-50 border border-rose-200 align-middle mr-1" /> = Slot taken
+                  <span className="inline-block w-3 h-3 bg-red-50 border border-red-200 align-middle mr-1" /> = Slot taken
                 </p>
               </div>
             )}
 
             {error && (
-              <div className="px-6 py-3 bg-rose-50">
-                <p className="text-xs text-rose-600 font-medium">{error}</p>
+              <div className="px-6 py-3 bg-red-50">
+                <p className="text-xs text-red-600 font-medium">{error}</p>
               </div>
             )}
             {success && (

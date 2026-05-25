@@ -65,14 +65,14 @@ export function ForgotPasswordPage() {
         />
 
         {/* Primary-color top strip */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-orange-600" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-[var(--color-primary)]" />
 
         <div className="relative z-10 flex flex-col h-full px-12 py-12">
 
           {/* Logo + clinic name */}
           <div className="animate-slide-left">
             <img src="/odc.jpg" alt={`${clinicName} Logo`} className="h-16 w-16 object-contain" />
-            <p className="mt-4 text-[10px] font-extrabold uppercase tracking-[0.3em] text-orange-400">Clinic OS Access</p>
+            <p className="mt-4 text-[10px] font-extrabold uppercase tracking-[0.3em] text-slate-400">Clinic OS Access</p>
             <h1 className="mt-1.5 text-2xl font-extrabold text-white leading-tight tracking-tight">
               {clinicName}<br />Operations System
             </h1>
@@ -81,7 +81,7 @@ export function ForgotPasswordPage() {
           {/* Illustration block */}
           <div className="mt-auto animate-fade-up delay-200">
             <div className="p-5 bg-white/5 border border-white/10 inline-block mb-6">
-              <Mail className="size-10 text-orange-500" />
+              <Mail className="size-10" style={{color:'var(--color-primary)'}} />
             </div>
             <p className="text-base font-semibold text-white leading-relaxed max-w-xs">
               We'll send a secure reset link to your registered email address.
@@ -104,7 +104,7 @@ export function ForgotPasswordPage() {
       <div className="flex-1 flex flex-col items-center justify-center bg-white px-6 py-12 relative">
 
         {/* Primary top accent — mobile */}
-        <div className="lg:hidden absolute top-0 left-0 right-0 h-1 bg-orange-600" />
+        <div className="lg:hidden absolute top-0 left-0 right-0 h-1 bg-[var(--color-primary)]" />
 
         {/* Mobile logo */}
         <div className="lg:hidden absolute top-6 left-6 flex items-center gap-3">
@@ -125,7 +125,7 @@ export function ForgotPasswordPage() {
 
           {/* Heading */}
           <div className="mb-8">
-            <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">Account Recovery</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Account Recovery</p>
             <h2 className="mt-2 text-3xl font-extrabold text-slate-950 tracking-tight">Reset password</h2>
             <p className="mt-2 text-sm text-slate-500 leading-relaxed">
               Enter your account email and we'll send you a link to reset your password.

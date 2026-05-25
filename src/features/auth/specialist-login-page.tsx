@@ -72,7 +72,7 @@ export function SpecialistLoginPage() {
 
       <div className="flex flex-1 items-center justify-center bg-white px-6 py-12">
         <div className="w-full max-w-sm">
-          <p className="text-xs font-extrabold uppercase tracking-widest text-sky-600">Specialist Portal</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Specialist Portal</p>
           <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">Sign in</h2>
           <p className="mt-2 text-sm text-slate-500">
             Use your specialist account to access referrals, availability, patient charts, and SOAP documentation.

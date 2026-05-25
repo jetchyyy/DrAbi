@@ -888,7 +888,7 @@ export function InventoryPage() {
                       />
                     </FormField>
                   </div>
-                  <div className="rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3 text-sm text-orange-950">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                     Every new item automatically gets its own QR code for
                     scanning during patient use.
                   </div>

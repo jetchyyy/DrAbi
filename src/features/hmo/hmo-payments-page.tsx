@@ -90,15 +90,15 @@ export function HmoPaymentsContent() {
       <section className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}>
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 rounded-xl bg-teal-600 p-2.5 text-white"><Wallet className="size-5" /></div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}><Wallet className="size-5" style={{color:'var(--color-primary)'}} /></div>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-teal-600">HMO Management</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">HMO Management</p>
               <h1 className="text-xl font-extrabold tracking-tight text-slate-950">Payments</h1>
               <p className="mt-1 text-sm text-slate-500">Record and track reimbursements from HMO providers.</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button className="rounded-xl bg-teal-600 hover:bg-teal-700" onClick={openCreate}><Plus className="mr-2 size-4" /> Record Payment</Button>
+            <Button variant="primary" onClick={openCreate}><Plus className="mr-2 size-4" /> Record Payment</Button>
             <div className="flex w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
               <Search className="size-4 shrink-0 text-slate-400" />
               <input className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" onChange={(e) => setSearch(e.target.value)} placeholder="Search reference…" value={search} />
@@ -163,9 +163,12 @@ export function HmoPaymentsContent() {
       {modalOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4">
           <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 bg-teal-600 px-6 py-4 text-white">
-              <h2 className="text-lg font-bold">Record Payment</h2>
-              <button className="rounded-lg p-1 transition hover:bg-teal-700" onClick={() => setModalOpen(false)} type="button"><X className="size-5" /></button>
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">HMO Management</p>
+                <h2 className="mt-1 text-base font-bold text-slate-900">Record Payment</h2>
+              </div>
+              <button className="inline-flex shrink-0 items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50" onClick={() => setModalOpen(false)} type="button"><X className="size-4" /></button>
             </div>
             <div className="space-y-4 px-6 py-5">
               <FormField label="Claim *">
@@ -195,7 +198,7 @@ export function HmoPaymentsContent() {
             </div>
             <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
               <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button className="bg-teal-600 hover:bg-teal-700" onClick={() => void handleCreate()} disabled={createMutation.isPending}>Record Payment</Button>
+              <Button variant="primary" onClick={() => void handleCreate()} disabled={createMutation.isPending}>Record Payment</Button>
             </div>
           </div>
         </div>

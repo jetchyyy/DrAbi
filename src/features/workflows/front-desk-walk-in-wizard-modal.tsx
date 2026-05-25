@@ -1572,9 +1572,9 @@ export function WalkInWizardModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
       <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-orange-100 bg-orange-50 px-6 py-5">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-orange-600">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
               Front Desk Walk-In Flow
             </p>
             <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">
@@ -1603,11 +1603,11 @@ export function WalkInWizardModal({
               return (
                 <div className="min-w-0" key={label}>
                   <div
-                    className={`h-2 w-full ${active ? "bg-orange-600" : "bg-slate-200"}`}
+                    className={`h-2 w-full ${active ? "bg-[var(--color-primary)]" : "bg-slate-200"}`}
                   />
                   <p
                     className={`mt-2 text-center text-[10px] font-extrabold uppercase tracking-[0.14em] ${
-                      active ? "text-orange-700" : "text-slate-400"
+                      active ? "text-[var(--color-primary)]" : "text-slate-400"
                     }`}
                   >
                     {label}
@@ -1648,7 +1648,7 @@ export function WalkInWizardModal({
                       {filteredExistingPatients.length > 0 ? (
                         filteredExistingPatients.slice(0, 20).map((patient) => (
                           <button
-                            className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${selectedExistingPatientId === patient.id ? "bg-orange-50 text-orange-800" : "text-slate-700"}`}
+                            className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${selectedExistingPatientId === patient.id ? "bg-green-50 text-green-800" : "text-slate-700"}`}
                             key={patient.id}
                             onMouseDown={() => {
                               setSelectedExistingPatientId(patient.id);
@@ -1672,12 +1672,12 @@ export function WalkInWizardModal({
                   ) : null}
                 </div>
                 {selectedExistingPatientId ? (
-                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2">
-                    <p className="text-xs font-semibold text-orange-800">
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <p className="text-xs font-semibold text-slate-700">
                       Using existing patient record.
                     </p>
                     <button
-                      className="text-xs font-bold uppercase tracking-widest text-orange-700 hover:underline"
+                      className="text-xs font-bold uppercase tracking-widest text-[var(--color-primary)] hover:underline"
                       onClick={() => {
                         setSelectedExistingPatientId(null);
                         setExistingPatientSearch("");
@@ -1690,16 +1690,16 @@ export function WalkInWizardModal({
                   </div>
                 ) : null}
                 {selectedExistingPatient ? (
-                  <div className="mt-3 space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3">
-                    <p className="text-xs font-bold uppercase tracking-widest text-amber-800">
+                  <div className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-600">
                       Existing record warning
                     </p>
-                    <p className="text-xs text-amber-900">
+                    <p className="text-xs text-slate-600">
                       Demographics and profile details are locked to protect the
                       existing record. Only vitals will be updated in this
                       workflow.
                     </p>
-                    <div className="grid gap-2 text-xs text-amber-900 sm:grid-cols-2">
+                    <div className="grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
                       <p>
                         <span className="font-semibold">Patient:</span>{" "}
                         {selectedExistingPatient.firstName}{" "}
@@ -1977,7 +1977,7 @@ export function WalkInWizardModal({
                               ? "text-rose-600"
                               : vitalAlertsByKey.get("temperature")?.level ===
                                   "warning"
-                                ? "text-amber-600"
+                                ? "text-yellow-600"
                                 : "text-emerald-600"
                           }`}
                         >
@@ -2005,7 +2005,7 @@ export function WalkInWizardModal({
                               ? "text-rose-600"
                               : vitalAlertsByKey.get("bloodPressure")?.level ===
                                   "warning"
-                                ? "text-amber-600"
+                                ? "text-yellow-600"
                                 : "text-emerald-600"
                           }`}
                         >
@@ -2031,7 +2031,7 @@ export function WalkInWizardModal({
                               ? "text-rose-600"
                               : vitalAlertsByKey.get("heartRate")?.level ===
                                   "warning"
-                                ? "text-amber-600"
+                                ? "text-yellow-600"
                                 : "text-emerald-600"
                           }`}
                         >
@@ -2056,7 +2056,7 @@ export function WalkInWizardModal({
                               ? "text-rose-600"
                               : vitalAlertsByKey.get("o2Sat")?.level ===
                                   "warning"
-                                ? "text-amber-600"
+                                ? "text-yellow-600"
                                 : "text-emerald-600"
                           }`}
                         >
@@ -2084,7 +2084,7 @@ export function WalkInWizardModal({
                               ? "text-rose-600"
                               : vitalAlertsByKey.get("respiratoryRate")
                                     ?.level === "warning"
-                                ? "text-amber-600"
+                                ? "text-yellow-600"
                                 : "text-emerald-600"
                           }`}
                         >
@@ -2108,7 +2108,7 @@ export function WalkInWizardModal({
                             vitalAlertsByKey.get("bmi")?.level === "critical"
                               ? "text-rose-600"
                               : vitalAlertsByKey.get("bmi")?.level === "warning"
-                                ? "text-amber-600"
+                                ? "text-yellow-600"
                                 : "text-emerald-600"
                           }`}
                         >
@@ -2132,7 +2132,7 @@ export function WalkInWizardModal({
                             vitalAlertsByKey.get("bmi")?.level === "critical"
                               ? "text-rose-600"
                               : vitalAlertsByKey.get("bmi")?.level === "warning"
-                                ? "text-amber-600"
+                                ? "text-yellow-600"
                                 : "text-emerald-600"
                           }`}
                         >
@@ -2220,7 +2220,7 @@ export function WalkInWizardModal({
                 </Select>
               </FormField>
 
-              <div className="rounded-sm border border-dashed border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
+              <div className="rounded-sm border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                 Appointment schedule is now queue-based. When you create this
                 appointment, the system will auto-assign queue number, scheduled
                 time, and estimated end time.
@@ -2608,7 +2608,7 @@ export function WalkInWizardModal({
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                 Billing completion will mark the appointment as in progress and
                 send the patient to consultation.
               </div>
@@ -2696,7 +2696,7 @@ export function WalkInWizardModal({
                 Back
               </Button>
               <Button
-                className="rounded-none bg-orange-600 px-4 py-2 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700"
+                className="bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
                 disabled={isBusy}
                 onClick={() => {
                   if (stage === "patient") {

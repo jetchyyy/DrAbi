@@ -233,7 +233,7 @@ export function DoctorAvailabilityPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="border-orange-200 bg-gradient-to-r from-orange-50 via-white to-white">
+      <Card className="border-slate-200 bg-white">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <Badge intent="info">
@@ -248,10 +248,10 @@ export function DoctorAvailabilityPage() {
               Unchecked days stay unavailable.
             </p>
           </div>
-          <div className="flex items-center gap-3 rounded-sm border border-orange-200 bg-white px-4 py-3">
-            <CalendarCheck2 className="size-5 text-orange-600" />
+          <div className="flex items-center gap-3 rounded-sm border border-slate-200 bg-white px-4 py-3">
+            <CalendarCheck2 className="size-5 text-[var(--color-primary)]" />
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Selected slots
               </p>
               <p className="text-lg font-extrabold text-slate-950">
@@ -261,14 +261,14 @@ export function DoctorAvailabilityPage() {
           </div>
         </div>
         <div className="mt-4 grid gap-3 text-xs font-semibold text-slate-600 sm:grid-cols-2">
-          <div className="rounded-sm border border-orange-100 bg-white px-3 py-2">
+          <div className="rounded-sm border border-slate-200 bg-white px-3 py-2">
             Active days:{" "}
             <span className="font-extrabold text-slate-900">
               {enabledDaysCount}
             </span>{" "}
             / {DOCTOR_AVAILABILITY_DAY_OPTIONS.length}
           </div>
-          <div className="rounded-sm border border-orange-100 bg-white px-3 py-2">
+          <div className="rounded-sm border border-slate-200 bg-white px-3 py-2">
             Tip: Enable a day first, then choose slot size and booking times.
           </div>
         </div>
@@ -315,7 +315,7 @@ export function DoctorAvailabilityPage() {
               className={cn(
                 "transition-colors",
                 state.enabled
-                  ? "border-orange-200/70"
+                  ? "border-green-200/70"
                   : "border-slate-200 bg-slate-50/60",
               )}
             >
@@ -331,7 +331,7 @@ export function DoctorAvailabilityPage() {
                 <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                   <input
                     checked={state.enabled}
-                    className="size-4 accent-orange-600"
+                    className="size-4 accent-green-600"
                     onChange={(event) =>
                       setDays((current) => ({
                         ...current,
@@ -462,13 +462,13 @@ export function DoctorAvailabilityPage() {
                                   className={cn(
                                     "flex items-center gap-2 rounded-sm border px-3 py-2 text-sm transition-colors",
                                     checked
-                                      ? "border-orange-300 bg-orange-50 text-orange-800"
-                                      : "border-slate-200 bg-slate-50 text-slate-700 hover:border-orange-200",
+                                      ? "border-green-300 bg-green-50 text-green-800"
+                                      : "border-slate-200 bg-slate-50 text-slate-700 hover:border-green-200",
                                   )}
                                 >
                                   <input
                                     checked={checked}
-                                    className="size-4 accent-orange-600"
+                                    className="size-4 accent-green-600"
                                     onChange={(event) =>
                                       setDays((current) => {
                                         const selectedTimes = event.target

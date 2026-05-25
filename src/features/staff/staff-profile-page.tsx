@@ -200,11 +200,11 @@ export function StaffProfilePage() {
     <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
       <Card>
         <div className="flex items-center gap-3">
-          <div className="rounded-none bg-orange-600 p-3 text-white">
-            <UserRound className="size-5" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+            <UserRound className="size-5" style={{color:'var(--color-primary)'}} />
           </div>
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
               My Profile
             </p>
             <CardTitle className="mt-1">Staff account details</CardTitle>
@@ -266,7 +266,7 @@ export function StaffProfilePage() {
           </p>
 
           <Button
-            className="rounded-none bg-orange-600 px-6 py-3 font-extrabold uppercase tracking-widest hover:bg-orange-700"
+            className="bg-[var(--color-primary)] px-6 py-3 font-semibold text-white hover:brightness-95"
             disabled={profileMutation.isPending}
             type="submit"
           >
@@ -328,11 +328,11 @@ export function StaffProfilePage() {
 
         <Card>
           <div className="flex items-center gap-3">
-            <div className="rounded-none bg-orange-600 p-3 text-white">
-              <KeyRound className="size-5" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+              <KeyRound className="size-5" style={{color:'var(--color-primary)'}} />
             </div>
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Security
               </p>
               <CardTitle className="mt-1">Change security PIN</CardTitle>
@@ -345,7 +345,7 @@ export function StaffProfilePage() {
                 className={cn(
                   "rounded-2xl border px-4 py-3 text-left transition-colors",
                   activePinField === "pin"
-                    ? "border-orange-500 bg-orange-50"
+                    ? "border-green-500 bg-green-50"
                     : "border-slate-200 bg-slate-50",
                 )}
                 onClick={() => setActivePinField("pin")}
@@ -360,7 +360,7 @@ export function StaffProfilePage() {
                       className={cn(
                         "size-3 rounded-full border",
                         index < pin.length
-                          ? "border-orange-600 bg-orange-600"
+                          ? "border-[var(--color-primary)] bg-[var(--color-primary)]"
                           : "border-slate-300 bg-white",
                       )}
                       key={`staff-pin-dot-${index}`}
@@ -373,7 +373,7 @@ export function StaffProfilePage() {
                 className={cn(
                   "rounded-2xl border px-4 py-3 text-left transition-colors",
                   activePinField === "confirm"
-                    ? "border-orange-500 bg-orange-50"
+                    ? "border-green-500 bg-green-50"
                     : "border-slate-200 bg-slate-50",
                 )}
                 onClick={() => setActivePinField("confirm")}
@@ -388,7 +388,7 @@ export function StaffProfilePage() {
                       className={cn(
                         "size-3 rounded-full border",
                         index < confirmPin.length
-                          ? "border-orange-600 bg-orange-600"
+                          ? "border-[var(--color-primary)] bg-[var(--color-primary)]"
                           : "border-slate-300 bg-white",
                       )}
                       key={`staff-confirm-pin-dot-${index}`}
@@ -435,7 +435,7 @@ export function StaffProfilePage() {
             <div className="mx-auto grid w-full max-w-[280px] grid-cols-3 justify-items-center gap-3">
               {pinPadKeys.slice(0, 9).map((digit) => (
                 <button
-                  className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-extrabold text-slate-900 shadow-sm transition hover:border-orange-300 hover:bg-orange-50"
+                  className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-extrabold text-slate-900 shadow-sm transition hover:border-green-300 hover:bg-green-50"
                   key={digit}
                   onClick={() => handlePinDigit(digit)}
                   type="button"
@@ -445,14 +445,14 @@ export function StaffProfilePage() {
               ))}
               <div className="size-16" />
               <button
-                className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-extrabold text-slate-900 shadow-sm transition hover:border-orange-300 hover:bg-orange-50"
+                className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-extrabold text-slate-900 shadow-sm transition hover:border-green-300 hover:bg-green-50"
                 onClick={() => handlePinDigit("0")}
                 type="button"
               >
                 0
               </button>
               <button
-                className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xs font-extrabold uppercase tracking-widest text-slate-600 shadow-sm transition hover:border-orange-300 hover:bg-orange-50"
+                className="flex size-16 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xs font-extrabold uppercase tracking-widest text-slate-600 shadow-sm transition hover:border-green-300 hover:bg-green-50"
                 onClick={handlePinBackspace}
                 type="button"
               >
@@ -465,7 +465,7 @@ export function StaffProfilePage() {
             ) : null}
 
             <Button
-              className="rounded-none bg-orange-600 px-6 py-3 font-extrabold uppercase tracking-widest hover:bg-orange-700"
+              className="bg-[var(--color-primary)] px-6 py-3 font-semibold text-white hover:brightness-95"
               disabled={pinMutation.isPending}
               onClick={() => void handleSavePin()}
               type="button"

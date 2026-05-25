@@ -1273,10 +1273,10 @@ export function ConsultationEntryPage() {
 
           {currentStep.id === "findings" && (
             <div className="space-y-4">
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                 <div className="flex gap-2">
-                  <AlertCircle className="h-5 w-5 flex-shrink-0 text-amber-600" />
-                  <p className="text-sm text-amber-700">
+                  <AlertCircle className="h-5 w-5 flex-shrink-0 text-slate-500" />
+                  <p className="text-sm text-slate-600">
                     At least one finding (medications, or lab results) is
                     required.
                   </p>
@@ -1428,10 +1428,10 @@ export function ConsultationEntryPage() {
 
           {currentStep.id === "diagnoses" && (
             <div className="space-y-4">
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                 <div className="flex gap-2">
-                  <AlertCircle className="h-5 w-5 flex-shrink-0 text-amber-600" />
-                  <p className="text-sm text-amber-700">
+                  <AlertCircle className="h-5 w-5 flex-shrink-0 text-slate-500" />
+                  <p className="text-sm text-slate-600">
                     At least one diagnosis type (primary or differential) is
                     required.
                   </p>

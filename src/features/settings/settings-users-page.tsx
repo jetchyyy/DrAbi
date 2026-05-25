@@ -799,16 +799,17 @@ export function SettingsUsersPage() {
         <div className="border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="shrink-0 bg-orange-600 p-2.5 text-white">
-                <ShieldCheck className="size-5" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+                <ShieldCheck className="size-5" style={{color:'var(--color-primary)'}} />
               </div>
               <div>
-                <h1 className="text-xl font-extrabold tracking-tight text-slate-950">User Management</h1>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Settings</p>
+                <h1 className="text-xl font-bold tracking-tight text-slate-900">User Management</h1>
                 <p className="mt-1 text-sm text-slate-500">Manage user accounts in a table and assign them to access roles from the Role Management page.</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Button className="rounded-none bg-orange-600 px-4 py-2.5 text-sm font-extrabold uppercase tracking-widest hover:bg-orange-700" onClick={openCreateModal}>
+              <Button variant="primary" onClick={openCreateModal}>
                 <Plus className="mr-2 size-4" />
                 Add user
               </Button>
@@ -889,11 +890,11 @@ export function SettingsUsersPage() {
                 />
                 <div className="text-xs text-slate-500">
                   Need a template?{' '}
-                  <a className="font-semibold text-orange-700 hover:underline" download="doctor-bulk-upload.csv" href={bulkTemplateHref}>
+                  <a className="font-semibold text-[var(--color-primary)] hover:underline" download="doctor-bulk-upload.csv" href={bulkTemplateHref}>
                     Download CSV template
                   </a>
                   {' '}or{' '}
-                  <button className="font-semibold text-orange-700 hover:underline" onClick={downloadBulkTemplateExcel} type="button">
+                  <button className="font-semibold text-[var(--color-primary)] hover:underline" onClick={downloadBulkTemplateExcel} type="button">
                     Download Excel template
                   </button>
                 </div>
@@ -940,7 +941,8 @@ export function SettingsUsersPage() {
                   </div>
                 ) : null}
                 <Button
-                  className="w-full rounded-none bg-orange-600 hover:bg-orange-700"
+                  variant="primary"
+                  className="w-full"
                   disabled={bulkIsUploading || bulkCandidates.length === 0 || bulkParseErrors.length > 0}
                   onClick={() => void handleBulkUpload()}
                   type="button"
@@ -977,12 +979,12 @@ export function SettingsUsersPage() {
       {isUserModalOpen ? (
         <div aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4 sm:p-6" onClick={closeUserModal} role="dialog">
           <div className="my-auto flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl sm:max-h-[80vh]" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-start justify-between gap-4 bg-orange-600 px-6 py-4">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-100">User Form</p>
-                <p className="mt-0.5 text-sm font-bold text-white">{editingUser ? 'Edit user account' : 'Add user account'}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Settings</p>
+                <h2 className="mt-1 text-base font-bold text-slate-900">{editingUser ? 'Edit user account' : 'Add user account'}</h2>
               </div>
-              <button aria-label="Close user modal" className="inline-flex items-center justify-center border border-orange-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20" onClick={closeUserModal} type="button">
+              <button aria-label="Close user modal" className="inline-flex items-center justify-center border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50" onClick={closeUserModal} type="button">
                 <X className="size-4" />
               </button>
             </div>
@@ -990,7 +992,7 @@ export function SettingsUsersPage() {
             <form className="flex min-h-0 flex-1 flex-col" onSubmit={onSubmit}>
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
                 {isLiveEdit ? (
-                  <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <div className="border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                     Email stays locked when editing live accounts. You can still update the contact number, assigned access role, and doctor fees here.
                   </div>
                 ) : null}
@@ -1076,8 +1078,8 @@ export function SettingsUsersPage() {
                 ) : null}
 
                 {isDoctorRole ? (
-                  <div className="space-y-4 rounded-2xl border border-orange-200 bg-orange-50/50 p-4">
-                    <p className="text-sm font-semibold text-orange-900">Provider account fields</p>
+                  <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+                    <p className="text-sm font-semibold text-slate-700">Provider account fields</p>
                     <FormField hint="Example: MD, FPCS, DPBO" label="Post-nominals">
                       <Input placeholder="MD" {...form.register('title')} />
                     </FormField>
@@ -1115,7 +1117,7 @@ export function SettingsUsersPage() {
                         </FormField>
                       </>
                     ) : (
-                      <p className="text-xs text-orange-700">Doctor credential fields stay read-only during edit to avoid breaking the verified doctor setup.</p>
+                      <p className="text-xs text-slate-500">Doctor credential fields stay read-only during edit to avoid breaking the verified doctor setup.</p>
                     )}
                     <div className="grid gap-4 md:grid-cols-3">
                       <FormField label="Consultation fee">
@@ -1133,10 +1135,10 @@ export function SettingsUsersPage() {
               </div>
 
               <div className="flex flex-col-reverse gap-3 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
-                <Button className="w-full rounded-none sm:w-auto" onClick={closeUserModal} type="button" variant="secondary">
+                <Button className="w-full sm:w-auto" onClick={closeUserModal} type="button" variant="tertiary">
                   Cancel
                 </Button>
-                <Button className="w-full rounded-none bg-orange-600 hover:bg-orange-700 sm:w-auto" disabled={createUserMutation.isPending || updateUserMutation.isPending} type="submit">
+                <Button variant="primary" className="w-full sm:w-auto" disabled={createUserMutation.isPending || updateUserMutation.isPending} type="submit">
                   {createUserMutation.isPending || updateUserMutation.isPending ? 'Saving...' : editingUser ? 'Save User' : 'Add User'}
                 </Button>
               </div>

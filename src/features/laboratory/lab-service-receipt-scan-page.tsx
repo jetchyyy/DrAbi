@@ -523,13 +523,13 @@ export function LabServiceReceiptScanPage() {
             </div>
 
             {linkedInvoice && linkedInvoice.requestId === request.id ? (
-              <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-                <p className="text-xs font-extrabold uppercase tracking-widest text-sky-700">Linked billing record</p>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Linked billing record</p>
                 <p className="mt-2 font-semibold">Invoice number: {linkedInvoice.invoiceNumber ?? request.receiptCode ?? 'N/A'}</p>
-                <p className="mt-1 text-xs text-sky-800">Invoice ID: {linkedInvoice.invoiceId ?? 'Already linked before this action'}</p>
+                <p className="mt-1 text-xs text-slate-600">Invoice ID: {linkedInvoice.invoiceId ?? 'Already linked before this action'}</p>
                 {linkedInvoice.invoiceId ? (
                   <Link
-                    className="mt-3 inline-flex items-center justify-center rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-700 transition hover:bg-sky-50"
+                    className="mt-3 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50"
                     to={`/app/billing?invoiceId=${encodeURIComponent(linkedInvoice.invoiceId)}`}
                   >
                     View in billing

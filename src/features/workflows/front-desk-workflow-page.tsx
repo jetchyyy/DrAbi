@@ -220,7 +220,7 @@ function VitalsModal({
       >
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
               Front Desk Action
             </p>
             <h2 className="mt-1 text-base font-extrabold text-slate-950">Record Vitals</h2>
@@ -868,12 +868,12 @@ export function FrontDeskWorkflowPage() {
                       </td>
                       <td className="px-4 py-3">
                         {row.isWalkInPatient ? (
-                          <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-orange-600">
+                          <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                             Walk-in
                           </p>
                         ) : null}
                         <button
-                          className="font-bold text-slate-950 hover:text-orange-600 hover:underline"
+                          className="font-bold text-slate-950 hover:text-[var(--color-primary)] hover:underline"
                           onClick={() => openPatientDetails(row)}
                           type="button"
                         >
@@ -916,7 +916,7 @@ export function FrontDeskWorkflowPage() {
                       <td className="px-4 py-3">
                         <StatusPill status={row.workflowState} size="sm" />
                         {row.missingVitals ? (
-                          <p className="mt-1 text-xs text-amber-700">Vitals needed</p>
+                          <p className="mt-1 text-xs text-slate-500">Vitals needed</p>
                         ) : null}
                       </td>
                       <td
