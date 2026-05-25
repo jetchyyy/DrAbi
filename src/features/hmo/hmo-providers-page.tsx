@@ -28,6 +28,7 @@ import {
   useDeleteHmoProvider,
 } from "./api/hmo-hooks";
 import type { HmoProvider } from "../../types/domain";
+import { StatusPill } from "../../components/ui/status-pill";
 
 export function HmoProvidersPage() {
   const { data: providers = [], isLoading } = useHmoProviders();
@@ -148,10 +149,10 @@ export function HmoProvidersPage() {
               <Building2 className="size-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-teal-600">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                 HMO Management
               </p>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-950">
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
                 HMO Providers
               </h1>
               <p className="mt-1 text-sm text-slate-500">
@@ -161,7 +162,7 @@ export function HmoProvidersPage() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Button
-              className="rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold hover:bg-teal-700"
+              variant="primary"
               onClick={openCreate}
             >
               <Plus className="mr-2 size-4" /> Add Provider
@@ -226,16 +227,7 @@ export function HmoProvidersPage() {
                     <td className={INTERNAL_TD}>{p.submissionCycle}</td>
                     <td className={INTERNAL_TD}>{p.paymentTermsDays} days</td>
                     <td className={INTERNAL_TD}>
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase ring-1",
-                          p.status === "active"
-                            ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                            : "bg-slate-100 text-slate-600 ring-slate-200",
-                        )}
-                      >
-                        {p.status}
-                      </span>
+                      <StatusPill status={p.status} />
                     </td>
                     <td className={INTERNAL_TD}>
                       <div className="flex gap-1">
@@ -269,12 +261,12 @@ export function HmoProvidersPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4">
           <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 bg-teal-600 px-6 py-4 text-white">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-900 px-6 py-4 text-white">
               <h2 className="text-lg font-bold">
                 {editingId ? "Edit Provider" : "Add HMO Provider"}
               </h2>
               <button
-                className="rounded-lg p-1 transition hover:bg-teal-700"
+                className="rounded-lg p-1 transition hover:bg-slate-700"
                 onClick={() => setModalOpen(false)}
                 type="button"
               >
@@ -359,13 +351,13 @@ export function HmoProvidersPage() {
             </div>
             <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
               <Button
-                variant="secondary"
+                variant="tertiary"
                 onClick={() => setModalOpen(false)}
               >
                 Cancel
               </Button>
               <Button
-                className="bg-teal-600 hover:bg-teal-700"
+                variant="primary"
                 onClick={() => void handleSubmit()}
                 disabled={createMutation.isPending || updateMutation.isPending}
               >

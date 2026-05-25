@@ -592,7 +592,7 @@ export function ScheduleTab() {
       <div className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 p-2.5 text-white shadow-sm ring-1 ring-emerald-100/90">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] p-2.5 text-[var(--color-primary)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_30%,white)]">
               <CalendarDays className="size-5" />
             </div>
             <div>

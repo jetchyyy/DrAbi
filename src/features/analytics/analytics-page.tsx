@@ -1,15 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
+  ArrowDownRight,
+  ArrowUpRight,
   CalendarDays,
   Coins,
-  TrendingUp,
-  TrendingDown,
-  Users,
-  Activity,
-  RefreshCw,
+  Minus,
   ShoppingBag,
-  CreditCard
+  TrendingUp,
+  Users,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -24,7 +23,7 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
 } from 'recharts';
 
 import { queryKeys } from '../../lib/query-keys';
@@ -32,19 +31,67 @@ import {
   listInvoicesLiveOrDemo,
   listPatientsLiveOrDemo,
   listPosSalesLiveOrDemo,
-  listServicesLiveOrDemo
+  listServicesLiveOrDemo,
 } from '../../lib/supabase-clinic';
 import { useAppointments } from '../appointments/hooks/use-appointments';
-import { InternalPage } from '../../components/ui/internal-page';
-import { INTERNAL_SURFACE, INTERNAL_SURFACE_PADDING } from '../../lib/internal-ui';
+import {
+  INTERNAL_SURFACE,
+  INTERNAL_SURFACE_PADDING,
+  INTERNAL_TABLE,
+  INTERNAL_TD,
+  INTERNAL_TH,
+  INTERNAL_THEAD_ROW,
+  INTERNAL_TR,
+  INTERNAL_TABLE_SCROLL,
+} from '../../lib/internal-ui';
 import { cn, formatCurrency } from '../../lib/utils';
 
 type Period = '7d' | '30d' | '90d' | '12m' | 'all';
 
-export function AnalyticsDashboardPage() {
+const PERIOD_LABELS: Record<Period, string> = {
+  '7d': '7 Days',
+  '30d': '30 Days',
+  '90d': '90 Days',
+  '12m': '12 Months',
+  all: 'All Time',
+};
+
+const BRAND_GREEN = '#4cb154';
+const BRAND_RED = '#ef282c';
+const SLATE_400 = '#94a3b8';
+const SLATE_200 = '#e2e8f0';
+
+const iconCls =
+  'bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] text-[var(--color-primary)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_30%,white)]';
+
+function TrendBadge({ trend, suffix = 'vs last period' }: { trend: number; suffix?: string }) {
+  if (trend === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
+        <Minus className="size-3 shrink-0" strokeWidth={2.5} />
+        No change · {suffix}
+      </span>
+    );
+  }
+  if (trend > 0) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-semibold text-green-700 ring-1 ring-green-100">
+        <ArrowUpRight className="size-3 shrink-0" strokeWidth={2.5} />
+        +{trend}% · {suffix}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 ring-1 ring-rose-100">
+      <ArrowDownRight className="size-3 shrink-0" strokeWidth={2.5} />
+      {trend}% · {suffix}
+    </span>
+  );
+}
+
+export function AnalyticsContent() {
   const [period, setPeriod] = useState<Period>('30d');
 
-  // Fetch all necessary data
   const { data: appointments = [], isLoading: appointmentsLoading } = useAppointments();
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
     queryKey: queryKeys.invoices,
@@ -63,9 +110,9 @@ export function AnalyticsDashboardPage() {
     queryFn: listServicesLiveOrDemo,
   });
 
-  const isLoading = appointmentsLoading || invoicesLoading || posSalesLoading || patientsLoading || servicesLoading;
+  const isLoading =
+    appointmentsLoading || invoicesLoading || posSalesLoading || patientsLoading || servicesLoading;
 
-  // 1. Calculate Date Ranges for comparison
   const dateRanges = useMemo(() => {
     const now = new Date();
     const currentStart = new Date();
@@ -93,49 +140,35 @@ export function AnalyticsDashboardPage() {
       hasComparison = false;
     }
 
-    return {
-      currentStart,
-      prevStart,
-      prevEnd,
-      hasComparison,
-    };
+    return { currentStart, prevStart, prevEnd, hasComparison };
   }, [period]);
 
-  // Helper to check if a date is within a range
   const isWithinRange = (dateStr: string | Date, start: Date, end?: Date) => {
     const d = new Date(dateStr);
     if (Number.isNaN(d.getTime())) return false;
-    if (end) {
-      return d >= start && d < end;
-    }
-    return d >= start;
+    return end ? d >= start && d < end : d >= start;
   };
 
-  // 2. Aggregate metrics and compare with previous period
   const metrics = useMemo(() => {
-    // Current period data
-    const currentApps = appointments.filter(a =>
-      period === 'all' ? true : isWithinRange(a.scheduledAt, dateRanges.currentStart)
+    const currentApps = appointments.filter((a) =>
+      period === 'all' ? true : isWithinRange(a.scheduledAt, dateRanges.currentStart),
     );
-    const completedAppsCurrent = currentApps.filter(a => a.status === 'completed').length;
-
-    const currentPatientsCount = patients.filter(p =>
-      period === 'all' ? true : isWithinRange(p.createdAt, dateRanges.currentStart)
+    const completedAppsCurrent = currentApps.filter((a) => a.status === 'completed').length;
+    const currentPatientsCount = patients.filter((p) =>
+      period === 'all' ? true : isWithinRange(p.createdAt, dateRanges.currentStart),
     ).length;
-
-    const currentPaidInvoices = invoices.filter(inv =>
-      inv.paymentStatus === 'paid' &&
-      (period === 'all' ? true : isWithinRange(inv.createdAt, dateRanges.currentStart))
+    const currentPaidInvoices = invoices.filter(
+      (inv) =>
+        inv.paymentStatus === 'paid' &&
+        (period === 'all' ? true : isWithinRange(inv.createdAt, dateRanges.currentStart)),
     );
-    const billingRevenueCurrent = currentPaidInvoices.reduce((sum, inv) => sum + inv.total, 0);
-
-    const currentPosSales = posSales.filter(sale =>
-      period === 'all' ? true : isWithinRange(sale.createdAt, dateRanges.currentStart)
+    const billingRevenueCurrent = currentPaidInvoices.reduce((s, inv) => s + inv.total, 0);
+    const currentPosSales = posSales.filter((sale) =>
+      period === 'all' ? true : isWithinRange(sale.createdAt, dateRanges.currentStart),
     );
-    const posRevenueCurrent = currentPosSales.reduce((sum, sale) => sum + sale.total, 0);
+    const posRevenueCurrent = currentPosSales.reduce((s, sale) => s + sale.total, 0);
     const totalRevenueCurrent = billingRevenueCurrent + posRevenueCurrent;
 
-    // Previous period data (for comparison trends)
     let consultationsTrend = 0;
     let patientsTrend = 0;
     let billingRevenueTrend = 0;
@@ -143,724 +176,492 @@ export function AnalyticsDashboardPage() {
     let totalRevenueTrend = 0;
 
     if (dateRanges.hasComparison) {
-      const prevApps = appointments.filter(a =>
-        isWithinRange(a.scheduledAt, dateRanges.prevStart, dateRanges.prevEnd)
+      const prevApps = appointments.filter((a) =>
+        isWithinRange(a.scheduledAt, dateRanges.prevStart, dateRanges.prevEnd),
       );
-      const completedAppsPrev = prevApps.filter(a => a.status === 'completed').length;
-      consultationsTrend = completedAppsPrev === 0
-        ? (completedAppsCurrent > 0 ? 100 : 0)
-        : Math.round(((completedAppsCurrent - completedAppsPrev) / completedAppsPrev) * 100);
+      const completedAppsPrev = prevApps.filter((a) => a.status === 'completed').length;
+      consultationsTrend =
+        completedAppsPrev === 0
+          ? completedAppsCurrent > 0 ? 100 : 0
+          : Math.round(((completedAppsCurrent - completedAppsPrev) / completedAppsPrev) * 100);
 
-      const prevPatientsCount = patients.filter(p =>
-        isWithinRange(p.createdAt, dateRanges.prevStart, dateRanges.prevEnd)
+      const prevPatientsCount = patients.filter((p) =>
+        isWithinRange(p.createdAt, dateRanges.prevStart, dateRanges.prevEnd),
       ).length;
-      patientsTrend = prevPatientsCount === 0
-        ? (currentPatientsCount > 0 ? 100 : 0)
-        : Math.round(((currentPatientsCount - prevPatientsCount) / prevPatientsCount) * 100);
+      patientsTrend =
+        prevPatientsCount === 0
+          ? currentPatientsCount > 0 ? 100 : 0
+          : Math.round(((currentPatientsCount - prevPatientsCount) / prevPatientsCount) * 100);
 
-      const prevPaidInvoices = invoices.filter(inv =>
-        inv.paymentStatus === 'paid' &&
-        isWithinRange(inv.createdAt, dateRanges.prevStart, dateRanges.prevEnd)
+      const prevPaidInvoices = invoices.filter(
+        (inv) =>
+          inv.paymentStatus === 'paid' &&
+          isWithinRange(inv.createdAt, dateRanges.prevStart, dateRanges.prevEnd),
       );
-      const billingRevenuePrev = prevPaidInvoices.reduce((sum, inv) => sum + inv.total, 0);
-      billingRevenueTrend = billingRevenuePrev === 0
-        ? (billingRevenueCurrent > 0 ? 100 : 0)
-        : Math.round(((billingRevenueCurrent - billingRevenuePrev) / billingRevenuePrev) * 100);
+      const billingRevenuePrev = prevPaidInvoices.reduce((s, inv) => s + inv.total, 0);
+      billingRevenueTrend =
+        billingRevenuePrev === 0
+          ? billingRevenueCurrent > 0 ? 100 : 0
+          : Math.round(((billingRevenueCurrent - billingRevenuePrev) / billingRevenuePrev) * 100);
 
-      const prevPosSales = posSales.filter(sale =>
-        isWithinRange(sale.createdAt, dateRanges.prevStart, dateRanges.prevEnd)
+      const prevPosSales = posSales.filter((sale) =>
+        isWithinRange(sale.createdAt, dateRanges.prevStart, dateRanges.prevEnd),
       );
-      const posRevenuePrev = prevPosSales.reduce((sum, sale) => sum + sale.total, 0);
-      posRevenueTrend = posRevenuePrev === 0
-        ? (posRevenueCurrent > 0 ? 100 : 0)
-        : Math.round(((posRevenueCurrent - posRevenuePrev) / posRevenuePrev) * 100);
+      const posRevenuePrev = prevPosSales.reduce((s, sale) => s + sale.total, 0);
+      posRevenueTrend =
+        posRevenuePrev === 0
+          ? posRevenueCurrent > 0 ? 100 : 0
+          : Math.round(((posRevenueCurrent - posRevenuePrev) / posRevenuePrev) * 100);
 
       const totalRevenuePrev = billingRevenuePrev + posRevenuePrev;
-      totalRevenueTrend = totalRevenuePrev === 0
-        ? (totalRevenueCurrent > 0 ? 100 : 0)
-        : Math.round(((totalRevenueCurrent - totalRevenuePrev) / totalRevenuePrev) * 100);
+      totalRevenueTrend =
+        totalRevenuePrev === 0
+          ? totalRevenueCurrent > 0 ? 100 : 0
+          : Math.round(((totalRevenueCurrent - totalRevenuePrev) / totalRevenuePrev) * 100);
     }
 
     return {
-      consultations: {
-        value: completedAppsCurrent,
-        trend: consultationsTrend,
-      },
-      patients: {
-        value: currentPatientsCount,
-        trend: patientsTrend,
-      },
-      billingRevenue: {
-        value: billingRevenueCurrent,
-        trend: billingRevenueTrend,
-      },
-      posRevenue: {
-        value: posRevenueCurrent,
-        trend: posRevenueTrend,
-      },
-      totalRevenue: {
-        value: totalRevenueCurrent,
-        trend: totalRevenueTrend,
-      },
+      consultations: { value: completedAppsCurrent, trend: consultationsTrend },
+      patients: { value: currentPatientsCount, trend: patientsTrend },
+      billingRevenue: { value: billingRevenueCurrent, trend: billingRevenueTrend },
+      posRevenue: { value: posRevenueCurrent, trend: posRevenueTrend },
+      totalRevenue: { value: totalRevenueCurrent, trend: totalRevenueTrend },
       currentApps,
       currentPaidInvoices,
       currentPosSales,
     };
   }, [appointments, invoices, posSales, patients, period, dateRanges]);
 
-  // 3. Prepare Revenue Trends Chart Data
+  const formatKey = (date: Date) => {
+    if (period === '7d' || period === '30d')
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (period === '90d') {
+      const s = new Date(date);
+      s.setDate(date.getDate() - date.getDay());
+      return s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+  };
+
+  const buildKeys = (start: Date) => {
+    const keys: string[] = [];
+    const map: Record<string, unknown> = {};
+    const temp = new Date(start);
+    const end = new Date();
+    let count = 0;
+    while (temp <= end && count < 500) {
+      const k = formatKey(temp);
+      if (!map[k]) { map[k] = true; keys.push(k); }
+      if (period === '7d' || period === '30d') temp.setDate(temp.getDate() + 1);
+      else if (period === '90d') temp.setDate(temp.getDate() + 7);
+      else temp.setMonth(temp.getMonth() + 1);
+      count++;
+    }
+    if (keys.length === 0) keys.push(formatKey(new Date()));
+    return keys;
+  };
+
   const revenueTrendData = useMemo(() => {
-    const dataMap: Record<string, { date: string; billing: number; pos: number; total: number }> = {};
-    const formatKey = (date: Date) => {
-      if (period === '7d' || period === '30d') {
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      } else if (period === '90d') {
-        const startOfWeek = new Date(date);
-        startOfWeek.setDate(date.getDate() - date.getDay());
-        return startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      } else {
-        return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-      }
-    };
-
-    const keys: string[] = [];
-    const temp = new Date(
+    const start =
       period === 'all' && patients.length > 0
-        ? Math.min(...patients.map(p => new Date(p.createdAt).getTime()))
-        : dateRanges.currentStart.getTime()
-    );
-    const end = new Date();
-    
-    // Safety check
-    let loopCount = 0;
-    const maxLoops = 500;
-    while (temp <= end && loopCount < maxLoops) {
-      const key = formatKey(temp);
-      if (!dataMap[key]) {
-        dataMap[key] = { date: key, billing: 0, pos: 0, total: 0 };
-        keys.push(key);
-      }
-      if (period === '7d' || period === '30d') {
-        temp.setDate(temp.getDate() + 1);
-      } else if (period === '90d') {
-        temp.setDate(temp.getDate() + 7);
-      } else {
-        temp.setMonth(temp.getMonth() + 1);
-      }
-      loopCount++;
-    }
-
-    if (keys.length === 0) {
-      const key = formatKey(new Date());
-      dataMap[key] = { date: key, billing: 0, pos: 0, total: 0 };
-      keys.push(key);
-    }
-
-    metrics.currentPaidInvoices.forEach(inv => {
-      const key = formatKey(new Date(inv.createdAt));
-      if (dataMap[key]) {
-        dataMap[key].billing += inv.total;
-        dataMap[key].total += inv.total;
-      }
+        ? new Date(Math.min(...patients.map((p) => new Date(p.createdAt).getTime())))
+        : dateRanges.currentStart;
+    const keys = buildKeys(start);
+    const data: Record<string, { date: string; billing: number; pos: number; total: number }> = {};
+    keys.forEach((k) => { data[k] = { date: k, billing: 0, pos: 0, total: 0 }; });
+    metrics.currentPaidInvoices.forEach((inv) => {
+      const k = formatKey(new Date(inv.createdAt));
+      if (data[k]) { data[k].billing += inv.total; data[k].total += inv.total; }
     });
-
-    metrics.currentPosSales.forEach(sale => {
-      const key = formatKey(new Date(sale.createdAt));
-      if (dataMap[key]) {
-        dataMap[key].pos += sale.total;
-        dataMap[key].total += sale.total;
-      }
+    metrics.currentPosSales.forEach((sale) => {
+      const k = formatKey(new Date(sale.createdAt));
+      if (data[k]) { data[k].pos += sale.total; data[k].total += sale.total; }
     });
-
-    return keys.map(k => dataMap[k]);
+    return keys.map((k) => data[k]);
   }, [period, dateRanges, metrics, patients]);
 
-  // 4. Prepare Consultation Trends Chart Data
   const consultationsTrendData = useMemo(() => {
-    const dataMap: Record<string, { date: string; completed: number; cancelled: number; scheduled: number }> = {};
-    const formatKey = (date: Date) => {
-      if (period === '7d' || period === '30d') {
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      } else if (period === '90d') {
-        const startOfWeek = new Date(date);
-        startOfWeek.setDate(date.getDate() - date.getDay());
-        return startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      } else {
-        return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-      }
-    };
-
-    const keys: string[] = [];
-    const temp = new Date(
+    const start =
       period === 'all' && patients.length > 0
-        ? Math.min(...patients.map(p => new Date(p.createdAt).getTime()))
-        : dateRanges.currentStart.getTime()
-    );
-    const end = new Date();
-    
-    let loopCount = 0;
-    const maxLoops = 500;
-    while (temp <= end && loopCount < maxLoops) {
-      const key = formatKey(temp);
-      if (!dataMap[key]) {
-        dataMap[key] = { date: key, completed: 0, cancelled: 0, scheduled: 0 };
-        keys.push(key);
-      }
-      if (period === '7d' || period === '30d') {
-        temp.setDate(temp.getDate() + 1);
-      } else if (period === '90d') {
-        temp.setDate(temp.getDate() + 7);
-      } else {
-        temp.setMonth(temp.getMonth() + 1);
-      }
-      loopCount++;
-    }
-
-    if (keys.length === 0) {
-      const key = formatKey(new Date());
-      dataMap[key] = { date: key, completed: 0, cancelled: 0, scheduled: 0 };
-      keys.push(key);
-    }
-
-    metrics.currentApps.forEach(app => {
-      const key = formatKey(new Date(app.scheduledAt));
-      if (dataMap[key]) {
-        if (app.status === 'completed') {
-          dataMap[key].completed += 1;
-        } else if (app.status === 'cancelled') {
-          dataMap[key].cancelled += 1;
-        } else {
-          dataMap[key].scheduled += 1;
-        }
+        ? new Date(Math.min(...patients.map((p) => new Date(p.createdAt).getTime())))
+        : dateRanges.currentStart;
+    const keys = buildKeys(start);
+    const data: Record<string, { date: string; completed: number; cancelled: number; scheduled: number }> = {};
+    keys.forEach((k) => { data[k] = { date: k, completed: 0, cancelled: 0, scheduled: 0 }; });
+    metrics.currentApps.forEach((app) => {
+      const k = formatKey(new Date(app.scheduledAt));
+      if (data[k]) {
+        if (app.status === 'completed') data[k].completed += 1;
+        else if (app.status === 'cancelled') data[k].cancelled += 1;
+        else data[k].scheduled += 1;
       }
     });
-
-    return keys.map(k => dataMap[k]);
+    return keys.map((k) => data[k]);
   }, [period, dateRanges, metrics, patients]);
 
-  // 5. Prepare Top Booked Services
   const topServices = useMemo(() => {
     const counts: Record<string, number> = {};
-    metrics.currentApps.forEach(app => {
-      if (app.serviceId) {
-        counts[app.serviceId] = (counts[app.serviceId] || 0) + 1;
-      }
+    metrics.currentApps.forEach((app) => {
+      if (app.serviceId) counts[app.serviceId] = (counts[app.serviceId] || 0) + 1;
     });
-
-    const serviceMap = new Map(services.map(s => [s.id, s]));
-
+    const svcMap = new Map(services.map((s) => [s.id, s]));
     return Object.entries(counts)
-      .map(([serviceId, count]) => {
-        const details = serviceMap.get(serviceId);
-        return {
-          id: serviceId,
-          name: details?.name || 'General Consultation',
-          type: details?.serviceType || 'consultation',
-          price: details?.price || 0,
-          count,
-          revenue: count * (details?.price || 0),
-        };
+      .map(([id, count]) => {
+        const svc = svcMap.get(id);
+        return { id, name: svc?.name ?? 'General Consultation', price: svc?.price ?? 0, count, revenue: count * (svc?.price ?? 0) };
       })
       .sort((a, b) => b.count - a.count);
   }, [metrics.currentApps, services]);
 
-  // 6. Appointment Status Breakdown
   const statusBreakdown = useMemo(() => {
-    const counts: Record<string, number> = {};
-    metrics.currentApps.forEach(app => {
-      counts[app.status] = (counts[app.status] || 0) + 1;
-    });
-
-    const statusMap: Record<string, { label: string; color: string }> = {
-      completed: { label: 'Completed', color: '#10B981' },
-      scheduled: { label: 'Scheduled', color: '#3B82F6' },
-      confirmed: { label: 'Confirmed', color: '#8B5CF6' },
-      in_progress: { label: 'In Progress', color: '#F59E0B' },
-      cancelled: { label: 'Cancelled', color: '#EF4444' },
-      no_show: { label: 'No Show', color: '#6B7280' },
+    const STATUS_COLORS: Record<string, string> = {
+      completed: BRAND_GREEN,
+      scheduled: SLATE_400,
+      confirmed: '#64748b',
+      in_progress: '#334155',
+      cancelled: BRAND_RED,
+      no_show: '#cbd5e1',
     };
-
+    const counts: Record<string, number> = {};
+    metrics.currentApps.forEach((app) => { counts[app.status] = (counts[app.status] || 0) + 1; });
     return Object.entries(counts).map(([status, count]) => ({
-      name: statusMap[status]?.label || status,
+      name: status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
       value: count,
-      color: statusMap[status]?.color || '#94A3B8',
+      color: STATUS_COLORS[status] ?? SLATE_400,
     }));
   }, [metrics.currentApps]);
 
-  // 7. POS Payment Method Distribution
   const paymentMethodsDistribution = useMemo(() => {
     const methods: Record<string, number> = {};
-    metrics.currentPosSales.forEach(sale => {
-      const method = sale.paymentMethod || 'Other';
-      methods[method] = (methods[method] || 0) + sale.total;
+    metrics.currentPosSales.forEach((sale) => {
+      const m = sale.paymentMethod ?? 'Other';
+      methods[m] = (methods[m] || 0) + sale.total;
     });
-
-    const colors: Record<string, string> = {
-      cash: '#10B981',
-      gcash: '#3B82F6',
-      card: '#EC4899',
-      Other: '#8B5CF6',
-    };
-
-    return Object.entries(methods).map(([method, amount]) => ({
-      name: method.toUpperCase(),
-      value: amount,
-      color: colors[method] || '#94A3B8',
+    const COLORS = ['#4cb154', '#94a3b8', '#64748b', '#334155'];
+    return Object.entries(methods).map(([name, value], i) => ({
+      name: name.toUpperCase(),
+      value,
+      color: COLORS[i % COLORS.length],
     }));
   }, [metrics.currentPosSales]);
 
-  // 8. Recent Revenue Activity List
   const recentRevenueList = useMemo(() => {
-    const list: Array<{
-      id: string;
-      reference: string;
-      source: 'billing' | 'pos';
-      amount: number;
-      date: string;
-      patientName?: string;
-    }> = [];
-
-    metrics.currentPaidInvoices.slice(0, 10).forEach(inv => {
-      list.push({
-        id: inv.id,
-        reference: inv.invoiceNumber,
-        source: 'billing',
-        amount: inv.total,
-        date: inv.createdAt,
-      });
+    const list: Array<{ id: string; reference: string; source: 'billing' | 'pos'; amount: number; date: string }> = [];
+    metrics.currentPaidInvoices.slice(0, 10).forEach((inv) => {
+      list.push({ id: inv.id, reference: inv.invoiceNumber, source: 'billing', amount: inv.total, date: inv.createdAt });
     });
-
-    metrics.currentPosSales.slice(0, 10).forEach(sale => {
-      list.push({
-        id: sale.id,
-        reference: sale.saleNumber,
-        source: 'pos',
-        amount: sale.total,
-        date: sale.createdAt,
-      });
+    metrics.currentPosSales.slice(0, 10).forEach((sale) => {
+      list.push({ id: sale.id, reference: sale.saleNumber, source: 'pos', amount: sale.total, date: sale.createdAt });
     });
-
-    return list
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 10);
+    return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
   }, [metrics.currentPaidInvoices, metrics.currentPosSales]);
+
+  const tooltipStyle = {
+    backgroundColor: '#fff',
+    borderRadius: '12px',
+    border: '1px solid #e2e8f0',
+    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)',
+    fontSize: '12px',
+  };
 
   if (isLoading) {
     return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="h-10 w-10 animate-spin text-[var(--color-primary)]" />
-          <p className="text-sm font-medium text-slate-500">Compiling analytics data...</p>
-        </div>
+      <div className="flex h-[40vh] items-center justify-center">
+        <p className="text-sm font-medium text-slate-400">Loading analytics…</p>
       </div>
     );
   }
 
   return (
-    <InternalPage>
-      {/* Upper header section */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Analytics Dashboard</h1>
-          <p className="text-sm text-slate-500">
-            Real-time metric visualization, service popularity trends, and financial reports.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <>
+      {/* Page header */}
+      <section className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
+        <div className="flex flex-col gap-5 px-6 py-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Analytics</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Performance Overview</h1>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              Revenue trends, consultation volume, and service demand for the selected period.
+            </p>
+          </div>
           {/* Period selector */}
-          <div className="flex rounded-xl bg-slate-100 p-1">
+          <div className="flex shrink-0 items-center gap-1 rounded-xl border border-slate-200/90 bg-slate-50/80 p-1">
             {(['7d', '30d', '90d', '12m', 'all'] as Period[]).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
+                type="button"
                 className={cn(
-                  'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all',
+                  'whitespace-nowrap rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-wide transition',
                   period === p
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[color-mix(in_srgb,var(--color-primary)_12%,white)] text-[var(--color-primary)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--color-primary)_25%,white)]'
+                    : 'text-slate-500 hover:bg-white hover:text-slate-800',
                 )}
               >
-                {p === '7d' && '7 Days'}
-                {p === '30d' && '30 Days'}
-                {p === '90d' && '90 Days'}
-                {p === '12m' && '12 Months'}
-                {p === 'all' && 'All Time'}
+                {PERIOD_LABELS[p]}
               </button>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* KPI Cards Row */}
-      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-        {/* Total Revenue KPI */}
-        <div className={cn(INTERNAL_SURFACE, 'p-6 flex flex-col justify-between hover:shadow-md transition-all border-l-4 border-l-emerald-500 bg-gradient-to-br from-white to-emerald-50/10')}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Revenue</span>
-            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-              <Coins className="h-5 w-5" />
+      {/* KPI row */}
+      <section className="grid gap-4 grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: 'Total Revenue', value: formatCurrency(metrics.totalRevenue.value), hint: `Billing ${formatCurrency(metrics.billingRevenue.value)} · POS ${formatCurrency(metrics.posRevenue.value)}`, icon: Coins, trend: metrics.totalRevenue.trend },
+          { label: 'Consultations', value: metrics.consultations.value.toLocaleString(), hint: 'Completed clinic visits', icon: CalendarDays, trend: metrics.consultations.trend },
+          { label: 'New Patients', value: metrics.patients.value.toLocaleString(), hint: 'Registrations in period', icon: Users, trend: metrics.patients.trend },
+          { label: 'POS Transactions', value: metrics.currentPosSales.length.toLocaleString(), hint: 'Over-the-counter sales', icon: ShoppingBag, trend: metrics.posRevenue.trend },
+        ].map(({ label, value, hint, icon: Icon, trend }) => (
+          <div
+            key={label}
+            className={cn(INTERNAL_SURFACE, 'p-0 transition-[box-shadow] duration-200 hover:shadow-[0_4px_24px_-6px_rgba(15,41,71,0.12)]')}
+          >
+            <div className="flex items-start justify-between gap-4 p-5">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</p>
+                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900 tabular-nums">{value}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">{hint}</p>
+                {dateRanges.hasComparison && (
+                  <div className="mt-3">
+                    <TrendBadge trend={trend} />
+                  </div>
+                )}
+              </div>
+              <div className={cn('flex shrink-0 items-center justify-center rounded-xl p-2.5', iconCls)}>
+                <Icon className="size-5" strokeWidth={2} />
+              </div>
             </div>
           </div>
-          <div className="mt-4">
-            <h3 className="text-3xl font-extrabold text-slate-900">
-              {formatCurrency(metrics.totalRevenue.value)}
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">
-              Billing: {formatCurrency(metrics.billingRevenue.value)} • POS: {formatCurrency(metrics.posRevenue.value)}
-            </p>
-          </div>
-          {dateRanges.hasComparison && (
-            <div className="flex items-center gap-1 mt-4 text-xs font-semibold">
-              {metrics.totalRevenue.trend >= 0 ? (
-                <span className="flex items-center gap-0.5 text-emerald-600">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  +{metrics.totalRevenue.trend}%
-                </span>
-              ) : (
-                <span className="flex items-center gap-0.5 text-rose-600">
-                  <TrendingDown className="h-3.5 w-3.5" />
-                  {metrics.totalRevenue.trend}%
-                </span>
-              )}
-              <span className="text-slate-400">vs last period</span>
-            </div>
-          )}
-        </div>
+        ))}
+      </section>
 
-        {/* Consultations KPI */}
-        <div className={cn(INTERNAL_SURFACE, 'p-6 flex flex-col justify-between hover:shadow-md transition-all border-l-4 border-l-blue-500 bg-gradient-to-br from-white to-blue-50/10')}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Consultations</span>
-            <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-              <CalendarDays className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-3xl font-extrabold text-slate-900">
-              {metrics.consultations.value.toLocaleString()}
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">Completed clinic visits</p>
-          </div>
-          {dateRanges.hasComparison && (
-            <div className="flex items-center gap-1 mt-4 text-xs font-semibold">
-              {metrics.consultations.trend >= 0 ? (
-                <span className="flex items-center gap-0.5 text-emerald-600">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  +{metrics.consultations.trend}%
-                </span>
-              ) : (
-                <span className="flex items-center gap-0.5 text-rose-600">
-                  <TrendingDown className="h-3.5 w-3.5" />
-                  {metrics.consultations.trend}%
-                </span>
-              )}
-              <span className="text-slate-400">vs last period</span>
-            </div>
-          )}
-        </div>
-
-        {/* New Patients KPI */}
-        <div className={cn(INTERNAL_SURFACE, 'p-6 flex flex-col justify-between hover:shadow-md transition-all border-l-4 border-l-violet-500 bg-gradient-to-br from-white to-violet-50/10')}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">New Patients</span>
-            <div className="p-2 rounded-lg bg-violet-50 text-violet-600">
-              <Users className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-3xl font-extrabold text-slate-900">
-              {metrics.patients.value.toLocaleString()}
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">Registrations in period</p>
-          </div>
-          {dateRanges.hasComparison && (
-            <div className="flex items-center gap-1 mt-4 text-xs font-semibold">
-              {metrics.patients.trend >= 0 ? (
-                <span className="flex items-center gap-0.5 text-emerald-600">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  +{metrics.patients.trend}%
-                </span>
-              ) : (
-                <span className="flex items-center gap-0.5 text-rose-600">
-                  <TrendingDown className="h-3.5 w-3.5" />
-                  {metrics.patients.trend}%
-                </span>
-              )}
-              <span className="text-slate-400">vs last period</span>
-            </div>
-          )}
-        </div>
-
-        {/* POS Sales KPI */}
-        <div className={cn(INTERNAL_SURFACE, 'p-6 flex flex-col justify-between hover:shadow-md transition-all border-l-4 border-l-amber-500 bg-gradient-to-br from-white to-amber-50/10')}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">POS Sales Volume</span>
-            <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
-              <ShoppingBag className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-3xl font-extrabold text-slate-900">
-              {metrics.currentPosSales.length.toLocaleString()}
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">OTC sales transactions</p>
-          </div>
-          {dateRanges.hasComparison && (
-            <div className="flex items-center gap-1 mt-4 text-xs font-semibold">
-              {metrics.posRevenue.trend >= 0 ? (
-                <span className="flex items-center gap-0.5 text-emerald-600">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  +{metrics.posRevenue.trend}%
-                </span>
-              ) : (
-                <span className="flex items-center gap-0.5 text-rose-600">
-                  <TrendingDown className="h-3.5 w-3.5" />
-                  {metrics.posRevenue.trend}%
-                </span>
-              )}
-              <span className="text-slate-400">vs last period</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Main Charts Area */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Revenue Area Chart */}
-        <div className={cn(INTERNAL_SURFACE_PADDING, 'lg:col-span-2 flex flex-col')}>
-          <div className="flex items-center justify-between mb-4">
+      {/* Revenue + Appointment status */}
+      <section className="grid gap-6 lg:grid-cols-3">
+        <div className={cn(INTERNAL_SURFACE, 'flex flex-col lg:col-span-2')}>
+          <div className="flex items-center justify-between gap-4 border-b border-slate-100/90 px-6 py-4">
             <div>
-              <h4 className="text-sm font-bold text-slate-900">Revenue Analysis</h4>
-              <p className="text-xs text-slate-500">Daily invoicing vs. product point-of-sale revenues</p>
+              <p className="text-sm font-bold text-slate-900">Revenue Analysis</p>
+              <p className="text-xs text-slate-500">Billing invoices vs. POS sales over time</p>
             </div>
-            <div className="flex items-center gap-4 text-xs">
-              <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-emerald-500"></span>Invoices</span>
-              <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-blue-500"></span>POS Sales</span>
+            <div className="flex items-center gap-4 text-[11px] font-semibold text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-[var(--color-primary)]" />
+                Billing
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-slate-400" />
+                POS
+              </span>
             </div>
           </div>
-          <div className="h-80 w-full mt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueTrendData}>
-                <defs>
-                  <linearGradient id="colorBilling" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.15}/>
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorPos" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15}/>
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                <XAxis dataKey="date" stroke="#94A3B8" fontSize={11} tickLine={false} />
-                <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} tickFormatter={(val) => `₱${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} />
-                <Tooltip
-                  formatter={(value: any) => [formatCurrency(Number(value) || 0), '']}
-                  contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }}
-                />
-                <Area type="monotone" dataKey="billing" name="Billing" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorBilling)" />
-                <Area type="monotone" dataKey="pos" name="POS" stroke="#3B82F6" strokeWidth={2.5} fillOpacity={1} fill="url(#colorPos)" />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="p-5">
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueTrendData}>
+                  <defs>
+                    <linearGradient id="gBilling" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={BRAND_GREEN} stopOpacity={0.15} />
+                      <stop offset="95%" stopColor={BRAND_GREEN} stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gPos" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={SLATE_400} stopOpacity={0.2} />
+                      <stop offset="95%" stopColor={SLATE_400} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={SLATE_200} />
+                  <XAxis dataKey="date" stroke={SLATE_400} fontSize={11} tickLine={false} />
+                  <YAxis stroke={SLATE_400} fontSize={11} tickLine={false} tickFormatter={(v) => `₱${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
+                  <Tooltip formatter={(v: unknown) => [formatCurrency(Number(v) || 0), '']} contentStyle={tooltipStyle} />
+                  <Area type="monotone" dataKey="billing" name="Billing" stroke={BRAND_GREEN} strokeWidth={2} fillOpacity={1} fill="url(#gBilling)" />
+                  <Area type="monotone" dataKey="pos" name="POS" stroke={SLATE_400} strokeWidth={2} fillOpacity={1} fill="url(#gPos)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
-        {/* Status distribution donut chart */}
-        <div className={cn(INTERNAL_SURFACE_PADDING, 'flex flex-col')}>
-          <h4 className="text-sm font-bold text-slate-900 mb-1">Appointment Metrics</h4>
-          <p className="text-xs text-slate-500 mb-6">Status allocation of all visits in timeframe</p>
-          <div className="flex-1 flex flex-col items-center justify-center">
+        <div className={cn(INTERNAL_SURFACE, 'flex flex-col')}>
+          <div className="border-b border-slate-100/90 px-6 py-4">
+            <p className="text-sm font-bold text-slate-900">Appointment Breakdown</p>
+            <p className="text-xs text-slate-500">Status distribution for the period</p>
+          </div>
+          <div className="flex flex-1 flex-col items-center justify-center p-5">
             {statusBreakdown.length > 0 ? (
               <>
-                <div className="h-52 w-full relative flex items-center justify-center">
+                <div className="relative flex h-52 w-full items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie
-                        data={statusBreakdown}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={4}
-                        dataKey="value"
-                      >
-                        {statusBreakdown.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Pie data={statusBreakdown} cx="50%" cy="50%" innerRadius={58} outerRadius={78} paddingAngle={3} dataKey="value">
+                        {statusBreakdown.map((entry, i) => (
+                          <Cell key={i} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value) => [`${value} bookings`, '']} />
+                      <Tooltip formatter={(v) => [`${v} visits`, '']} contentStyle={tooltipStyle} />
                     </PieChart>
                   </ResponsiveContainer>
-                  {/* Center Text */}
-                  <div className="absolute text-center">
-                    <p className="text-2xl font-black text-slate-900">
-                      {metrics.currentApps.length}
-                    </p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bookings</p>
+                  <div className="pointer-events-none absolute text-center">
+                    <p className="text-2xl font-bold text-slate-900">{metrics.currentApps.length}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-4 w-full text-xs">
-                  {statusBreakdown.map((item, index) => (
-                    <div key={index} className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                      <span className="text-slate-600 truncate">{item.name}</span>
-                      <span className="font-bold text-slate-900 ml-auto">{item.value}</span>
+                <div className="mt-4 grid w-full grid-cols-2 gap-x-4 gap-y-2">
+                  {statusBreakdown.map((item, i) => (
+                    <div key={i} className="flex items-center gap-1.5 text-xs">
+                      <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                      <span className="truncate text-slate-600">{item.name}</span>
+                      <span className="ml-auto font-bold text-slate-900">{item.value}</span>
                     </div>
                   ))}
                 </div>
               </>
             ) : (
-              <p className="text-xs text-slate-400 italic">No appointment status records found.</p>
+              <p className="text-xs text-slate-400">No appointment data for this period.</p>
             )}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Consultations and POS breakdown */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Consultations volume trend */}
-        <div className={cn(INTERNAL_SURFACE_PADDING, 'lg:col-span-2 flex flex-col')}>
-          <h4 className="text-sm font-bold text-slate-900 mb-1">Consultation Delivery</h4>
-          <p className="text-xs text-slate-500 mb-4">Completed, cancelled, and scheduled appointments</p>
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={consultationsTrendData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                <XAxis dataKey="date" stroke="#94A3B8" fontSize={11} tickLine={false} />
-                <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                <Bar dataKey="completed" name="Completed" fill="#10B981" radius={[4, 4, 0, 0]} stackId="a" />
-                <Bar dataKey="scheduled" name="Scheduled" fill="#3B82F6" radius={[4, 4, 0, 0]} stackId="a" />
-                <Bar dataKey="cancelled" name="Cancelled" fill="#EF4444" radius={[4, 4, 0, 0]} stackId="a" />
-              </BarChart>
-            </ResponsiveContainer>
+      {/* Consultations + POS payment methods */}
+      <section className="grid gap-6 lg:grid-cols-3">
+        <div className={cn(INTERNAL_SURFACE, 'flex flex-col lg:col-span-2')}>
+          <div className="border-b border-slate-100/90 px-6 py-4">
+            <p className="text-sm font-bold text-slate-900">Consultation Delivery</p>
+            <p className="text-xs text-slate-500">Completed, scheduled, and cancelled appointments over time</p>
+          </div>
+          <div className="p-5">
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={consultationsTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={SLATE_200} />
+                  <XAxis dataKey="date" stroke={SLATE_400} fontSize={11} tickLine={false} />
+                  <YAxis stroke={SLATE_400} fontSize={11} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                  <Bar dataKey="completed" name="Completed" fill={BRAND_GREEN} radius={[4, 4, 0, 0]} stackId="a" />
+                  <Bar dataKey="scheduled" name="Scheduled" fill={SLATE_400} radius={[4, 4, 0, 0]} stackId="a" />
+                  <Bar dataKey="cancelled" name="Cancelled" fill={BRAND_RED} radius={[4, 4, 0, 0]} stackId="a" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
-        {/* Payment Methods Distribution */}
-        <div className={cn(INTERNAL_SURFACE_PADDING, 'flex flex-col')}>
-          <h4 className="text-sm font-bold text-slate-900 mb-1">POS Payment Methods</h4>
-          <p className="text-xs text-slate-500 mb-6">Aggregate payment totals for POS sales</p>
-          <div className="flex-1 flex flex-col items-center justify-center">
+        <div className={cn(INTERNAL_SURFACE, 'flex flex-col')}>
+          <div className="border-b border-slate-100/90 px-6 py-4">
+            <p className="text-sm font-bold text-slate-900">POS Payment Methods</p>
+            <p className="text-xs text-slate-500">Breakdown by payment type</p>
+          </div>
+          <div className="flex flex-1 flex-col items-center justify-center p-5">
             {paymentMethodsDistribution.length > 0 ? (
               <>
-                <div className="h-44 w-full relative flex items-center justify-center">
+                <div className="relative flex h-44 w-full items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie
-                        data={paymentMethodsDistribution}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={45}
-                        outerRadius={65}
-                        paddingAngle={3}
-                        dataKey="value"
-                      >
-                        {paymentMethodsDistribution.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Pie data={paymentMethodsDistribution} cx="50%" cy="50%" innerRadius={42} outerRadius={62} paddingAngle={3} dataKey="value">
+                        {paymentMethodsDistribution.map((entry, i) => (
+                          <Cell key={i} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: any) => [formatCurrency(Number(value) || 0), '']} />
+                      <Tooltip formatter={(v: unknown) => [formatCurrency(Number(v) || 0), '']} contentStyle={tooltipStyle} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="space-y-2 mt-4 w-full text-xs">
-                  {paymentMethodsDistribution.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between border-b border-slate-50 pb-1.5 last:border-0 last:pb-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                        <span className="text-slate-600 font-semibold">{item.name}</span>
+                <div className="mt-4 w-full space-y-2">
+                  {paymentMethodsDistribution.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between border-b border-slate-50 pb-2 last:border-0">
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span className="font-semibold text-slate-600">{item.name}</span>
                       </div>
-                      <span className="font-extrabold text-slate-900">{formatCurrency(item.value)}</span>
+                      <span className="text-xs font-bold text-slate-900">{formatCurrency(item.value)}</span>
                     </div>
                   ))}
                 </div>
               </>
             ) : (
-              <p className="text-xs text-slate-400 italic">No POS payment distribution data available.</p>
+              <p className="text-xs text-slate-400">No POS data for this period.</p>
             )}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Tables section */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Popular Services table */}
-        <div className={cn(INTERNAL_SURFACE, 'flex flex-col')}>
-          <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-bold text-slate-900">Popular Services</h4>
-              <p className="text-xs text-slate-500">Frequently booked clinic procedures and consultation types</p>
-            </div>
-            <Activity className="h-4 w-4 text-slate-400" />
+      {/* Tables */}
+      <section className="grid gap-6 lg:grid-cols-2">
+        {/* Popular services */}
+        <div className={cn(INTERNAL_SURFACE)}>
+          <div className="border-b border-slate-100/90 px-6 py-4">
+            <p className="text-sm font-bold text-slate-900">Popular Services</p>
+            <p className="text-xs text-slate-500">Most-booked procedures and consultation types</p>
           </div>
-          <div className="flex-1 overflow-x-auto">
+          <div className={INTERNAL_TABLE_SCROLL}>
             {topServices.length > 0 ? (
-              <table className="min-w-full divide-y divide-slate-100 text-sm">
-                <thead className="bg-slate-50/75">
-                  <tr className="text-slate-500 text-[10px] uppercase font-bold tracking-wider text-left">
-                    <th className="px-6 py-3">Service Name</th>
-                    <th className="px-6 py-3 text-center">Bookings</th>
-                    <th className="px-6 py-3 text-right">Standard Fee</th>
-                    <th className="px-6 py-3 text-right">Est. Revenue</th>
+              <table className={INTERNAL_TABLE}>
+                <thead>
+                  <tr className={INTERNAL_THEAD_ROW}>
+                    <th className={INTERNAL_TH}>Service</th>
+                    <th className={cn(INTERNAL_TH, 'text-center')}>Bookings</th>
+                    <th className={cn(INTERNAL_TH, 'text-right')}>Fee</th>
+                    <th className={cn(INTERNAL_TH, 'text-right')}>Est. Revenue</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {topServices.slice(0, 5).map((srv, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/50">
-                      <td className="px-6 py-3.5 font-semibold text-slate-800">{srv.name}</td>
-                      <td className="px-6 py-3.5 text-center font-bold text-slate-600">{srv.count}</td>
-                      <td className="px-6 py-3.5 text-right text-slate-600">{formatCurrency(srv.price)}</td>
-                      <td className="px-6 py-3.5 text-right font-extrabold text-emerald-600">{formatCurrency(srv.revenue)}</td>
+                <tbody>
+                  {topServices.slice(0, 6).map((srv) => (
+                    <tr key={srv.id} className={INTERNAL_TR}>
+                      <td className={INTERNAL_TD}><span className="font-semibold text-slate-900">{srv.name}</span></td>
+                      <td className={cn(INTERNAL_TD, 'text-center tabular-nums')}>{srv.count}</td>
+                      <td className={cn(INTERNAL_TD, 'text-right tabular-nums')}>{formatCurrency(srv.price)}</td>
+                      <td className={cn(INTERNAL_TD, 'text-right font-bold tabular-nums text-slate-900')}>{formatCurrency(srv.revenue)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <div className="p-8 text-center text-xs text-slate-400 italic">No services data for selected period.</div>
+              <div className="px-6 py-10 text-center text-sm text-slate-400">No services data for this period.</div>
             )}
           </div>
         </div>
 
-        {/* Recent Revenue Transactions list */}
-        <div className={cn(INTERNAL_SURFACE, 'flex flex-col')}>
-          <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-bold text-slate-900">Recent Revenue Stream</h4>
-              <p className="text-xs text-slate-500">Invoices cleared and retail points-of-sale completed</p>
-            </div>
-            <CreditCard className="h-4 w-4 text-slate-400" />
+        {/* Recent revenue */}
+        <div className={cn(INTERNAL_SURFACE)}>
+          <div className="border-b border-slate-100/90 px-6 py-4">
+            <p className="text-sm font-bold text-slate-900">Recent Revenue</p>
+            <p className="text-xs text-slate-500">Cleared invoices and completed retail sales</p>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[320px]">
+          <div className={INTERNAL_TABLE_SCROLL}>
             {recentRevenueList.length > 0 ? (
-              <div className="divide-y divide-slate-100">
-                {recentRevenueList.map((item, idx) => (
-                  <div key={idx} className="px-6 py-3.5 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-800 text-xs">{item.reference}</span>
-                        <span className={cn(
-                          'px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider',
-                          item.source === 'billing' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'
-                        )}>
-                          {item.source === 'billing' ? 'Billing' : 'Retail POS'}
+              <table className={INTERNAL_TABLE}>
+                <thead>
+                  <tr className={INTERNAL_THEAD_ROW}>
+                    <th className={INTERNAL_TH}>Reference</th>
+                    <th className={INTERNAL_TH}>Source</th>
+                    <th className={INTERNAL_TH}>Date</th>
+                    <th className={cn(INTERNAL_TH, 'text-right')}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentRevenueList.map((item) => (
+                    <tr key={item.id} className={INTERNAL_TR}>
+                      <td className={INTERNAL_TD}><span className="font-semibold text-slate-900">{item.reference}</span></td>
+                      <td className={INTERNAL_TD}>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200/80">
+                          {item.source === 'billing' ? 'Billing' : 'POS'}
                         </span>
-                      </div>
-                      <span className="text-[11px] text-slate-400">
-                        {new Date(item.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <span className="font-extrabold text-slate-900 text-sm">{formatCurrency(item.amount)}</span>
-                  </div>
-                ))}
-              </div>
+                      </td>
+                      <td className={cn(INTERNAL_TD, 'text-slate-500 tabular-nums')}>
+                        {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </td>
+                      <td className={cn(INTERNAL_TD, 'text-right font-bold tabular-nums text-slate-900')}>{formatCurrency(item.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             ) : (
-              <div className="p-8 text-center text-xs text-slate-400 italic">No financial revenue events registered.</div>
+              <div className="px-6 py-10 text-center text-sm text-slate-400">No revenue events for this period.</div>
             )}
           </div>
         </div>
-      </div>
-    </InternalPage>
+      </section>
+    </>
   );
 }

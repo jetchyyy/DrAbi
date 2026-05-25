@@ -164,9 +164,9 @@ export function PatientProfilePage() {
           <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">Identity</p>
           <p className="mt-1 text-sm font-extrabold text-orange-900">Verified patient profile</p>
         </div>
-        <div className="border border-blue-200 bg-blue-50 px-5 py-4 shadow-sm">
-          <p className="text-[10px] font-extrabold uppercase tracking-widest text-blue-700">Contact</p>
-          <p className="mt-1 text-sm font-extrabold text-blue-900">Keep details current for reminders</p>
+        <div className="border border-red-200 bg-red-50 px-5 py-4 shadow-sm">
+          <p className="text-[10px] font-extrabold uppercase tracking-widest text-red-700">Contact</p>
+          <p className="mt-1 text-sm font-extrabold text-red-900">Keep details current for reminders</p>
         </div>
         <div className="border border-emerald-200 bg-emerald-50 px-5 py-4 shadow-sm">
           <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700">Security</p>

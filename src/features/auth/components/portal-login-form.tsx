@@ -51,9 +51,9 @@ export function PortalLoginForm() {
   return (
     <form className="space-y-5" onSubmit={onSubmit}>
       {!isSupabaseConfigured ? (
-        <div className="border border-blue-200 bg-blue-50 px-4 py-3">
-          <p className="mb-1 text-[11px] font-extrabold uppercase tracking-widest text-blue-600">Demo Mode</p>
-          <p className="text-xs leading-relaxed text-blue-800">
+        <div className="border border-red-200 bg-red-50 px-4 py-3">
+          <p className="mb-1 text-[11px] font-extrabold uppercase tracking-widest text-red-600">Demo Mode</p>
+          <p className="text-xs leading-relaxed text-red-800">
             Use <span className="font-bold">patient@odysseyclinic.test</span> with any password.
           </p>
         </div>

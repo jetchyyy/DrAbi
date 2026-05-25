@@ -563,7 +563,7 @@ export function SettingsDocumentsPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-slate-700">Prescriptions</span>
                     <button
-                      className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline"
+                      className="inline-flex items-center gap-1 text-xs font-bold text-red-600 hover:underline"
                       onClick={addMedication}
                       type="button"
                     >

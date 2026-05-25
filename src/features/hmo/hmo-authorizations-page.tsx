@@ -17,7 +17,7 @@ import { cn, formatCurrency } from "../../lib/utils";
 import { queryKeys } from "../../lib/query-keys";
 import { listPatientsLiveOrDemo } from "../../lib/supabase-clinic";
 import { useHmoAuthorizations, useCreateHmoAuthorization, useUpdateHmoAuthorization, useHmoProviders } from "./api/hmo-hooks";
-import { HmoStatusBadge } from "./components/hmo-status-badge";
+import { StatusPill } from "../../components/ui/status-pill";
 import { useAuth } from "../auth/auth-context";
 
 export function HmoAuthorizationsPage() {
@@ -106,13 +106,13 @@ export function HmoAuthorizationsPage() {
           <div className="flex items-center gap-3">
             <div className="shrink-0 rounded-xl bg-teal-600 p-2.5 text-white"><FileText className="size-5" /></div>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-teal-600">HMO Management</p>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-950">Authorizations</h1>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">HMO Management</p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Authorizations</h1>
               <p className="mt-1 text-sm text-slate-500">LOA tracking and authorization approval workflow.</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button className="rounded-xl bg-teal-600 hover:bg-teal-700" onClick={openCreate}><Plus className="mr-2 size-4" /> New Authorization</Button>
+            <Button variant="primary" onClick={openCreate}><Plus className="mr-2 size-4" /> New Authorization</Button>
             <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-xl border-slate-200">
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
@@ -153,7 +153,7 @@ export function HmoAuthorizationsPage() {
                   <td className={INTERNAL_TD}>{providerMap.get(a.hmoProviderId) ?? "—"}</td>
                   <td className={INTERNAL_TD}><code className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold">{a.authorizationCode || "—"}</code></td>
                   <td className={INTERNAL_TD}>{formatCurrency(a.coverageAmount)}</td>
-                  <td className={INTERNAL_TD}><HmoStatusBadge status={a.approvalStatus} type="approval" /></td>
+                  <td className={INTERNAL_TD}><StatusPill status={a.approvalStatus} /></td>
                   <td className={INTERNAL_TD}>{a.approvedBy || "—"}</td>
                   <td className={INTERNAL_TD}>{new Date(a.createdAt).toLocaleDateString("en-PH")}</td>
                   <td className={INTERNAL_TD}>
@@ -175,9 +175,9 @@ export function HmoAuthorizationsPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4">
           <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 bg-teal-600 px-6 py-4 text-white">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-900 px-6 py-4 text-white">
               <h2 className="text-lg font-bold">New Authorization</h2>
-              <button className="rounded-lg p-1 transition hover:bg-teal-700" onClick={() => setModalOpen(false)} type="button"><X className="size-5" /></button>
+              <button className="rounded-lg p-1 transition hover:bg-slate-700" onClick={() => setModalOpen(false)} type="button"><X className="size-5" /></button>
             </div>
             <div className="space-y-4 px-6 py-5">
               <FormField label="Patient *">
@@ -199,8 +199,8 @@ export function HmoAuthorizationsPage() {
               <FormField label="Notes"><Textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={3} /></FormField>
             </div>
             <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
-              <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button className="bg-teal-600 hover:bg-teal-700" onClick={() => void handleCreate()} disabled={createMutation.isPending}>Create</Button>
+              <Button variant="tertiary" onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button variant="primary" onClick={() => void handleCreate()} disabled={createMutation.isPending}>Create</Button>
             </div>
           </div>
         </div>

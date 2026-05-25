@@ -14,7 +14,7 @@ interface SplashScreenProps {
 }
 
 /** Initial app splash: white canvas, prominent logo wordmark, tagline + ring loader. */
-export function SplashScreen({ clinicName, primaryColor = '#7dd453' }: SplashScreenProps) {
+export function SplashScreen({ clinicName, primaryColor = '#4cb154' }: SplashScreenProps) {
   const rgb = hexToRgbTriplet(primaryColor);
 
   return (

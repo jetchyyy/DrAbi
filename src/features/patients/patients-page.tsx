@@ -19,6 +19,7 @@ import { FormField } from "../../components/forms/form-field";
 import { Button } from "../../components/ui/button";
 import { FeedbackModal } from "../../components/ui/feedback-modal";
 import { Input } from "../../components/ui/input";
+import { StatusPill } from "../../components/ui/status-pill";
 import { Textarea } from "../../components/ui/textarea";
 import {
   INTERNAL_BTN_PAGE,
@@ -516,30 +517,21 @@ export function PatientsPage() {
     <>
       <div className="space-y-5">
         {/* Page header */}
-        <div className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}>
-          <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100/90">
-                <Users className="size-5" strokeWidth={2} />
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Patient Management
-                </p>
-                <h1 className="mt-0.5 text-xl font-bold tracking-tight text-slate-900">
-                  Unified Patient Registry
-                </h1>
-                <p className="mt-1 text-sm text-slate-500">
-                  Online registrations appear here automatically; walk-ins can
-                  be encoded by staff during the visit.
-                </p>
-              </div>
+        <section className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}>
+          <div className="flex flex-col gap-5 px-6 py-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Patient Management</p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Unified Patient Registry</h1>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                Online registrations appear here automatically; walk-ins can be encoded by staff during the visit.
+              </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap gap-2">
               {can("patients.manage") ? (
                 <Button
-                  className="gap-2 bg-emerald-600 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide hover:bg-emerald-700 ring-1 ring-emerald-700/20"
+                  className="gap-2"
                   onClick={openWalkInModal}
+                  variant="primary"
                 >
                   <UserRoundPlus className="size-4" />
                   Add walk-in patient
@@ -556,14 +548,14 @@ export function PatientsPage() {
                 </Button>
               ) : null}
               <Link
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition hover:bg-slate-50"
                 to="/app/patients/logs"
               >
                 <ClipboardList className="size-4" />
                 View logs
               </Link>
               <Link
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition hover:bg-slate-50"
                 to="/app/patients/scan"
               >
                 <QrCode className="size-4" />
@@ -593,20 +585,20 @@ export function PatientsPage() {
               {filteredPatients.length} patient
               {filteredPatients.length !== 1 ? "s" : ""} found
             </span>
-            <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-100">
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">
               {patientSummary.online} online
             </span>
-            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-100">
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">
               {patientSummary.walkIn} walk-in
             </span>
-            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">
               {patientSummary.visited} visited
             </span>
             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">
               {patientSummary.notVisited} not yet visited
             </span>
           </div>
-        </div>
+        </section>
 
         {/* Table / empty state */}
         {filteredPatients.length === 0 ? (
@@ -616,7 +608,7 @@ export function PatientsPage() {
               "flex flex-col items-center p-12 text-center",
             )}
           >
-            <div className="mb-3 flex size-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100/90">
+            <div className="mb-3 flex size-12 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] text-[var(--color-primary)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_30%,white)]">
               <UserRoundPlus className="size-6" strokeWidth={1.5} />
             </div>
             <p className="text-sm font-bold text-slate-900">
@@ -682,13 +674,9 @@ export function PatientsPage() {
                       </td>
                       <td className={INTERNAL_TD}>
                         {patient.visitStatus === "visited_clinic" ? (
-                          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100">
-                            Visited clinic
-                          </span>
+                          <StatusPill status="completed" label="Visited clinic" />
                         ) : (
-                          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700 ring-1 ring-amber-100">
-                            Not visited yet
-                          </span>
+                          <StatusPill status="pending" label="Not visited yet" />
                         )}
                       </td>
                       <td className={INTERNAL_TD}>
@@ -1102,7 +1090,7 @@ export function PatientsPage() {
                   className="w-full sm:w-auto"
                   onClick={closeWalkInModal}
                   type="button"
-                  variant="secondary"
+                  variant="tertiary"
                 >
                   Cancel
                 </Button>
@@ -1111,18 +1099,19 @@ export function PatientsPage() {
                     className="w-full sm:w-auto"
                     onClick={goToPreviousStep}
                     type="button"
-                    variant="secondary"
+                    variant="tertiary"
                   >
                     Back
                   </Button>
                 ) : null}
                 {isLastStep ? (
                   <Button
-                    className="w-full bg-emerald-600 px-5 py-3 text-sm font-semibold uppercase tracking-wide hover:bg-emerald-700 sm:w-auto"
+                    className="w-full sm:w-auto"
                     disabled={
                       createPatient.isPending || updatePatient.isPending
                     }
                     type="submit"
+                    variant="primary"
                   >
                     {createPatient.isPending || updatePatient.isPending
                       ? "Saving..."
@@ -1132,9 +1121,10 @@ export function PatientsPage() {
                   </Button>
                 ) : (
                   <Button
-                    className="w-full bg-emerald-600 px-5 py-3 text-sm font-semibold uppercase tracking-wide hover:bg-emerald-700 sm:w-auto"
+                    className="w-full sm:w-auto"
                     onClick={() => void goToNextStep()}
                     type="button"
+                    variant="primary"
                   >
                     Next
                   </Button>

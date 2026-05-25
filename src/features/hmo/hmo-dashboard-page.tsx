@@ -38,7 +38,7 @@ import {
 } from "../../lib/internal-ui";
 import { cn, formatCurrency } from "../../lib/utils";
 import { useHmoClaims, useHmoAuthorizations, useHmoProviders, useHmoPayments } from "./api/hmo-hooks";
-import { HmoStatusBadge } from "./components/hmo-status-badge";
+import { StatusPill } from "../../components/ui/status-pill";
 
 const PIE_COLORS = ["#10b981", "#f59e0b", "#ef4444", "#6366f1", "#06b6d4", "#8b5cf6"];
 
@@ -206,35 +206,30 @@ export function HmoDashboardPage() {
             value: formatCurrency(totalReceivables),
             icon: DollarSign,
             hint: "Outstanding from HMOs",
-            color: "text-teal-600 bg-teal-50 ring-teal-100",
           },
           {
             label: "Claims This Month",
             value: String(claimsThisMonth),
             icon: FileCheck,
             hint: "Submitted this period",
-            color: "text-sky-600 bg-sky-50 ring-sky-100",
           },
           {
             label: "Claims Paid",
             value: String(claimsPaid),
             icon: TrendingUp,
             hint: "Total settled claims",
-            color: "text-emerald-600 bg-emerald-50 ring-emerald-100",
           },
           {
             label: "Overdue Claims",
             value: String(claimsOverdue),
             icon: AlertTriangle,
             hint: "Past payment due date",
-            color: "text-rose-600 bg-rose-50 ring-rose-100",
           },
           {
             label: "Pending Authorizations",
             value: String(pendingAuthorizations),
             icon: Clock,
             hint: "Awaiting approval",
-            color: "text-amber-600 bg-amber-50 ring-amber-100",
           },
         ].map((kpi) => (
           <div key={kpi.label} className={cn(INTERNAL_SURFACE, "p-5")}>
@@ -249,10 +244,7 @@ export function HmoDashboardPage() {
                 <p className="mt-1 text-xs text-slate-500">{kpi.hint}</p>
               </div>
               <div
-                className={cn(
-                  "flex shrink-0 items-center justify-center rounded-xl p-2.5 ring-1",
-                  kpi.color,
-                )}
+                className="flex shrink-0 items-center justify-center rounded-xl p-2.5 ring-1 bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] text-[var(--color-primary)] ring-[color-mix(in_srgb,var(--color-primary)_30%,white)]"
               >
                 <kpi.icon className="size-5" />
               </div>
@@ -278,7 +270,7 @@ export function HmoDashboardPage() {
               />
               <Bar
                 dataKey="amount"
-                fill="#0d9488"
+                fill="#16a34a"
                 radius={[4, 4, 0, 0]}
                 name="Claim Amount"
               />
@@ -325,7 +317,7 @@ export function HmoDashboardPage() {
               <XAxis type="number" tick={{ fontSize: 11 }} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={100} />
               <Tooltip />
-              <Bar dataKey="claims" fill="#6366f1" radius={[0, 4, 4, 0]} name="Claims" />
+              <Bar dataKey="claims" fill="#64748b" radius={[0, 4, 4, 0]} name="Claims" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -418,7 +410,7 @@ export function HmoDashboardPage() {
                       {formatCurrency(claim.patientExcess)}
                     </td>
                     <td className={INTERNAL_TD}>
-                      <HmoStatusBadge status={claim.claimStatus} type="claim" />
+                      <StatusPill status={claim.claimStatus} />
                     </td>
                     <td className={INTERNAL_TD}>
                       {new Date(claim.createdAt).toLocaleDateString("en-PH")}

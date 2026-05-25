@@ -31,7 +31,7 @@ export function PortalSectionBackdrop({ variant = 'default' }: { variant?: Porta
   return (
     <>
       <div
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top_left,rgba(52,178,249,0.16)_0%,rgba(199,236,253,0.065)_34%,rgba(255,255,255,0)_58%)]"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top_left,rgba(76,177,84,0.10)_0%,rgba(76,177,84,0.04)_34%,rgba(255,255,255,0)_58%)]"
         aria-hidden
       />
       {variant === 'default' ? (

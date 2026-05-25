@@ -47,7 +47,7 @@ function formatPatientName(value: string | null | undefined) {
   return normalized;
 }
 
-export function InventoryLogsPage() {
+export function InventoryLogsContent() {
   const INVENTORY_LOGS_PAGE_SIZE = 10;
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -97,7 +97,7 @@ export function InventoryLogsPage() {
       : Math.min(safeCurrentPage * INVENTORY_LOGS_PAGE_SIZE, totalLogs);
 
   return (
-    <InternalPage>
+    <>
       <section className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}>
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
@@ -259,6 +259,14 @@ export function InventoryLogsPage() {
           </div>
         </section>
       )}
+    </>
+  );
+}
+
+export function InventoryLogsPage() {
+  return (
+    <InternalPage>
+      <InventoryLogsContent />
     </InternalPage>
   );
 }

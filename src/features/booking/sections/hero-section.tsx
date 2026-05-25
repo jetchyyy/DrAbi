@@ -78,7 +78,7 @@ export function HeroSection() {
       className="relative isolate flex min-h-[100svh] w-full max-w-none flex-col overflow-x-clip bg-white pb-10 pt-[calc(env(safe-area-inset-top)+5.25rem)] sm:pb-0 sm:pt-[calc(env(safe-area-inset-top)+5.5rem)] lg:h-[min(100dvh,100svh)] lg:min-h-[100svh] lg:overflow-x-visible lg:pb-0 lg:pt-[calc(env(safe-area-inset-top)+5.85rem)]"
     >
       <div
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top_left,rgba(52,178,249,0.4)_0%,rgba(199,236,253,0.16)_28%,rgba(255,255,255,0)_56%)]"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top_left,rgba(76,177,84,0.18)_0%,rgba(76,177,84,0.07)_28%,rgba(255,255,255,0)_56%)]"
         aria-hidden
       />
       <div

@@ -17,17 +17,15 @@ import { BookingReceiptScanPage } from "../features/booking/booking-receipt-scan
 import { PatientConsultationPage } from "../features/booking/patient-teleconsultation-page";
 import { PatientMedicalHistoryPage } from "../features/booking/patient-medical-history-page";
 import { MyBookingsPage } from "../features/booking/my-bookings-page";
-import { ReferralPage } from "../features/referrals/referral-frontdesk-page";
+import { ReferralsPage } from "../features/referrals/referrals-page";
 import { PatientProfilePage } from "../features/booking/patient-profile-page";
 import { PortalBookPage } from "../features/booking/portal-book-page";
 import { PortalHomePage } from "../features/booking/portal-home-page";
 import { ConsultationEntryPage } from "../features/consultation/consultation-entry-page";
 import { DashboardPage } from "../features/dashboard/dashboard-page";
-import { AnalyticsDashboardPage } from "../features/analytics/analytics-page";
 import { DoctorAvailabilityPage } from "../features/doctor/doctor-availability-page";
 import { DoctorPayoutsPage } from "../features/doctor/doctor-payouts-page";
 import { SpecialistReferralsPage } from "../features/referrals/specialist-referrals-page";
-import { ReferralsListPage } from "../features/referrals/specialist-frontdesk-list-page";
 import { InventoryPage } from "../features/inventory/inventory-page";
 import { LaboratoryPage } from "../features/laboratory/laboratory-page";
 import { LabServiceReceiptScanPage } from "../features/laboratory/lab-service-receipt-scan-page";
@@ -51,7 +49,6 @@ import { OdcPage } from "../features/shared/odc-page";
 import { TeleconsultRoomPage } from "../features/teleconsult/teleconsult-room-page";
 import { ModuleGate, PermissionGate, ProtectedRoute } from "./guards";
 import { SystemAvailabilityGate } from "./system-availability-gate";
-import { InventoryLogsPage } from "../features/inventory/inventory-logs-page";
 import { DoctorWorkflowPage } from "../features/workflows/doctor-workflow-page";
 import { FrontDeskWorkflowPage } from "../features/workflows/front-desk-workflow-page";
 import { AppointmentsQueueDisplay } from "../features/appointments/components/appoinments-que-display.tsx";
@@ -61,8 +58,6 @@ import { HmoProvidersPage } from "../features/hmo/hmo-providers-page";
 import { PatientHmoAccountsPage } from "../features/hmo/patient-hmo-accounts-page";
 import { HmoAuthorizationsPage } from "../features/hmo/hmo-authorizations-page";
 import { HmoClaimsPage } from "../features/hmo/hmo-claims-page";
-import { HmoPaymentsPage } from "../features/hmo/hmo-payments-page";
-import { HmoReportsPage } from "../features/hmo/hmo-reports-page";
 
 export const router = createBrowserRouter([
   {
@@ -227,7 +222,7 @@ export const router = createBrowserRouter([
                 element: <ModuleGate moduleKey="dashboard" />,
                 children: [
                   { path: "dashboard", element: <DashboardPage /> },
-                  { path: "analytics", element: <AnalyticsDashboardPage /> },
+                  { path: "analytics", element: <Navigate replace to="/app/dashboard" /> },
                 ],
               },
               {
@@ -314,12 +309,7 @@ export const router = createBrowserRouter([
                         path: "appointments-queue",
                         element: <AppointmentsQueueDisplay />,
                       },
-                      {
-                        path: "specialist-list",
-                        element: <ReferralsListPage />,
-                      },
-                      { path: "referrals", element: <ReferralPage /> },
-                      { path: "consultations", element: <AppointmentsPage /> },
+                      { path: "referrals", element: <ReferralsPage /> },
                     ],
                   },
                 ],
@@ -342,15 +332,6 @@ export const router = createBrowserRouter([
                       {
                         path: "doctor-availability",
                         element: <DoctorAvailabilityPage />,
-                      },
-                    ],
-                  },
-                  {
-                    element: <ModuleGate moduleKey="patient_management" />,
-                    children: [
-                      {
-                        path: "specialist-referrals",
-                        element: <SpecialistReferralsPage />,
                       },
                     ],
                   },
@@ -426,7 +407,7 @@ export const router = createBrowserRouter([
                     children: [
                       {
                         path: "inventory-logs",
-                        element: <InventoryLogsPage />,
+                        element: <Navigate replace to="/app/inventory" />,
                       },
                     ],
                   },
@@ -465,15 +446,8 @@ export const router = createBrowserRouter([
                     children: [
                       { path: "hmo/providers", element: <HmoProvidersPage /> },
                       { path: "hmo/claims", element: <HmoClaimsPage /> },
-                      { path: "hmo/payments", element: <HmoPaymentsPage /> },
-                      {
-                        element: (
-                          <ProtectedRoute allowedRoles={["owner_admin"]} />
-                        ),
-                        children: [
-                          { path: "hmo/reports", element: <HmoReportsPage /> },
-                        ],
-                      },
+                      { path: "hmo/payments", element: <Navigate replace to="/app/hmo/claims" /> },
+                      { path: "hmo/reports", element: <Navigate replace to="/app/hmo/claims" /> },
                     ],
                   },
                 ],

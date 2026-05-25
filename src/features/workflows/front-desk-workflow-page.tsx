@@ -19,9 +19,11 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import { FormField } from "../../components/forms/form-field";
-import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { StatusPill } from "../../components/ui/status-pill";
+import { INTERNAL_SURFACE } from "../../lib/internal-ui";
+import { cn } from "../../lib/utils";
 import { useAppointments, useUpdateAppointment } from "../appointments/hooks/use-appointments";
 import { usePatientBookings } from "../appointments/hooks/use-patients-booking";
 import { useMarkBookingPaid } from "../booking/hooks/use-bookings";
@@ -299,11 +301,11 @@ function VitalsModal({
         ) : null}
 
         <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
-          <Button onClick={onClose} type="button" variant="secondary">
+          <Button onClick={onClose} type="button" variant="tertiary">
             Cancel
           </Button>
-          <Button disabled={isSaving} onClick={() => void handleSubmit()} type="button">
-            <Stethoscope className="mr-2 size-4" />
+          <Button disabled={isSaving} onClick={() => void handleSubmit()} type="button" variant="primary">
+            <Stethoscope className="size-4" />
             Save Vitals
           </Button>
         </div>
@@ -569,28 +571,16 @@ export function FrontDeskWorkflowPage() {
 
   return (
     <div className="space-y-5">
-      <section className="border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="bg-orange-600 p-2.5 text-white">
-              <Activity className="size-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
-                Role Workflow
-              </p>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-950">
-                Front Desk Workflow
-              </h1>
-              <p className="mt-1 text-sm text-slate-500">
-                Intake, payment clearance, vitals check, and doctor handoff in one queue.
-              </p>
-            </div>
+      <section className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
+        <div className="flex flex-col gap-5 px-6 py-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Role Workflow</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Front Desk Workflow</h1>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">Intake, payment clearance, vitals check, and doctor handoff in one queue.</p>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap gap-2">
             <div className="relative" ref={patientSearchRef}>
-              <div className="flex w-64 items-center gap-2 border border-slate-200 bg-slate-50 px-3 py-2.5">
+              <div className="flex w-64 items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 shadow-[inset_0_1px_1px_rgba(15,41,71,0.04)]">
                 <Search className="size-4 shrink-0 text-slate-400" />
                 <input
                   className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
@@ -619,10 +609,10 @@ export function FrontDeskWorkflowPage() {
                 ) : null}
               </div>
               {patientDropdownOpen && filteredPatients.length > 0 ? (
-                <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden border border-slate-200 bg-white shadow-lg">
+                <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
                   {filteredPatients.map((patient) => (
                     <Link
-                      className="flex flex-col px-4 py-3 transition hover:bg-orange-50"
+                      className="flex flex-col px-4 py-3 transition hover:bg-slate-50"
                       key={patient.id}
                       onClick={() => {
                         setPatientQuery("");
@@ -640,162 +630,138 @@ export function FrontDeskWorkflowPage() {
                   ))}
                 </div>
               ) : patientDropdownOpen && patientQuery.trim() ? (
-                <div className="absolute left-0 top-full z-50 mt-1 w-full border border-slate-200 bg-white px-4 py-3 shadow-lg">
+                <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-lg">
                   <p className="text-xs text-slate-500">No patients found.</p>
                 </div>
               ) : null}
             </div>
             <Button
-              className="inline-flex items-center border border-indigo-500 bg-indigo-600 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-indigo-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
               onClick={() => setBookingDrawerOpen(true)}
               type="button"
-              variant="secondary"
+              variant="tertiary"
             >
-              <CalendarCheck2 className="mr-2 size-4" />
+              <CalendarCheck2 className="size-4" />
               Online Bookings
             </Button>
             <Button
-              className="inline-flex items-center border border-orange-500 bg-orange-600 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-orange-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
               onClick={() => setWalkInWizardOpen(true)}
               type="button"
-              variant="secondary"
+              variant="primary"
             >
-              <UserRoundPlus className="mr-2 size-4" />
-              Start Walk in Flow
+              <UserRoundPlus className="size-4" />
+              Start Walk-in Flow
             </Button>
             <Link
-              className="inline-flex items-center border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
               to="/app/appointments"
             >
-              <CalendarPlus className="mr-2 size-4" />
+              <CalendarPlus className="size-4" />
               Schedule
             </Link>
             <Link
-              className="inline-flex items-center border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
               to="/app/bookings/scan"
             >
-              <ReceiptText className="mr-2 size-4" />
+              <ReceiptText className="size-4" />
               Scan receipt
             </Link>
           </div>
         </div>
 
-        <div className="grid border-t border-slate-100 bg-slate-50 md:grid-cols-4">
-          <div className="border-b border-slate-100 px-6 py-4 md:border-b-0 md:border-r">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-              Payment
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">
-              {summary.paymentNeeded}
-            </p>
+        <div className="grid bg-slate-50/90 md:grid-cols-4">
+          <div className="border-b border-slate-100/90 px-6 py-4 md:border-b-0 md:border-r md:border-slate-100/90">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Payment</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{summary.paymentNeeded}</p>
           </div>
-          <div className="border-b border-slate-100 px-6 py-4 md:border-b-0 md:border-r">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-              Vitals
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">
-              {summary.needsVitals}
-            </p>
+          <div className="border-b border-slate-100/90 px-6 py-4 md:border-b-0 md:border-r md:border-slate-100/90">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Vitals</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{summary.needsVitals}</p>
           </div>
-          <div className="border-b border-slate-100 px-6 py-4 md:border-b-0 md:border-r">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-              Ready
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">
-              {summary.ready}
-            </p>
+          <div className="border-b border-slate-100/90 px-6 py-4 md:border-b-0 md:border-r md:border-slate-100/90">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Ready</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{summary.ready}</p>
           </div>
           <div className="px-6 py-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-              In consultation
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">
-              {summary.inConsultation}
-            </p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">In consultation</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{summary.inConsultation}</p>
           </div>
         </div>
       </section>
 
-      <section className="border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 bg-slate-50 px-6 py-4">
+      <section className={INTERNAL_SURFACE}>
+        <div className="border-b border-slate-100/90 bg-slate-50/90 px-6 py-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
-                Quick actions
-              </p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Quick actions</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Link
-                  className="inline-flex items-center border border-orange-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-orange-700 transition hover:bg-orange-100"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                   to="/app/patients?action=walk-in-intake"
                 >
                   Add Patient
-                  <ArrowRight className="ml-1 size-3.5" />
+                  <ArrowRight className="size-3.5" />
                 </Link>
                 <Link
-                  className="inline-flex items-center border border-orange-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-orange-700 transition hover:bg-orange-100"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                   to="/app/appointments?action=create&source=internal"
                 >
                   Appoint Patient
-                  <ArrowRight className="ml-1 size-3.5" />
+                  <ArrowRight className="size-3.5" />
                 </Link>
                 <Link
-                  className="inline-flex items-center border border-orange-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-orange-700 transition hover:bg-orange-100"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                   to="/app/billing?action=create"
                 >
                   Billing
-                  <ArrowRight className="ml-1 size-3.5" />
+                  <ArrowRight className="size-3.5" />
                 </Link>
               </div>
             </div>
 
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
-                View pages
-              </p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">View pages</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Link
-                  className="inline-flex items-center border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                   to="/app/patients"
                 >
                   Patients
-                  <ArrowRight className="ml-1 size-3.5" />
+                  <ArrowRight className="size-3.5" />
                 </Link>
                 <Link
-                  className="inline-flex items-center border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                   to="/app/appointments"
                 >
                   Appointments
-                  <ArrowRight className="ml-1 size-3.5" />
+                  <ArrowRight className="size-3.5" />
                 </Link>
                 <Link
-                  className="inline-flex items-center border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                   to="/app/billing"
                 >
                   Billing
-                  <ArrowRight className="ml-1 size-3.5" />
+                  <ArrowRight className="size-3.5" />
                 </Link>
                 <Link
-                  className="inline-flex items-center border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                   to="/app/doctor-workflow"
                 >
                   Doctor Workflow
-                  <ArrowRight className="ml-1 size-3.5" />
+                  <ArrowRight className="size-3.5" />
                 </Link>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100/90 px-6 py-4">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-widest text-slate-400">
-              Today&apos;s Queue
-            </p>
-            <p className="mt-1 text-sm font-semibold text-slate-950">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Today&apos;s Queue</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">
               {filteredRows.length} active item{filteredRows.length === 1 ? "" : "s"}
             </p>
           </div>
-          <div className="flex w-full max-w-sm items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5">
+          <div className="flex w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 shadow-[inset_0_1px_1px_rgba(15,41,71,0.04)]">
             <Search className="size-4 shrink-0 text-slate-400" />
             <input
               className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
@@ -810,7 +776,7 @@ export function FrontDeskWorkflowPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-6 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100/90 bg-slate-50/90 px-6 py-3">
           <div className="flex flex-wrap gap-2">
             {([
               ["all", "All"],
@@ -822,11 +788,12 @@ export function FrontDeskWorkflowPage() {
               ["overdue", "Overdue"],
             ] as const).map(([value, label]) => (
               <button
-                className={`inline-flex items-center border px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wide transition ${
+                className={cn(
+                  "inline-flex items-center rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition",
                   activeFilter === value
-                    ? "border-orange-600 bg-orange-600 text-white"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
-                }`}
+                    ? "bg-[var(--color-primary)] text-white shadow-sm"
+                    : "border border-slate-200/90 bg-white text-slate-600 hover:bg-slate-50"
+                )}
                 key={value}
                 onClick={() => {
                   setActiveFilter(value);
@@ -841,7 +808,7 @@ export function FrontDeskWorkflowPage() {
 
           {search || activeFilter !== "all" ? (
             <button
-              className="border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-600 transition hover:bg-slate-100"
+              className="rounded-lg border border-slate-200/90 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600 transition hover:bg-slate-50"
               onClick={() => {
                 setSearch("");
                 setActiveFilter("all");
@@ -941,23 +908,13 @@ export function FrontDeskWorkflowPage() {
                         </p>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge
-                          className="rounded-none text-[10px] font-bold uppercase tracking-widest"
-                          intent={paymentBadgeIntent(row.paymentState)}
-                        >
-                          {labelFromValue(row.paymentState)}
-                        </Badge>
+                        <StatusPill status={row.paymentState} size="sm" />
                         {row.invoiceNumber ? (
                           <p className="mt-1 text-xs text-slate-500">{row.invoiceNumber}</p>
                         ) : null}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge
-                          className="rounded-none text-[10px] font-bold uppercase tracking-widest"
-                          intent={workflowBadgeIntent(row.workflowState)}
-                        >
-                          {labelFromValue(row.workflowState)}
-                        </Badge>
+                        <StatusPill status={row.workflowState} size="sm" />
                         {row.missingVitals ? (
                           <p className="mt-1 text-xs text-amber-700">Vitals needed</p>
                         ) : null}
@@ -972,18 +929,18 @@ export function FrontDeskWorkflowPage() {
                             row.receiptCode ? (
                               <Button
                                 aria-label={`Mark ${row.patientName} as paid`}
-                                className="rounded-none border border-emerald-300 bg-emerald-50 p-2 text-emerald-800 hover:bg-emerald-100"
+                                className="size-8 p-0"
                                 disabled={markBookingPaid.isPending || !row.receiptCode}
                                 onClick={() => void handleMarkBookingPaid(row)}
                                 type="button"
-                                variant="secondary"
+                                variant="tertiary"
                               >
                                 <CreditCard className="size-3.5" />
                               </Button>
                             ) : (
                               <Link
                                 aria-label={`Create invoice for ${row.patientName}`}
-                                className="inline-flex items-center border border-emerald-200 bg-emerald-50 p-2 text-emerald-800 transition hover:bg-emerald-100"
+                                className="inline-flex size-8 items-center justify-center rounded-xl border border-slate-200/90 bg-white p-0 text-slate-700 transition hover:bg-slate-50"
                                 to={`/app/billing?action=create&patientId=${row.patientId}&appointmentId=${row.appointmentId}`}
                               >
                                 <ReceiptText className="size-3.5" />
@@ -993,42 +950,43 @@ export function FrontDeskWorkflowPage() {
                           {row.workflowState === "needs_vitals" || row.missingVitals ? (
                             <Button
                               aria-label={`Record vitals for ${row.patientName}`}
-                              className="rounded-none border border-amber-300 bg-amber-50 p-2 text-amber-800 hover:bg-amber-100"
+                              className="size-8 p-0"
                               disabled={updatePatient.isPending}
                               onClick={() => openVitalsModal(row)}
                               type="button"
-                              variant="secondary"
+                              variant="tertiary"
                             >
                               <Stethoscope className="size-3.5" />
                             </Button>
                           ) : null}
                           <Link
                             aria-label={`Open ${row.patientName} patient page`}
-                            className="inline-flex items-center border border-slate-200 bg-white p-2 text-slate-700 transition hover:bg-slate-50"
+                            className="inline-flex size-8 items-center justify-center rounded-xl border border-slate-200/90 bg-white text-slate-700 transition hover:bg-slate-50"
                             to={`/app/patients/${row.patientId}`}
                           >
                             <ExternalLink className="size-3.5" />
                           </Link>
                           <Button
                             aria-label={`Open ${row.patientName} details modal`}
-                            className="rounded-none border border-slate-200 bg-white p-2 text-slate-700 transition hover:bg-slate-50"
+                            className="size-8 p-0"
                             onClick={() => openPatientDetails(row)}
                             type="button"
-                            variant="secondary"
+                            variant="tertiary"
                           >
                             <Eye className="size-3.5" />
                           </Button>
                           <Button
                             aria-label={`Send ${row.patientName} to doctor`}
-                            className="rounded-none bg-orange-600 px-3 py-2 text-xs text-white hover:bg-orange-700"
+                            className="px-3 py-1.5 text-xs"
                             disabled={
                               updateAppointment.isPending ||
                               row.workflowState !== "ready_for_doctor"
                             }
                             onClick={() => void handleSendToDoctor(row)}
                             type="button"
+                            variant="primary"
                           >
-                            <PlayCircle className="mr-1 size-3.5" />
+                            <PlayCircle className="size-3.5" />
                             Send
                           </Button>
                         </div>
@@ -1044,23 +1002,23 @@ export function FrontDeskWorkflowPage() {
               </p>
               <div className="flex items-center gap-2">
                 <Button
-                  className="rounded-none px-3 py-1 text-xs font-bold uppercase tracking-wide"
                   disabled={safeCurrentPage <= 1}
                   onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                   type="button"
-                  variant="secondary"
+                  variant="tertiary"
+                  size="sm"
                 >
                   Previous
                 </Button>
-                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                <span className="text-xs font-semibold text-slate-500">
                   Page {safeCurrentPage} of {totalPages}
                 </span>
                 <Button
-                  className="rounded-none px-3 py-1 text-xs font-bold uppercase tracking-wide"
                   disabled={safeCurrentPage >= totalPages}
                   onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                   type="button"
-                  variant="secondary"
+                  variant="tertiary"
+                  size="sm"
                 >
                   Next
                 </Button>

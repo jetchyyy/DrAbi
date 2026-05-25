@@ -18,7 +18,6 @@ import {
 } from "recharts";
 import { jsPDF } from "jspdf";
 
-import { InternalPage } from "../../components/ui/internal-page";
 import { Button } from "../../components/ui/button";
 import { INTERNAL_SURFACE, INTERNAL_TABLE, INTERNAL_TABLE_SCROLL, INTERNAL_THEAD_ROW, INTERNAL_TH, INTERNAL_TR, INTERNAL_TD } from "../../lib/internal-ui";
 import { cn, formatCurrency } from "../../lib/utils";
@@ -26,7 +25,7 @@ import { useHmoClaims, useHmoPayments, useHmoProviders, useHmoAuthorizations } f
 
 const AGING_COLORS = ["#10b981", "#f59e0b", "#f97316", "#ef4444"];
 
-export function HmoReportsPage() {
+export function HmoReportsContent() {
   const { data: claims = [] } = useHmoClaims();
   const { data: payments = [] } = useHmoPayments();
   const { data: providers = [] } = useHmoProviders();
@@ -180,7 +179,7 @@ export function HmoReportsPage() {
   }, [monthlyCollections]);
 
   return (
-    <InternalPage>
+    <>
       <section className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}>
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
@@ -295,6 +294,6 @@ export function HmoReportsPage() {
           </div>
         </div>
       </section>
-    </InternalPage>
+    </>
   );
 }

@@ -33,7 +33,7 @@ export function LoginPage() {
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top_left,rgba(52,178,249,0.07)_0%,transparent_50%)]"
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top_left,rgba(239,40,44,0.05)_0%,transparent_50%)]"
         />
         {/* Very soft primary halo */}
         <div

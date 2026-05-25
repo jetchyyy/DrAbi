@@ -923,7 +923,7 @@ export function ConsultationEntryPage() {
               </p>
             )}
           </div>
-          <Badge className="text-sm bg-blue-100 text-blue-800 border-blue-200">
+          <Badge className="text-sm bg-red-100 text-red-800 border-red-200">
             Consultation Entry
           </Badge>
         </div>
@@ -1135,7 +1135,7 @@ export function ConsultationEntryPage() {
                     index < currentStepIndex
                       ? "bg-emerald-500"
                       : index === currentStepIndex
-                        ? "bg-blue-500"
+                        ? "bg-red-500"
                         : "bg-slate-200"
                   }`}
                 />
@@ -1166,7 +1166,7 @@ export function ConsultationEntryPage() {
               >
                 <select
                   {...form.register("appointmentId")}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 >
                   <option value="">No appointment linked</option>
                   {pendingSoapVisits.map((visit: any) => (
@@ -1189,7 +1189,7 @@ export function ConsultationEntryPage() {
                   type="text"
                   {...form.register("consultationType")}
                   placeholder={stepFields.consultationType.placeholder}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
 
@@ -1201,7 +1201,7 @@ export function ConsultationEntryPage() {
                   <input
                     type="date"
                     {...form.register("consultationDate")}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                   />
                 </FormField>
 
@@ -1212,7 +1212,7 @@ export function ConsultationEntryPage() {
                   <input
                     type="time"
                     {...form.register("consultationTime")}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                   />
                 </FormField>
               </div>
@@ -1225,7 +1225,7 @@ export function ConsultationEntryPage() {
                   type="text"
                   {...form.register("providerName")}
                   placeholder={stepFields.providerName.placeholder}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
             </div>
@@ -1241,7 +1241,7 @@ export function ConsultationEntryPage() {
                   {...form.register("presentIllnessHistory")}
                   placeholder={stepFields.presentIllnessHistory.placeholder}
                   rows={5}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
 
@@ -1253,7 +1253,7 @@ export function ConsultationEntryPage() {
                   {...form.register("reviewOfSymptoms")}
                   placeholder={stepFields.reviewOfSymptoms.placeholder}
                   rows={4}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
 
@@ -1265,7 +1265,7 @@ export function ConsultationEntryPage() {
                   {...form.register("allergies")}
                   placeholder={stepFields.allergies.placeholder}
                   rows={3}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
             </div>
@@ -1291,7 +1291,7 @@ export function ConsultationEntryPage() {
                   {...form.register("medications")}
                   placeholder={stepFields.medications.placeholder}
                   rows={4}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
 
@@ -1304,7 +1304,7 @@ export function ConsultationEntryPage() {
                     {...form.register("labResults")}
                     placeholder={stepFields.labResults.placeholder}
                     rows={4}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                   />
 
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -1446,7 +1446,7 @@ export function ConsultationEntryPage() {
                   {...form.register("diagnosis")}
                   placeholder={stepFields.diagnosis.placeholder}
                   rows={4}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
 
@@ -1458,7 +1458,7 @@ export function ConsultationEntryPage() {
                   {...form.register("differentialDiagnosis")}
                   placeholder={stepFields.differentialDiagnosis.placeholder}
                   rows={4}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
             </div>
@@ -1478,7 +1478,7 @@ export function ConsultationEntryPage() {
                   {...form.register("subjective")}
                   placeholder={stepFields.subjective.placeholder}
                   rows={4}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
 
@@ -1490,7 +1490,7 @@ export function ConsultationEntryPage() {
                   {...form.register("objective")}
                   placeholder={stepFields.objective.placeholder}
                   rows={4}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
 
@@ -1502,7 +1502,7 @@ export function ConsultationEntryPage() {
                   {...form.register("assessment")}
                   placeholder={stepFields.assessment.placeholder}
                   rows={4}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
 
@@ -1514,7 +1514,7 @@ export function ConsultationEntryPage() {
                   {...form.register("plan")}
                   placeholder={stepFields.plan.placeholder}
                   rows={4}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
             </div>
@@ -1530,7 +1530,7 @@ export function ConsultationEntryPage() {
                   {...form.register("clinicalSummary")}
                   placeholder={stepFields.clinicalSummary.placeholder}
                   rows={5}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
 
@@ -1542,7 +1542,7 @@ export function ConsultationEntryPage() {
                   {...form.register("treatmentPlan")}
                   placeholder={stepFields.treatmentPlan.placeholder}
                   rows={4}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
 
@@ -1554,7 +1554,7 @@ export function ConsultationEntryPage() {
                   {...form.register("outcome")}
                   placeholder={stepFields.outcome.placeholder}
                   rows={3}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                 />
               </FormField>
 
@@ -1563,7 +1563,7 @@ export function ConsultationEntryPage() {
                   <input
                     type="checkbox"
                     {...form.register("referToSpecialist")}
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500"
                   />
                   <div className="min-w-0 flex-1 space-y-4">
                     <div>
@@ -1609,7 +1609,7 @@ export function ConsultationEntryPage() {
                               stepFields.specialistReason.placeholder
                             }
                             rows={3}
-                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                           />
                         </FormField>
 
@@ -1621,7 +1621,7 @@ export function ConsultationEntryPage() {
                             {...form.register("specialistNotes")}
                             placeholder={stepFields.specialistNotes.placeholder}
                             rows={3}
-                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
                           />
                         </FormField>
                       </>
