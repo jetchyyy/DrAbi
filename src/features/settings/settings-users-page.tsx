@@ -4,6 +4,7 @@ import { Eye, EyeOff, Pencil, Plus, Search, ShieldCheck, Trash2, X } from 'lucid
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
+import * as XLSX from 'xlsx';
 
 import { FormField } from '../../components/forms/form-field';
 import { Button } from '../../components/ui/button';
@@ -29,6 +30,31 @@ import type { AccessRoleTemplate, AdminCreateUserInput, Role, UserProfile } from
 const staffRoleOptions = ['owner_admin', 'doctor', 'specialist', 'nurse_staff', 'front_desk_cashier', 'lab_staff', 'inventory_staff'] as const satisfies ReadonlyArray<Exclude<Role, 'patient'>>;
 
 const PASSWORD_RULES_HINT = 'At least 6 characters, with uppercase, lowercase, and a number.';
+const BULK_TEMPLATE_CSV = `firstName,lastName,email,contactNumber,password,accessRoleName,staffRole,title,prcLicenseNumber,prcLicenseExpiry,birNumber,ptrNumber,consultationFee,followUpFee
+Jose,Ramirez,jose.ramirez@example.com,09171234567,TempPass123,doctor,doctor,MD,PRC-12345,2026-12-31,BIR-12345,PTR-67890,800,500
+Jose,Ramirez2,jose.ramirez2@example.com,09171234568,TempPass123,doctor,doctor,"MD, MBAH, PHD",PRC-12346,2026-12-31,BIR-12346,PTR-67891,800,500`;
+const BULK_HEADER_MAP: Record<string, keyof BulkRow> = {
+  firstname: 'firstName',
+  'first name': 'firstName',
+  lastname: 'lastName',
+  'last name': 'lastName',
+  email: 'email',
+  contactnumber: 'contactNumber',
+  contact: 'contactNumber',
+  phone: 'contactNumber',
+  password: 'password',
+  accessrolename: 'accessRoleName',
+  accessrole: 'accessRoleName',
+  accessroleid: 'accessRoleId',
+  staffrole: 'staffRole',
+  title: 'title',
+  prclicensenumber: 'prcLicenseNumber',
+  prclicenseexpiry: 'prcLicenseExpiry',
+  birnumber: 'birNumber',
+  ptrnumber: 'ptrNumber',
+  consultationfee: 'consultationFee',
+  followupfee: 'followUpFee',
+};
 
 const userSchema = z
   .object({
@@ -94,6 +120,30 @@ const userSchema = z
 
 type UserFormValues = z.infer<typeof userSchema>;
 
+type BulkRow = {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  contactNumber?: string;
+  password?: string;
+  accessRoleName?: string;
+  accessRoleId?: string;
+  staffRole?: string;
+  title?: string;
+  prcLicenseNumber?: string;
+  prcLicenseExpiry?: string;
+  birNumber?: string;
+  ptrNumber?: string;
+  consultationFee?: string;
+  followUpFee?: string;
+};
+
+interface BulkCandidate {
+  rowNumber: number;
+  accessRole: AccessRoleTemplate;
+  payload: AdminCreateUserInput;
+}
+
 interface FeedbackModalState {
   open: boolean;
   title: string;
@@ -118,6 +168,58 @@ function getEffectiveRoleLabel(user: UserProfile) {
   return user.accessRoleName ?? roleLabels[user.role];
 }
 
+function isBulkDoctorRole(role: Role) {
+  return role === 'doctor' || role === 'specialist';
+}
+
+function normalizeLicenseNumber(value: string | undefined | null) {
+  if (!value) return '';
+  return value
+    .toString()
+    .trim()
+    .replace(/^\s*(prc|bir|ptr)\s*[-:]?\s*/i, '');
+}
+
+function downloadBulkTemplateExcel() {
+  const rows = [
+    [
+      'firstName',
+      'lastName',
+      'email',
+      'contactNumber',
+      'password',
+      'accessRoleName',
+      'staffRole',
+      'title',
+      'prcLicenseNumber',
+      'prcLicenseExpiry',
+      'birNumber',
+      'ptrNumber',
+      'consultationFee',
+      'followUpFee',
+    ],
+    ['Jose', 'Ramirez', 'jose.ramirez@example.com', '09171234567', 'TestPass123', 'doctor', 'doctor', 'MD', '12345', '2026-12-31', '12345', '67890', '800', '500'],
+    ['Jose', 'Ramirez2', 'jose.ramirez2@example.com', '09171234568', 'TestPass123', 'doctor', 'doctor', 'MD, MBAH, PHD', '12346', '2026-12-31', '12346', '67891', '800', '500'],
+  ];
+
+  const sheet = XLSX.utils.aoa_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Doctors');
+
+  const arrayBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([arrayBuffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'doctor-bulk-upload.xlsx';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function buildCreateUserInput(values: UserFormValues, accessRole: AccessRoleTemplate): AdminCreateUserInput {
   return {
     firstName: values.firstName.trim(),
@@ -139,10 +241,193 @@ function buildCreateUserInput(values: UserFormValues, accessRole: AccessRoleTemp
   };
 }
 
+function normalizeHeader(value: string) {
+  return value.trim().toLowerCase().replace(/[\s_]+/g, ' ');
+}
+
+function parseCsvText(text: string) {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentField = '';
+  let inQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const nextChar = text[index + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        currentField += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (!inQuotes && (char === '\n' || char === '\r')) {
+      if (char === '\r' && nextChar === '\n') {
+        index += 1;
+      }
+      currentRow.push(currentField);
+      rows.push(currentRow);
+      currentRow = [];
+      currentField = '';
+      continue;
+    }
+
+    if (!inQuotes && char === ',') {
+      currentRow.push(currentField);
+      currentField = '';
+      continue;
+    }
+
+    currentField += char;
+  }
+
+  if (currentField.length > 0 || currentRow.length > 0) {
+    currentRow.push(currentField);
+    rows.push(currentRow);
+  }
+
+  return rows.filter((row) => row.some((value) => value.trim().length > 0));
+}
+
+function rowsToBulkRecords(rows: string[][]) {
+  if (rows.length === 0) return [] as BulkRow[];
+
+  const [rawHeaders, ...dataRows] = rows;
+  const headers = rawHeaders.map((header) => BULK_HEADER_MAP[normalizeHeader(header)]).filter(Boolean) as (keyof BulkRow)[];
+
+  return dataRows.map((row) => {
+    const record: BulkRow = {};
+    headers.forEach((header, index) => {
+      record[header] = row[index]?.trim() ?? '';
+    });
+    return record;
+  });
+}
+
+async function parseBulkFile(file: File) {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+
+  if (extension === 'csv') {
+    const text = await file.text();
+    return rowsToBulkRecords(parseCsvText(text));
+  }
+
+  if (extension === 'xlsx' || extension === 'xls') {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    if (!firstSheet) return [];
+    const rows = XLSX.utils.sheet_to_json<string[]>(firstSheet, { header: 1, raw: false, blankrows: false });
+    return rowsToBulkRecords(rows as string[][]);
+  }
+
+  return [];
+}
+
+function buildBulkCandidates(rows: BulkRow[], accessRoles: AccessRoleTemplate[]) {
+  const errors: string[] = [];
+  const candidates: BulkCandidate[] = [];
+  const roleById = new Map(accessRoles.map((role) => [role.id, role]));
+  const roleByName = new Map(accessRoles.map((role) => [role.name.trim().toLowerCase(), role]));
+  const seenEmails = new Set<string>();
+
+  rows.forEach((row, index) => {
+    const rowNumber = index + 2;
+    const firstName = row.firstName?.trim() ?? '';
+    const lastName = row.lastName?.trim() ?? '';
+    const email = row.email?.trim().toLowerCase() ?? '';
+    const contactNumber = row.contactNumber?.trim() ?? '';
+    const password = row.password?.trim() ?? '';
+    const staffRole = (row.staffRole?.trim() || 'doctor') as Role;
+    const roleKey = row.accessRoleId?.trim() || row.accessRoleName?.trim().toLowerCase() || '';
+    const accessRole = roleById.get(roleKey) ?? roleByName.get(roleKey);
+
+    if (!firstName || !lastName || !email || !contactNumber || !password) {
+      errors.push(`Row ${rowNumber}: Missing required fields (firstName, lastName, email, contactNumber, password).`);
+      return;
+    }
+
+    if (!accessRole) {
+      errors.push(`Row ${rowNumber}: Access role not found. Use accessRoleName or accessRoleId from the Access Role list.`);
+      return;
+    }
+
+    if (!isBulkDoctorRole(staffRole)) {
+      errors.push(`Row ${rowNumber}: Staff role must be doctor or specialist.`);
+      return;
+    }
+
+    if (!row.prcLicenseNumber?.trim()) {
+      errors.push(`Row ${rowNumber}: PRC license number is required for doctor and specialist accounts.`);
+      return;
+    }
+
+    if (!row.prcLicenseExpiry?.trim()) {
+      errors.push(`Row ${rowNumber}: PRC license expiry is required for doctor and specialist accounts.`);
+      return;
+    }
+
+    if (!row.birNumber?.trim()) {
+      errors.push(`Row ${rowNumber}: BIR number is required for doctor and specialist accounts.`);
+      return;
+    }
+
+    if (!row.ptrNumber?.trim()) {
+      errors.push(`Row ${rowNumber}: PTR number is required for doctor and specialist accounts.`);
+      return;
+    }
+
+    if (seenEmails.has(email)) {
+      errors.push(`Row ${rowNumber}: Duplicate email in upload (${email}).`);
+      return;
+    }
+
+    seenEmails.add(email);
+
+    const consultationFee = row.consultationFee ? Number(row.consultationFee) : 0;
+    const followUpFee = row.followUpFee ? Number(row.followUpFee) : 0;
+
+    if (Number.isNaN(consultationFee) || Number.isNaN(followUpFee)) {
+      errors.push(`Row ${rowNumber}: Consultation and follow-up fee must be numeric.`);
+      return;
+    }
+
+    candidates.push({
+      rowNumber,
+      accessRole,
+      payload: {
+        firstName,
+        lastName,
+        contactNumber,
+        email,
+        password,
+        role: staffRole,
+        permissions: accessRole.permissions,
+        title: row.title?.trim(),
+        prcLicenseNumber: normalizeLicenseNumber(row.prcLicenseNumber),
+        prcLicenseExpiry: row.prcLicenseExpiry?.trim(),
+        birNumber: normalizeLicenseNumber(row.birNumber),
+        ptrNumber: normalizeLicenseNumber(row.ptrNumber),
+        consultationFee,
+        followUpFee,
+        prcIdFile: null,
+      },
+    });
+  });
+
+  return { candidates, errors };
+}
+
 export function SettingsUsersPage() {
   const queryClient = useQueryClient();
-  const { data: users = [] } = useQuery({ queryKey: ['settings-users'], queryFn: listUsersLiveOrDemo });
-  const { data: accessRoles = [] } = useQuery({ queryKey: ['access-roles'], queryFn: listAccessRolesLiveOrDemo });
+  const { data: usersData } = useQuery({ queryKey: ['settings-users'], queryFn: listUsersLiveOrDemo });
+  const { data: accessRolesData } = useQuery({ queryKey: ['access-roles'], queryFn: listAccessRolesLiveOrDemo });
+  const users = useMemo(() => usersData ?? [], [usersData]);
+  const accessRoles = useMemo(() => accessRolesData ?? [], [accessRolesData]);
   const [search, setSearch] = useState('');
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -153,6 +438,17 @@ export function SettingsUsersPage() {
     variant: 'success',
   });
   const deferredSearch = useDeferredValue(search);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [bulkCandidates, setBulkCandidates] = useState<BulkCandidate[]>([]);
+  const [bulkParseErrors, setBulkParseErrors] = useState<string[]>([]);
+  const [bulkUploadErrors, setBulkUploadErrors] = useState<string[]>([]);
+  const [bulkIsUploading, setBulkIsUploading] = useState(false);
+  const [bulkPrcFiles, setBulkPrcFiles] = useState<Record<string, File | null>>({});
+  const [bulkInputKey, setBulkInputKey] = useState(0);
+  const bulkTemplateHref = useMemo(
+    () => `data:text/csv;charset=utf-8,${encodeURIComponent(BULK_TEMPLATE_CSV)}`,
+    [],
+  );
 
   const createUserMutation = useMutation({
     mutationFn: createAdminUserLiveOrDemo,
@@ -252,6 +548,45 @@ export function SettingsUsersPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isUserModalOpen]);
+
+  useEffect(() => {
+    if (!bulkFile) {
+      setBulkCandidates([]);
+      setBulkParseErrors([]);
+      setBulkUploadErrors([]);
+      setBulkPrcFiles({});
+      return;
+    }
+
+    let active = true;
+    (async () => {
+      try {
+        const parsedRows = await parseBulkFile(bulkFile);
+        if (!active) return;
+        if (accessRoles.length === 0) {
+          setBulkCandidates([]);
+          setBulkParseErrors(['Access roles are still loading. Please wait and reselect the file.']);
+          setBulkUploadErrors([]);
+          setBulkPrcFiles({});
+          return;
+        }
+        const { candidates, errors } = buildBulkCandidates(parsedRows, accessRoles);
+        setBulkCandidates(candidates);
+        setBulkParseErrors(errors);
+        setBulkUploadErrors([]);
+        setBulkPrcFiles({});
+      } catch (error) {
+        setBulkCandidates([]);
+        setBulkParseErrors([error instanceof Error ? error.message : 'Unable to read the uploaded file.']);
+        setBulkUploadErrors([]);
+        setBulkPrcFiles({});
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [bulkFile, accessRoles]);
 
   const closeFeedbackModal = () => {
     setFeedbackModal((currentState) => ({ ...currentState, open: false }));
@@ -394,6 +729,70 @@ export function SettingsUsersPage() {
     }
   };
 
+  const handleBulkUpload = async () => {
+    if (bulkCandidates.length === 0 || bulkIsUploading) return;
+
+    const missingFiles = bulkCandidates
+      .filter((candidate) => isBulkDoctorRole(candidate.payload.role) && !bulkPrcFiles[candidate.payload.email])
+      .map((candidate) => `Row ${candidate.rowNumber}: PRC ID upload is required.`);
+
+    if (missingFiles.length > 0) {
+      setBulkUploadErrors(missingFiles);
+      setFeedbackModal({
+        open: true,
+        title: 'Missing PRC ID files',
+        message: 'Upload PRC ID files for each doctor/specialist row before starting the bulk upload.',
+        variant: 'error',
+      });
+      return;
+    }
+
+    setBulkUploadErrors([]);
+
+    setBulkIsUploading(true);
+    const errors: string[] = [];
+    let createdCount = 0;
+
+    for (const candidate of bulkCandidates) {
+      try {
+        const prcIdFile = bulkPrcFiles[candidate.payload.email] ?? null;
+        const createdUser = await createAdminUserLiveOrDemo({ ...candidate.payload, prcIdFile });
+        clearUserPermissionOverride({ userId: createdUser.id, email: createdUser.email });
+        await assignAccessRoleToProfileLiveOrDemo({
+          userId: createdUser.id,
+          email: createdUser.email,
+          accessRoleId: candidate.accessRole.id,
+        });
+        createdCount += 1;
+      } catch (error) {
+        errors.push(`Row ${candidate.rowNumber}: ${error instanceof Error ? error.message : 'Failed to create account.'}`);
+      }
+    }
+
+    await queryClient.invalidateQueries({ queryKey: ['settings-users'] });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.providers });
+
+    setBulkIsUploading(false);
+    setFeedbackModal({
+      open: true,
+      title: 'Bulk upload complete',
+      message: errors.length
+        ? `${createdCount} account(s) created. ${errors.length} failed. Check the error list for details.`
+        : `${createdCount} account(s) created successfully.`,
+      variant: errors.length ? 'error' : 'success',
+    });
+    setBulkUploadErrors(errors);
+
+    if (errors.length === 0) {
+      setBulkFile(null);
+      setBulkCandidates([]);
+      setBulkParseErrors([]);
+      setBulkUploadErrors([]);
+      setBulkPrcFiles({});
+      setBulkInputKey((value) => value + 1);
+    }
+  };
+
   return (
     <>
       <div className="space-y-6">
@@ -476,6 +875,81 @@ export function SettingsUsersPage() {
           </div>
 
           <div className="space-y-6">
+            <div className="border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-950">Bulk doctor upload</h2>
+              <p className="mt-3 text-sm text-slate-600">
+                Upload a CSV or Excel sheet to register multiple doctor or specialist accounts. Required columns: firstName, lastName, email, contactNumber, password, accessRoleName, prcLicenseNumber, prcLicenseExpiry, birNumber, ptrNumber.
+              </p>
+              <div className="mt-4 space-y-3">
+                <Input
+                  key={bulkInputKey}
+                  accept=".csv,.xlsx,.xls"
+                  onChange={(event) => setBulkFile(event.target.files?.[0] ?? null)}
+                  type="file"
+                />
+                <div className="text-xs text-slate-500">
+                  Need a template?{' '}
+                  <a className="font-semibold text-orange-700 hover:underline" download="doctor-bulk-upload.csv" href={bulkTemplateHref}>
+                    Download CSV template
+                  </a>
+                  {' '}or{' '}
+                  <button className="font-semibold text-orange-700 hover:underline" onClick={downloadBulkTemplateExcel} type="button">
+                    Download Excel template
+                  </button>
+                </div>
+                {bulkCandidates.length > 0 ? (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-semibold text-slate-700">PRC ID uploads</p>
+                    <p className="mt-1 text-xs text-slate-500">Upload a PRC ID file for each doctor or specialist row.</p>
+                    <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
+                      {bulkCandidates.map((candidate) => (
+                        <div className="flex flex-wrap items-center justify-between gap-2" key={candidate.payload.email}>
+                          <div className="text-xs text-slate-600">
+                            Row {candidate.rowNumber} - {candidate.payload.email}
+                          </div>
+                          <Input
+                            accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0] ?? null;
+                              setBulkPrcFiles((current) => ({ ...current, [candidate.payload.email]: file }));
+                              setBulkUploadErrors([]);
+                            }}
+                            type="file"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {bulkCandidates.length > 0 ? (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 text-xs text-emerald-900">
+                    {bulkCandidates.length} valid row(s) ready to upload.
+                  </div>
+                ) : null}
+                {bulkParseErrors.length > 0 || bulkUploadErrors.length > 0 ? (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900">
+                    <p className="font-semibold">Upload issues</p>
+                    <ul className="mt-2 space-y-1">
+                      {[...bulkParseErrors, ...bulkUploadErrors].slice(0, 5).map((error) => (
+                        <li key={error}>{error}</li>
+                      ))}
+                      {[...bulkParseErrors, ...bulkUploadErrors].length > 5 ? (
+                        <li>...and {[...bulkParseErrors, ...bulkUploadErrors].length - 5} more.</li>
+                      ) : null}
+                    </ul>
+                  </div>
+                ) : null}
+                <Button
+                  className="w-full rounded-none bg-orange-600 hover:bg-orange-700"
+                  disabled={bulkIsUploading || bulkCandidates.length === 0 || bulkParseErrors.length > 0}
+                  onClick={() => void handleBulkUpload()}
+                  type="button"
+                >
+                  {bulkIsUploading ? 'Uploading...' : 'Upload doctor accounts'}
+                </Button>
+              </div>
+            </div>
+
             <div className="border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-950">Access role summary</h2>
               <div className="mt-5 space-y-4">
