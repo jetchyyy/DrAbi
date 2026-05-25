@@ -60,7 +60,7 @@ export function LaboratoryPage() {
                 className={cn(
                   'flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-3 text-[11px] font-semibold uppercase tracking-wide transition',
                   isActive
-                    ? 'bg-emerald-50 text-emerald-900 shadow-sm ring-1 ring-emerald-100'
+                    ? 'bg-[color-mix(in_srgb,var(--color-primary)_12%,white)] text-[var(--color-primary)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--color-primary)_25%,white)]'
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800',
                 )}
                 onClick={() => setActiveTab(tab.id)}

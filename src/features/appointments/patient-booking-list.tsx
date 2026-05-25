@@ -1004,7 +1004,7 @@ function BookingTableRow({
               type="button"
               onClick={onRecordVitals}
               title="Record vitals for this patient"
-              className="inline-flex h-7 items-center gap-1.5 border border-blue-300 bg-blue-600 px-2.5 text-[10px] font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-blue-700"
+              className="inline-flex h-7 items-center gap-1.5 border border-red-300 bg-red-600 px-2.5 text-[10px] font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-red-700"
             >
               <Activity className="size-3" />
               Vitals
@@ -1132,22 +1132,22 @@ function VitalsModal({ booking, onClose }: VitalsModalProps) {
         className="my-auto flex w-full max-w-2xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl max-h-[85vh] sm:max-h-[80vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 bg-blue-600 px-4 py-4 sm:px-6">
+        <div className="flex items-start justify-between gap-4 bg-red-600 px-4 py-4 sm:px-6">
           <div className="min-w-0">
-            <p className="text-xs font-extrabold uppercase tracking-widest text-blue-100">
+            <p className="text-xs font-extrabold uppercase tracking-widest text-red-100">
               Patient Booking
             </p>
             <p className="mt-0.5 text-sm font-bold text-white">
               Record Vitals — {booking.patientFullName}
             </p>
-            <p className="mt-2 max-w-2xl text-sm text-blue-50">
+            <p className="mt-2 max-w-2xl text-sm text-red-50">
               Record the patient's current vital signs. These will be stored in
               the patient record and auto-populated in the next consultation.
             </p>
           </div>
           <button
             aria-label="Close vitals modal"
-            className="inline-flex shrink-0 items-center justify-center border border-blue-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+            className="inline-flex shrink-0 items-center justify-center border border-red-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
             onClick={onClose}
             type="button"
           >
@@ -1211,7 +1211,7 @@ function VitalsModal({ booking, onClose }: VitalsModalProps) {
                     {label}
                   </label>
                   <input
-                    className="w-full border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    className="w-full border border-slate-200 bg-white px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
                     placeholder={placeholder}
                     type={type}
                     step={step}
@@ -1240,7 +1240,7 @@ function VitalsModal({ booking, onClose }: VitalsModalProps) {
             Cancel
           </button>
           <button
-            className="inline-flex w-full items-center justify-center gap-2 bg-blue-600 px-5 py-2.5 text-sm font-extrabold uppercase tracking-widest text-white hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 bg-red-600 px-5 py-2.5 text-sm font-extrabold uppercase tracking-widest text-white hover:bg-red-700 disabled:opacity-50 sm:w-auto"
             disabled={mutation.isPending}
             onClick={() => mutation.mutate()}
             type="button"

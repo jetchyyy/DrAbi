@@ -37,10 +37,10 @@ export function ReferralFrontdeskPage() {
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_0.95fr]">
       {/* ── Left Panel: Patients with Referrals ── */}
-      <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <div className="flex items-center gap-2.5">
-            <div className="shrink-0 bg-orange-600 p-2 text-white">
+            <div className="flex shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] p-2 text-[var(--color-primary)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_30%,white)]">
               <UserCheck className="size-4" />
             </div>
             <div>
@@ -53,7 +53,7 @@ export function ReferralFrontdeskPage() {
             </div>
           </div>
           {!loading && (
-            <span className="bg-orange-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-orange-700">
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-600 ring-1 ring-slate-200/80">
               {patients.length} referral{patients.length !== 1 ? "s" : ""}
             </span>
           )}
@@ -75,9 +75,9 @@ export function ReferralFrontdeskPage() {
       </div>
 
       {/* ── Right Panel: Schedule & Booking ── */}
-      <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm">
         <div className="flex items-center gap-2.5 border-b border-slate-100 px-6 py-4">
-          <div className="shrink-0 bg-orange-600 p-2 text-white">
+          <div className="flex shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] p-2 text-[var(--color-primary)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_30%,white)]">
             <CalendarCheck2 className="size-4" />
           </div>
           <div>
@@ -91,8 +91,8 @@ export function ReferralFrontdeskPage() {
             </p>
           </div>
           {selectedPatient && (
-            <span className="ml-auto bg-sky-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-sky-700">
-              <Clock className="mr-1 inline size-3" />
+            <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-600 ring-1 ring-slate-200/80">
+              <Clock className="size-3" />
               {selectedPatient.doctor.specialtyName ?? "Specialist"}
             </span>
           )}

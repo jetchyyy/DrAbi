@@ -8,7 +8,7 @@ const inkMuted = '#64748b';
 const inkFaint = '#94a3b8';
 /** Inspo-adjacent accent pair (soft violet + clinic blue) */
 const seriesA = '#8b7ae8';
-const seriesB = '#34b2f9';
+const seriesB = '#ef282c';
 const seriesGreen = '#5ecf7a';
 
 type LegendItem = { color: string; label: string };
@@ -398,12 +398,12 @@ export function SupportInsetUI() {
         metricLabel="patient touches resolved this week"
         segments={[
           { widthPct: 38, color: '#5eb8f7' },
-          { widthPct: 34, color: '#34b2f9' },
+          { widthPct: 34, color: '#ef282c' },
           { widthPct: 28, color: '#1d8dc4' },
         ]}
         channels={[
           { name: 'Phone', value: '94', color: '#5eb8f7' },
-          { name: 'Chat', value: '83', color: '#34b2f9' },
+          { name: 'Chat', value: '83', color: '#ef282c' },
           { name: 'Portal', value: '70', color: '#1d8dc4' },
         ]}
       />

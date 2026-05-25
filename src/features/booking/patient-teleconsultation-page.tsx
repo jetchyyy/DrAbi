@@ -35,7 +35,7 @@ function getStatusLabel(status: Appointment["status"]) {
 function getStatusBorderColor(status: Appointment["status"]) {
   if (status === "completed") return "border-l-emerald-500";
   if (status === "cancelled" || status === "no_show") return "border-l-rose-500";
-  if (status === "in_progress") return "border-l-blue-500";
+  if (status === "in_progress") return "border-l-red-500";
   if (status === "confirmed") return "border-l-emerald-400";
   return "border-l-orange-500";
 }

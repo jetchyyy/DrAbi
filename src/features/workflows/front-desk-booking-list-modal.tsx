@@ -630,9 +630,9 @@ function VitalsModal({
         className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-start justify-between gap-4 bg-blue-600 px-5 py-4">
+        <div className="flex shrink-0 items-start justify-between gap-4 bg-red-600 px-5 py-4">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-widest text-blue-100">
+            <p className="text-xs font-extrabold uppercase tracking-widest text-red-100">
               Online Booking
             </p>
             <p className="mt-0.5 text-sm font-bold text-white">
@@ -641,7 +641,7 @@ function VitalsModal({
           </div>
           <button
             aria-label="Close vitals modal"
-            className="inline-flex shrink-0 items-center justify-center border border-blue-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
+            className="inline-flex shrink-0 items-center justify-center border border-red-300/40 bg-white/10 p-2 text-white transition hover:bg-white/20"
             onClick={onClose}
             type="button"
           >
@@ -657,7 +657,7 @@ function VitalsModal({
                   {label}
                 </label>
                 <input
-                  className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="w-full border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
                   onChange={(e) =>
                     setFields((prev) => ({ ...prev, [key]: e.target.value }))
                   }
@@ -683,7 +683,7 @@ function VitalsModal({
             Cancel
           </button>
           <button
-            className="inline-flex items-center justify-center gap-2 bg-blue-600 px-4 py-2 text-sm font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 bg-red-600 px-4 py-2 text-sm font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-red-700 disabled:opacity-60"
             disabled={mutation.isPending}
             onClick={() => mutation.mutate()}
             type="button"
@@ -753,7 +753,7 @@ function BookingRow({
         <div className="flex justify-end gap-1.5">
           <button
             aria-label={`Record vitals for ${booking.patientFullName}`}
-            className="border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[10px] font-extrabold uppercase tracking-widest text-blue-700 transition hover:bg-blue-100"
+            className="border border-red-200 bg-red-50 px-2.5 py-1.5 text-[10px] font-extrabold uppercase tracking-widest text-red-700 transition hover:bg-red-100"
             onClick={onRecordVitals}
             type="button"
           >

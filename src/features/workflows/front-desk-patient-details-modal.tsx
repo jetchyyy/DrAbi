@@ -1207,8 +1207,8 @@ export function FrontDeskPatientDetailsModal({
                 ) : null}
 
                 {activeInvoice && activeInvoice.paymentStatus !== "paid" ? (
-                  <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
-                    <p className="text-xs text-blue-800">
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                    <p className="text-xs text-red-800">
                       Need a quick cashier flow? Use mark as paid and keep the existing invoice lines.
                     </p>
                     <Button

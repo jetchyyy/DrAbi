@@ -368,7 +368,7 @@ export function CatalogTab() {
         <div className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="flex shrink-0 items-center justify-center rounded-xl bg-emerald-50 p-2.5 text-emerald-600 ring-1 ring-emerald-100/90">
+              <div className="flex shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] p-2.5 text-[var(--color-primary)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_30%,white)]">
                 <TestTube2 className="size-5" strokeWidth={2} />
               </div>
               <div>
@@ -378,7 +378,7 @@ export function CatalogTab() {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Button className="bg-emerald-600 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-white shadow-sm ring-1 ring-emerald-700/20 hover:bg-emerald-700" onClick={openCreateModal}>
+              <Button variant="primary" onClick={openCreateModal}>
                 <Plus className="mr-2 size-4" />
                 Add service
               </Button>
@@ -546,10 +546,10 @@ export function CatalogTab() {
                 </FormField>
               </div>
               <div className="px-6 py-4 bg-slate-50 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <Button className="w-full sm:w-auto" onClick={closeServiceModal} type="button" variant="secondary">
+                <Button className="w-full sm:w-auto" onClick={closeServiceModal} type="button" variant="tertiary">
                   Cancel
                 </Button>
-                <Button className="w-full bg-emerald-600 py-3 text-sm font-semibold uppercase tracking-wide hover:bg-emerald-700 sm:w-auto" disabled={!isSupabaseConfigured || createMutation.isPending || updateMutation.isPending} type="submit">
+                <Button variant="primary" className="w-full sm:w-auto" disabled={!isSupabaseConfigured || createMutation.isPending || updateMutation.isPending} type="submit">
                   {createMutation.isPending || updateMutation.isPending ? 'Saving...' : editingId ? 'Save Service' : 'Add Service'}
                 </Button>
               </div>

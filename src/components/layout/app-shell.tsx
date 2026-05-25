@@ -20,20 +20,22 @@ import { cn, getInitials } from "../../lib/utils";
 
 type NavigationSection =
   | "Overview"
-  | "Patient Care"
-  | "Appointments & Queue"
+  | "Workflows"
+  | "Patients"
+  | "Appointments"
+  | "Referrals"
   | "Finance"
   | "HMO Management"
   | "Operations"
   | "Administration"
-  | "Account"
-  | "General";
+  | "Account";
 
 const navigationSectionOrder: NavigationSection[] = [
   "Overview",
-  "General",
-  "Patient Care",
-  "Appointments & Queue",
+  "Workflows",
+  "Patients",
+  "Appointments",
+  "Referrals",
   "Finance",
   "HMO Management",
   "Operations",
@@ -42,37 +44,32 @@ const navigationSectionOrder: NavigationSection[] = [
 ];
 
 function getNavigationSection(item: NavItem): NavigationSection {
-  if (item.to.startsWith("/app/settings")) {
-    return "Administration";
-  }
-  if (item.to === "/app/profile") {
-    return "Account";
-  }
+  // Exact path overrides take priority
+  if (item.to === "/app/doctor-availability") return "Account";
+  if (item.to === "/app/patients/scan") return "Patients";
+  if (item.to.startsWith("/app/settings")) return "Administration";
+  if (item.to === "/app/profile") return "Account";
+
+  // Workflow pages
   if (
     item.to === "/app/front-desk-workflow" ||
     item.to === "/app/doctor-workflow"
   ) {
-    return "Overview";
+    return "Workflows";
   }
-  if (item.moduleKey === "dashboard") {
-    return "Overview";
-  }
-  if (item.moduleKey === "patient_management") {
-    return "Patient Care";
-  }
-  if (item.moduleKey === "booking_appointments") {
-    return "Appointments & Queue";
-  }
-  if (item.moduleKey === "billing" || item.moduleKey === "pos") {
-    return "Finance";
-  }
-  if (item.moduleKey === "hmo") {
-    return "HMO Management";
-  }
-  if (item.moduleKey === "inventory" || item.moduleKey === "laboratory") {
-    return "Operations";
-  }
-  return "General";
+
+  // Referrals section
+  if (item.to === "/app/referrals") return "Referrals";
+
+  // moduleKey mapping
+  if (item.moduleKey === "dashboard") return "Overview";
+  if (item.moduleKey === "patient_management") return "Patients";
+  if (item.moduleKey === "booking_appointments") return "Appointments";
+  if (item.moduleKey === "billing" || item.moduleKey === "pos") return "Finance";
+  if (item.moduleKey === "hmo") return "HMO Management";
+  if (item.moduleKey === "inventory" || item.moduleKey === "laboratory") return "Operations";
+
+  return "Administration";
 }
 
 export function AppShell() {
@@ -330,7 +327,7 @@ export function AppShell() {
           <div className="flex flex-col items-start gap-2">
             <img
               alt={`${clinic.clinicName || clinic.legalName || "Clinic"} logo`}
-              className="h-11 w-auto object-contain"
+              className="h-8 w-auto object-contain"
               decoding="async"
               src="/logo.png"
             />
@@ -381,7 +378,7 @@ export function AppShell() {
           <div className="flex flex-col items-start gap-2">
             <img
               alt={`${clinic.clinicName || clinic.legalName || "Clinic"} logo`}
-              className="h-11 w-auto object-contain"
+              className="h-8 w-auto object-contain"
               decoding="async"
               src="/logo.png"
             />

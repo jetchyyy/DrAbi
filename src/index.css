@@ -4,12 +4,12 @@
 @tailwind utilities;
 
 :root {
-  --color-primary: #7dd453;
-  --color-accent: #34b2f9;
+  --color-primary: #4cb154;
+  --color-accent: #ef282c;
   --color-canvas: #ffffff;
   --color-surface: #ffffff;
   --color-ink: #0f172a;
-  --color-muted: #5582a8;
+  --color-muted: #64748b;
   --font-sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
   --font-display: 'Source Serif 4', Georgia, 'Times New Roman', serif;
 }

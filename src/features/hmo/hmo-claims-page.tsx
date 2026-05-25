@@ -2,8 +2,12 @@
  * HMO Claims — Full claim lifecycle management with billing computation
  */
 import { useState, useMemo, useDeferredValue, useEffect } from "react";
-import { Receipt, Plus, Search, X, Eye, Upload } from "lucide-react";
+import { Receipt, Wallet, FileText, Plus, Search, X, Eye, Upload } from "lucide-react";
 import { toast } from "sonner";
+
+import { useAuth } from "../auth/auth-context";
+import { HmoPaymentsContent } from "./hmo-payments-page";
+import { HmoReportsContent } from "./hmo-reports-page";
 
 import { InternalPage } from "../../components/ui/internal-page";
 import { Button } from "../../components/ui/button";
@@ -29,7 +33,7 @@ const CLAIM_STATUSES: { value: HmoClaimStatus; label: string }[] = [
   { value: "overdue", label: "Overdue" },
 ];
 
-export function HmoClaimsPage() {
+function HmoClaimsContent() {
   const { data: claims = [], isLoading } = useHmoClaims();
   const { data: authorizations = [] } = useHmoAuthorizations();
   const { data: providers = [] } = useHmoProviders();
@@ -130,7 +134,7 @@ export function HmoClaimsPage() {
   const viewedAuth = viewedClaim ? authorizations.find((a) => a.id === viewedClaim.authorizationId) : null;
 
   return (
-    <InternalPage>
+    <>
       <section className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}>
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
@@ -287,6 +291,63 @@ export function HmoClaimsPage() {
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+type HmoFinancialTab = 'claims' | 'payments' | 'reports';
+
+const HMO_FINANCIAL_TABS: { id: HmoFinancialTab; label: string; icon: typeof Receipt }[] = [
+  { id: 'claims', label: 'Claims', icon: Receipt },
+  { id: 'payments', label: 'Payments', icon: Wallet },
+  { id: 'reports', label: 'Reports', icon: FileText },
+];
+
+export function HmoClaimsPage() {
+  const { profile } = useAuth();
+  const [activeTab, setActiveTab] = useState<HmoFinancialTab>('claims');
+
+  const visibleTabs = useMemo(() => {
+    if (profile?.role === 'owner_admin') return HMO_FINANCIAL_TABS;
+    return HMO_FINANCIAL_TABS.filter((t) => t.id !== 'reports');
+  }, [profile?.role]);
+
+  return (
+    <InternalPage>
+      <div className={cn(INTERNAL_SURFACE, 'p-2 sm:p-2.5')}>
+        <div
+          aria-label="HMO financial sections"
+          className="flex flex-wrap gap-1 border-b border-slate-100/90 px-1 pb-px"
+          role="tablist"
+        >
+          {visibleTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                aria-selected={isActive}
+                className={cn(
+                  'flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-3 text-[11px] font-semibold uppercase tracking-wide transition',
+                  isActive
+                    ? 'bg-teal-50 text-teal-900 shadow-sm ring-1 ring-teal-100'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800',
+                )}
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                role="tab"
+                type="button"
+              >
+                <Icon className="size-3.5 shrink-0 opacity-90" strokeWidth={2} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {activeTab === 'claims' && <HmoClaimsContent />}
+      {activeTab === 'payments' && <HmoPaymentsContent />}
+      {activeTab === 'reports' && <HmoReportsContent />}
     </InternalPage>
   );
 }

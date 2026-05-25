@@ -107,8 +107,8 @@ export function PublicLayout() {
                 decoding="async"
                 className={
                   isPortalHome
-                    ? 'h-14 w-auto max-h-14 max-w-[220px] object-contain object-left brightness-0 invert sm:h-16 sm:max-w-[248px] lg:max-h-16 lg:brightness-100 lg:invert-0'
-                    : 'h-14 w-auto max-h-14 max-w-[220px] object-contain object-left sm:h-16 sm:max-w-[248px]'
+                    ? 'h-9 w-auto max-h-9 max-w-[140px] object-contain object-left brightness-0 invert lg:brightness-100 lg:invert-0'
+                    : 'h-9 w-auto max-h-9 max-w-[140px] object-contain object-left'
                 }
               />
               <span className="sr-only">
@@ -482,7 +482,7 @@ export function PublicLayout() {
                   href="https://odysseyph.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline"
+                  className="text-red-500 hover:underline"
                 >
                   OdysseyPH IT Solutions
                 </a>

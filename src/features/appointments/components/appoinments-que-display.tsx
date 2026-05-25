@@ -40,7 +40,7 @@ const STATUS_CONFIG: Record<
 > = {
   waiting: {
     label: "Waiting",
-    className: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
+    className: "bg-red-50 text-red-700 ring-1 ring-red-200",
   },
   called: {
     label: "Called",
@@ -357,8 +357,8 @@ export function AppointmentsQueueDisplay() {
     {
       label: "Waiting",
       value: queueNumbers.filter((q) => q.status === "waiting").length,
-      valueClass: "text-blue-600",
-      cardClass: "border-blue-100 bg-blue-50/50",
+      valueClass: "text-red-600",
+      cardClass: "border-red-100 bg-red-50/50",
     },
     {
       label: "Called",

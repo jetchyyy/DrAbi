@@ -145,9 +145,9 @@ export const chatService = {
 
     const { data: referralRows, error: referralError } = await client
       .from('referrals')
-      .select('referring_generalist_id, assigned_specialist_id, referring_doctor_id, target_doctor_id, status')
+      .select('referring_doctor_id, target_doctor_id, status')
       .in('status', ['accepted', 'confirmed', 'completed'])
-      .or(`referring_generalist_id.eq.${doctorId},assigned_specialist_id.eq.${doctorId},referring_doctor_id.eq.${doctorId},target_doctor_id.eq.${doctorId}`);
+      .or(`referring_doctor_id.eq.${doctorId},target_doctor_id.eq.${doctorId}`);
 
     if (referralError) {
       throw referralError;
@@ -155,13 +155,11 @@ export const chatService = {
 
     const counterpartDoctorIds = [...new Set(
       ((referralRows ?? []) as Array<{
-        referring_generalist_id: string | null;
-        assigned_specialist_id: string | null;
         referring_doctor_id: string | null;
         target_doctor_id: string | null;
       }>).flatMap((row) => {
-        const sourceDoctor = row.referring_generalist_id ?? row.referring_doctor_id;
-        const targetDoctor = row.assigned_specialist_id ?? row.target_doctor_id;
+        const sourceDoctor = row.referring_doctor_id;
+        const targetDoctor = row.target_doctor_id;
 
         if (sourceDoctor === doctorId) {
           return targetDoctor ? [targetDoctor] : [];

@@ -10,7 +10,9 @@ import {
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { Badge } from "../../components/ui/badge";
+import { StatusPill } from "../../components/ui/status-pill";
+import { INTERNAL_SURFACE } from "../../lib/internal-ui";
+import { cn } from "../../lib/utils";
 import { useDoctorDirectory } from "../../hooks/use-clinic-data";
 import { formatDateTimeLabel, getPhilippineDateKey } from "../../lib/utils";
 import { useAuth } from "../auth/auth-context";
@@ -278,28 +280,16 @@ export function DoctorWorkflowPage() {
 
   return (
     <div className="space-y-5">
-      <section className="border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="bg-orange-600 p-2.5 text-white">
-              <Stethoscope className="size-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
-                Role Workflow
-              </p>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-950">
-                Doctor Workflow
-              </h1>
-              <p className="mt-1 text-sm text-slate-500">
-                Cleared consultation queue, blockers, charts, and SOAP entry.
-              </p>
-            </div>
+      <section className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
+        <div className="flex flex-col gap-5 px-6 py-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Role Workflow</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Doctor Workflow</h1>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">Cleared consultation queue, blockers, charts, and SOAP entry.</p>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap gap-2">
             <div className="relative" ref={patientSearchRef}>
-              <div className="flex w-64 items-center gap-2 border border-slate-200 bg-slate-50 px-3 py-2.5">
+              <div className="flex w-64 items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 shadow-[inset_0_1px_1px_rgba(15,41,71,0.04)]">
                 <Search className="size-4 shrink-0 text-slate-400" />
                 <input
                   className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
@@ -328,10 +318,10 @@ export function DoctorWorkflowPage() {
                 ) : null}
               </div>
               {patientDropdownOpen && filteredPatients.length > 0 ? (
-                <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden border border-slate-200 bg-white shadow-lg">
+                <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
                   {filteredPatients.map((patient) => (
                     <Link
-                      className="flex flex-col px-4 py-3 transition hover:bg-orange-50"
+                      className="flex flex-col px-4 py-3 transition hover:bg-slate-50"
                       key={patient.id}
                       onClick={() => {
                         setPatientQuery("");
@@ -349,75 +339,57 @@ export function DoctorWorkflowPage() {
                   ))}
                 </div>
               ) : patientDropdownOpen && patientQuery.trim() ? (
-                <div className="absolute left-0 top-full z-50 mt-1 w-full border border-slate-200 bg-white px-4 py-3 shadow-lg">
+                <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-lg">
                   <p className="text-xs text-slate-500">No patients found.</p>
                 </div>
               ) : null}
             </div>
             <Link
-              className="inline-flex items-center border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
               to="/app/patients/scan"
             >
-              <UserRoundSearch className="mr-2 size-4" />
+              <UserRoundSearch className="size-4" />
               Scan patient
             </Link>
             <Link
-              className="inline-flex items-center border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
               to="/app/specialist-referrals"
             >
-              <FileText className="mr-2 size-4" />
+              <FileText className="size-4" />
               Referrals
             </Link>
           </div>
         </div>
 
-        <div className="grid border-t border-slate-100 bg-slate-50 md:grid-cols-4">
-          <div className="border-b border-slate-100 px-6 py-4 md:border-b-0 md:border-r">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-              Ready
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">
-              {summary.ready}
-            </p>
+        <div className="grid bg-slate-50/90 md:grid-cols-4">
+          <div className="border-b border-slate-100/90 px-6 py-4 md:border-b-0 md:border-r md:border-slate-100/90">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Ready</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{summary.ready}</p>
           </div>
-          <div className="border-b border-slate-100 px-6 py-4 md:border-b-0 md:border-r">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-              Blocked
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">
-              {summary.blocked}
-            </p>
+          <div className="border-b border-slate-100/90 px-6 py-4 md:border-b-0 md:border-r md:border-slate-100/90">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Blocked</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{summary.blocked}</p>
           </div>
-          <div className="border-b border-slate-100 px-6 py-4 md:border-b-0 md:border-r">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-              Overdue
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-rose-700">
-              {summary.overdue}
-            </p>
+          <div className="border-b border-slate-100/90 px-6 py-4 md:border-b-0 md:border-r md:border-slate-100/90">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Overdue</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-rose-700">{summary.overdue}</p>
           </div>
           <div className="px-6 py-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-              In consultation
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">
-              {summary.inConsultation}
-            </p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">In consultation</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{summary.inConsultation}</p>
           </div>
         </div>
       </section>
 
-      <section className="border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
+      <section className={INTERNAL_SURFACE}>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100/90 px-6 py-4">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-widest text-slate-400">
-              Consultation Queue
-            </p>
-            <p className="mt-1 text-sm font-semibold text-slate-950">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Consultation Queue</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">
               {filteredRows.length} patient{filteredRows.length === 1 ? "" : "s"}
             </p>
           </div>
-          <div className="flex w-full max-w-sm items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5">
+          <div className="flex w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 shadow-[inset_0_1px_1px_rgba(15,41,71,0.04)]">
             <Search className="size-4 shrink-0 text-slate-400" />
             <input
               className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
@@ -431,7 +403,7 @@ export function DoctorWorkflowPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-6 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100/90 bg-slate-50/90 px-6 py-3">
           <div className="flex flex-wrap gap-2">
             {([
               ["all", "All"],
@@ -441,11 +413,12 @@ export function DoctorWorkflowPage() {
               ["overdue", "Overdue"],
             ] as const).map(([value, label]) => (
               <button
-                className={`inline-flex items-center border px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wide transition ${
+                className={cn(
+                  "inline-flex items-center rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition",
                   activeFilter === value
-                    ? "border-orange-600 bg-orange-600 text-white"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
-                }`}
+                    ? "bg-[var(--color-primary)] text-white shadow-sm"
+                    : "border border-slate-200/90 bg-white text-slate-600 hover:bg-slate-50"
+                )}
                 key={value}
                 onClick={() => {
                   setActiveFilter(value);
@@ -459,11 +432,9 @@ export function DoctorWorkflowPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
-              Sort
-            </span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Sort</span>
             <select
-              className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+              className="rounded-xl border border-slate-200/90 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
               onChange={(event) => {
                 setSortMode(event.target.value as DoctorQueueSort);
                 setCurrentPage(1);

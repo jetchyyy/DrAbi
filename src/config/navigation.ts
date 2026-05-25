@@ -6,6 +6,7 @@ import {
   Clock3,
   ClipboardPlus,
   FlaskConical,
+  GitBranch,
   LayoutDashboard,
   Package2,
   ReceiptText,
@@ -23,7 +24,6 @@ import {
   Wallet,
   Receipt,
   Ticket,
-  TrendingUp,
 } from "lucide-react";
 
 import type { ModuleKey, Permission, Role } from "../types/domain";
@@ -44,6 +44,7 @@ export interface SimpleNavItem {
 }
 
 export const appNavigation: NavItem[] = [
+  // ── Overview ──────────────────────────────────────────────
   {
     label: "Dashboard",
     to: "/app/dashboard",
@@ -51,47 +52,13 @@ export const appNavigation: NavItem[] = [
     permission: "dashboard.view",
     moduleKey: "dashboard",
   },
+  // ── Workflows ─────────────────────────────────────────────
   {
-    label: "Analytics",
-    to: "/app/analytics",
-    icon: TrendingUp,
-    permission: "dashboard.view",
-    moduleKey: "dashboard",
-  },
-  {
-    label: "Patients",
-    to: "/app/patients",
-    icon: Users,
-    permission: "patients.view",
-    moduleKey: "patient_management",
-  },
-  {
-    label: "Adding Bulk Patient",
-    to: "/app/patients/bulk",
-    icon: ClipboardPlus,
-    permission: "patients.manage",
-    moduleKey: "patient_management",
-  },
-  {
-    label: "Patient Logs",
-    to: "/app/patients/logs",
-    icon: ClipboardList,
-    permission: "patients.view",
-    roles: ["owner_admin", "nurse_staff", "front_desk_cashier"],
-    moduleKey: "patient_management",
-  },
-  {
-    label: "Appointments",
-    to: "/app/appointments",
-    icon: CalendarDays,
-    permission: "appointments.view",
-    moduleKey: "booking_appointments",
-  },
-  {
-    label: "Display Queue",
-    to: "/app/appointments-queue",
-    icon: CalendarDays,
-    permission: "appointments.view",
+    label: "Doctor Workflow",
+    to: "/app/doctor-workflow",
+    icon: Stethoscope,
+    permission: "consultations.manage",
+    roles: ["owner_admin", "doctor"],
     moduleKey: "booking_appointments",
   },
   {
@@ -102,63 +69,36 @@ export const appNavigation: NavItem[] = [
     roles: ["owner_admin", "front_desk_cashier"],
     moduleKey: "booking_appointments",
   },
+
+  // ── Patients ──────────────────────────────────────────────
   {
-    label: "Doctor Workflow",
-    to: "/app/doctor-workflow",
-    icon: Stethoscope,
-    permission: "consultations.manage",
-    roles: ["owner_admin", "doctor"],
+    label: "Patients",
+    to: "/app/patients",
+    icon: Users,
+    permission: "patients.view",
+    moduleKey: "patient_management",
+  },
+  // ── Appointments ──────────────────────────────────────────
+  {
+    label: "Appointments",
+    to: "/app/appointments",
+    icon: CalendarDays,
+    permission: "appointments.view",
     moduleKey: "booking_appointments",
   },
   {
-    label: "Patient Bookings List",
+    label: "Bookings Queue",
     to: "/app/patient-bookings",
-    icon: CalendarDays,
-    permission: "appointments.view",
-  },
-  {
-    label: "Specialist Bookings List",
-    to: "/app/specialist-list",
-    icon: CalendarDays,
-    permission: "appointments.view",
-  },
-  {
-    label: "Referrals",
-    to: "/app/referrals",
-    icon: CalendarDays,
+    icon: ClipboardList,
     permission: "appointments.view",
     moduleKey: "booking_appointments",
   },
   {
-    label: "Consultations",
-    to: "/app/consultations",
-    icon: Stethoscope,
-    permission: "consultations.manage",
-    moduleKey: "booking_appointments",
-  },
-  {
-    label: "My Availability",
-    to: "/app/doctor-availability",
-    icon: Clock3,
+    label: "Queue Management",
+    to: "/app/appointments-queue",
+    icon: CalendarDays,
     permission: "appointments.view",
-    roles: ["doctor"],
     moduleKey: "booking_appointments",
-  },
-  {
-    label: "Specialist Referrals",
-    to: "/app/specialist-referrals",
-    icon: ClipboardPlus,
-    permission: "patients.view",
-    roles: ["doctor"],
-    moduleKey: "patient_management",
-  },
-  {
-    label: "Scan Patient",
-    to: "/app/patients/scan",
-    icon: ScanLine,
-    permission: "patients.view",
-    roles: ["doctor"],
-    moduleKey: "patient_management",
   },
   {
     label: "Scan Receipt",
@@ -168,6 +108,17 @@ export const appNavigation: NavItem[] = [
     roles: ["owner_admin", "front_desk_cashier", "lab_staff", "nurse_staff"],
     moduleKey: "booking_appointments",
   },
+
+  // ── Referrals ─────────────────────────────────────────────
+  {
+    label: "Referrals",
+    to: "/app/referrals",
+    icon: GitBranch,
+    permission: "appointments.view",
+    moduleKey: "booking_appointments",
+  },
+
+  // ── Finance ───────────────────────────────────────────────
   {
     label: "Billing",
     to: "/app/billing",
@@ -191,20 +142,47 @@ export const appNavigation: NavItem[] = [
     roles: ["owner_admin", "doctor", "specialist"],
     moduleKey: "billing",
   },
+
+  // ── HMO Management ────────────────────────────────────────
   {
-    label: "Inventory",
-    to: "/app/inventory",
-    icon: Package2,
-    permission: "inventory.view",
-    moduleKey: "inventory",
+    label: "HMO Dashboard",
+    to: "/app/hmo",
+    icon: ShieldCheck,
+    permission: "hmo.view",
+    moduleKey: "hmo",
   },
   {
-    label: "Inventory Logs",
-    to: "/app/inventory-logs",
+    label: "Patient HMO Accounts",
+    to: "/app/hmo/accounts",
     icon: ClipboardList,
-    permission: "inventory.view",
-    moduleKey: "inventory",
+    permission: "hmo.view",
+    moduleKey: "hmo",
   },
+  {
+    label: "Authorizations",
+    to: "/app/hmo/authorizations",
+    icon: FileText,
+    permission: "hmo.view",
+    moduleKey: "hmo",
+  },
+  {
+    label: "Claims",
+    to: "/app/hmo/claims",
+    icon: Receipt,
+    permission: "hmo.manage",
+    roles: ["owner_admin", "front_desk_cashier"],
+    moduleKey: "hmo",
+  },
+  {
+    label: "HMO Providers",
+    to: "/app/hmo/providers",
+    icon: Building2,
+    permission: "hmo.manage",
+    roles: ["owner_admin"],
+    moduleKey: "hmo",
+  },
+
+  // ── Operations ────────────────────────────────────────────
   {
     label: "Laboratory",
     to: "/app/laboratory",
@@ -212,6 +190,15 @@ export const appNavigation: NavItem[] = [
     permission: "laboratory.view",
     moduleKey: "laboratory",
   },
+  {
+    label: "Inventory",
+    to: "/app/inventory",
+    icon: Package2,
+    permission: "inventory.view",
+    moduleKey: "inventory",
+  },
+
+  // ── Administration ────────────────────────────────────────
   {
     label: "Service Catalog",
     to: "/app/settings/catalog",
@@ -261,6 +248,16 @@ export const appNavigation: NavItem[] = [
     icon: Settings,
     permission: "settings.view",
   },
+
+  // ── Account ───────────────────────────────────────────────
+  {
+    label: "My Availability",
+    to: "/app/doctor-availability",
+    icon: Clock3,
+    permission: "appointments.view",
+    roles: ["doctor"],
+    moduleKey: "booking_appointments",
+  },
   {
     label: "My Profile",
     to: "/app/profile",
@@ -274,60 +271,6 @@ export const appNavigation: NavItem[] = [
       "lab_staff",
       "inventory_staff",
     ],
-  },
-  // ── HMO Management ────────────────────────────────
-  {
-    label: "HMO Dashboard",
-    to: "/app/hmo",
-    icon: ShieldCheck,
-    permission: "hmo.view",
-    moduleKey: "hmo",
-  },
-  {
-    label: "HMO Providers",
-    to: "/app/hmo/providers",
-    icon: Building2,
-    permission: "hmo.manage",
-    roles: ["owner_admin", "front_desk_cashier"],
-    moduleKey: "hmo",
-  },
-  {
-    label: "Patient HMO Accounts",
-    to: "/app/hmo/accounts",
-    icon: ClipboardList,
-    permission: "hmo.view",
-    moduleKey: "hmo",
-  },
-  {
-    label: "Authorizations",
-    to: "/app/hmo/authorizations",
-    icon: FileText,
-    permission: "hmo.view",
-    moduleKey: "hmo",
-  },
-  {
-    label: "Claims",
-    to: "/app/hmo/claims",
-    icon: Receipt,
-    permission: "hmo.manage",
-    roles: ["owner_admin", "front_desk_cashier"],
-    moduleKey: "hmo",
-  },
-  {
-    label: "Payments",
-    to: "/app/hmo/payments",
-    icon: Wallet,
-    permission: "hmo.manage",
-    roles: ["owner_admin", "front_desk_cashier"],
-    moduleKey: "hmo",
-  },
-  {
-    label: "HMO Reports",
-    to: "/app/hmo/reports",
-    icon: FileText,
-    permission: "hmo.manage",
-    roles: ["owner_admin"],
-    moduleKey: "hmo",
   },
 ];
 

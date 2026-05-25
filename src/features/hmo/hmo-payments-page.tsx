@@ -5,7 +5,6 @@ import { useState, useMemo, useDeferredValue } from "react";
 import { Wallet, Plus, Search, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
-import { InternalPage } from "../../components/ui/internal-page";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
@@ -16,7 +15,7 @@ import { cn, formatCurrency } from "../../lib/utils";
 import { useHmoPayments, useCreateHmoPayment, useHmoClaims } from "./api/hmo-hooks";
 import { HmoStatusBadge } from "./components/hmo-status-badge";
 
-export function HmoPaymentsPage() {
+export function HmoPaymentsContent() {
   const { data: payments = [], isLoading } = useHmoPayments();
   const { data: claims = [] } = useHmoClaims();
   const createMutation = useCreateHmoPayment();
@@ -87,7 +86,7 @@ export function HmoPaymentsPage() {
   }
 
   return (
-    <InternalPage>
+    <>
       <section className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}>
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
@@ -201,6 +200,6 @@ export function HmoPaymentsPage() {
           </div>
         </div>
       )}
-    </InternalPage>
+    </>
   );
 }

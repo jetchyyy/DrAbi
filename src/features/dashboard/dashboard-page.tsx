@@ -5,17 +5,19 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   CheckCircle2,
+  LayoutDashboard,
   Minus,
   CalendarCheck2,
   Coins,
   FlaskConical,
   PackageSearch,
+  TrendingUp,
   UserRound,
   Droplet,
   Stethoscope,
   Users,
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 
 import { defaultClinicSettings } from '../../config/clinic';
@@ -31,6 +33,7 @@ import {
   INTERNAL_SURFACE,
   INTERNAL_SURFACE_FOOTER,
 } from '../../lib/internal-ui';
+import { AnalyticsContent } from '../analytics/analytics-page';
 import { cn, formatCurrency } from '../../lib/utils';
 import { useAppointments } from '../appointments/hooks/use-appointments';
 
@@ -108,7 +111,7 @@ function KpiCard({
   );
 }
 
-export function DashboardPage() {
+function DashboardOverviewContent() {
   const { data: clinic = defaultClinicSettings } = useClinicSettingsData();
   const { data: appointments = [], isLoading: isAppointmentsLoading } = useAppointments();
   const { data: patients = [], isLoading: isPatientsLoading } = useQuery({
@@ -274,7 +277,7 @@ export function DashboardPage() {
   }, [thisMonthRevenue, lastMonthRevenue]);
 
   return (
-    <InternalPage>
+    <>
       <section className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
         <div className="flex flex-col gap-5 px-6 py-5 md:flex-row md:items-center md:justify-between">
           <div>
@@ -582,6 +585,55 @@ export function DashboardPage() {
           </div>
         </div>
       </section>
+    </>
+  );
+}
+
+type DashboardTab = 'overview' | 'analytics';
+
+const DASHBOARD_TABS: { id: DashboardTab; label: string; icon: typeof LayoutDashboard }[] = [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+];
+
+export function DashboardPage() {
+  const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
+
+  return (
+    <InternalPage>
+      <div className={cn(INTERNAL_SURFACE, 'p-2 sm:p-2.5')}>
+        <div
+          aria-label="Dashboard sections"
+          className="flex flex-wrap gap-1 border-b border-slate-100/90 px-1 pb-px"
+          role="tablist"
+        >
+          {DASHBOARD_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                aria-selected={isActive}
+                className={cn(
+                  'flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-3 text-[11px] font-semibold uppercase tracking-wide transition',
+                  isActive
+                    ? 'bg-[color-mix(in_srgb,var(--color-primary)_12%,white)] text-[var(--color-primary)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--color-primary)_25%,white)]'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800',
+                )}
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                role="tab"
+                type="button"
+              >
+                <Icon className="size-3.5 shrink-0 opacity-90" strokeWidth={2} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {activeTab === 'overview' && <DashboardOverviewContent />}
+      {activeTab === 'analytics' && <AnalyticsContent />}
     </InternalPage>
   );
 }

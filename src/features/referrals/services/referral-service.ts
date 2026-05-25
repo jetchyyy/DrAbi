@@ -135,7 +135,7 @@ export const referralService = {
     const { data, error } = await client
       .from('referrals')
       .select('*')
-      .or(`target_doctor_id.eq.${doctorId},assigned_specialist_id.eq.${doctorId}`)
+      .eq('target_doctor_id', doctorId)
       .order('referred_at', { ascending: false });
 
     if (error) {

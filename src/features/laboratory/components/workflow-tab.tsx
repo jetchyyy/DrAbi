@@ -924,7 +924,7 @@ export function WorkflowTab() {
         <div className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100/90">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] text-[var(--color-primary)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_30%,white)]">
                 <FlaskConical className="size-5" strokeWidth={2} />
               </div>
               <div>
@@ -935,7 +935,7 @@ export function WorkflowTab() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               {canCreateRequests ? (
-                <Button className="bg-emerald-600 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-white shadow-sm ring-1 ring-emerald-700/20 hover:bg-emerald-700" onClick={openCreateModal}>
+                <Button variant="primary" onClick={openCreateModal}>
                   <Plus className="mr-2 size-4" />
                   New order
                 </Button>
@@ -982,7 +982,7 @@ export function WorkflowTab() {
             >
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-2">
-                  <Button className="border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-700 hover:bg-emerald-100" onClick={() => void startIntakeCamera()} type="button">
+                  <Button variant="tertiary" onClick={() => void startIntakeCamera()} type="button">
                     <Camera className="mr-2 size-4" />
                     {isIntakeCameraOpen ? 'Restart camera' : 'Start camera scan'}
                   </Button>
@@ -1010,7 +1010,7 @@ export function WorkflowTab() {
                       value={requestLookupValue}
                     />
                   </label>
-                  <Button className="bg-emerald-600 px-5 py-2.5 text-xs font-semibold uppercase tracking-wide hover:bg-emerald-700" disabled={lookupRequestMutation.isPending} type="submit">
+                  <Button variant="primary" disabled={lookupRequestMutation.isPending} type="submit">
                     {lookupRequestMutation.isPending ? 'Checking...' : 'Process request'}
                   </Button>
                 </div>
@@ -1364,12 +1364,13 @@ export function WorkflowTab() {
                 </div>
               </div>
               <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
-                <Button className="w-full sm:w-auto" onClick={closeOrderModal} type="button" variant="secondary">
+                <Button className="w-full sm:w-auto" onClick={closeOrderModal} type="button" variant="tertiary">
                   Cancel
                 </Button>
                 {canCreateRequests || canProcessRequests ? (
                   <Button
-                    className="w-full bg-emerald-600 py-3 text-sm font-semibold uppercase tracking-wide hover:bg-emerald-700 sm:w-auto"
+                    variant="primary"
+                    className="w-full sm:w-auto"
                     disabled={
                       createMutation.isPending ||
                       startMutation.isPending ||
@@ -1421,10 +1422,10 @@ export function WorkflowTab() {
                 <p className="text-sm font-medium text-rose-600">{cameraError}</p>
               ) : null}
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <Button className="w-full sm:w-auto" onClick={closeCameraModal} type="button" variant="secondary">
+                <Button className="w-full sm:w-auto" onClick={closeCameraModal} type="button" variant="tertiary">
                   Cancel
                 </Button>
-                <Button className="w-full bg-emerald-600 text-sm font-semibold uppercase tracking-wide hover:bg-emerald-700 sm:w-auto" onClick={() => void capturePhoto()} type="button">
+                <Button variant="primary" className="w-full sm:w-auto" onClick={() => void capturePhoto()} type="button">
                   Capture photo
                 </Button>
               </div>

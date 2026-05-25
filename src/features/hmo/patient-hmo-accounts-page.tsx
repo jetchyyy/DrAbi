@@ -2,7 +2,7 @@
  * Patient HMO Accounts — Link patients to their HMO memberships
  */
 import { useState, useMemo, useDeferredValue } from "react";
-import { ClipboardList, Plus, Pencil, Search, X, CheckCircle, AlertTriangle } from "lucide-react";
+import { ClipboardList, Plus, Pencil, Search, X, AlertTriangle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -21,6 +21,7 @@ import {
   INTERNAL_TD,
 } from "../../lib/internal-ui";
 import { cn, formatCurrency } from "../../lib/utils";
+import { StatusPill } from "../../components/ui/status-pill";
 import { queryKeys } from "../../lib/query-keys";
 import { listPatientsLiveOrDemo } from "../../lib/supabase-clinic";
 import {
@@ -151,13 +152,13 @@ export function PatientHmoAccountsPage() {
               <ClipboardList className="size-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-teal-600">HMO Management</p>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-950">Patient HMO Accounts</h1>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">HMO Management</p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Patient HMO Accounts</h1>
               <p className="mt-1 text-sm text-slate-500">Manage patient HMO memberships and coverage.</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button className="rounded-xl bg-teal-600 hover:bg-teal-700" onClick={openCreate}>
+            <Button variant="primary" onClick={openCreate}>
               <Plus className="mr-2 size-4" /> Link HMO Account
             </Button>
             <div className="flex w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
@@ -215,12 +216,7 @@ export function PatientHmoAccountsPage() {
                     <td className={INTERNAL_TD}>{formatCurrency(a.coverageLimit)}</td>
                     <td className={INTERNAL_TD}>{formatCurrency(a.remainingBalance)}</td>
                     <td className={INTERNAL_TD}>
-                      <span className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase ring-1",
-                        a.isActive ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-slate-100 text-slate-600 ring-slate-200",
-                      )}>
-                        {a.isActive ? <><CheckCircle className="size-3" /> Active</> : "Inactive"}
-                      </span>
+                      <StatusPill status={a.isActive ? "active" : "inactive"} />
                     </td>
                     <td className={INTERNAL_TD}>
                       <button className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800" onClick={() => openEdit(a)} type="button">
@@ -239,9 +235,9 @@ export function PatientHmoAccountsPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4">
           <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 bg-teal-600 px-6 py-4 text-white">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-900 px-6 py-4 text-white">
               <h2 className="text-lg font-bold">{editingId ? "Edit HMO Account" : "Link HMO Account"}</h2>
-              <button className="rounded-lg p-1 transition hover:bg-teal-700" onClick={() => setModalOpen(false)} type="button"><X className="size-5" /></button>
+              <button className="rounded-lg p-1 transition hover:bg-slate-700" onClick={() => setModalOpen(false)} type="button"><X className="size-5" /></button>
             </div>
             <div className="max-h-[60vh] space-y-4 overflow-y-auto px-6 py-5">
               <FormField label="Patient *">
@@ -279,8 +275,8 @@ export function PatientHmoAccountsPage() {
               </FormField>
             </div>
             <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
-              <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button className="bg-teal-600 hover:bg-teal-700" onClick={() => void handleSubmit()} disabled={createMutation.isPending || updateMutation.isPending}>{editingId ? "Update" : "Create"}</Button>
+              <Button variant="tertiary" onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button variant="primary" onClick={() => void handleSubmit()} disabled={createMutation.isPending || updateMutation.isPending}>{editingId ? "Update" : "Create"}</Button>
             </div>
           </div>
         </div>

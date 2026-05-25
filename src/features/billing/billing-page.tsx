@@ -11,7 +11,18 @@ import { Button } from '../../components/ui/button';
 import { FeedbackModal } from '../../components/ui/feedback-modal';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
+import { StatusPill } from '../../components/ui/status-pill';
 import { Textarea } from '../../components/ui/textarea';
+import {
+  INTERNAL_SURFACE,
+  INTERNAL_SURFACE_FOOTER,
+  INTERNAL_TABLE,
+  INTERNAL_TD,
+  INTERNAL_TH,
+  INTERNAL_THEAD_ROW,
+  INTERNAL_TR,
+} from '../../lib/internal-ui';
+import { cn, formatCurrency } from '../../lib/utils';
 import { isModuleEnabled } from '../../config/modules';
 import { useAuth } from '../auth/auth-context';
 import { useClinicSettingsData } from '../../hooks/use-clinic-data';
@@ -19,7 +30,6 @@ import { useAppointments } from '../appointments/hooks/use-appointments';
 import { LabServiceReceiptCard } from '../laboratory/components/lab-service-receipt-card';
 import { printHtmlDocument } from '../../lib/print';
 import { getDoctorDirectoryLiveOrDemo, listConsultationsByPatientIdLiveOrDemo, listInventoryUsageLogsByPatientIdLiveOrDemo } from '../../lib/supabase-clinic';
-import { formatCurrency } from '../../lib/utils';
 import { labRequestService } from '../lab-requests/api/lab-request-service';
 import { PaymentBadge } from './payment-badge';
 import { PaymentUpdateModal } from './components/payment-update-modal';
@@ -841,40 +851,35 @@ export function BillingPage() {
   return (
     <>
       <div className="space-y-5">
-        <div className="border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
-            <div className="flex items-center gap-3">
-              <div className="shrink-0 bg-emerald-600 p-2.5 text-white">
-                <Coins className="size-5" />
-              </div>
-              <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-600">Billing</p>
-                <h1 className="text-xl font-extrabold tracking-tight text-slate-950">Billing and Receipts</h1>
-                <p className="mt-1 text-sm text-slate-500">Manage invoices in a table view and create new ones from a modal form.</p>
-              </div>
+        <section className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
+          <div className="flex flex-col gap-5 px-6 py-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Billing</p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Billing and Receipts</h1>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">Manage invoices in a table view and create new ones from a modal form.</p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap gap-2">
               {bookingEnabled ? (
-                <Link className="inline-flex items-center justify-center border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" to="/app/bookings/scan">
-                  <Receipt className="mr-2 size-4" />
+                <Link className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition hover:bg-slate-50" to="/app/bookings/scan">
+                  <Receipt className="size-4" />
                   Scan booking receipt
                 </Link>
               ) : null}
               {laboratoryEnabled ? (
-                <Link className="inline-flex items-center justify-center border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" to="/app/laboratory/scan">
-                  <ScanLine className="mr-2 size-4" />
+                <Link className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition hover:bg-slate-50" to="/app/laboratory/scan">
+                  <ScanLine className="size-4" />
                   Scan lab receipt
                 </Link>
               ) : null}
-              <Button className="rounded-none border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-extrabold uppercase tracking-widest text-violet-800 hover:bg-violet-100" onClick={openPayForServiceModal}>
-                <TestTube2 className="mr-2 size-4" />
+              <Button className="gap-2" onClick={openPayForServiceModal} variant="secondary">
+                <TestTube2 className="size-4" />
                 Pay for service
               </Button>
-              <Button className="rounded-none bg-emerald-600 px-4 py-2.5 text-sm font-extrabold uppercase tracking-widest hover:bg-emerald-700" onClick={openCreateModal}>
-                <Plus className="mr-2 size-4" />
+              <Button className="gap-2" onClick={openCreateModal} variant="primary">
+                <Plus className="size-4" />
                 New invoice
               </Button>
-              <div className="flex w-full max-w-sm items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2.5">
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 shadow-sm">
                 <Search className="size-4 shrink-0 text-slate-400" />
                 <input
                   className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
@@ -888,22 +893,22 @@ export function BillingPage() {
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50 px-6 py-2.5">
-            <span className="text-xs font-bold text-slate-500">{filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''} found</span>
-            <span className="inline-flex items-center border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-emerald-700">
+          <div className={cn(INTERNAL_SURFACE_FOOTER, 'flex flex-wrap items-center gap-2 px-6 py-2.5')}>
+            <span className="text-xs font-medium text-slate-500">{filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''} found</span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">
               {invoiceSummary.paid} paid
             </span>
-            <span className="inline-flex items-center border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-red-600">
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">
               {invoiceSummary.unpaid} unpaid
             </span>
             {invoiceSummary.partial > 0 ? (
-              <span className="inline-flex items-center border border-yellow-200 bg-yellow-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-yellow-700">
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">
                 {invoiceSummary.partial} partial
               </span>
             ) : null}
             {search ? (
               <button
-                className="ml-auto border border-slate-200 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-600 transition hover:bg-white"
+                className="ml-auto rounded-lg border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50"
                 onClick={() => { setSearch(''); setCurrentPage(1); }}
                 type="button"
               >
@@ -911,26 +916,26 @@ export function BillingPage() {
               </button>
             ) : null}
           </div>
-        </div>
+        </section>
 
-        <div className="border border-violet-200 bg-violet-50/30">
+        <div className={cn(INTERNAL_SURFACE, 'p-0')}>
           <div className="flex flex-wrap items-center gap-4 px-5 py-3.5">
             <div className="flex items-center gap-3">
-              <div className="shrink-0 bg-violet-700 p-2 text-white">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] text-[var(--color-primary)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_30%,white)]">
                 <TestTube2 className="size-4" />
               </div>
               <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-violet-700">Lab Service Payment</p>
-                <p className="text-sm font-bold text-slate-950">Cashier shortcut for laboratory services</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Lab Service Payment</p>
+                <p className="text-sm font-semibold text-slate-900">Cashier shortcut for laboratory services</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center border border-violet-200 bg-white px-3 py-1.5 text-xs text-slate-600">
-                <span className="mr-1.5 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Source —</span>
+              <span className="inline-flex items-center rounded-lg border border-slate-200/90 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
+                <span className="mr-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Source —</span>
                 Fees come from the live lab catalog.
               </span>
-              <span className="inline-flex items-center border border-violet-200 bg-white px-3 py-1.5 text-xs text-slate-600">
-                <span className="mr-1.5 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Receipt —</span>
+              <span className="inline-flex items-center rounded-lg border border-slate-200/90 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
+                <span className="mr-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Receipt —</span>
                 Printed QR links to the exact paid lab request.
               </span>
             </div>
@@ -938,11 +943,11 @@ export function BillingPage() {
         </div>
 
         {labReceiptState.open && labReceiptState.invoice && labReceiptState.request ? (
-          <div className="border border-slate-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">Receipt Preview</p>
+          <div className={cn(INTERNAL_SURFACE, 'p-0')}>
+            <div className="flex items-center justify-between border-b border-slate-100/90 px-5 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Receipt Preview</p>
               <button
-                className="border border-slate-200 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-600 transition hover:bg-slate-50"
+                className="rounded-lg border border-slate-200/90 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50"
                 onClick={closeLabReceiptModal}
                 type="button"
               >
@@ -960,25 +965,25 @@ export function BillingPage() {
         ) : null}
 
         {invoiceReceiptState ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <div className={cn(INTERNAL_SURFACE, 'flex flex-wrap items-center justify-between gap-3 p-4')}>
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                <Receipt className="size-4 text-emerald-600" />
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_14%,white)] text-[var(--color-primary)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_30%,white)]">
+                <Receipt className="size-4" />
               </div>
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-wide text-emerald-800">
-                  Invoice created - {invoiceReceiptState.invoiceNumber}
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-800">
+                  Invoice created — {invoiceReceiptState.invoiceNumber}
                 </p>
-                <p className="text-xs text-emerald-700">
+                <p className="text-xs text-slate-500">
                   {formatCurrency(invoiceReceiptState.total)} ({invoiceReceiptState.paymentMethod.toUpperCase()})
                 </p>
               </div>
             </div>
             <Button
-              className="gap-2 text-xs"
+              className="gap-2"
               onClick={() => void handlePrintInvoiceReceipt()}
               type="button"
-              variant="secondary"
+              variant="tertiary"
             >
               <Printer className="size-3.5" />
               Print receipt
@@ -986,19 +991,19 @@ export function BillingPage() {
           </div>
         ) : null}
 
-        <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+        <div className={INTERNAL_SURFACE}>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Invoice</th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Patient</th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Status</th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Total</th>
-                  <th className="whitespace-nowrap px-4 py-2.5 text-right text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Actions</th>
+            <table className={INTERNAL_TABLE}>
+              <thead>
+                <tr className={INTERNAL_THEAD_ROW}>
+                  <th className={INTERNAL_TH}>Invoice</th>
+                  <th className={INTERNAL_TH}>Patient</th>
+                  <th className={INTERNAL_TH}>Status</th>
+                  <th className={INTERNAL_TH}>Total</th>
+                  <th className={cn(INTERNAL_TH, 'text-right')}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {filteredInvoices.length === 0 ? (
                   <tr>
                     <td className="px-6 py-12 text-center text-sm text-slate-400" colSpan={5}>
@@ -1010,33 +1015,33 @@ export function BillingPage() {
                     const patient = patients.find((item) => item.id === invoice.patientId);
 
                     return (
-                      <tr className="transition-colors hover:bg-slate-50" key={invoice.id}>
-                        <td className="px-4 py-3 align-top">
+                      <tr className={INTERNAL_TR} key={invoice.id}>
+                        <td className={INTERNAL_TD}>
                           <div className="space-y-0.5">
-                            <p className="font-bold text-slate-950">{invoice.invoiceNumber}</p>
+                            <p className="font-semibold text-slate-900">{invoice.invoiceNumber}</p>
                             <p className="font-mono text-xs text-slate-400">{invoice.id}</p>
                           </div>
                         </td>
-                        <td className="px-4 py-3 align-top text-sm text-slate-700">
+                        <td className={cn(INTERNAL_TD, 'text-sm text-slate-700')}>
                           {patient?.firstName} {patient?.lastName}
                         </td>
-                        <td className="px-4 py-3 align-top">
-                          <PaymentBadge status={invoice.paymentStatus} />
+                        <td className={INTERNAL_TD}>
+                          <StatusPill status={invoice.paymentStatus} />
                         </td>
-                        <td className="px-4 py-3 align-top text-sm font-bold tabular-nums text-slate-950">{formatCurrency(invoice.total)}</td>
-                        <td className="px-4 py-3 align-top">
-                          <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-extrabold uppercase tracking-widest">
+                        <td className={cn(INTERNAL_TD, 'text-sm font-bold tabular-nums text-slate-900')}>{formatCurrency(invoice.total)}</td>
+                        <td className={cn(INTERNAL_TD, 'text-right')}>
+                          <div className="flex min-w-max items-center justify-end gap-3 whitespace-nowrap text-xs font-semibold">
                             {invoice.paymentStatus === 'unpaid' ? (
-                              <button className="inline-flex items-center gap-1 text-blue-600 hover:underline" onClick={() => openPaymentUpdateModal(invoice.id)} type="button">
+                              <button className="inline-flex items-center gap-1 text-slate-600 hover:text-[var(--color-primary)] hover:underline" onClick={() => openPaymentUpdateModal(invoice.id)} type="button">
                                 <CreditCard className="size-3.5" />
                                 Mark as Paid
                               </button>
                             ) : null}
-                            <button className="inline-flex items-center gap-1 text-emerald-700 hover:underline" onClick={() => openViewModal(invoice.id)} type="button">
+                            <button className="inline-flex items-center gap-1 text-slate-600 hover:text-[var(--color-primary)] hover:underline" onClick={() => openViewModal(invoice.id)} type="button">
                               <Eye className="size-3.5" />
                               View
                             </button>
-                            <button className="inline-flex items-center gap-1 text-slate-600 hover:underline" onClick={() => openEditModal(invoice.id)} type="button">
+                            <button className="inline-flex items-center gap-1 text-slate-600 hover:text-[var(--color-primary)] hover:underline" onClick={() => openEditModal(invoice.id)} type="button">
                               <Pencil className="size-3.5" />
                               Edit
                             </button>
@@ -1054,29 +1059,29 @@ export function BillingPage() {
             </table>
           </div>
           {filteredInvoices.length > 0 ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
-              <p className="text-xs font-semibold text-slate-500">
-                Showing {showingStart}-{showingEnd} of {filteredInvoices.length} invoices
+            <div className={cn(INTERNAL_SURFACE_FOOTER, 'flex flex-wrap items-center justify-between gap-3 px-6 py-3')}>
+              <p className="text-xs text-slate-500">
+                Showing {showingStart}–{showingEnd} of {filteredInvoices.length} invoices
               </p>
               <div className="flex items-center gap-2">
                 <Button
-                  className="rounded-none px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                  className="px-3 py-1 text-xs"
                   disabled={safeCurrentPage <= 1}
                   onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                   type="button"
-                  variant="secondary"
+                  variant="tertiary"
                 >
                   Previous
                 </Button>
-                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                <span className="text-xs font-medium text-slate-500">
                   Page {safeCurrentPage} of {totalPages}
                 </span>
                 <Button
-                  className="rounded-none px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                  className="px-3 py-1 text-xs"
                   disabled={safeCurrentPage >= totalPages}
                   onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                   type="button"
-                  variant="secondary"
+                  variant="tertiary"
                 >
                   Next
                 </Button>
@@ -1259,7 +1264,8 @@ export function BillingPage() {
                           <Button
                             onClick={() => importConsultation(c)}
                             type="button"
-                            className="rounded bg-amber-600 hover:bg-amber-700 text-[10px] font-bold text-white uppercase px-2 py-1 h-auto"
+                            className="text-[10px] px-2 py-1 h-auto"
+                            variant="primary"
                           >
                             Import
                           </Button>
@@ -1275,7 +1281,8 @@ export function BillingPage() {
                           <Button
                             onClick={() => importLabRequest(req)}
                             type="button"
-                            className="rounded bg-amber-600 hover:bg-amber-700 text-[10px] font-bold text-white uppercase px-2 py-1 h-auto"
+                            className="text-[10px] px-2 py-1 h-auto"
+                            variant="primary"
                           >
                             Import
                           </Button>
@@ -1338,7 +1345,7 @@ export function BillingPage() {
                       <p className="text-sm text-slate-500">Add one or more billing entries to match the printed invoice layout.</p>
                     </div>
                     <Button
-                      className="rounded-none border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-slate-700 hover:bg-slate-100"
+                      className="px-3 py-2 text-xs"
                       onClick={() =>
                         itemsFieldArray.append({
                           description: 'New service',
@@ -1348,7 +1355,7 @@ export function BillingPage() {
                         })
                       }
                       type="button"
-                      variant="secondary"
+                      variant="tertiary"
                     >
                       Add line item
                     </Button>
@@ -1454,14 +1461,15 @@ export function BillingPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
-                <Button className="w-full rounded-none sm:w-auto" onClick={closeInvoiceModal} type="button" variant="secondary">
+              <div className={cn(INTERNAL_SURFACE_FOOTER, 'flex flex-col-reverse gap-3 px-4 py-4 sm:flex-row sm:justify-end sm:px-6')}>
+                <Button className="w-full sm:w-auto" onClick={closeInvoiceModal} type="button" variant="tertiary">
                   Cancel
                 </Button>
                 <Button
-                  className="w-full rounded-none bg-emerald-600 px-5 py-3 text-sm font-extrabold uppercase tracking-widest hover:bg-emerald-700 sm:w-auto"
+                  className="w-full sm:w-auto"
                   disabled={createInvoiceMutation.isPending || updateInvoiceMutation.isPending}
                   type="submit"
+                  variant="primary"
                 >
                   {createInvoiceMutation.isPending || updateInvoiceMutation.isPending
                     ? 'Saving...'

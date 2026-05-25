@@ -4,6 +4,8 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
+  ClipboardList,
+  Package2,
   PackageSearch,
   Pencil,
   Plus,
@@ -56,6 +58,7 @@ import {
   updateInventoryItems,
 } from "../../lib/supabase-clinic";
 import type { InventoryItem } from "../../types/domain";
+import { InventoryLogsContent } from "./inventory-logs-page";
 
 const inventorySchema = z.object({
   categoryId: z.string().min(1, "Category is required."),
@@ -128,7 +131,14 @@ function InventoryItemQrInline({ itemName, qrCode }: InventoryItemQrInlineProps)
   );
 }
 
+const INVENTORY_TABS = [
+  { id: "inventory" as const, label: "Inventory", icon: Package2 },
+  { id: "logs" as const, label: "Logs", icon: ClipboardList },
+];
+type InventoryTabId = "inventory" | "logs";
+
 export function InventoryPage() {
+  const [activeTab, setActiveTab] = useState<InventoryTabId>("inventory");
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const database = getDatabase();
@@ -388,7 +398,40 @@ export function InventoryPage() {
   return (
     <>
       <InternalPage>
-        {scannedItem ? (
+        <div className={cn(INTERNAL_SURFACE, "p-2 sm:p-2.5")}>
+          <div
+            aria-label="Inventory sections"
+            className="flex flex-wrap gap-1 border-b border-slate-100/90 px-1 pb-px"
+            role="tablist"
+          >
+            {INVENTORY_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  aria-selected={isActive}
+                  className={cn(
+                    "flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-3 text-[11px] font-semibold uppercase tracking-wide transition",
+                    isActive
+                      ? "bg-[color-mix(in_srgb,var(--color-primary)_12%,white)] text-[var(--color-primary)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--color-primary)_25%,white)]"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-800",
+                  )}
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  role="tab"
+                  type="button"
+                >
+                  <Icon className="size-3.5 shrink-0 opacity-90" strokeWidth={2} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {activeTab === "logs" && <InventoryLogsContent />}
+
+        {activeTab === "inventory" && scannedItem ? (
           <div className="rounded-2xl border border-[color-mix(in_srgb,var(--color-primary)_35%,white)] bg-[color-mix(in_srgb,var(--color-primary)_12%,white)] px-6 py-4 shadow-[0_1px_2px_rgba(15,41,71,0.04)]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -406,6 +449,7 @@ export function InventoryPage() {
           </div>
         ) : null}
 
+        {activeTab === "inventory" && <>
         {lowStockItems.length > 0 ? (
           <div className={INTERNAL_SURFACE}>
             <div className="flex flex-wrap items-center gap-2 border-b border-rose-100/90 bg-gradient-to-r from-rose-50 to-white px-6 py-3.5">
@@ -693,6 +737,7 @@ export function InventoryPage() {
             </div>
           ) : null}
         </div>
+        </>}
       </InternalPage>
 
       {isItemModalOpen ? (

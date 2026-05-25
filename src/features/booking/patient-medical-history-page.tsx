@@ -530,11 +530,11 @@ export function PatientMedicalHistoryPage() {
             {appointmentTimeline.length}
           </p>
         </div>
-        <div className="border border-blue-200 bg-blue-50 px-5 py-4 shadow-sm">
-          <p className="text-[10px] font-extrabold uppercase tracking-widest text-blue-700">
+        <div className="border border-red-200 bg-red-50 px-5 py-4 shadow-sm">
+          <p className="text-[10px] font-extrabold uppercase tracking-widest text-red-700">
             Consultations
           </p>
-          <p className="mt-1 text-3xl font-extrabold text-blue-900">
+          <p className="mt-1 text-3xl font-extrabold text-red-900">
             {totalConsultations}
           </p>
         </div>
@@ -939,14 +939,14 @@ export function PatientMedicalHistoryPage() {
                                 );
                                 if (docList.length === 0) return null;
                                 return (
-                                  <div className="mt-3 border border-blue-100 bg-blue-50 px-4 py-3">
+                                  <div className="mt-3 border border-red-100 bg-red-50 px-4 py-3">
                                     <div className="mb-2 flex items-center gap-1.5">
-                                      <TestTube2 className="size-3.5 text-blue-600" />
-                                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-blue-700">
+                                      <TestTube2 className="size-3.5 text-red-600" />
+                                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-red-700">
                                         Lab Requests
                                       </p>
                                     </div>
-                                    <div className="divide-y divide-blue-100">
+                                    <div className="divide-y divide-red-100">
                                       {docList.map((doc) => (
                                         <div key={doc.id} className="py-2">
                                           <div className="flex items-start justify-between gap-2">
@@ -955,7 +955,7 @@ export function PatientMedicalHistoryPage() {
                                             </p>
                                             <button
                                               type="button"
-                                              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-blue-200 bg-white px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-50 transition-colors"
+                                              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-red-200 bg-white px-2 py-1 text-[10px] font-bold text-red-700 hover:bg-red-50 transition-colors"
                                               onClick={() => buildAndOpenLabRequestDoc(doc)}
                                             >
                                               <Printer className="size-3" /> Print / PDF
@@ -1069,7 +1069,7 @@ export function PatientMedicalHistoryPage() {
                           </span>
                         )}
                         {(hasLab || consultLabDocs.length > 0) && (
-                          <span className="hidden shrink-0 items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-blue-600 sm:flex">
+                          <span className="hidden shrink-0 items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-red-600 sm:flex">
                             <FlaskConical className="size-3" /> Lab
                           </span>
                         )}
@@ -1239,14 +1239,14 @@ export function PatientMedicalHistoryPage() {
 
                           {/* Lab Request Documents */}
                           {consultLabDocs.length > 0 && (
-                            <div className="mt-4 border border-blue-100 bg-blue-50 px-4 py-3">
+                            <div className="mt-4 border border-red-100 bg-red-50 px-4 py-3">
                               <div className="mb-2 flex items-center gap-1.5">
-                                <TestTube2 className="size-3.5 text-blue-600" />
-                                <p className="text-[10px] font-extrabold uppercase tracking-widest text-blue-700">
+                                <TestTube2 className="size-3.5 text-red-600" />
+                                <p className="text-[10px] font-extrabold uppercase tracking-widest text-red-700">
                                   Lab Requests
                                 </p>
                               </div>
-                              <div className="divide-y divide-blue-100">
+                              <div className="divide-y divide-red-100">
                                 {consultLabDocs.map((doc) => (
                                   <div key={doc.id} className="py-2">
                                     <div className="flex items-start justify-between gap-2">
@@ -1255,7 +1255,7 @@ export function PatientMedicalHistoryPage() {
                                       </p>
                                       <button
                                         type="button"
-                                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-blue-200 bg-white px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-50 transition-colors"
+                                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-red-200 bg-white px-2 py-1 text-[10px] font-bold text-red-700 hover:bg-red-50 transition-colors"
                                         onClick={() => buildAndOpenLabRequestDoc(doc)}
                                       >
                                         <Printer className="size-3" /> Print / PDF
