@@ -423,7 +423,13 @@ async function invokeSupabaseFunction<T>(
       error instanceof FunctionsRelayError ||
       error instanceof FunctionsFetchError
     ) {
-      throw new Error(error.message || "Unable to reach the Edge Function.");
+      const msg = error.message || "Unable to reach the Edge Function.";
+      if (msg.includes("Failed to send a request to the Edge Function")) {
+        throw new Error(
+          "Edge Function is missing or unreachable. Please deploy your edge functions by running 'npx supabase functions deploy' in your terminal.",
+        );
+      }
+      throw new Error(msg);
     }
 
     throw error;
@@ -2293,7 +2299,6 @@ export async function updateClinicSettingsLiveOrDemo(
     .maybeSingle()) as { data: { id: string } | null; error: any };
 
   if (fetchError) throw fetchError;
-  if (!existing) throw new Error("Clinic settings row not found in Supabase.");
 
   const payload: Database["public"]["Tables"]["clinic_settings"]["Update"] = {};
   if (input.clinicName !== undefined) payload.clinic_name = input.clinicName;
@@ -2325,6 +2330,37 @@ export async function updateClinicSettingsLiveOrDemo(
   if (input.systemStatusType !== undefined)
     (payload as Record<string, unknown>).system_status_type =
       input.systemStatusType;
+
+  if (!existing) {
+    const insertPayload = {
+      clinic_name: defaultClinicSettings.clinicName,
+      legal_name: defaultClinicSettings.legalName,
+      short_code: defaultClinicSettings.shortCode,
+      address: defaultClinicSettings.address,
+      contact_number: defaultClinicSettings.contactNumber,
+      email: defaultClinicSettings.email,
+      website: defaultClinicSettings.website,
+      primary_color: defaultClinicSettings.primaryColor,
+      accent_color: defaultClinicSettings.accentColor,
+      booking_lead_days: defaultClinicSettings.bookingLeadDays,
+      booking_cancellation_hours: defaultClinicSettings.bookingCancellationHours,
+      appointment_slot_minutes: defaultClinicSettings.appointmentSlotMinutes,
+      system_enabled: defaultClinicSettings.systemEnabled,
+      system_message: defaultClinicSettings.systemMessage,
+      enabled_modules: defaultClinicSettings.enabledModules,
+      operating_hours: defaultClinicSettings.operatingHours,
+      ...payload,
+    };
+    
+    const { data, error } = await client
+      .from("clinic_settings")
+      .insert(insertPayload as never)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+    return mapClinicSettings(data);
+  }
 
   const { data, error } = await client
     .from("clinic_settings")

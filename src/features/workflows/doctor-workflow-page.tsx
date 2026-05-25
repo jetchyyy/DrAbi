@@ -10,6 +10,7 @@ import {
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { Badge } from "../../components/ui/badge";
 import { StatusPill } from "../../components/ui/status-pill";
 import { INTERNAL_SURFACE } from "../../lib/internal-ui";
 import { cn } from "../../lib/utils";
@@ -41,7 +42,7 @@ function workflowBadgeIntent(state: DoctorWorkflowState) {
   return "warning" as const;
 }
 
-type DoctorQueueFilter = "all" | "ready" | "in_consultation" | "blocked" | "overdue";
+type DoctorQueueFilter = "all" | "ready" | "in_consultation" | "blocked" | "overdue" | "teleconsult";
 type DoctorQueueSort = "priority" | "scheduled" | "longest_waiting";
 const DOCTOR_WORKFLOW_PAGE_SIZE = 10;
 
@@ -210,6 +211,7 @@ export function DoctorWorkflowPage() {
         return row.workflowState === "in_consultation";
       }
       if (activeFilter === "blocked") return row.workflowState === "blocked";
+      if (activeFilter === "teleconsult") return row.visitType === "teleconsultation";
       return isRowOverdue(row);
     });
 
@@ -248,6 +250,7 @@ export function DoctorWorkflowPage() {
       in_consultation: rows.filter((row) => row.workflowState === "in_consultation").length,
       blocked: rows.filter((row) => row.workflowState === "blocked").length,
       overdue: rows.filter((row) => isRowOverdue(row)).length,
+      teleconsult: rows.filter((row) => row.visitType === "teleconsultation").length,
     }),
     [rows],
   );
@@ -411,6 +414,7 @@ export function DoctorWorkflowPage() {
               ["in_consultation", "In Consultation"],
               ["blocked", "Blocked"],
               ["overdue", "Overdue"],
+              ["teleconsult", "Teleconsults"],
             ] as const).map(([value, label]) => (
               <button
                 className={cn(
@@ -531,6 +535,14 @@ export function DoctorWorkflowPage() {
                             >
                               {labelFromValue(row.paymentState)}
                             </Badge>
+                            {row.visitType === "teleconsultation" ? (
+                              <Badge
+                                className="rounded-none text-[10px] font-bold uppercase tracking-widest"
+                                intent="neutral"
+                              >
+                                Teleconsult
+                              </Badge>
+                            ) : null}
                           </div>
                         </td>
                         <td className="px-4 py-3">

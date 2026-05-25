@@ -5,6 +5,7 @@ import type {
   Invoice,
   Patient,
   PaymentStatus,
+  VisitType,
 } from "../../types/domain";
 
 export type WorkflowPaymentState = "paid" | "payment_needed" | "no_invoice";
@@ -50,6 +51,7 @@ export interface DoctorWorkflowRow {
   canStartConsultation: boolean;
   blockingReason: string | null;
   reason: string;
+  visitType: VisitType;
 }
 
 interface FrontDeskWorkflowInput {
@@ -282,6 +284,7 @@ export function buildDoctorWorkflowRows(input: DoctorWorkflowInput) {
         patientName: getPatientName(patient),
         paymentState,
         reason: appointment.reason,
+        visitType: appointment.visitType,
         scheduledAt: appointment.scheduledAt,
         workflowState:
           appointment.status === "in_progress"

@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  AlertTriangle,
   ClipboardList,
   ClipboardPlus,
   Pencil,
@@ -204,6 +205,45 @@ export function PatientsPage() {
       height: "",
     },
   });
+
+  const temperature = form.watch("temperature");
+  const bloodPressure = form.watch("bloodPressure");
+  const heartRate = form.watch("heartRate");
+  const o2Sat = form.watch("o2Sat");
+  const respiratoryRate = form.watch("respiratoryRate");
+
+  const vitalsWarnings = useMemo(() => {
+    const warnings: Record<string, string> = {};
+    if (temperature) {
+      const t = parseFloat(temperature);
+      if (t < 36.1) warnings.temperature = "Low temperature (Hypothermia risk)";
+      else if (t > 37.8) warnings.temperature = "High temperature (Fever)";
+    }
+    if (bloodPressure) {
+      const match = bloodPressure.match(/^(\d+)\/(\d+)$/);
+      if (match) {
+        const sys = parseInt(match[1], 10);
+        const dia = parseInt(match[2], 10);
+        if (sys < 90 || dia < 60) warnings.bloodPressure = "Low blood pressure";
+        else if (sys > 140 || dia > 90) warnings.bloodPressure = "High blood pressure";
+      }
+    }
+    if (heartRate) {
+      const hr = parseInt(heartRate, 10);
+      if (hr < 60) warnings.heartRate = "Low heart rate (Bradycardia)";
+      else if (hr > 100) warnings.heartRate = "High heart rate (Tachycardia)";
+    }
+    if (o2Sat) {
+      const o2 = parseInt(o2Sat, 10);
+      if (o2 < 95) warnings.o2Sat = "Low oxygen saturation";
+    }
+    if (respiratoryRate) {
+      const rr = parseInt(respiratoryRate, 10);
+      if (rr < 12) warnings.respiratoryRate = "Low respiratory rate";
+      else if (rr > 20) warnings.respiratoryRate = "High respiratory rate";
+    }
+    return warnings;
+  }, [temperature, bloodPressure, heartRate, o2Sat, respiratoryRate]);
 
   const filteredPatients = useMemo(
     () =>
@@ -935,6 +975,7 @@ export function PatientsPage() {
                           <option value="B-">B-</option>
                           <option value="AB+">AB+</option>
                           <option value="AB-">AB-</option>
+                          <option value="N/A">N/A</option>
                         </select>
                       </FormField>
                       <FormField
@@ -960,22 +1001,38 @@ export function PatientsPage() {
                         error={form.formState.errors.temperature?.message}
                         label="Temperature (°C)"
                       >
-                        <Input
-                          type="number"
-                          step="0.1"
-                          placeholder="e.g., 37.5"
-                          {...form.register("temperature")}
-                        />
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            step="0.1"
+                            placeholder="e.g., 37.5"
+                            {...form.register("temperature")}
+                          />
+                          {vitalsWarnings.temperature && (
+                            <span className="flex items-center gap-1 text-xs font-medium text-amber-600">
+                              <AlertTriangle className="size-3.5" />
+                              {vitalsWarnings.temperature}
+                            </span>
+                          )}
+                        </div>
                       </FormField>
                       <FormField
                         error={form.formState.errors.bloodPressure?.message}
                         label="Blood Pressure (mmHg)"
                       >
-                        <Input
-                          type="text"
-                          placeholder="e.g., 120/80"
-                          {...form.register("bloodPressure")}
-                        />
+                        <div className="space-y-1">
+                          <Input
+                            type="text"
+                            placeholder="e.g., 120/80"
+                            {...form.register("bloodPressure")}
+                          />
+                          {vitalsWarnings.bloodPressure && (
+                            <span className="flex items-center gap-1 text-xs font-medium text-amber-600">
+                              <AlertTriangle className="size-3.5" />
+                              {vitalsWarnings.bloodPressure}
+                            </span>
+                          )}
+                        </div>
                       </FormField>
                     </div>
                     <div className="grid gap-4 lg:grid-cols-2">
@@ -983,23 +1040,39 @@ export function PatientsPage() {
                         error={form.formState.errors.heartRate?.message}
                         label="Heart Rate (bpm)"
                       >
-                        <Input
-                          type="number"
-                          step="1"
-                          placeholder="e.g., 72"
-                          {...form.register("heartRate")}
-                        />
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            step="1"
+                            placeholder="e.g., 72"
+                            {...form.register("heartRate")}
+                          />
+                          {vitalsWarnings.heartRate && (
+                            <span className="flex items-center gap-1 text-xs font-medium text-amber-600">
+                              <AlertTriangle className="size-3.5" />
+                              {vitalsWarnings.heartRate}
+                            </span>
+                          )}
+                        </div>
                       </FormField>
                       <FormField
                         error={form.formState.errors.respiratoryRate?.message}
                         label="Respiratory Rate (breaths/min)"
                       >
-                        <Input
-                          type="number"
-                          step="1"
-                          placeholder="e.g., 16"
-                          {...form.register("respiratoryRate")}
-                        />
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            step="1"
+                            placeholder="e.g., 16"
+                            {...form.register("respiratoryRate")}
+                          />
+                          {vitalsWarnings.respiratoryRate && (
+                            <span className="flex items-center gap-1 text-xs font-medium text-amber-600">
+                              <AlertTriangle className="size-3.5" />
+                              {vitalsWarnings.respiratoryRate}
+                            </span>
+                          )}
+                        </div>
                       </FormField>
                     </div>
                     <div className="grid gap-4 lg:grid-cols-3">
@@ -1007,12 +1080,20 @@ export function PatientsPage() {
                         error={form.formState.errors.o2Sat?.message}
                         label="O2sat (%)"
                       >
-                        <Input
-                          type="number"
-                          step="1"
-                          placeholder="e.g., 98"
-                          {...form.register("o2Sat")}
-                        />
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            step="1"
+                            placeholder="e.g., 98"
+                            {...form.register("o2Sat")}
+                          />
+                          {vitalsWarnings.o2Sat && (
+                            <span className="flex items-center gap-1 text-xs font-medium text-amber-600">
+                              <AlertTriangle className="size-3.5" />
+                              {vitalsWarnings.o2Sat}
+                            </span>
+                          )}
+                        </div>
                       </FormField>
                       <FormField
                         error={form.formState.errors.weight?.message}
