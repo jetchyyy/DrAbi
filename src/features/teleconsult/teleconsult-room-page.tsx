@@ -481,48 +481,25 @@ export function TeleconsultRoomPage() {
   }
 
   return (
-    <div className={`grid gap-6 ${
-      isDoctor
-        ? 'xl:grid-cols-[280px_1fr_420px]'
-        : 'xl:grid-cols-[280px_1fr]'
-    }`}>
-      <Card className="h-fit">
-        <Badge intent="info">Secure teleconsult</Badge>
-        <CardTitle className="mt-4 text-2xl">{appointment.serviceName}</CardTitle>
-        <p className="mt-3 text-sm text-slate-500">{formatDateTimeLabel(appointment.scheduledAt)}</p>
-        <div className="mt-5 space-y-3 text-sm text-slate-600">
-          <p>
-            <span className="font-semibold text-slate-950">Doctor:</span> {appointment.doctorName}
-          </p>
-          <p>
-            <span className="font-semibold text-slate-950">Patient:</span> {appointment.patientName}
-          </p>
-          <p>
-            <span className="font-semibold text-slate-950">Platform:</span> {teleconsultMode === 'custom_webrtc' ? 'In-house Secure Call' : appointment.teleconsultationPlatform}
-          </p>
-          <p>
-            <span className="font-semibold text-slate-950">Notes:</span> {appointment.teleconsultationAccessInstructions}
-          </p>
-        </div>
-        <Link className="mt-5 inline-flex text-sm font-semibold text-[var(--color-primary)]" to={backPath}>
-          Back to appointments
-        </Link>
-      </Card>
+    <div className={`grid gap-5 ${isDoctor ? 'xl:grid-cols-[1fr_460px]' : 'xl:grid-cols-[1fr_360px]'}`}>
 
+      {/* ── VIDEO PANEL ── */}
       <Card className="overflow-hidden p-0">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-slate-950 p-3 text-white">
-              <Video className="size-5" />
+            <div
+              className="rounded-xl p-2.5"
+              style={{
+                background: 'color-mix(in srgb, var(--color-primary) 14%, white)',
+                color: 'var(--color-primary)',
+              }}
+            >
+              <Video className="size-4" />
             </div>
             <div>
-              <p className="font-semibold text-slate-950">
-                {teleconsultMode === 'custom_webrtc' ? 'In-house Secure Call' : 'In-app teleconsult room'}
-              </p>
-              <p className="text-sm text-slate-500">
-                {teleconsultMode === 'custom_webrtc'
-                  ? 'Private, peer-to-peer encrypted connection.'
-                  : 'Only authenticated participants assigned to this appointment can enter.'}
+              <p className="font-semibold text-slate-950">Video Consultation</p>
+              <p className="text-xs text-slate-400">
+                {appointment.serviceName} &bull; {formatDateTimeLabel(appointment.scheduledAt)}
               </p>
             </div>
           </div>
@@ -532,158 +509,137 @@ export function TeleconsultRoomPage() {
         {/* ── JITSI VIEW ── */}
         {teleconsultMode === 'jitsi' && (
           scriptState === 'error' ? (
-            <div className="p-6 text-sm text-rose-600">Unable to load the video component. Please refresh and try again.</div>
+            <div className="p-6 text-sm text-rose-600">Unable to load the video component — please refresh and try again</div>
           ) : (
-            <div className="h-[72vh] min-h-[560px] bg-slate-950">
+            <div className="h-[70vh] min-h-[520px] bg-slate-100">
               <div className="h-full w-full" ref={containerRef} />
             </div>
           )
         )}
 
-        {/* ── CUSTOM WEBRTC VIEW ── */}
+        {/* ── WEBRTC VIEW ── */}
         {teleconsultMode === 'custom_webrtc' && (
-          <div className="h-[72vh] min-h-[560px] bg-slate-950 relative flex flex-col">
+          <div className="relative flex flex-col" style={{ height: '70vh', minHeight: '520px' }}>
+            {/* Idle / preview */}
             {callState === 'idle' && (
-              <div className="flex-1 flex flex-col items-center justify-center p-6 text-white text-center">
-                <div className="relative w-full max-w-sm aspect-video bg-slate-900 border border-slate-800 rounded-lg overflow-hidden mb-6 shadow-2xl flex items-center justify-center">
+              <div className="flex flex-1 flex-col items-center justify-center bg-white p-6 text-center">
+                <div className="relative mb-5 aspect-video w-full max-w-sm overflow-hidden rounded-xl border border-slate-200 bg-slate-900 shadow-lg">
                   {localStream && localVideoActive ? (
-                    <VideoStream stream={localStream} muted className="w-full h-full object-cover" />
+                    <VideoStream stream={localStream} muted className="h-full w-full object-cover" />
                   ) : (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
-                      <VideoOff className="size-12 mb-2" />
+                      <VideoOff className="mb-2 size-10" />
                       <p className="text-xs">Camera is off</p>
                     </div>
                   )}
-                  <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex items-center gap-2">
+                  <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2">
                     <button
                       onClick={toggleAudio}
-                      className={`p-2 rounded-full transition-colors shadow-md ${
-                        localAudioActive ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-rose-600 hover:bg-rose-700 text-white'
-                      }`}
-                      title={localAudioActive ? 'Mute Mic' : 'Unmute Mic'}
+                      className={`rounded-full p-2 shadow-md transition-colors ${localAudioActive ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-rose-600 text-white hover:bg-rose-700'}`}
                     >
                       {localAudioActive ? <Mic className="size-4" /> : <MicOff className="size-4" />}
                     </button>
                     <button
                       onClick={toggleVideo}
-                      className={`p-2 rounded-full transition-colors shadow-md ${
-                        localVideoActive ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-rose-600 hover:bg-rose-700 text-white'
-                      }`}
-                      title={localVideoActive ? 'Turn Camera Off' : 'Turn Camera On'}
+                      className={`rounded-full p-2 shadow-md transition-colors ${localVideoActive ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-rose-600 text-white hover:bg-rose-700'}`}
                     >
                       {localVideoActive ? <Video className="size-4" /> : <VideoOff className="size-4" />}
                     </button>
                   </div>
                 </div>
 
-                <h3 className="text-lg font-bold mb-1">Ready to join your consultation?</h3>
-                <p className="text-xs text-slate-400 max-w-xs mb-6">
-                  Check your camera and microphone preview before starting the secure in-house call.
-                </p>
+                <h3 className="text-base font-bold text-slate-900">Ready to join?</h3>
+                <p className="mt-1 max-w-xs text-xs text-slate-500">Check your camera and mic before joining the call</p>
 
                 <button
                   onClick={joinCall}
-                  className="active:scale-95 text-white px-6 py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-150 shadow-lg flex items-center gap-2 hover:brightness-95"
+                  className="mt-5 flex items-center gap-2 rounded-lg px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all active:scale-95 hover:brightness-95"
                   style={{
                     backgroundColor: 'var(--color-primary)',
                     boxShadow: '0 8px 20px -6px color-mix(in srgb, var(--color-primary) 50%, transparent)',
                   }}
                 >
-                  <Video className="size-4 animate-pulse" />
-                  Join Secure Call
+                  <Video className="size-4" />
+                  Join Call
                 </button>
               </div>
             )}
 
+            {/* Connected */}
             {callState === 'connected' && (
-              <div className="flex-1 flex flex-col h-full relative overflow-hidden">
-                {/* Responsive Grid */}
-                <div className="flex-1 p-4 grid gap-4 overflow-y-auto items-center justify-center grid-cols-1 md:grid-cols-2">
-                  {/* Local feed */}
-                  <div className="relative aspect-video w-full bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-md">
+              <div className="relative flex h-full flex-1 flex-col overflow-hidden bg-slate-100">
+                <div className="flex-1 grid gap-4 overflow-y-auto p-4 items-center justify-center grid-cols-1 md:grid-cols-2">
+                  <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-900 shadow-md">
                     {localStream && localVideoActive ? (
-                      <VideoStream stream={localStream} muted className="w-full h-full object-cover" />
+                      <VideoStream stream={localStream} muted className="h-full w-full object-cover" />
                     ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600">
-                        <VideoOff className="size-10 mb-2" />
-                        <p className="text-xs">Your camera is off</p>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
+                        <VideoOff className="mb-2 size-10" />
+                        <p className="text-xs">Camera off</p>
                       </div>
                     )}
-                    <div className="absolute bottom-2 left-2 bg-slate-950/70 backdrop-blur-md px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1.5 border border-slate-800">
+                    <div className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-md bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-md">
                       <span>{profile.fullName} (You)</span>
-                      {!localAudioActive && <MicOff className="size-3 text-rose-500" />}
+                      {!localAudioActive && <MicOff className="size-3 text-rose-400" />}
                     </div>
                   </div>
-
-                  {/* Remote feeds */}
                   {Object.values(peers).map((peer) => (
-                    <div key={peer.id} className="relative aspect-video w-full bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-md">
+                    <div key={peer.id} className="relative aspect-video w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-900 shadow-md">
                       {peer.stream ? (
-                        <VideoStream stream={peer.stream} className="w-full h-full object-cover" />
+                        <VideoStream stream={peer.stream} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600">
-                          <LoaderCircle className="size-8 animate-spin mb-2" />
-                          <p className="text-xs font-semibold">Connecting to {peer.name}...</p>
-                          <p className="text-[10px] text-slate-500 capitalize">{peer.role}</p>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
+                          <LoaderCircle className="mb-2 size-8 animate-spin" />
+                          <p className="text-xs font-semibold">Connecting to {peer.name}</p>
                         </div>
                       )}
-                      <div className="absolute bottom-2 left-2 bg-slate-950/70 backdrop-blur-md px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1.5 border border-slate-800">
-                        <span className="capitalize">{peer.name} ({peer.role})</span>
+                      <div className="absolute bottom-2 left-2 rounded-md bg-black/60 px-2 py-0.5 text-[11px] font-semibold capitalize text-white backdrop-blur-md">
+                        {peer.name}
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Floating control bar */}
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-3 bg-slate-900/95 backdrop-blur-md border border-slate-800 px-6 py-2.5 rounded-full shadow-2xl z-20">
+                <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm backdrop-blur-md">
+                  <Users className="size-3" style={{ color: 'var(--color-primary)' }} />
+                  <span>{Object.keys(peers).length + 1} in call</span>
+                </div>
+
+                <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-slate-200 bg-white/95 px-6 py-2.5 shadow-xl backdrop-blur-md">
                   <button
                     onClick={toggleAudio}
-                    className={`p-2.5 rounded-full transition-colors ${
-                      localAudioActive ? 'bg-slate-850 hover:bg-slate-800 text-white' : 'bg-rose-600 hover:bg-rose-700 text-white'
-                    }`}
-                    title={localAudioActive ? 'Mute Mic' : 'Unmute Mic'}
+                    className={`rounded-full p-2.5 transition-colors ${localAudioActive ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-rose-600 text-white hover:bg-rose-700'}`}
                   >
                     {localAudioActive ? <Mic className="size-4" /> : <MicOff className="size-4" />}
                   </button>
                   <button
                     onClick={toggleVideo}
-                    className={`p-2.5 rounded-full transition-colors ${
-                      localVideoActive ? 'bg-slate-850 hover:bg-slate-800 text-white' : 'bg-rose-600 hover:bg-rose-700 text-white'
-                    }`}
-                    title={localVideoActive ? 'Turn Camera Off' : 'Turn Camera On'}
+                    className={`rounded-full p-2.5 transition-colors ${localVideoActive ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-rose-600 text-white hover:bg-rose-700'}`}
                   >
                     {localVideoActive ? <Video className="size-4" /> : <VideoOff className="size-4" />}
                   </button>
-
-                  <div className="w-px h-5 bg-slate-800 mx-1" />
-
+                  <div className="mx-1 h-5 w-px bg-slate-200" />
                   <button
                     onClick={leaveCall}
-                    className="p-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-full transition-all shadow-md"
-                    title="End Call"
+                    className="rounded-full bg-rose-600 p-2.5 text-white shadow-md transition-all hover:bg-rose-700 active:scale-95"
                   >
                     <PhoneOff className="size-4" />
                   </button>
                 </div>
-
-                {/* Users Count Status */}
-                <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md border border-slate-800 px-3 py-1 rounded-lg flex items-center gap-2 text-xs font-semibold text-slate-300">
-                  <Users className="size-3" style={{ color: 'var(--color-primary)' }} />
-                  <span>{Object.keys(peers).length + 1} online</span>
-                </div>
               </div>
             )}
 
+            {/* Error */}
             {callState === 'error' && (
-              <div className="flex-1 flex flex-col items-center justify-center p-6 text-white text-center">
-                <AlertCircle className="size-12 text-rose-500 mb-4" />
-                <h3 className="text-lg font-bold mb-1">Camera or Microphone Access Required</h3>
-                <p className="text-xs text-slate-400 max-w-xs mb-6">
-                  Please enable camera and microphone permissions in your browser address bar and refresh the page to start the call.
+              <div className="flex flex-1 flex-col items-center justify-center bg-white p-6 text-center">
+                <AlertCircle className="mb-4 size-12 text-rose-500" />
+                <h3 className="text-base font-bold text-slate-900">Camera access required</h3>
+                <p className="mt-1 max-w-xs text-xs text-slate-500">
+                  Allow camera and microphone access in your browser then try again
                 </p>
                 <button
                   onClick={startPreview}
-                  className="bg-slate-800 hover:bg-slate-700 text-white px-5 py-2 rounded-lg font-semibold text-xs"
+                  className="mt-5 rounded-lg border border-slate-200 bg-slate-50 px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
                 >
                   Try Again
                 </button>
@@ -693,12 +649,40 @@ export function TeleconsultRoomPage() {
         )}
       </Card>
 
-      {/* ── DOCTOR CLINICAL PANEL ── */}
-      {isDoctor && (
-        <div className="h-fit">
+      {/* ── RIGHT COLUMN: appointment info + clinical panel ── */}
+      <div className="flex flex-col gap-4">
+        {/* Compact appointment info */}
+        <Card className="h-fit">
+          <div className="mb-3 flex items-center justify-between">
+            <Badge intent="info">Teleconsultation</Badge>
+            <Link className="text-xs font-semibold text-slate-400 hover:text-[var(--color-primary)]" to={backPath}>
+              ← Back
+            </Link>
+          </div>
+          <p className="text-base font-bold text-slate-950">{appointment.serviceName}</p>
+          <p className="mt-0.5 text-xs text-slate-400">{formatDateTimeLabel(appointment.scheduledAt)}</p>
+          <div className="mt-4 space-y-2.5 border-t border-slate-100 pt-4 text-sm">
+            <div className="flex items-baseline gap-2">
+              <span className="w-16 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Doctor</span>
+              <span className="font-medium text-slate-800">{appointment.doctorName}</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="w-16 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Patient</span>
+              <span className="font-medium text-slate-800">{appointment.patientName}</span>
+            </div>
+            {appointment.teleconsultationAccessInstructions && (
+              <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5 text-xs text-slate-500">
+                {appointment.teleconsultationAccessInstructions}
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Clinical panel — doctor only */}
+        {isDoctor && (
           <TeleconsultDoctorPanel appointment={appointment} />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

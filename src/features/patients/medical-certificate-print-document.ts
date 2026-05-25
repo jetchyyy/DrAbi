@@ -532,20 +532,20 @@ export function buildMedicalCertificatePrintDocument(input: MedicalCertificatePr
     <p class="viewer-note">Tip: click Save as PDF then choose <strong>Save as PDF</strong> in your browser print destination.</p>
 
     <main class="page">
-      <img class="watermark" src="/cprmedlogotansparent.png" alt="" aria-hidden="true" />
+      <img class="watermark" src="/src/assets/medika_logo.png" alt="" aria-hidden="true" />
 
       <!-- ── Header ── -->
       <header class="header">
         <div class="header-logo-col">
-          <img class="logo" src="/cprmedlogotansparent.png" alt="CPRMED Logo" />
+          <img class="logo" src="/src/assets/medika_logo.png" alt="Medika Logo" />
         </div>
 
         <div class="header-center-col">
-          <p class="clinic-name"><span class="name-cpr">CPR</span><span class="name-med">MED</span></p>
-          <p class="clinic-subtitle">CPR Medical Clinic &amp; Laboratory</p>
-          <p class="clinic-address">${escapeHtml(input.clinicAddress || 'N.Bacalso Ave., Bulacao Pardo, Cebu City')}</p>
-          <p class="clinic-contact">${escapeHtml(input.clinicContactNumber || '09623093577')}</p>
-          <p class="specialties-bar">General Surgery, Internal Medicine, OB-Gyne, Pediatrics, Family Medicine, Aesthetic Medicine, Addiction Medicine, Anesthesiologist, Cardiologist, Ophthalmologist, ENT, Diabetologist, Nephrologist.</p>
+          <p class="clinic-name">Medika</p>
+          <p class="clinic-subtitle">Medika Services</p>
+          <p class="clinic-address">${escapeHtml(input.clinicAddress || '4F JJACCIS Building, Acacia Avenue, Madrigal Business Park, Alabang, Muntinlupa City')}</p>
+          <p class="clinic-contact">${escapeHtml(input.clinicContactNumber || '+63 917 107 0863')}</p>
+          <p class="specialties-bar">Air Medical Evacuation, Medical Repatriation, International Health Services, Domestic Medical Transport</p>
         </div>
 
         <div class="header-hours-col hours">
@@ -591,7 +591,7 @@ export function buildMedicalCertificatePrintDocument(input: MedicalCertificatePr
           <span class="fill-inline md">${monthStr}</span>,
           year
           <span class="fill-inline sm">${yearStr}</span>
-          at CPR Medical Clinic &amp; Laboratory, N.Bacalso Ave., Bulacao Pardo Cebu City, Philippines.
+          at Medika Services, 4F JJACCIS Building, Acacia Avenue, Madrigal Business Park, Alabang, Muntinlupa City, Philippines
         </div>
 
         <div class="request-section">

@@ -77,10 +77,10 @@ const templateRows: DebugTemplateInfo[] = [
 ];
 
 const defaultDebugValues: DocumentDebugValues = {
-  clinicName: 'ODC CPRMED Clinic',
-  clinicAddress: 'Ground Floor, Maharlika Highway, Cabanatuan City',
-  clinicContactNumber: '0917-123-4567',
-  clinicEmail: 'clinic@cprmed.local',
+  clinicName: 'Medika Services',
+  clinicAddress: '4F JJACCIS Building, Acacia Avenue, Madrigal Business Park, Alabang, Muntinlupa City',
+  clinicContactNumber: '+63 917 107 0863',
+  clinicEmail: 'assist@medikaservices.com',
   doctorName: 'Miguel S. Reyes',
   doctorSpecialty: 'Internal Medicine',
   doctorLicenseNumber: 'PRC-1234567',

@@ -573,10 +573,22 @@ export function FrontDeskWorkflowPage() {
     <div className="space-y-5">
       <section className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
         <div className="flex flex-col gap-5 px-6 py-5 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Role Workflow</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Front Desk Workflow</h1>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">Intake, payment clearance, vitals check, and doctor handoff in one queue.</p>
+          <div className="flex items-start gap-4">
+            <div
+              className="mt-0.5 flex shrink-0 items-center justify-center rounded-xl p-2.5 ring-1"
+              style={{
+                background: 'color-mix(in srgb, var(--color-primary) 14%, white)',
+                color: 'var(--color-primary)',
+                ringColor: 'color-mix(in srgb, var(--color-primary) 30%, white)',
+              }}
+            >
+              <Activity className="size-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Role Workflow</p>
+              <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Front Desk Workflow</h1>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">Intake, payment clearance, vitals check, and doctor handoff in one queue</p>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <div className="relative" ref={patientSearchRef}>

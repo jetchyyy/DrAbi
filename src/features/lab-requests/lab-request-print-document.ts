@@ -60,14 +60,14 @@ export function buildLabRequestPrintDocument(input: LabRequestPrintDocumentInput
   const headerHtml = `
       <section class="header">
         <div class="header-logo-col">
-          <img class="logo" src="/cprmedlogotansparent.png" alt="Clinic logo" />
+          <img class="logo" src="/src/assets/medika_logo.png" alt="Medika logo" />
         </div>
         <div class="header-center-col clinic-center">
-          <h1 class="name"><span class="name-cpr">CPR</span><span class="name-med">MED</span></h1>
-          <p class="subtitle">CPR Medical Clinic &amp; Laboratory</p>
+          <h1 class="name">Medika</h1>
+          <p class="subtitle">Medika Services</p>
           <p class="address">${escapeHtml(input.clinicAddress || 'Clinic address')}</p>
           <p class="contact">${escapeHtml(input.clinicContactNumber || 'Not provided')}</p>
-          <p class="specialties-bar">General Surgery, Internal Medicine, OB-Gyne, Pediatrics, Family Medicine, Aesthetic Medicine, Addiction Medicine, Anesthesiologist, Cardiologist, Ophthalmologist, ENT, Diabetologist, Nephrologist.</p>
+          <p class="specialties-bar">Air Medical Evacuation, Medical Repatriation, International Health Services, Domestic Medical Transport</p>
         </div>
         <div class="header-hours-col hours">
           <p class="label">Clinic Hours:</p>

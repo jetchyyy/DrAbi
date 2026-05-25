@@ -1,6 +1,6 @@
 import type { WalkInUniqueLoginProfile } from "../../lib/supabase-clinic";
 
-const WALK_IN_UNIQUE_SESSION_KEY = "cprmed-walk-in-unique-session-v1";
+const WALK_IN_UNIQUE_SESSION_KEY = "medika-walk-in-unique-session-v1";
 
 export interface WalkInUniqueSessionPayload {
   uniqueLoginId: string;

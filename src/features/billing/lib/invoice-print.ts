@@ -50,7 +50,7 @@ export function buildInvoicePrintDocument(input: {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CPRMed Billing Invoice – ${input.invoice.invoiceNumber}</title>
+  <title>Medika Billing Invoice – ${input.invoice.invoiceNumber}</title>
   <style>
     :root { color-scheme: light; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -431,7 +431,7 @@ export function buildInvoicePrintDocument(input: {
   }
 
   <p class="footnote">
-    This invoice is generated from the CPRMed system and reflects the billing summary and payment status saved in the clinic database.
+    This invoice is generated from the Medika system and reflects the billing summary and payment status saved in the clinic database
   </p>
 
   <!-- ═══ SIGNATURE STRIP (sits on green wave) ═══ -->

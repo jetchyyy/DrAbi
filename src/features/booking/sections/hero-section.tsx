@@ -167,7 +167,7 @@ export function HeroSection() {
                   <div className="flex min-w-0 items-start gap-2.5 rounded-xl border border-slate-200/60 bg-white/90 px-2 py-2 backdrop-blur-sm sm:gap-3 sm:px-2.5 sm:py-2.5">
                     <div className="shrink-0">
                       <img
-                        alt="CPR Medical Clinic and Laboratory building exterior."
+                        alt="Medika Services building exterior"
                         className="size-[6.25rem] rounded-lg border border-slate-200/70 object-cover shadow-sm sm:size-[7.25rem]"
                         decoding="async"
                         src="/cprclinic.png"

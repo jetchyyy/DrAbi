@@ -46,7 +46,7 @@ import { useAuth } from "../auth/auth-context";
 import { LabResultsDisplay } from "../consultation/components/lab-results-display";
 import { extractInventoryItemQrCode } from "../inventory/inventory-qr";
 import { DocumentStatusModal } from "./components/document-status-modal";
-import { PatientQrCard } from "./components/patient-qr-card";
+import { buildPatientQrLookupUrl } from "./patient-qr";
 import {
   useCreateMedicalCertificate,
   useCreatePrescription,
@@ -729,6 +729,7 @@ export function PatientDetailPage() {
     rowIndex?: number;
   }>(null);
   const inventoryLookupHideTimerRef = useRef<number | null>(null);
+  const [patientQrSvg, setPatientQrSvg] = useState('');
 
   const getGenericInventorySuggestions = useCallback(
     (query: string) => {
@@ -869,6 +870,20 @@ export function PatientDetailPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!patient?.qrCode) return;
+    let active = true;
+    void QRCode.toString(buildPatientQrLookupUrl(patient.qrCode), {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      type: 'svg',
+      width: 160,
+    }).then((svg: string) => {
+      if (active) setPatientQrSvg(svg);
+    });
+    return () => { active = false; };
+  }, [patient?.qrCode]);
 
   const handleSelectInventorySuggestion = (input: {
     scope: "draft" | "edit";
@@ -2623,45 +2638,63 @@ export function PatientDetailPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr] xl:items-start">
-        <div className="space-y-4">
-          <Card className="border-slate-200/80 bg-white shadow-md">
-            <div className="flex flex-wrap items-start gap-5 lg:flex-nowrap lg:justify-between">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-primary)] text-lg font-bold text-white shadow-md ring-4 ring-white">
-                {patient.firstName[0]}
-                {patient.lastName[0]}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
-                  Patient chart
-                </p>
-                <CardTitle className="mt-1 text-2xl leading-tight sm:text-3xl">
-                  {patient.firstName} {patient.lastName}
-                </CardTitle>
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
-                  <span>{patient.email}</span>
-                  <span className="text-slate-300">|</span>
-                  <span>{patient.mobileNumber}</span>
-                </div>
-                <p className="mt-1 text-sm text-slate-500">
-                  QR:{" "}
-                  <span className="font-mono font-semibold text-slate-700">
-                    {patient.qrCode}
-                  </span>
-                </p>
-                {patient.uniqueLoginId ? (
-                  <p className="mt-1 text-sm text-slate-500">
-                    Walk-In Unique ID:{" "}
-                    <span className="font-mono font-semibold text-slate-700">
-                      {patient.uniqueLoginId}
-                    </span>
-                  </p>
+      {/* Patient header */}
+      <Card className="border-slate-200/80 bg-white shadow-md">
+        <div className="flex flex-wrap items-start gap-6 lg:flex-nowrap">
+          {/* Left: identity */}
+          <div className="flex min-w-0 flex-1 items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-primary)] text-lg font-bold text-white shadow-md ring-4 ring-white">
+              {patient.firstName[0]}{patient.lastName[0]}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Patient chart</p>
+              <CardTitle className="mt-1 text-2xl leading-tight sm:text-3xl">
+                {patient.firstName} {patient.lastName}
+              </CardTitle>
+              {/* Demographic line */}
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 text-sm text-slate-500">
+                {patient.birthDate ? (() => {
+                  const today = new Date();
+                  const birth = new Date(patient.birthDate);
+                  const age = today.getFullYear() - birth.getFullYear() - (today < new Date(birth.setFullYear(today.getFullYear())) ? 1 : 0);
+                  return <span>{age} yrs old</span>;
+                })() : null}
+                {patient.birthDate && patient.sex ? <span className="text-slate-300">·</span> : null}
+                {patient.sex ? <span className="capitalize">{patient.sex}</span> : null}
+                {patient.birthDate ? (
+                  <>
+                    <span className="text-slate-300">·</span>
+                    <span>Born {formatDateLabel(patient.birthDate)}</span>
+                  </>
                 ) : null}
               </div>
-              <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
+              {/* Contact line */}
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-slate-400">
+                {patient.email ? <span>{patient.email}</span> : null}
+                {patient.email && patient.mobileNumber ? <span className="text-slate-200">·</span> : null}
+                {patient.mobileNumber ? <span>{patient.mobileNumber}</span> : null}
+              </div>
+              {/* Clinical context badges */}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                  <span className="size-1.5 rounded-full bg-blue-400" />
+                  Blood {patient.bloodType ?? "type pending"}
+                </span>
+                <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
+                  patient.allergies && patient.allergies.toLowerCase() !== 'none' && patient.allergies.toLowerCase() !== 'none reported'
+                    ? 'border-amber-200 bg-amber-50 text-amber-700'
+                    : 'border-slate-200 bg-slate-50 text-slate-500'
+                }`}>
+                  {patient.allergies && patient.allergies.toLowerCase() !== 'none' && patient.allergies.toLowerCase() !== 'none reported'
+                    ? `Allergic: ${patient.allergies}`
+                    : 'No known allergies'}
+                </span>
+              </div>
+              {/* Action buttons */}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
                 {canClinicalActions ? (
                   <Link
-                    className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-[var(--color-primary)] px-4 text-xs font-bold uppercase tracking-widest text-white shadow-sm transition hover:brightness-95 active:scale-95"
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] px-5 text-xs font-bold uppercase tracking-widest text-white shadow-sm transition hover:brightness-95 active:scale-95"
                     to={`/app/consultation/${patient.id}`}
                   >
                     Start Consultation
@@ -2669,68 +2702,74 @@ export function PatientDetailPage() {
                 ) : null}
                 <button
                   onClick={() => setShowVitalsModal(true)}
-                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-red-600 px-4 text-xs font-bold uppercase tracking-widest text-white shadow-sm transition hover:bg-red-700 active:scale-95"
+                  type="button"
+                  className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 text-xs font-bold uppercase tracking-widest text-rose-600 transition hover:bg-rose-100 active:scale-95"
                 >
-                  <Activity className="size-4" />
+                  <Activity className="size-3.5" />
                   Record Vitals
                 </button>
-                <Badge>{patient.bloodType || "Blood type pending"}</Badge>
-                <Badge intent="warning">{patient.allergies}</Badge>
               </div>
             </div>
-          </Card>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Card className="border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
-                  <FileText className="size-4" style={{color:'var(--color-primary)'}} />
+          </div>
+
+          {/* Right: QR code */}
+          <div className="shrink-0 self-start">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Scan to open chart</p>
+            <div className="flex justify-center rounded-2xl border border-slate-100 bg-slate-50 p-3">
+              {patientQrSvg ? (
+                <div
+                  aria-label={`QR code for ${patient.firstName} ${patient.lastName}`}
+                  className="size-[140px] overflow-hidden rounded-xl bg-white p-1.5 shadow-sm [&_svg]:block [&_svg]:h-full [&_svg]:w-full"
+                  dangerouslySetInnerHTML={{ __html: patientQrSvg }}
+                />
+              ) : (
+                <div className="flex size-[140px] items-center justify-center rounded-xl bg-white text-xs text-slate-400">
+                  Generating...
                 </div>
-                <CardTitle className="text-base">Consultations</CardTitle>
-              </div>
-              <p className="mt-3 text-3xl font-bold leading-none text-slate-900">
-                {consultations.length}
-              </p>
-            </Card>
-            <Card className="border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
-                  <Pill className="size-4" style={{color:'var(--color-primary)'}} />
-                </div>
-                <CardTitle className="text-base">Prescriptions</CardTitle>
-              </div>
-              <p className="mt-3 text-3xl font-bold leading-none text-slate-900">
-                {prescriptions.length}
-              </p>
-            </Card>
-            <Card className="border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
-                  <QrCode className="size-4" style={{color:'var(--color-primary)'}} />
-                </div>
-                <CardTitle className="text-base">Items used</CardTitle>
-              </div>
-              <p className="mt-3 text-3xl font-bold leading-none text-slate-900">
-                {inventoryUsageLogs.length}
-              </p>
-            </Card>
-            <Card className="border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
-                  <TestTubeDiagonal className="size-4" style={{color:'var(--color-primary)'}} />
-                </div>
-                <CardTitle className="text-base">Lab orders</CardTitle>
-              </div>
-              <p className="mt-3 text-3xl font-bold leading-none text-slate-900">
-                {labOrders.length}
-              </p>
-            </Card>
+              )}
+            </div>
           </div>
         </div>
+      </Card>
 
-        <PatientQrCard
-          patientName={`${patient.firstName} ${patient.lastName}`}
-          qrCode={patient.qrCode}
-        />
+      {/* Summary stats */}
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+        <Card className="border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+              <FileText className="size-4" style={{color:'var(--color-primary)'}} />
+            </div>
+            <p className="text-sm font-semibold text-slate-600">Consultations</p>
+          </div>
+          <p className="mt-3 text-3xl font-bold leading-none text-slate-900">{consultations.length}</p>
+        </Card>
+        <Card className="border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+              <Pill className="size-4" style={{color:'var(--color-primary)'}} />
+            </div>
+            <p className="text-sm font-semibold text-slate-600">Prescriptions</p>
+          </div>
+          <p className="mt-3 text-3xl font-bold leading-none text-slate-900">{prescriptions.length}</p>
+        </Card>
+        <Card className="border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+              <FlaskConical className="size-4" style={{color:'var(--color-primary)'}} />
+            </div>
+            <p className="text-sm font-semibold text-slate-600">Supplies used</p>
+          </div>
+          <p className="mt-3 text-3xl font-bold leading-none text-slate-900">{inventoryUsageLogs.length}</p>
+        </Card>
+        <Card className="border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-primary) 14%, white)'}}>
+              <TestTubeDiagonal className="size-4" style={{color:'var(--color-primary)'}} />
+            </div>
+            <p className="text-sm font-semibold text-slate-600">Lab tests</p>
+          </div>
+          <p className="mt-3 text-3xl font-bold leading-none text-slate-900">{labOrders.length}</p>
+        </Card>
       </div>
 
       <div className="mt-6 flex overflow-x-auto border-b border-slate-200 bg-white/70 px-1 backdrop-blur-sm supports-[backdrop-filter]:bg-white/55">
@@ -2895,8 +2934,8 @@ export function PatientDetailPage() {
                           }
                         >
                           {consultationAppointmentIds.has(visit.id)
-                            ? "SOAP saved"
-                            : "SOAP pending"}
+                            ? "Documented"
+                            : "Awaiting notes"}
                         </Badge>
                       </div>
                       <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
@@ -2917,12 +2956,12 @@ export function PatientDetailPage() {
       {activeTab === "consultations" && (
         <div className="mt-6 min-w-0">
           <Card>
-            <CardTitle>SOAP notes</CardTitle>
+            <CardTitle>Consultation notes</CardTitle>
             <div className="mt-5 space-y-4">
               {consultationTimeline.length === 0 ? (
                 <div className="flex flex-col items-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 py-10 text-center">
                   <p className="text-sm font-semibold text-slate-500">
-                    No SOAP notes yet
+                    No consultation notes yet
                   </p>
                   <p className="mt-1 text-xs text-slate-400">
                     Consultation notes will appear here once a session is
@@ -2982,7 +3021,7 @@ export function PatientDetailPage() {
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
                             <Badge intent="info">
-                              {isExpanded ? "Expanded" : "SOAP completed"}
+                              {isExpanded ? "Expanded" : "Documented"}
                             </Badge>
                             <span
                               className={`rounded-full p-1.5 transition-colors ${
@@ -3376,7 +3415,7 @@ export function PatientDetailPage() {
 
                             <div>
                               <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                                SOAP Breakdown
+                                Clinical Notes
                               </p>
                               <div className="mt-2 grid gap-3 md:grid-cols-2">
                                 <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">

@@ -318,11 +318,11 @@ export function buildBillingReceiptPrintDocument(
   </head>
   <body>
     <main class="page">
-      <img class="watermark" src="/cprmedlogotansparent.png" alt="" aria-hidden="true" />
-      <section class="receipt" aria-label="CPRMed billing receipt">
+      <img class="watermark" src="/src/assets/medika_logo.png" alt="" aria-hidden="true" />
+      <section class="receipt" aria-label="Medika billing receipt">
         <header class="header">
-          <img class="logo" src="/cprmedlogotansparent.png" alt="CPRMed Center for Prime Response" />
-          <p class="clinic-subtitle">Center for Prime Response</p>
+          <img class="logo" src="/src/assets/medika_logo.png" alt="Medika Services" />
+          <p class="clinic-subtitle">Lifting Lives Across Borders</p>
           <svg class="heartbeat" viewBox="0 0 640 100" aria-hidden="true" focusable="false">
             <path d="M18 58 H130 C144 58 148 36 158 36 C171 36 174 82 187 82 C202 82 204 18 218 18 C232 18 235 58 250 58 H322 C337 58 341 36 352 36 C365 36 368 82 381 82 C396 82 399 18 412 18 C426 18 430 58 444 58 H516 C530 58 534 36 545 36 C558 36 561 82 574 82 C589 82 592 18 606 18 C618 18 623 58 632 58" />
           </svg>

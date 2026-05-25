@@ -1,5 +1,7 @@
 import {
   AlertCircle,
+  Check,
+  Link2,
   LoaderCircle,
   Mic,
   MicOff,
@@ -76,6 +78,29 @@ export function DoctorMeetingRoomPage() {
 
   const [callState, setCallState] = useState<CallState>('idle');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const inviteRef = useRef<HTMLDivElement | null>(null);
+
+  const meetingUrl = `${window.location.origin}/app/meetings/${meetingId}`;
+
+  useEffect(() => {
+    if (!inviteOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (inviteRef.current && !inviteRef.current.contains(e.target as Node)) {
+        setInviteOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [inviteOpen]);
+
+  const copyMeetingLink = () => {
+    navigator.clipboard.writeText(meetingUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
   const [localVideoActive, setLocalVideoActive] = useState(true);
   const [localAudioActive, setLocalAudioActive] = useState(true);
   const [peers, setPeers] = useState<Record<string, Peer>>({});
@@ -217,7 +242,7 @@ export function DoctorMeetingRoomPage() {
 
   if (!profile) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="flex items-center gap-3 text-slate-400">
           <LoaderCircle className="size-5 animate-spin" />
           <span className="text-sm">Loading meeting room…</span>
@@ -227,26 +252,78 @@ export function DoctorMeetingRoomPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-950 text-white">
+    <div className="flex min-h-screen flex-col bg-white text-slate-900">
       {/* Top bar */}
-      <header className="flex items-center justify-between border-b border-slate-800 px-6 py-3">
+      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: 'color-mix(in srgb, var(--color-primary) 20%, transparent)' }}>
             <Users className="size-4" style={{ color: 'var(--color-primary)' }} />
           </div>
           <div>
-            <p className="text-sm font-bold leading-tight text-white">{meetingTitle}</p>
+            <p className="text-sm font-bold leading-tight text-slate-900">{meetingTitle}</p>
             <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
               {mode === 'jitsi' ? 'Jitsi Meeting' : 'In-house Secure Call'} · {Object.keys(peers).length + 1} participant{Object.keys(peers).length !== 0 ? 's' : ''}
             </p>
           </div>
         </div>
-        <Link
-          className="rounded-md border border-slate-700 px-4 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-800"
-          to="/app/meetings"
-        >
-          ← Back to Meetings
-        </Link>
+
+        <div className="flex items-center gap-2">
+          {/* Invite popover */}
+          <div className="relative" ref={inviteRef}>
+            <button
+              onClick={() => setInviteOpen((o) => !o)}
+              className="flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+            >
+              <Link2 className="size-3.5" />
+              Invite
+            </button>
+
+            {inviteOpen && (
+              <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
+                <div className="border-b border-slate-100 px-4 py-3">
+                  <p className="text-xs font-bold text-slate-900">Share Meeting Link</p>
+                  <p className="mt-0.5 text-[10px] text-slate-400">
+                    Anyone with this link can join the meeting
+                  </p>
+                </div>
+                <div className="p-3">
+                  <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-slate-600">
+                      {meetingUrl}
+                    </span>
+                    <button
+                      onClick={copyMeetingLink}
+                      className="shrink-0 rounded-md px-2.5 py-1 text-[10px] font-bold transition"
+                      style={
+                        copied
+                          ? { background: 'color-mix(in srgb, var(--color-primary) 14%, white)', color: 'var(--color-primary)' }
+                          : { background: '#e2e8f0', color: '#475569' }
+                      }
+                    >
+                      {copied ? (
+                        <span className="flex items-center gap-1">
+                          <Check className="size-3" /> Copied
+                        </span>
+                      ) : (
+                        'Copy'
+                      )}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[10px] text-slate-400">
+                    Send this link via SMS or email to invite participants
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <Link
+            className="rounded-md border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+            to="/app/meetings"
+          >
+            ← Back to Meetings
+          </Link>
+        </div>
       </header>
 
       {/* Jitsi mode */}
@@ -255,11 +332,11 @@ export function DoctorMeetingRoomPage() {
           {scriptState === 'error' ? (
             <div className="flex h-full flex-col items-center justify-center p-8 text-center">
               <AlertCircle className="mb-4 size-12 text-rose-500" />
-              <p className="font-bold">Unable to load video component</p>
+              <p className="font-bold text-slate-900">Unable to load video component</p>
               <p className="mt-1 text-sm text-slate-400">Please refresh the page and try again.</p>
             </div>
           ) : (
-            <div className="h-[calc(100vh-57px)] bg-slate-950">
+            <div className="h-[calc(100vh-57px)] bg-slate-100">
               <div className="h-full w-full" ref={containerRef} />
             </div>
           )}
@@ -271,27 +348,27 @@ export function DoctorMeetingRoomPage() {
         <div className="relative flex flex-1 flex-col" style={{ height: 'calc(100vh - 57px)' }}>
           {/* Idle / preview */}
           {callState === 'idle' && (
-            <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
-              <div className="relative mb-6 aspect-video w-full max-w-sm overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-2xl">
+            <div className="flex flex-1 flex-col items-center justify-center bg-slate-50 p-6 text-center">
+              <div className="relative mb-6 aspect-video w-full max-w-sm overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-lg">
                 {localStream && localVideoActive ? (
                   <VideoStream className="h-full w-full object-cover" muted stream={localStream} />
                 ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
                     <VideoOff className="mb-2 size-10" />
                     <p className="text-xs">Camera is off</p>
                   </div>
                 )}
                 <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2">
-                  <button onClick={toggleAudio} className={`rounded-full p-2 shadow-md transition-colors ${localAudioActive ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-rose-600 text-white hover:bg-rose-700'}`}>
+                  <button onClick={toggleAudio} className={`rounded-full p-2 shadow-md transition-colors ${localAudioActive ? 'bg-white/80 text-slate-700 hover:bg-white' : 'bg-rose-600 text-white hover:bg-rose-700'}`}>
                     {localAudioActive ? <Mic className="size-4" /> : <MicOff className="size-4" />}
                   </button>
-                  <button onClick={toggleVideo} className={`rounded-full p-2 shadow-md transition-colors ${localVideoActive ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-rose-600 text-white hover:bg-rose-700'}`}>
+                  <button onClick={toggleVideo} className={`rounded-full p-2 shadow-md transition-colors ${localVideoActive ? 'bg-white/80 text-slate-700 hover:bg-white' : 'bg-rose-600 text-white hover:bg-rose-700'}`}>
                     {localVideoActive ? <Video className="size-4" /> : <VideoOff className="size-4" />}
                   </button>
                 </div>
               </div>
-              <h3 className="text-lg font-bold">Ready to join?</h3>
-              <p className="mt-1 max-w-xs text-xs text-slate-400">Check your camera and mic before joining the group call.</p>
+              <h3 className="text-lg font-bold text-slate-900">Ready to join?</h3>
+              <p className="mt-1 max-w-xs text-xs text-slate-500">Check your camera and mic before joining the group call.</p>
               <button
                 className="mt-6 flex items-center gap-2 rounded-lg px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all active:scale-95 hover:brightness-95"
                 onClick={joinCall}
@@ -305,7 +382,7 @@ export function DoctorMeetingRoomPage() {
 
           {/* Connected */}
           {callState === 'connected' && (
-            <div className="relative flex h-full flex-1 flex-col overflow-hidden">
+            <div className="relative flex h-full flex-1 flex-col overflow-hidden bg-slate-50">
               <div
                 className={`flex-1 grid gap-4 overflow-y-auto p-4 items-center justify-center ${
                   Object.keys(peers).length === 0 ? 'grid-cols-1' :
@@ -314,32 +391,32 @@ export function DoctorMeetingRoomPage() {
                 }`}
               >
                 {/* Local */}
-                <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-md">
+                <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-200 shadow-sm">
                   {localStream && localVideoActive ? (
                     <VideoStream className="h-full w-full object-cover" muted stream={localStream} />
                   ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
                       <VideoOff className="mb-2 size-10" />
                       <p className="text-xs">Your camera is off</p>
                     </div>
                   )}
-                  <div className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded bg-slate-950/70 px-2 py-0.5 text-[11px] font-semibold backdrop-blur-md">
+                  <div className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-slate-700 backdrop-blur-md">
                     <span>{profile.fullName} (You)</span>
-                    {!localAudioActive && <MicOff className="size-3 text-rose-400" />}
+                    {!localAudioActive && <MicOff className="size-3 text-rose-500" />}
                   </div>
                 </div>
                 {/* Remote feeds */}
                 {Object.values(peers).map((peer) => (
-                  <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-md" key={peer.id}>
+                  <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-200 shadow-sm" key={peer.id}>
                     {peer.stream ? (
                       <VideoStream className="h-full w-full object-cover" stream={peer.stream} />
                     ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
                         <LoaderCircle className="mb-2 size-8 animate-spin" />
                         <p className="text-xs font-semibold">Connecting to {peer.name}…</p>
                       </div>
                     )}
-                    <div className="absolute bottom-2 left-2 rounded bg-slate-950/70 px-2 py-0.5 text-[11px] font-semibold capitalize backdrop-blur-md">
+                    <div className="absolute bottom-2 left-2 rounded bg-white/80 px-2 py-0.5 text-[11px] font-semibold capitalize text-slate-700 backdrop-blur-md">
                       {peer.name} ({peer.role})
                     </div>
                   </div>
@@ -347,20 +424,20 @@ export function DoctorMeetingRoomPage() {
               </div>
 
               {/* Participant count badge */}
-              <div className="absolute left-4 top-4 flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-1 text-xs font-semibold text-slate-300 backdrop-blur-md">
+              <div className="absolute left-4 top-4 flex items-center gap-2 rounded-lg border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm backdrop-blur-md">
                 <Users className="size-3" style={{ color: 'var(--color-primary)' }} />
                 <span>{Object.keys(peers).length + 1} online</span>
               </div>
 
               {/* Controls */}
-              <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-slate-800 bg-slate-900/95 px-6 py-2.5 shadow-2xl backdrop-blur-md">
-                <button onClick={toggleAudio} className={`rounded-full p-2.5 transition-colors ${localAudioActive ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-rose-600 text-white hover:bg-rose-700'}`}>
+              <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-slate-200 bg-white/95 px-6 py-2.5 shadow-lg backdrop-blur-md">
+                <button onClick={toggleAudio} className={`rounded-full p-2.5 transition-colors ${localAudioActive ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-rose-600 text-white hover:bg-rose-700'}`}>
                   {localAudioActive ? <Mic className="size-4" /> : <MicOff className="size-4" />}
                 </button>
-                <button onClick={toggleVideo} className={`rounded-full p-2.5 transition-colors ${localVideoActive ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-rose-600 text-white hover:bg-rose-700'}`}>
+                <button onClick={toggleVideo} className={`rounded-full p-2.5 transition-colors ${localVideoActive ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-rose-600 text-white hover:bg-rose-700'}`}>
                   {localVideoActive ? <Video className="size-4" /> : <VideoOff className="size-4" />}
                 </button>
-                <div className="mx-1 h-5 w-px bg-slate-700" />
+                <div className="mx-1 h-5 w-px bg-slate-200" />
                 <button onClick={leaveCall} className="rounded-full bg-rose-600 p-2.5 text-white shadow-md transition-all hover:bg-rose-700 active:scale-95">
                   <PhoneOff className="size-4" />
                 </button>

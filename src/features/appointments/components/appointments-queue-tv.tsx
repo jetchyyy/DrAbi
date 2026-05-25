@@ -14,7 +14,7 @@ interface QueueItem {
   scheduled_at: string;
 }
 
-const defaultClinicSettings = { clinicName: "CPR Med Clinic" };
+const defaultClinicSettings = { clinicName: "Medika Services" };
 
 const VISUAL_RESET_HOUR = 22;
 

@@ -632,7 +632,7 @@ function PrescriptionTab({
         ? `${currentDoctor.fullName}${currentDoctor.title ? ' ' + currentDoctor.title : ''}`
         : appointment.doctorName;
       const html = buildPrescriptionPrintDocument({
-        clinicName: clinicSettings?.clinicName ?? 'CPRMED Clinic',
+        clinicName: clinicSettings?.clinicName ?? 'Medika Services',
         clinicAddress: clinicSettings?.address ?? '',
         clinicContactNumber: clinicSettings?.contactNumber ?? '',
         clinicEmail: clinicSettings?.email ?? '',
@@ -796,7 +796,7 @@ function MedicalCertificateTab({
       const html = buildMedicalCertificatePrintDocument({
         certificateNumber: cert.certificateNumber != null ? String(cert.certificateNumber) : '',
         patientQrSvg: '', patientQrCode: '', patientReferenceCode: '',
-        clinicName: clinicSettings?.clinicName ?? 'CPRMED Clinic',
+        clinicName: clinicSettings?.clinicName ?? 'Medika Services',
         clinicAddress: clinicSettings?.address ?? '',
         clinicContactNumber: clinicSettings?.contactNumber ?? '',
         clinicEmail: clinicSettings?.email ?? '',
@@ -950,7 +950,7 @@ function LabRequestDocumentTab({
         : appointment.doctorName;
 
       const html = buildLabRequestPrintDocument({
-        clinicName: clinicSettings?.clinicName ?? 'CPRMED Clinic',
+        clinicName: clinicSettings?.clinicName ?? 'Medika Services',
         clinicAddress: clinicSettings?.address ?? '',
         clinicContactNumber: clinicSettings?.contactNumber ?? '',
         clinicEmail: clinicSettings?.email ?? '',

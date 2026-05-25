@@ -108,27 +108,29 @@ function DoctorQueueActions({ row }: { row: DoctorWorkflowRow }) {
   return (
     <div className="flex min-w-max justify-end gap-2">
       <Link
-        className="inline-flex items-center border border-slate-200 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-50"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-50"
         to={`/app/patients/${row.patientId}`}
       >
-        <FileText className="mr-1 size-3.5" />
+        <FileText className="size-3.5" />
         Chart
       </Link>
       {row.canStartConsultation ? (
         <Link
-          className="inline-flex items-center bg-[var(--color-primary)] px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition hover:brightness-95"
+          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition hover:brightness-95"
+          style={{ backgroundColor: 'var(--color-primary)' }}
           to={`/app/consultation/${row.patientId}?appointmentId=${row.appointmentId}`}
         >
-          <Stethoscope className="mr-1 size-3.5" />
+          <Stethoscope className="size-3.5" />
           Consult
         </Link>
       ) : (
         <button
-          className="inline-flex cursor-not-allowed items-center bg-[var(--color-primary)] px-3 py-2 text-xs font-bold uppercase tracking-wide text-white opacity-60"
+          className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wide text-white opacity-50"
           disabled
+          style={{ backgroundColor: 'var(--color-primary)' }}
           type="button"
         >
-          <Stethoscope className="mr-1 size-3.5" />
+          <Stethoscope className="size-3.5" />
           Consult
         </button>
       )}
@@ -285,10 +287,22 @@ export function DoctorWorkflowPage() {
     <div className="space-y-5">
       <section className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
         <div className="flex flex-col gap-5 px-6 py-5 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Role Workflow</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Doctor Workflow</h1>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">Cleared consultation queue, blockers, charts, and SOAP entry.</p>
+          <div className="flex items-start gap-4">
+            <div
+              className="mt-0.5 flex shrink-0 items-center justify-center rounded-xl p-2.5 ring-1"
+              style={{
+                background: 'color-mix(in srgb, var(--color-primary) 14%, white)',
+                color: 'var(--color-primary)',
+                ringColor: 'color-mix(in srgb, var(--color-primary) 30%, white)',
+              }}
+            >
+              <Stethoscope className="size-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Role Workflow</p>
+              <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Doctor Workflow</h1>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">Cleared consultation queue, blockers, charts, and SOAP entry</p>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <div className="relative" ref={patientSearchRef}>
@@ -554,7 +568,7 @@ export function DoctorWorkflowPage() {
                               </div>
                               {blockerAction ? (
                                 <Link
-                                  className="inline-flex items-center border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-amber-800 transition hover:bg-amber-100"
+                                  className="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-amber-800 transition hover:bg-amber-100"
                                   to={blockerAction.to}
                                 >
                                   {blockerAction.label}
@@ -582,7 +596,7 @@ export function DoctorWorkflowPage() {
               </p>
               <div className="flex items-center gap-2">
                 <button
-                  className="border border-slate-200 bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={safeCurrentPage <= 1}
                   onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                   type="button"
@@ -593,7 +607,7 @@ export function DoctorWorkflowPage() {
                   Page {safeCurrentPage} of {totalPages}
                 </span>
                 <button
-                  className="border border-slate-200 bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={safeCurrentPage >= totalPages}
                   onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                   type="button"

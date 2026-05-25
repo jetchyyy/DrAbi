@@ -5,7 +5,7 @@ import { useClinicSettingsData } from '../../hooks/use-clinic-data';
 import { defaultClinicSettings } from '../../config/clinic';
 import { LoginForm } from './components/login-form';
 
-/** Two calm proof points aligned with CPR Med portal; no long marketing copy on the panel. */
+/** Proof points for the Medika operations portal login panel */
 const highlights = [
   { icon: CalendarCheck2, label: 'Smart scheduling' },
   { icon: Users, label: 'Unified patient records' },
@@ -72,10 +72,10 @@ export function LoginPage() {
               Clinical operations
             </p>
             <h1 className="mt-4 font-display text-[2.125rem] font-semibold leading-[1.12] tracking-[-0.03em] text-slate-900 xl:text-[2.35rem]">
-              CPR Med Operations System
+              Medika Operations System
             </h1>
             <p className="mt-8 max-w-md text-[1.0625rem] leading-relaxed tracking-tight text-slate-600">
-              Manage bookings, patient records, billing, and clinic workflows in one secure workspace.
+              Manage bookings, patient records, billing, and clinic workflows in one secure workspace
             </p>
 
             <ul className="mt-14 max-w-md list-none space-y-5 p-0" role="list">
