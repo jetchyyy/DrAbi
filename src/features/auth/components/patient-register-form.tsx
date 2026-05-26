@@ -2,7 +2,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { parse } from 'date-fns';
 import { Eye, EyeOff, Loader2Icon } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
-import { useEffect, useMemo, useState, type LabelHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type LabelHTMLAttributes, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -107,6 +108,10 @@ export function PatientRegisterForm() {
   const [selectedBirthYear, setSelectedBirthYear] = useState('');
   const [selectedBirthMonth, setSelectedBirthMonth] = useState('');
   const [selectedBirthDay, setSelectedBirthDay] = useState('');
+  const [allergyInput, setAllergyInput] = useState('');
+  const [showAllergyDropdown, setShowAllergyDropdown] = useState(false);
+  const allergyContainerRef = useRef<HTMLDivElement>(null);
+  const [confirmModalEmail, setConfirmModalEmail] = useState('');
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -122,7 +127,7 @@ export function PatientRegisterForm() {
       allergies: '',
       medicalHistory: '',
       emergencyContactName: '',
-      emergencyContactPhone: '',
+      emergencyContactPhone: '+63',
     },
   });
   const today = new Date();
@@ -134,10 +139,13 @@ export function PatientRegisterForm() {
   const yearOptions = useMemo(() => Array.from({ length: 121 }, (_, index) => String(currentYear - index)), [currentYear]);
   const maxMonth = selectedBirthYear === String(currentYear) ? currentMonth : 12;
   const availableMonthOptions = monthOptions.filter((month) => Number(month.value) <= maxMonth);
-  const daysInSelectedMonth =
-    selectedBirthYear && selectedBirthMonth
-      ? new Date(Number(selectedBirthYear), Number(selectedBirthMonth), 0).getDate()
-      : 31;
+  const daysInSelectedMonth = selectedBirthMonth
+    ? new Date(
+        selectedBirthYear ? Number(selectedBirthYear) : 2000,
+        Number(selectedBirthMonth),
+        0,
+      ).getDate()
+    : 31;
   const maxDay =
     selectedBirthYear === String(currentYear) && selectedBirthMonth === currentMonthPadded
       ? Math.min(daysInSelectedMonth, currentDay)
@@ -212,6 +220,23 @@ export function PatientRegisterForm() {
     return () => subscription.unsubscribe();
   }, [form, currentStep]);
 
+  useEffect(() => {
+    if (!showAllergyDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (allergyContainerRef.current && !allergyContainerRef.current.contains(e.target as Node)) {
+        setShowAllergyDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showAllergyDropdown]);
+
+  const allergySuggestions = allergyOptions
+    .filter((opt) => opt !== '')
+    .filter((opt) =>
+      allergyInput === '' || opt.toLowerCase().includes(allergyInput.toLowerCase()),
+    );
+
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       const computedMedicalHistory = values.bloodType
@@ -233,10 +258,7 @@ export function PatientRegisterForm() {
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(REGISTER_DRAFT_KEY);
       }
-      toast.success('Account created', {
-        description: 'You can sign in with your new credentials.',
-      });
-      navigate('/portal/login');
+      setConfirmModalEmail(values.email);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to complete registration';
       toast.error('Registration failed', { description: message });
@@ -259,6 +281,62 @@ export function PatientRegisterForm() {
 
   return (
     <>
+      {/* Email confirmation modal — rendered at document root so fixed covers the full viewport */}
+      {confirmModalEmail ? createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-modal-title"
+        >
+          <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+            {/* Close */}
+            <button
+              type="button"
+              aria-label="Close and go to sign in"
+              onClick={() => navigate('/login')}
+              className="absolute right-4 top-4 flex size-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+
+            {/* Envelope illustration */}
+            <div className="flex justify-center pt-12 pb-6">
+              <svg width="120" height="96" viewBox="0 0 120 96" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                {/* Envelope body */}
+                <rect x="8" y="32" width="104" height="64" rx="4" fill="var(--color-primary)" opacity="0.85" />
+                {/* Letter */}
+                <rect x="28" y="10" width="64" height="56" rx="3" fill="#f1f5f9" />
+                <rect x="36" y="22" width="48" height="4" rx="2" fill="#cbd5e1" />
+                <rect x="36" y="32" width="48" height="4" rx="2" fill="#cbd5e1" />
+                <rect x="36" y="42" width="36" height="4" rx="2" fill="#cbd5e1" />
+                {/* Envelope flap */}
+                <path d="M8 36L60 68L112 36" stroke="white" strokeWidth="2" fill="none" />
+                <path d="M8 32L60 64L112 32L112 36L60 68L8 36Z" fill="var(--color-primary)" />
+                {/* Shadow line */}
+                <rect x="24" y="92" width="72" height="3" rx="1.5" fill="#e2e8f0" />
+              </svg>
+            </div>
+
+            {/* Content */}
+            <div className="px-8 pb-6 text-center">
+              <h2 id="confirm-modal-title" className="text-2xl font-bold text-slate-900">
+                Email Confirmation
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-slate-500">
+                We have sent an email to{' '}
+                <span className="font-semibold" style={{ color: 'var(--color-primary)' }}>
+                  {confirmModalEmail}
+                </span>{' '}
+                to confirm the validity of your email address. After receiving the email, follow the link provided to complete your registration
+              </p>
+            </div>
+
+          </div>
+        </div>,
+        document.body,
+      ) : null}
+
       <header className="mb-10">
         
         <h2 className="mt-4 font-display text-[1.875rem] font-semibold leading-[1.12] tracking-[-0.03em] text-slate-900 sm:text-[2rem]">
@@ -403,7 +481,7 @@ export function PatientRegisterForm() {
                     <Select
                       aria-label="Birth day"
                       value={selectedBirthDay}
-                      disabled={!selectedBirthYear || !selectedBirthMonth}
+                      disabled={!selectedBirthMonth}
                       onChange={(event) => handleBirthDatePartChange('day', event.target.value)}
                     >
                       <option value="">Day</option>
@@ -448,13 +526,39 @@ export function PatientRegisterForm() {
             <div className="space-y-4">
               <FormField error={undefined}>
                 <Label htmlFor="allergies">Allergies</Label>
-                <Select id="allergies" {...form.register('allergies')}>
-                  {allergyOptions.map((option) => (
-                    <option key={option || 'allergy-unset'} value={option}>
-                      {option || 'Select allergy status'}
-                    </option>
-                  ))}
-                </Select>
+                <div className="relative" ref={allergyContainerRef}>
+                  <Input
+                    id="allergies"
+                    autoComplete="off"
+                    placeholder="e.g. Penicillin, Peanuts, None"
+                    value={allergyInput}
+                    onChange={(e) => {
+                      setAllergyInput(e.target.value);
+                      form.setValue('allergies', e.target.value);
+                      setShowAllergyDropdown(true);
+                    }}
+                    onFocus={() => setShowAllergyDropdown(true)}
+                  />
+                  {showAllergyDropdown && allergySuggestions.length > 0 ? (
+                    <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                      {allergySuggestions.map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          className="flex w-full items-center px-3.5 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setAllergyInput(opt);
+                            form.setValue('allergies', opt);
+                            setShowAllergyDropdown(false);
+                          }}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </FormField>
               <FormField error={undefined}>
                 <Label htmlFor="medicalHistory">Medical history</Label>
@@ -477,7 +581,7 @@ export function PatientRegisterForm() {
               </FormField>
               <FormField error={form.formState.errors.emergencyContactPhone?.message}>
                 <Label htmlFor="emergencyContactPhone">Contact phone</Label>
-                <Input id="emergencyContactPhone" autoComplete="tel" {...form.register('emergencyContactPhone')} placeholder="+1 — — — ----" />
+                <Input id="emergencyContactPhone" autoComplete="tel" {...form.register('emergencyContactPhone')} placeholder="+63 9XX XXX XXXX" />
               </FormField>
             </div>
             {isSupabaseConfigured && (
