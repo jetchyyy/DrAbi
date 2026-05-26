@@ -7,7 +7,6 @@ import {
   FlaskConical,
   Pill,
   Plus,
-  QrCode,
   ScanLine,
   TestTubeDiagonal,
   Trash2,

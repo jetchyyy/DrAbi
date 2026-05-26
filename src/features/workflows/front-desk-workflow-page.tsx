@@ -34,8 +34,6 @@ import type { Appointment, Booking } from "../../types/domain";
 import {
   buildFrontDeskWorkflowRows,
   type FrontDeskWorkflowRow,
-  type FrontDeskWorkflowState,
-  type WorkflowPaymentState,
 } from "./workflow-utils";
 import { WalkInWizardModal } from "./front-desk-walk-in-wizard-modal";
 import { FrontDeskPatientDetailsModal } from "./front-desk-patient-details-modal";
@@ -73,21 +71,6 @@ function mapBookingRows(rows: ReturnType<typeof usePatientBookings>["data"]): Bo
   }));
 }
 
-function paymentBadgeIntent(paymentState: WorkflowPaymentState) {
-  if (paymentState === "paid") return "success" as const;
-  if (paymentState === "payment_needed") return "warning" as const;
-  return "neutral" as const;
-}
-
-function workflowBadgeIntent(state: FrontDeskWorkflowState) {
-  if (state === "ready_for_doctor" || state === "completed") {
-    return "success" as const;
-  }
-  if (state === "payment_needed" || state === "needs_vitals") {
-    return "warning" as const;
-  }
-  return "neutral" as const;
-}
 
 function labelFromValue(value: string) {
   return value.replaceAll("_", " ");
@@ -575,11 +558,11 @@ export function FrontDeskWorkflowPage() {
         <div className="flex flex-col gap-5 px-6 py-5 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-4">
             <div
-              className="mt-0.5 flex shrink-0 items-center justify-center rounded-xl p-2.5 ring-1"
+              className="mt-0.5 flex shrink-0 items-center justify-center rounded-xl p-2.5"
               style={{
                 background: 'color-mix(in srgb, var(--color-primary) 14%, white)',
                 color: 'var(--color-primary)',
-                ringColor: 'color-mix(in srgb, var(--color-primary) 30%, white)',
+                boxShadow: '0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, white)',
               }}
             >
               <Activity className="size-5" />

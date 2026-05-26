@@ -7,7 +7,6 @@ import {
   Coins,
   Minus,
   ShoppingBag,
-  TrendingUp,
   Users,
 } from 'lucide-react';
 import {
@@ -36,7 +35,6 @@ import {
 import { useAppointments } from '../appointments/hooks/use-appointments';
 import {
   INTERNAL_SURFACE,
-  INTERNAL_SURFACE_PADDING,
   INTERNAL_TABLE,
   INTERNAL_TD,
   INTERNAL_TH,

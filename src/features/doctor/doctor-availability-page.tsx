@@ -426,7 +426,7 @@ export function DoctorAvailabilityPage() {
                           }))
                         }
                         type="button"
-                        variant="ghost"
+                        variant="tertiary"
                       >
                         Clear
                       </Button>
