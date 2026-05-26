@@ -97,7 +97,7 @@ export function HeroSection() {
           <div className="grid grid-cols-1 gap-8 pt-6 sm:gap-10 sm:pt-8 lg:min-h-0 lg:flex-1 lg:grid-cols-2 lg:grid-rows-1 lg:items-stretch lg:gap-x-12 lg:auto-rows-[minmax(0,1fr)] lg:pt-8 xl:gap-x-16">
             <div className="relative z-[3] mt-1 sm:mt-2 lg:mt-5">
               <div className="flex min-w-0 flex-col justify-start font-sans">
-                <p className="mt-5 inline-flex w-fit max-w-[min(40rem,100%)] flex-wrap items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--color-primary)_35%,white)] bg-[color-mix(in_srgb,var(--color-primary)_18%,white)] px-4 py-2 font-sans text-[0.8125rem] font-semibold leading-snug tracking-tight text-slate-500 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-primary)_14%,transparent)] sm:mt-10 sm:gap-2.5 sm:px-[1.125rem] sm:text-sm lg:mt-[4.75rem] xl:mt-[5.75rem]">
+                <p className="mt-5 inline-flex w-fit max-w-[min(40rem,100%)] flex-wrap items-center gap-2 rounded-full border border-[var(--color-primary)] bg-white px-4 py-2 font-sans text-[0.8125rem] font-semibold leading-snug tracking-tight text-[var(--color-primary)] sm:mt-10 sm:gap-2.5 sm:px-[1.125rem] sm:text-sm lg:mt-[4.75rem] xl:mt-[5.75rem]">
                   <HeartHandshake
                     aria-hidden
                     className="size-3.5 shrink-0 text-current opacity-90 sm:size-4"

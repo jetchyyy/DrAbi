@@ -159,22 +159,7 @@ export function PatientProfilePage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-3 animate-fade-up">
-        <div className="border border-orange-200 bg-orange-50 px-5 py-4 shadow-sm">
-          <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">Identity</p>
-          <p className="mt-1 text-sm font-extrabold text-orange-900">Verified patient profile</p>
-        </div>
-        <div className="border border-red-200 bg-red-50 px-5 py-4 shadow-sm">
-          <p className="text-[10px] font-extrabold uppercase tracking-widest text-red-700">Contact</p>
-          <p className="mt-1 text-sm font-extrabold text-red-900">Keep details current for reminders</p>
-        </div>
-        <div className="border border-emerald-200 bg-emerald-50 px-5 py-4 shadow-sm">
-          <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700">Security</p>
-          <p className="mt-1 text-sm font-extrabold text-emerald-900">Password update available</p>
-        </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+<section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
         <Card>
           <div className="flex items-center gap-3 border-l-4 border-orange-600 pl-3">
             <div className="rounded-xl bg-orange-600 p-3 text-white">

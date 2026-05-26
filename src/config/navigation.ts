@@ -297,23 +297,23 @@ export const specialistNavigation: SimpleNavItem[] = [
 ];
 
 export const portalNavigation: SimpleNavItem[] = [
-  { label: "Portal Home", to: "/portal" },
+  { label: "Home", to: "/portal" },
   {
-    label: "My Bookings",
+    label: "Consultations",
     to: "/portal/my-bookings",
     moduleKey: "booking_appointments",
   },
   {
-    label: "My Consultations",
+    label: "Telehealth",
     to: "/portal/consultations",
     moduleKey: "teleconsult",
   },
   {
-    label: "My Medical History",
+    label: "Medical History",
     to: "/portal/medical-history",
     moduleKey: "booking_appointments",
   },
-  { label: "My Profile", to: "/portal/profile" },
+  { label: "Profile", to: "/portal/profile" },
 ];
 
 export const settingsNavigation = [

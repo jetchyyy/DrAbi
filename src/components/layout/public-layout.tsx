@@ -67,10 +67,9 @@ export function PublicLayout() {
             backgroundColor: '#ffffff',
           }
           : {
-            backgroundColor: '#f9f7f4',
+            backgroundColor: '#f4f5f6',
             backgroundImage:
-              'radial-gradient(circle, #d4c9be 1.5px, transparent 1.5px)',
-            backgroundSize: '28px 28px',
+              'repeating-linear-gradient(90deg,transparent,transparent 76px,rgba(148,163,184,0.14) 76px,rgba(148,163,184,0.14) 77px)',
           }
       }
     >
@@ -78,21 +77,17 @@ export function PublicLayout() {
         className={
           isPortalHome
             ? "fixed inset-x-0 top-0 z-50"
-            : "sticky top-0 z-50 border-b-2 border-slate-200 bg-white shadow-sm"
+            : "sticky top-0 z-50"
         }
       >
         <div
-          className={
-            isPortalHome
-              ? 'pointer-events-none w-full px-3 pt-3 sm:px-5 sm:pt-4 lg:px-8 lg:pt-5'
-              : 'contents'
-          }
+          className="pointer-events-none w-full px-3 pt-3 pb-2.5 sm:px-5 sm:pt-4 sm:pb-3 lg:px-8 lg:pt-5 lg:pb-3.5"
         >
           <div
             className={
               isPortalHome
-                ? 'pointer-events-auto mx-auto flex w-full max-w-7xl items-center justify-between gap-4 rounded-[1.625rem] border border-white/22 bg-[var(--color-primary)] px-5 py-3 shadow-[0_22px_52px_-26px_rgba(0,0,0,0.3)] sm:rounded-[2rem] sm:px-6 sm:py-3.5 lg:gap-8 lg:border-white/45 lg:bg-white/35 lg:px-7 lg:py-3 lg:shadow-[0_26px_55px_-24px_rgba(15,50,105,0.18),inset_0_1px_0_rgba(255,255,255,0.52)] lg:backdrop-blur-xl lg:backdrop-saturate-150 xl:gap-8'
-                : 'mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 lg:px-8 lg:py-5'
+                ? 'pointer-events-auto mx-auto flex w-full max-w-7xl items-center justify-between gap-4 rounded-[1.625rem] border border-slate-300/60 bg-[var(--color-primary)] px-5 py-3 shadow-[0_22px_52px_-26px_rgba(0,0,0,0.3)] sm:rounded-[2rem] sm:px-6 sm:py-3.5 lg:gap-8 lg:border-slate-200/80 lg:bg-white/35 lg:px-7 lg:py-3 lg:shadow-[0_26px_55px_-24px_rgba(15,50,105,0.18),inset_0_1px_0_rgba(255,255,255,0.52)] lg:backdrop-blur-xl lg:backdrop-saturate-150 xl:gap-8'
+                : 'pointer-events-auto mx-auto flex w-full max-w-7xl items-center justify-between gap-4 rounded-[1.625rem] border border-slate-200/80 bg-white px-5 py-3 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.09)] sm:rounded-[2rem] sm:px-6 sm:py-3.5 lg:gap-8 lg:px-7 lg:py-3 xl:gap-8'
             }
           >
             <Link
@@ -137,10 +132,7 @@ export function PublicLayout() {
               {isAuthenticated ? (
                 <div className="relative" ref={desktopMenuRef}>
                   <button
-                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold transition ${isPortalHome
-                        ? 'rounded-full border border-white/50 bg-white/25 text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-md hover:bg-white/40'
-                        : 'rounded-full border border-slate-200/90 bg-white text-slate-900 shadow-sm hover:bg-slate-50'
-                      }`}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
                     onClick={() => setMenuOpen((value) => !value)}
                     type="button"
                   >
@@ -152,12 +144,7 @@ export function PublicLayout() {
                   </button>
 
                   {menuOpen ? (
-                    <div
-                      className={`absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden shadow-lg ${isPortalHome
-                          ? 'rounded-2xl border border-white/50 bg-white/75 backdrop-blur-xl backdrop-saturate-150'
-                          : 'rounded-2xl border border-slate-200 bg-white'
-                        }`}
-                    >
+                    <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
                       <div className="border-b border-slate-100 px-4 py-3">
                         <p className="text-xs font-extrabold uppercase tracking-widest text-slate-400">
                           Patient account
@@ -211,18 +198,13 @@ export function PublicLayout() {
               ) : (
                 <>
                   <Link
-                    className={
-                      isPortalHome
-                        ? "inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-slate-900 shadow-sm transition hover:bg-slate-50"
-                        : "inline-flex items-center justify-center rounded-none bg-white px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-slate-900 ring-1 ring-slate-200 shadow-sm transition hover:bg-slate-50"
-                    }
+                    className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-slate-900 shadow-sm transition hover:bg-slate-50"
                     to="/login"
                   >
                     Sign in
                   </Link>
                   <Link
-                    className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-white shadow-sm shadow-green-900/10 transition hover:brightness-95 ${isPortalHome ? 'rounded-full bg-[var(--color-primary)]' : 'rounded-none bg-[var(--color-primary)]'
-                      }`}
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-white shadow-sm shadow-green-900/10 transition hover:brightness-95"
                     to="/portal/register"
                   >
                     Register

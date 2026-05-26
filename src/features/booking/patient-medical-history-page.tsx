@@ -502,55 +502,55 @@ export function PatientMedicalHistoryPage() {
       )}
       {/* Page header */}
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4 animate-slide-left">
-        <div className="border-l-4 border-orange-600 pl-4">
-          <h1 className="text-3xl font-extrabold uppercase tracking-tight text-slate-950">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             My Medical History
           </h1>
-          <p className="mt-1 text-sm font-medium text-slate-500">
+          <p className="mt-1 text-sm text-slate-500">
             Review your previous clinic visits, consultation notes, and booking
             requests in one place.
           </p>
         </div>
         <Link
-          className="inline-flex items-center gap-2 border border-orange-600 px-5 py-2.5 text-xs font-extrabold uppercase tracking-widest text-orange-600 transition-colors hover:bg-orange-50"
+          className="inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
           to="/portal/book"
         >
-          <CalendarDays className="size-3.5" />
+          <CalendarDays className="size-4" />
           Book Another Visit
         </Link>
       </div>
 
       {/* Stats strip */}
-      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4 animate-fade-up">
-        <div className="border border-orange-200 bg-orange-50 px-5 py-4 shadow-sm">
-          <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4 animate-fade-up">
+        <div className="rounded-xl border border-slate-200/60 bg-white px-5 py-4 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
             Clinic Visits
           </p>
-          <p className="mt-1 text-3xl font-extrabold text-orange-900">
+          <p className="mt-1 text-3xl font-bold text-slate-900">
             {appointmentTimeline.length}
           </p>
         </div>
-        <div className="border border-red-200 bg-red-50 px-5 py-4 shadow-sm">
-          <p className="text-[10px] font-extrabold uppercase tracking-widest text-red-700">
+        <div className="rounded-xl border border-slate-200/60 bg-white px-5 py-4 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
             Consultations
           </p>
-          <p className="mt-1 text-3xl font-extrabold text-red-900">
+          <p className="mt-1 text-3xl font-bold text-slate-900">
             {totalConsultations}
           </p>
         </div>
-        <div className="border border-violet-200 bg-violet-50 px-5 py-4 shadow-sm">
-          <p className="text-[10px] font-extrabold uppercase tracking-widest text-violet-700">
+        <div className="rounded-xl border border-slate-200/60 bg-white px-5 py-4 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
             Bookings
           </p>
-          <p className="mt-1 text-3xl font-extrabold text-violet-900">
+          <p className="mt-1 text-3xl font-bold text-slate-900">
             {bookingTimeline.length}
           </p>
         </div>
-        <div className="border border-emerald-300 bg-emerald-50 px-5 py-4 shadow-sm">
-          <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600">
+        <div className="rounded-xl border border-slate-200/60 bg-white px-5 py-4 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
             Last Visit
           </p>
-          <p className="mt-1 text-sm font-extrabold leading-tight text-emerald-800">
+          <p className="mt-1 text-sm font-semibold leading-tight text-slate-700">
             {lastVisit
               ? formatDateTimeLabel(lastVisit.scheduledAt)
               : "—"}
@@ -559,13 +559,13 @@ export function PatientMedicalHistoryPage() {
       </div>
 
       {/* Profile notes — always visible, compact horizontal strip */}
-      <div className="mb-8 grid grid-cols-1 gap-4 border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-3 animate-fade-up">
+      <div className="mb-8 grid grid-cols-1 gap-4 rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm sm:grid-cols-3 animate-fade-up">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 shrink-0 border border-orange-100 bg-orange-50 p-2">
-            <FileText className="size-4 text-orange-600" />
+          <div className="mt-0.5 shrink-0 rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_12%,white)] p-2">
+            <FileText className="size-4 text-[var(--color-primary)]" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               Medical History
             </p>
             <div className="relative mt-1">
@@ -584,7 +584,7 @@ export function PatientMedicalHistoryPage() {
             {canExpandMedicalHistory ? (
               <button
                 type="button"
-                className="mt-1 text-[10px] font-extrabold uppercase tracking-widest text-orange-600 hover:text-orange-700"
+                className="mt-1 text-[10px] font-semibold text-[var(--color-primary)] hover:underline"
                 onClick={() => setShowFullMedicalHistory((value) => !value)}
               >
                 {showFullMedicalHistory ? "Show less" : "Show more"}
@@ -593,11 +593,11 @@ export function PatientMedicalHistoryPage() {
           </div>
         </div>
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 shrink-0 border border-rose-100 bg-rose-50 p-2">
-            <Activity className="size-4 text-rose-600" />
+          <div className="mt-0.5 shrink-0 rounded-xl bg-slate-100 p-2">
+            <Activity className="size-4 text-slate-500" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               Allergies
             </p>
             <div className="relative mt-1">
@@ -616,7 +616,7 @@ export function PatientMedicalHistoryPage() {
             {canExpandAllergies ? (
               <button
                 type="button"
-                className="mt-1 text-[10px] font-extrabold uppercase tracking-widest text-orange-600 hover:text-orange-700"
+                className="mt-1 text-[10px] font-semibold text-[var(--color-primary)] hover:underline"
                 onClick={() => setShowFullAllergies((value) => !value)}
               >
                 {showFullAllergies ? "Show less" : "Show more"}
@@ -625,11 +625,11 @@ export function PatientMedicalHistoryPage() {
           </div>
         </div>
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 shrink-0 border border-slate-100 bg-slate-50 p-2">
-            <CheckCircle className="size-4 text-slate-600" />
+          <div className="mt-0.5 shrink-0 rounded-xl bg-slate-100 p-2">
+            <CheckCircle className="size-4 text-slate-500" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               Visit Status
             </p>
             <p className="mt-1 text-xs font-semibold text-slate-700">
@@ -653,18 +653,18 @@ export function PatientMedicalHistoryPage() {
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-extrabold uppercase tracking-widest transition-colors ${
+            className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${
               activeTab === tab.id
-                ? "border-orange-600 text-orange-600"
+                ? "border-[var(--color-primary)] text-[var(--color-primary)]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
             {tab.icon}
             <span className="hidden sm:inline">{tab.label}</span>
             <span
-              className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+              className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                 activeTab === tab.id
-                  ? "bg-orange-100 text-orange-700"
+                  ? "bg-[color-mix(in_srgb,var(--color-primary)_12%,white)] text-[var(--color-primary)]"
                   : "bg-slate-100 text-slate-500"
               }`}
             >
@@ -675,14 +675,14 @@ export function PatientMedicalHistoryPage() {
       </div>
 
       {/* Tab panels */}
-      <div className="border border-t-0 border-slate-200 bg-white shadow-sm">
+      <div className="rounded-b-2xl border border-t-0 border-slate-200/60 bg-white shadow-sm">
 
         {/* ── Clinic Visits tab ── */}
         {activeTab === "visits" && (
           <div>
             {appointmentTimeline.length === 0 ? (
-              <div className="flex flex-col items-center border-dashed p-12 text-center">
-                <div className="mb-4 flex h-14 w-14 items-center justify-center border border-slate-100 bg-slate-50">
+              <div className="flex flex-col items-center p-12 text-center">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50">
                   <Stethoscope className="size-6 text-slate-400" />
                 </div>
                 <p className="text-sm font-bold text-slate-700">
@@ -729,7 +729,7 @@ export function PatientMedicalHistoryPage() {
                             appointment.status === "no_show" ? (
                             <XCircle className="size-4 text-rose-500" />
                           ) : (
-                            <Stethoscope className="size-4 text-orange-500" />
+                            <Stethoscope className="size-4 text-\[var(--color-primary)\]" />
                           )}
                         </span>
                         <div className="min-w-0 flex-1">
@@ -749,7 +749,7 @@ export function PatientMedicalHistoryPage() {
                           {appointment.status.replace("_", " ")}
                         </Badge>
                         {linkedConsultation && (
-                          <span className="hidden shrink-0 items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-orange-600 sm:flex">
+                          <span className="hidden shrink-0 items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--color-primary)] sm:flex">
                             <ClipboardList className="size-3" /> Notes
                           </span>
                         )}
@@ -805,8 +805,8 @@ export function PatientMedicalHistoryPage() {
                           {/* Consultation summary */}
                           {linkedConsultation ? (
                             <>
-                              <div className="mt-4 border border-orange-100 bg-orange-50 px-4 py-3">
-                                <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+                              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                                   Consultation summary
                                 </p>
                                 <p className="mt-1.5 text-xs font-semibold text-slate-700">
@@ -1007,7 +1007,7 @@ export function PatientMedicalHistoryPage() {
           <div>
             {consultationTimeline.length === 0 ? (
               <div className="flex flex-col items-center p-12 text-center">
-                <div className="mb-4 flex h-14 w-14 items-center justify-center border border-slate-100 bg-slate-50">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50">
                   <ClipboardList className="size-6 text-slate-400" />
                 </div>
                 <p className="text-sm font-bold text-slate-700">
@@ -1047,7 +1047,7 @@ export function PatientMedicalHistoryPage() {
                         className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-slate-50"
                         aria-expanded={isOpen}
                       >
-                        <ClipboardList className="size-4 shrink-0 text-orange-500" />
+                        <ClipboardList className="size-4 shrink-0 text-\[var(--color-primary)\]" />
                         <div className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-bold text-slate-900">
                             {consultation.consultationType}
@@ -1113,8 +1113,8 @@ export function PatientMedicalHistoryPage() {
                           </div>
 
                           {hasSummary ? (
-                            <div className="mt-4 border-l-2 border-orange-300 bg-orange-50 py-2 pl-3 pr-4">
-                              <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-orange-700">
+                            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                                 Summary / Notes
                               </p>
                               <p className="text-xs leading-relaxed text-slate-700">
@@ -1292,7 +1292,7 @@ export function PatientMedicalHistoryPage() {
           <div>
             {bookingTimeline.length === 0 ? (
               <div className="flex flex-col items-center p-12 text-center">
-                <div className="mb-4 flex h-14 w-14 items-center justify-center border border-slate-100 bg-slate-50">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50">
                   <BookOpen className="size-6 text-slate-400" />
                 </div>
                 <p className="text-sm font-bold text-slate-700">
@@ -1330,7 +1330,7 @@ export function PatientMedicalHistoryPage() {
                           ) : booking.status === "cancelled" ? (
                             <XCircle className="size-4 text-rose-500" />
                           ) : (
-                            <CalendarClock className="size-4 text-orange-500" />
+                            <CalendarClock className="size-4 text-\[var(--color-primary)\]" />
                           )}
                         </span>
                         <div className="min-w-0 flex-1">
