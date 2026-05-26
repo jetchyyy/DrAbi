@@ -170,7 +170,7 @@ export function HeroSection() {
                         alt="Medika Services building exterior"
                         className="size-[6.25rem] rounded-lg border border-slate-200/70 object-cover shadow-sm sm:size-[7.25rem]"
                         decoding="async"
-                        src="/cprclinic.png"
+                        src="/src/assets/JJACCIS Building.png"
                       />
                     </div>
                     <div className="mt-2 flex min-w-0 flex-1 flex-col gap-2 sm:mt-3.5">
