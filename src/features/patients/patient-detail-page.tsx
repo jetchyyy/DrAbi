@@ -4377,26 +4377,43 @@ export function PatientDetailPage() {
                   className="mt-5 space-y-4"
                   onSubmit={handleCreateMedicalCertificate}
                 >
-                  <FormField
-                    error={
-                      medicalCertificateForm.formState.errors.consultationId
-                        ?.message
-                    }
-                    label="Consultation record"
-                  >
-                    <Select
-                      {...medicalCertificateForm.register("consultationId")}
-                    >
-                      <option value="">Select consultation</option>
-                      {consultations.map((consultation) => (
-                        <option key={consultation.id} value={consultation.id}>
-                          {consultation.consultationDate}{" "}
-                          {consultation.consultationTime} -{" "}
-                          {consultation.diagnosis}
-                        </option>
-                      ))}
-                    </Select>
-                  </FormField>
+                  {(() => {
+                    const consultationIdField =
+                      medicalCertificateForm.register("consultationId");
+                    return (
+                      <FormField
+                        error={
+                          medicalCertificateForm.formState.errors.consultationId
+                            ?.message
+                        }
+                        label="Consultation record"
+                      >
+                        <Select
+                          {...consultationIdField}
+                          onChange={(event) => {
+                            consultationIdField.onChange(event);
+                            const selectedConsultation = consultations.find(
+                              (consultation) =>
+                                consultation.id === event.target.value,
+                            );
+                            medicalCertificateForm.setValue(
+                              "diagnosis",
+                              selectedConsultation?.diagnosis ?? "",
+                            );
+                          }}
+                        >
+                          <option value="">Select consultation</option>
+                          {consultations.map((consultation) => (
+                            <option key={consultation.id} value={consultation.id}>
+                              {consultation.consultationDate}{" "}
+                              {consultation.consultationTime} -{" "}
+                              {consultation.diagnosis}
+                            </option>
+                          ))}
+                        </Select>
+                      </FormField>
+                    );
+                  })()}
                   <FormField
                     error={
                       medicalCertificateForm.formState.errors.certificatePurpose
