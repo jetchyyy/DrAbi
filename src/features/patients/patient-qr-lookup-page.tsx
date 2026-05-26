@@ -620,7 +620,7 @@ export function PatientQrLookupPage() {
               <Button
                 className="gap-2"
                 type="button"
-                variant="ghost"
+                variant="tertiary"
                 disabled={isValidating || (!value && !error)}
                 onClick={() => {
                   setValue('');

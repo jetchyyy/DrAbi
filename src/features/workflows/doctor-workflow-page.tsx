@@ -11,7 +11,6 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { Badge } from "../../components/ui/badge";
-import { StatusPill } from "../../components/ui/status-pill";
 import { INTERNAL_SURFACE } from "../../lib/internal-ui";
 import { cn } from "../../lib/utils";
 import { useDoctorDirectory } from "../../hooks/use-clinic-data";
@@ -289,11 +288,11 @@ export function DoctorWorkflowPage() {
         <div className="flex flex-col gap-5 px-6 py-5 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-4">
             <div
-              className="mt-0.5 flex shrink-0 items-center justify-center rounded-xl p-2.5 ring-1"
+              className="mt-0.5 flex shrink-0 items-center justify-center rounded-xl p-2.5"
               style={{
                 background: 'color-mix(in srgb, var(--color-primary) 14%, white)',
                 color: 'var(--color-primary)',
-                ringColor: 'color-mix(in srgb, var(--color-primary) 30%, white)',
+                boxShadow: '0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, white)',
               }}
             >
               <Stethoscope className="size-5" />

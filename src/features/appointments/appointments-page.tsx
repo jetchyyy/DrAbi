@@ -1,6 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  CalendarCheck2,
   Pencil,
   Plus,
   Search,

@@ -8,7 +8,6 @@ import {
   Search,
   Trash2,
   UserRoundPlus,
-  Users,
   X,
 } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
