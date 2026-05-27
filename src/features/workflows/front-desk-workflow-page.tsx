@@ -1,7 +1,6 @@
-import {
+﻿import {
   Activity,
   ArrowRight,
-  CalendarCheck2,
   ExternalLink,
   CalendarPlus,
   ClipboardList,
@@ -35,9 +34,10 @@ import {
   buildFrontDeskWorkflowRows,
   type FrontDeskWorkflowRow,
 } from "./workflow-utils";
+import { OnlineBookingsWorkflow } from "./online-bookings-workflow-page";
+import { WorkflowModeToggle } from "./workflow-mode-toggle";
 import { WalkInWizardModal } from "./front-desk-walk-in-wizard-modal";
 import { FrontDeskPatientDetailsModal } from "./front-desk-patient-details-modal";
-import { BookingListModal } from "./front-desk-booking-list-modal";
 
 const FRONT_DESK_WORKFLOW_PAGE_SIZE = 10;
 const FRONT_DESK_OVERDUE_MINUTES = 15;
@@ -220,7 +220,7 @@ function VitalsModal({
         </div>
 
         <div className="grid gap-4 px-5 py-5 md:grid-cols-2">
-          <FormField label="Temperature (°C)">
+          <FormField label="Temperature (C)">
             <Input
               onChange={(event) =>
                 setValues((prev) => ({ ...prev, temperature: event.target.value }))
@@ -299,7 +299,7 @@ function VitalsModal({
 
 export function FrontDeskWorkflowPage() {
   const [walkInWizardOpen, setWalkInWizardOpen] = useState(false);
-  const [bookingDrawerOpen, setBookingDrawerOpen] = useState(false);
+  const [workflowMode, setWorkflowMode] = useState<"walk_in" | "online_bookings">("walk_in");
   const [selectedPatientRowId, setSelectedPatientRowId] = useState<string | null>(null);
   const [vitalsRowId, setVitalsRowId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -488,8 +488,10 @@ export function FrontDeskWorkflowPage() {
       return;
     }
 
-    const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...basePayload } =
-      vitalsPatient;
+    const { id, createdAt, updatedAt, ...basePayload } = vitalsPatient;
+    void id;
+    void createdAt;
+    void updatedAt;
     const hasAnyVitals = Object.values(values).some((entry) => entry.trim().length > 0);
 
     await updatePatient.mutateAsync({
@@ -530,6 +532,10 @@ export function FrontDeskWorkflowPage() {
       }
 
       if (event.key.toLowerCase() === "n") {
+        if (workflowMode !== "walk_in") {
+          return;
+        }
+
         event.preventDefault();
         setWalkInWizardOpen(true);
       }
@@ -537,7 +543,7 @@ export function FrontDeskWorkflowPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [workflowMode]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -554,6 +560,8 @@ export function FrontDeskWorkflowPage() {
 
   return (
     <div className="space-y-5">
+      {workflowMode === "walk_in" ? (
+        <>
       <section className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
         <div className="flex flex-col gap-5 px-6 py-5 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-4">
@@ -573,96 +581,97 @@ export function FrontDeskWorkflowPage() {
               <p className="mt-1.5 text-sm leading-relaxed text-slate-500">Intake, payment clearance, vitals check, and doctor handoff in one queue</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <div className="relative" ref={patientSearchRef}>
-              <div className="flex w-64 items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 shadow-[inset_0_1px_1px_rgba(15,41,71,0.04)]">
-                <Search className="size-4 shrink-0 text-slate-400" />
-                <input
-                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                  onFocus={() => {
-                    if (patientQuery.trim()) setPatientDropdownOpen(true);
-                  }}
-                  onChange={(event) => {
-                    setPatientQuery(event.target.value);
-                    setPatientDropdownOpen(event.target.value.trim().length > 0);
-                  }}
-                  placeholder="Lookup any patient…"
-                  value={patientQuery}
-                />
-                {patientQuery ? (
-                  <button
-                    aria-label="Clear patient search"
-                    className="shrink-0 text-slate-400 hover:text-slate-700"
-                    onClick={() => {
-                      setPatientQuery("");
-                      setPatientDropdownOpen(false);
-                    }}
-                    type="button"
-                  >
-                    ✕
-                  </button>
-                ) : null}
-              </div>
-              {patientDropdownOpen && filteredPatients.length > 0 ? (
-                <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-                  {filteredPatients.map((patient) => (
-                    <Link
-                      className="flex flex-col px-4 py-3 transition hover:bg-slate-50"
-                      key={patient.id}
-                      onClick={() => {
-                        setPatientQuery("");
-                        setPatientDropdownOpen(false);
+          <div className="flex flex-wrap gap-2 md:w-[780px] md:flex-none">
+            <WorkflowModeToggle
+              mode={workflowMode}
+              onOnlineBookings={() => setWorkflowMode("online_bookings")}
+              onWalkIn={() => setWorkflowMode("walk_in")}
+            />
+
+            {workflowMode === "walk_in" ? (
+              <>
+                <div className="relative" ref={patientSearchRef}>
+                  <div className="flex w-64 items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 shadow-[inset_0_1px_1px_rgba(15,41,71,0.04)]">
+                    <Search className="size-4 shrink-0 text-slate-400" />
+                    <input
+                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                      onFocus={() => {
+                        if (patientQuery.trim()) setPatientDropdownOpen(true);
                       }}
-                      to={`/app/patients/${patient.id}`}
-                    >
-                      <span className="text-sm font-bold text-slate-950">
-                        {patient.firstName} {patient.lastName}
-                      </span>
-                      <span className="text-[11px] text-slate-500">
-                        {patient.mobileNumber || patient.email}
-                      </span>
-                    </Link>
-                  ))}
+                      onChange={(event) => {
+                        setPatientQuery(event.target.value);
+                        setPatientDropdownOpen(event.target.value.trim().length > 0);
+                      }}
+                      placeholder="Lookup any patient..."
+                      value={patientQuery}
+                    />
+                    {patientQuery ? (
+                      <button
+                        aria-label="Clear patient search"
+                        className="shrink-0 text-slate-400 hover:text-slate-700"
+                        onClick={() => {
+                          setPatientQuery("");
+                          setPatientDropdownOpen(false);
+                        }}
+                        type="button"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    ) : null}
+                  </div>
+                  {patientDropdownOpen && filteredPatients.length > 0 ? (
+                    <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                      {filteredPatients.map((patient) => (
+                        <Link
+                          className="flex flex-col px-4 py-3 transition hover:bg-slate-50"
+                          key={patient.id}
+                          onClick={() => {
+                            setPatientQuery("");
+                            setPatientDropdownOpen(false);
+                          }}
+                          to={`/app/patients/${patient.id}`}
+                        >
+                          <span className="text-sm font-bold text-slate-950">
+                            {patient.firstName} {patient.lastName}
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            {patient.mobileNumber || patient.email}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : patientDropdownOpen && patientQuery.trim() ? (
+                    <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-lg">
+                      <p className="text-xs text-slate-500">No patients found.</p>
+                    </div>
+                  ) : null}
                 </div>
-              ) : patientDropdownOpen && patientQuery.trim() ? (
-                <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-lg">
-                  <p className="text-xs text-slate-500">No patients found.</p>
-                </div>
-              ) : null}
-            </div>
-            <Button
-              onClick={() => setBookingDrawerOpen(true)}
-              type="button"
-              variant="tertiary"
-            >
-              <CalendarCheck2 className="size-4" />
-              Online Bookings
-            </Button>
-            <Button
-              onClick={() => setWalkInWizardOpen(true)}
-              type="button"
-              variant="primary"
-            >
-              <UserRoundPlus className="size-4" />
-              Start Walk-in Flow
-            </Button>
-            <Link
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-              to="/app/appointments"
-            >
-              <CalendarPlus className="size-4" />
-              Schedule
-            </Link>
-            <Link
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-              to="/app/bookings/scan"
-            >
-              <ReceiptText className="size-4" />
-              Scan receipt
-            </Link>
+                <Button
+                  onClick={() => setWalkInWizardOpen(true)}
+                  type="button"
+                  variant="primary"
+                >
+                  <UserRoundPlus className="size-4" />
+                  Start Walk-in Flow
+                </Button>
+                <Link
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                  to="/app/appointments"
+                >
+                  <CalendarPlus className="size-4" />
+                  Schedule
+                </Link>
+                <Link
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                  to="/app/bookings/scan"
+                >
+                  <ReceiptText className="size-4" />
+                  Scan receipt
+                </Link>
+              </>
+            ) : null}
           </div>
         </div>
-
         <div className="grid bg-slate-50/90 md:grid-cols-4">
           <div className="border-b border-slate-100/90 px-6 py-4 md:border-b-0 md:border-r md:border-slate-100/90">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Payment</p>
@@ -1022,11 +1031,11 @@ export function FrontDeskWorkflowPage() {
           </>
         )}
       </section>
-
-      <BookingListModal
-        open={bookingDrawerOpen}
-        onClose={() => setBookingDrawerOpen(false)}
-      />
+        </>
+      ) : null}
+      {workflowMode === "online_bookings" ? (
+        <OnlineBookingsWorkflow onSwitchToWalkIn={() => setWorkflowMode("walk_in")} />
+      ) : null}
 
       <WalkInWizardModal
         open={walkInWizardOpen}
