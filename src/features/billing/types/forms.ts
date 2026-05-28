@@ -1,44 +1,57 @@
-import { z } from 'zod';
-import type { Invoice } from '../../../types/domain';
-import type { LabRequestRecord } from '../../lab-requests/types';
+import { z } from "zod";
+import type { Invoice } from "../../../types/domain";
+import type { LabRequestRecord } from "../../lab-requests/types";
 
 export const invoiceItemSchema = z.object({
-  description: z.string().min(2, 'Description must be at least 2 characters.'),
-  category: z.enum(['consultation', 'laboratory', 'medicine', 'other']),
-  quantity: z.number().min(1, 'Quantity must be at least 1.'),
-  unitPrice: z.number().min(0, 'Unit price must be at least 0.'),
-  referenceId: z.string().nullable().optional(),
-  referenceType: z.enum(['consultation', 'inventory_usage', 'lab_order']).nullable().optional(),
+  description: z.string().min(2, "Description must be at least 2 characters."),
+  category: z.enum(["consultation", "laboratory", "medicine", "other"]),
+  quantity: z.number().min(1, "Quantity must be at least 1."),
+  unitPrice: z.number().min(0, "Unit price must be at least 0."),
+  referenceId: z.string().nullable().optional().catch(null),
+  referenceType: z
+    .enum(["consultation", "inventory_usage", "lab_order"])
+    .nullable()
+    .optional()
+    .catch(null),
 });
 
-export const billingSchema = z.object({
-  patientId: z.string().min(1, 'Patient is required.'),
-  bookingId: z.string().optional(),
-  appointmentId: z.string().optional(),
-  items: z.array(invoiceItemSchema).min(1, 'At least one invoice item is required.'),
-  paymentStatus: z.enum(['unpaid', 'paid']).default('unpaid'),
-  paymentType: z.enum(['cash', 'gcash', 'card']).default('cash'),
-  referenceNumber: z.string().optional(),
-  discountType: z.enum(['none', 'senior', 'pwd', 'philhealth', 'custom']).default('none'),
-  discountAmount: z.number().optional().nullable(),
-  taxAmount: z.number().optional().nullable(),
-}).superRefine((values, context) => {
-  if (values.paymentStatus !== 'paid') {
-    return;
-  }
+export const billingSchema = z
+  .object({
+    patientId: z.string().min(1, "Patient is required."),
+    bookingId: z.string().optional(),
+    appointmentId: z.string().optional(),
+    items: z
+      .array(invoiceItemSchema)
+      .min(1, "At least one invoice item is required."),
+    paymentStatus: z.enum(["unpaid", "paid"]).default("unpaid"),
+    paymentType: z.enum(["cash", "gcash", "card"]).default("cash"),
+    referenceNumber: z.string().optional(),
+    discountType: z
+      .enum(["none", "senior", "pwd", "philhealth", "custom"])
+      .default("none"),
+    discountAmount: z.number().optional().nullable(),
+    taxAmount: z.number().optional().nullable(),
+  })
+  .superRefine((values, context) => {
+    if (values.paymentStatus !== "paid") {
+      return;
+    }
 
-  if ((values.paymentType === 'gcash' || values.paymentType === 'card') && !values.referenceNumber?.trim()) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['referenceNumber'],
-      message: 'Reference number is required for GCash and Card payments.',
-    });
-  }
-});
+    if (
+      (values.paymentType === "gcash" || values.paymentType === "card") &&
+      !values.referenceNumber?.trim()
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["referenceNumber"],
+        message: "Reference number is required for GCash and Card payments.",
+      });
+    }
+  });
 
 export const payForServiceSchema = z.object({
-  patientId: z.string().min(1, 'Patient is required.'),
-  serviceId: z.string().min(1, 'Laboratory service is required.'),
+  patientId: z.string().min(1, "Patient is required."),
+  serviceId: z.string().min(1, "Laboratory service is required."),
   notes: z.string().optional(),
   urgentFlag: z.boolean(),
 });
@@ -61,7 +74,7 @@ export interface FeedbackModalState {
   open: boolean;
   title: string;
   message: string;
-  variant: 'success' | 'error';
+  variant: "success" | "error";
 }
 
 export interface LabReceiptState {
