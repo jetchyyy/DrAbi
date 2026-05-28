@@ -57,6 +57,7 @@ import type {
   UserProfile,
   InventoryUsageLog,
   PromoCode,
+  VisitType,
 } from "../types/domain";
 import type { Database } from "../types/database";
 import {
@@ -117,6 +118,7 @@ export interface BookingListItem {
   feeAmount: number;
   receiptCode: string;
   paymentStatus: BookingPaymentStatus;
+  visitType: VisitType;
 }
 
 export interface PatientTeleconsultationSummary {
@@ -185,6 +187,7 @@ async function buildBookingListItemFromRow(
     feeAmount: Number(row.fee_amount ?? 0),
     receiptCode: row.receipt_code ?? "",
     paymentStatus: mapBookingPaymentStatus(row.payment_status),
+    visitType: (row.visit_type as VisitType) ?? "in_person",
   };
 }
 
@@ -692,6 +695,7 @@ function mapBooking(row: BookingRow): Booking {
     feeAmount: Number(row.fee_amount ?? 0),
     receiptCode: row.receipt_code ?? "",
     paymentStatus: mapBookingPaymentStatus(row.payment_status),
+    visitType: (row.visit_type as VisitType) ?? "in_person",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
@@ -3409,6 +3413,7 @@ export async function getBookingListForUser(
         feeAmount: booking.feeAmount,
         receiptCode: booking.receiptCode,
         paymentStatus: booking.paymentStatus,
+        visitType: booking.visitType ?? "in_person",
       }));
   }
 
@@ -3633,6 +3638,7 @@ export async function createBookingLiveOrDemo(input: {
   intakeNotes: string;
   feeType: BookingFeeType;
   feeAmount: number;
+  visitType?: VisitType;
   receiptCode?: string;
   paymentStatus?: BookingPaymentStatus;
   promoCodeId?: string | null;
@@ -3649,6 +3655,7 @@ export async function createBookingLiveOrDemo(input: {
       intakeNotes: input.intakeNotes,
       feeType: input.feeType,
       feeAmount: input.feeAmount,
+      visitType: input.visitType ?? "in_person",
       receiptCode: input.receiptCode || generateBookingReceiptCode(),
       paymentStatus: input.paymentStatus || "pending_cashier",
     });
@@ -3667,6 +3674,7 @@ export async function createBookingLiveOrDemo(input: {
     fee_amount: input.feeAmount,
     receipt_code: input.receiptCode ?? generateBookingReceiptCode(),
     payment_status: input.paymentStatus ?? "pending_cashier",
+    visit_type: input.visitType ?? "in_person",
     promo_code_id: input.promoCodeId ?? null,
     discount_amount: input.discountAmount ?? 0,
   };
@@ -3914,6 +3922,7 @@ export async function getBookingByReceiptCodeLiveOrDemo(receiptCode: string) {
       feeAmount: booking.feeAmount,
       receiptCode: booking.receiptCode,
       paymentStatus: booking.paymentStatus,
+      visitType: booking.visitType ?? "in_person",
     };
   }
 
@@ -4006,6 +4015,7 @@ export async function searchPendingBookingsByPatientNameLiveOrDemo(
         feeAmount: booking.feeAmount,
         receiptCode: booking.receiptCode,
         paymentStatus: booking.paymentStatus,
+        visitType: booking.visitType ?? "in_person",
       }));
   }
 
@@ -4131,6 +4141,7 @@ export async function markBookingPaidAndCreateInvoiceLiveOrDemo(
             scheduled_at: scheduledAt,
             status: "scheduled",
             source: "internal",
+            visit_type: booking.visit_type ?? "in_person",
             reason:
               booking.fee_type === "follow_up"
                 ? "Follow-up Fee"

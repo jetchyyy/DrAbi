@@ -1665,7 +1665,7 @@ export function markBookingPaidAndCreateInvoice(receiptCode: string) {
       }),
       status: "scheduled",
       source: "internal",
-      visitType: "in_person",
+      visitType: booking.visitType || "in_person",
       reason: description,
       notes: booking.intakeNotes,
       teleconsultationPlatform: null,

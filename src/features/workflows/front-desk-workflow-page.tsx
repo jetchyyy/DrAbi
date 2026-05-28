@@ -1,4 +1,4 @@
-﻿import {
+import {
   Activity,
   ArrowRight,
   ExternalLink,
@@ -66,6 +66,7 @@ function mapBookingRows(rows: ReturnType<typeof usePatientBookings>["data"]): Bo
     feeAmount: row.feeAmount,
     receiptCode: row.receiptCode,
     paymentStatus: row.paymentStatus,
+    visitType: (row as any).visitType || (row as any).visit_type || "in_person",
     createdAt: row.createdAt,
     updatedAt: row.createdAt,
   }));

@@ -44,6 +44,7 @@ const bookingSchema = z.object({
   doctorId: z.string().optional(),
   preferredDate: z.string().min(1),
   preferredTime: z.string().min(1),
+  visitType: z.enum(["in_person", "teleconsultation"]),
   intakeNotes: z
     .string()
     .trim()
@@ -129,6 +130,7 @@ export function PortalBookPage() {
       doctorId: "",
       preferredDate: "",
       preferredTime: "",
+      visitType: "in_person",
       intakeNotes: "",
     },
   });
@@ -427,6 +429,7 @@ export function PortalBookPage() {
       intakeNotes: values.intakeNotes,
       feeType: derivedFeeType,
       feeAmount: finalFeeAmount,
+      visitType: values.visitType,
       receiptCode: "",
       paymentStatus: "pending_cashier",
       promoCodeId: appliedPromoCode ? appliedPromoCode.id : null,
@@ -482,6 +485,12 @@ export function PortalBookPage() {
       feeAmount: finalFeeAmount,
       receiptCode,
       paymentStatus,
+      visitType:
+        "visit_type" in createdBooking && typeof createdBooking.visit_type === "string"
+          ? (createdBooking.visit_type as any)
+          : "visitType" in createdBooking && typeof createdBooking.visitType === "string"
+            ? (createdBooking.visitType as any)
+            : values.visitType,
     });
 
     toast.success(
@@ -525,7 +534,7 @@ export function PortalBookPage() {
         ) : null}
 
         <form className="mt-6 space-y-4" onSubmit={onSubmit}>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <FormField label="Service">
               <Select {...form.register("serviceId")}>
                 {services.map((service) => (
@@ -554,6 +563,12 @@ export function PortalBookPage() {
                   )[selectedService?.serviceType || ""] || ""
                 }
               />
+            </FormField>
+            <FormField label="Visit type" error={form.formState.errors.visitType?.message}>
+              <Select {...form.register("visitType")}>
+                <option value="in_person">In-person</option>
+                <option value="teleconsultation">Teleconsultation</option>
+              </Select>
             </FormField>
           </div>
 

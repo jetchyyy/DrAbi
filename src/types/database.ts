@@ -343,6 +343,7 @@ export interface Database {
           fee_amount: number;
           receipt_code: string | null;
           payment_status: string;
+          visit_type: string;
           cancelled_reason: string | null;
           rescheduled_reason: string | null;
           created_at: string;
@@ -362,6 +363,7 @@ export interface Database {
           fee_amount?: number;
           receipt_code?: string | null;
           payment_status?: string;
+          visit_type?: string;
         };
         Update: Partial<Database["public"]["Tables"]["bookings"]["Insert"]>;
       };
