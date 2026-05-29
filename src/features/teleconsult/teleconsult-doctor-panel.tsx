@@ -407,6 +407,7 @@ function ConsultationTab({
   const { profile } = useAuth();
   const createConsultation = useCreateConsultation();
   const { data: consultations = [] } = usePatientConsultations(patientId);
+  const { data: patientData } = usePatientDetail(patientId);
 
   const existing = consultations.find((c: any) => c.appointmentId === appointment.id);
 
@@ -427,6 +428,24 @@ function ConsultationTab({
       clinicalSummary: '', treatmentPlan: '', outcome: '',
     },
   });
+
+  // Pre-fill vitals from the patient record once data loads
+  useEffect(() => {
+    if (!patientData) return;
+    const { temperature, bloodPressure, heartRate, o2Sat, respiratoryRate, weight, height } = patientData;
+    if (temperature || bloodPressure || heartRate || o2Sat || respiratoryRate || weight || height) {
+      form.reset({
+        ...form.getValues(),
+        temperature: temperature ?? '',
+        bloodPressure: bloodPressure ?? '',
+        heartRate: heartRate ?? '',
+        o2Sat: o2Sat ?? '',
+        respiratoryRate: respiratoryRate ?? '',
+        weight: weight ?? '',
+        height: height ?? '',
+      });
+    }
+  }, [patientData]);
 
   const stepFieldMap: Record<StepId, (keyof ConsultationFormData)[]> = {
     vitals: ['temperature', 'bloodPressure', 'heartRate', 'o2Sat', 'respiratoryRate', 'weight', 'height'],

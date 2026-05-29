@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { portalNavigation } from "../../config/navigation";
+import { FooterDotGrid } from "./footer-dot-grid";
 import { defaultClinicSettings } from "../../config/clinic";
 import { isModuleEnabled } from "../../config/modules";
 import { useClinicSettingsData } from "../../hooks/use-clinic-data";
@@ -340,12 +341,8 @@ export function PublicLayout() {
       </main>
 
       <footer className="w-full min-w-0 shrink-0 border-t border-slate-200 bg-white text-slate-900">
-        {/*
-          Match #portal-hero horizontal inset (portal-section-shell PORTAL_SECTION_PX).
-          Inlined here so utilities are traced in this file; w-full avoids any shrinkwrapping.
-        */}
         <div className="w-full max-w-none px-5 sm:px-8 lg:px-11 xl:px-14 2xl:px-20">
-          {/* Top: brand + intro row; contact aligns with description (same row on large screens) */}
+          {/* Top: brand + intro + contact */}
           <div className="py-8 sm:py-12">
             <div className="flex min-w-0 flex-col gap-5 sm:gap-7">
               <Link className="inline-flex w-fit shrink-0 items-center" to="/portal">
@@ -362,40 +359,40 @@ export function PublicLayout() {
               <div className="grid min-w-0 gap-5 sm:gap-8 lg:grid-cols-2 lg:items-start lg:gap-x-16 xl:gap-x-24">
                 <p className="max-w-2xl text-[0.9375rem] leading-[1.65] text-slate-600 sm:max-w-none sm:text-[0.9625rem] lg:max-w-[44rem]">
                   <span className="font-semibold text-slate-900">{clinic.clinicName}</span>
-                  {' '}
-                  {clinic.legalName && clinic.legalName !== clinic.clinicName ? `${clinic.legalName} ` : ''}
+                  {" "}
+                  {clinic.legalName && clinic.legalName !== clinic.clinicName ? `${clinic.legalName} ` : ""}
                   offers patient scheduling, consultations, and medical records through this portal, with
                   care anchored in clarity and trust.
                 </p>
-                {(clinic.contactNumber || clinic.email) ?
+                {clinic.contactNumber || clinic.email ? (
                   <div className="min-w-0 lg:justify-self-end lg:text-right">
                     <div className="space-y-2 text-[0.9375rem] leading-[1.65] text-slate-600">
-                      {clinic.contactNumber && telHref ?
+                      {clinic.contactNumber && telHref ? (
                         <p className="flex items-center gap-2.5 lg:justify-end">
                           <Phone aria-hidden className="size-4 shrink-0 text-slate-500" strokeWidth={2} />
                           <a className="min-w-0 hover:underline" href={telHref}>
                             {clinic.contactNumber}
                           </a>
                         </p>
-                        : null}
-                      {clinic.email ?
+                      ) : null}
+                      {clinic.email ? (
                         <p className="flex items-center gap-2.5 lg:justify-end">
                           <Mail aria-hidden className="size-4 shrink-0 text-slate-500" strokeWidth={2} />
                           <a className="min-w-0 break-all hover:underline" href={`mailto:${clinic.email}`}>
                             {clinic.email}
                           </a>
                         </p>
-                        : null}
+                      ) : null}
                     </div>
                   </div>
-                  : null}
+                ) : null}
               </div>
             </div>
           </div>
 
           <div className="border-t border-slate-200" />
 
-          {/* Middle: horizontal nav row */}
+          {/* Nav row */}
           <nav
             aria-label="Footer"
             className="flex flex-col gap-3 py-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6 sm:gap-y-3 lg:gap-x-10"
@@ -403,8 +400,7 @@ export function PublicLayout() {
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 sm:gap-x-8 lg:gap-x-10">
               <NavLink
                 className={({ isActive }) =>
-                  `text-sm font-medium transition-colors ${isActive ? "text-[var(--color-accent)]" : "text-slate-900 hover:text-[var(--color-accent)]"
-                  }`
+                  `text-sm font-medium transition-colors ${isActive ? "text-[var(--color-accent)]" : "text-slate-900 hover:text-[var(--color-accent)]"}`
                 }
                 end
                 to="/portal"
@@ -417,8 +413,7 @@ export function PublicLayout() {
                   <NavLink
                     key={`${item.to}::foot::${navIndex}`}
                     className={({ isActive }) =>
-                      `text-sm font-medium transition-colors ${isActive ? "text-[var(--color-accent)]" : "text-slate-900 hover:text-[var(--color-accent)]"
-                      }`
+                      `text-sm font-medium transition-colors ${isActive ? "text-[var(--color-accent)]" : "text-slate-900 hover:text-[var(--color-accent)]"}`
                     }
                     to={item.to}
                   >
@@ -446,13 +441,13 @@ export function PublicLayout() {
 
           <div className="border-t border-slate-200" />
 
-          {/* Disclaimer + bottom line */}
+          {/* Disclaimer + copyright */}
           <div className="space-y-5 py-6 sm:py-8">
             <p className="text-[0.8125rem] leading-relaxed text-slate-500 sm:text-[0.84375rem]">
               This site is for information and appointment management at {clinic.clinicName}. It does
               not replace professional medical advice, diagnosis, or treatment. In an emergency, contact
               local emergency services. Use of this portal is subject to clinic policies and applicable
-              law. Content may change without notice.
+              law. 
             </p>
             <div className="flex flex-col gap-2 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <p className="text-[0.8125rem] text-slate-500">
@@ -472,6 +467,9 @@ export function PublicLayout() {
             </div>
           </div>
         </div>
+
+        {/* Dot grid */}
+        <FooterDotGrid />
       </footer>
 
       <PortalChatbot />

@@ -152,7 +152,7 @@ function mapAppointmentRow(
 
 function buildTeleconsultSummary(
   appointment: AppointmentWithTeleconsult,
-  _role: Role,
+  role: Role,
   patientName: string,
   doctorName: string,
   serviceName: string,
@@ -160,9 +160,8 @@ function buildTeleconsultSummary(
   const roomName = appointment.teleconsultationRoomName || "";
   const platform = appointment.teleconsultationPlatform || "Jitsi Meet";
   const access = appointment.teleconsultationAccessInstructions;
-  const targetPath = platform === "Jitsi Meet"
-    ? `/app/teleconsult/${appointment.id}`
-    : `/app/teleconsult/${appointment.id}`;
+  const basePath = role === "patient" ? "/portal" : "/app";
+  const targetPath = `${basePath}/teleconsult/${appointment.id}`;
 
   return {
     id: appointment.id,

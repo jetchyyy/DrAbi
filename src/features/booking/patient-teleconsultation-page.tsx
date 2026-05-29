@@ -32,14 +32,6 @@ function getStatusLabel(status: Appointment["status"]) {
   return status.replaceAll("_", " ");
 }
 
-function getStatusBorderColor(status: Appointment["status"]) {
-  if (status === "completed") return "border-l-emerald-500";
-  if (status === "cancelled" || status === "no_show") return "border-l-rose-500";
-  if (status === "in_progress") return "border-l-red-500";
-  if (status === "confirmed") return "border-l-emerald-400";
-  return "border-l-orange-500";
-}
-
 function isPast(status: Appointment["status"]) {
   return status === "completed" || status === "cancelled" || status === "no_show";
 }
@@ -84,7 +76,7 @@ export function PatientConsultationPage() {
     <div className="mx-auto max-w-5xl pb-16">
       {/* Page header */}
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4 animate-slide-left">
-        <div className="border-l-4 border-orange-600 pl-4">
+        <div>
           <h1 className="text-3xl font-extrabold uppercase tracking-tight text-slate-950">
             My Consultations
           </h1>
@@ -161,7 +153,7 @@ export function PatientConsultationPage() {
                 return (
                   <div
                     key={appointment.id}
-                    className={`animate-fade-up border border-slate-200 border-l-[5px] bg-white shadow-sm transition-shadow duration-200 hover:shadow-md ${getStatusBorderColor(appointment.status)}`}
+                    className="animate-fade-up border border-slate-200 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md"
                     style={{ animationDelay: `${0.05 * index}s` }}
                   >
                     {/* Header row */}
@@ -360,4 +352,3 @@ export function PatientConsultationPage() {
     </div>
   );
 }
-
