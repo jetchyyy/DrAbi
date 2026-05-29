@@ -251,6 +251,79 @@ async function updateBookingStatus(
 
   // ── Live mode ──────────────────────────────────────────────────────────
   const client = supabase!;
+
+  // When confirming a booking, create an appointment if one doesn't exist
+  if (input.status === "confirmed") {
+    const booking = await fetchSingleBooking(input.bookingId);
+    if (!booking) {
+      throw new Error("Booking not found.");
+    }
+
+    // Check if appointment already exists for this booking
+    if (!booking.appointmentId) {
+      // Validate booking data
+      if (!booking.preferredDate || !booking.preferredTime) {
+        throw new Error(
+          "Booking date and time are required to create an appointment.",
+        );
+      }
+
+      // Create a new appointment from the booking data
+      // Normalize time format: ensure it's HH:MM
+      const normalizedTime = booking.preferredTime.slice(0, 5);
+      const dateTimeString = `${booking.preferredDate}T${normalizedTime}:00`;
+      const scheduledAt = new Date(dateTimeString).toISOString();
+
+      // Validate that the date was parsed correctly
+      if (!scheduledAt || scheduledAt === "Invalid Date") {
+        throw new Error(
+          `Invalid time value: could not parse date "${dateTimeString}"`,
+        );
+      }
+
+      const { data: appointmentData, error: appointmentError } = await client
+        .from("appointments")
+        .insert([
+          {
+            patient_id: booking.patientId,
+            doctor_id: booking.doctorId,
+            service_id: booking.serviceId,
+            booking_id: booking.id,
+            scheduled_at: scheduledAt,
+            status: "confirmed",
+            source: "internal",
+            visit_type: "in_person",
+            reason: booking.intakeNotes || "",
+            notes: booking.intakeNotes || "",
+          } as never,
+        ])
+        .select("id")
+        .single();
+
+      if (appointmentError) {
+        throw new Error(
+          `Failed to create appointment: ${appointmentError.message}`,
+        );
+      }
+
+      if (appointmentData && "id" in appointmentData) {
+        // Update the booking with the new appointment_id
+        const { error: updateError } = await client
+          .from("bookings")
+          .update({
+            appointment_id: (appointmentData as Record<string, string>).id,
+          } as never)
+          .eq("id", booking.id);
+
+        if (updateError) {
+          throw new Error(
+            `Failed to link appointment to booking: ${updateError.message}`,
+          );
+        }
+      }
+    }
+  }
+
   const payload: Record<string, unknown> = { status: input.status };
 
   if (input.status === "cancelled") {
@@ -311,9 +384,12 @@ async function fetchSingleBooking(bookingId: string) {
     patientId: row.patient_id,
     doctorId: row.doctor_id ?? null,
     serviceId: row.service_id,
+    appointmentId: row.appointment_id ?? null,
     preferredDate: row.preferred_date,
     preferredTime: row.preferred_time,
     status: row.status,
+    receiptCode: row.receipt_code ?? "",
+    intakeNotes: row.intake_notes ?? "",
   };
 }
 
@@ -325,9 +401,12 @@ function fetchSingleBookingFromDemo(bookingId: string) {
     patientId: booking.patientId,
     doctorId: booking.doctorId || null,
     serviceId: booking.serviceId,
+    appointmentId: null,
     preferredDate: booking.preferredDate,
     preferredTime: booking.preferredTime,
     status: booking.status,
+    receiptCode: booking.receiptCode || "",
+    intakeNotes: booking.intakeNotes || "",
   };
 }
 
