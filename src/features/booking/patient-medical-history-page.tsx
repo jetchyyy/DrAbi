@@ -161,6 +161,8 @@ type VisitHistoryRecord =
       consultation: Consultation;
     };
 
+type TimelineView = "upcoming" | "past";
+
 export function PatientMedicalHistoryPage() {
   const { profile, session } = useAuth();
   const { data: currentPatient, isLoading: isPatientLoading } =
@@ -187,6 +189,7 @@ export function PatientMedicalHistoryPage() {
     usePatientLabRequestDocuments(currentPatient?.id ?? null);
 
   const [selectedRecord, setSelectedRecord] = useState<SelectedRecord | null>(null);
+  const [timelineView, setTimelineView] = useState<TimelineView>("upcoming");
   const [showFullMedicalHistory, setShowFullMedicalHistory] = useState(false);
   const [showFullAllergies, setShowFullAllergies] = useState(false);
   const [docPreviewModal, setDocPreviewModal] = useState<{ open: boolean; title: string; html: string; isPrinting: boolean }>({
@@ -432,25 +435,6 @@ export function PatientMedicalHistoryPage() {
       right.dateTime.localeCompare(left.dateTime),
     );
   }, [appointmentTimeline, consultationTimeline, orphanedConsultations]);
-  const monthGroups = useMemo(() => {
-    const map = new Map<string, VisitHistoryRecord[]>();
-    for (const record of historyRecords) {
-      const d = new Date(record.dateTime);
-      if (Number.isNaN(d.getTime())) continue;
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(record);
-    }
-    return [...map.entries()]
-      .sort(([a], [b]) => b.localeCompare(a))
-      .map(([, items]) => {
-        const d = new Date(items[0].dateTime);
-        return {
-          label: d.toLocaleDateString("en-US", { month: "long", year: "numeric" }).toUpperCase(),
-          items,
-        };
-      });
-  }, [historyRecords]);
   const medicalHistoryText = currentPatient?.medicalHistory?.trim() || "None recorded.";
   const allergiesText = currentPatient?.allergies?.trim() || "None recorded.";
   const canExpandMedicalHistory = medicalHistoryText.length > 120;
@@ -560,13 +544,36 @@ export function PatientMedicalHistoryPage() {
               requests in one place.
             </p>
           </div>
-          <Link
-            className="inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
-            to="/portal/book"
-          >
-            <CalendarDays className="size-4" />
-            Book Another Visit
-          </Link>
+          <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+            <div
+              aria-label="History view"
+              className="inline-flex rounded-full bg-slate-100 p-1"
+              role="group"
+            >
+              {(["upcoming", "past"] as const).map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  aria-pressed={timelineView === view}
+                  className={`rounded-full px-4 py-2 text-sm font-bold capitalize transition ${
+                    timelineView === view
+                      ? "bg-slate-900 text-white shadow-sm"
+                      : "text-slate-500 hover:text-slate-900"
+                  }`}
+                  onClick={() => setTimelineView(view)}
+                >
+                  {view}
+                </button>
+              ))}
+            </div>
+            <Link
+              className="inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
+              to="/portal/book"
+            >
+              <CalendarDays className="size-4" />
+              Book Another Visit
+            </Link>
+          </div>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-5 border-t border-slate-100 pt-5 sm:grid-cols-3">
@@ -658,16 +665,11 @@ export function PatientMedicalHistoryPage() {
       </div>
 
       {/* Timeline */}
-      <div className="mt-6 space-y-10">
-        {/* Upcoming */}
-        {upcomingBookings.length > 0 && (
-          <div>
-            <div className="mb-5 flex items-center gap-3">
-              <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Upcoming</p>
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
-            <div className="space-y-5">
-              {upcomingBookings.map((booking, index) => {
+      <div className="mt-6">
+        {timelineView === "upcoming" ? (
+          upcomingBookings.length > 0 ? (
+            <div className="relative space-y-5 before:absolute before:bottom-5 before:left-[6.375rem] before:top-5 before:border-l before:border-dotted before:border-slate-300 sm:before:left-[8.375rem]">
+              {upcomingBookings.map((booking) => {
                 const doctor = directBookableDoctors.find((d) => d.id === booking.doctorId);
                 const service = services.find((s) => s.id === booking.serviceId);
                 const d = new Date(`${booking.preferredDate}T${booking.preferredTime}`);
@@ -685,12 +687,7 @@ export function PatientMedicalHistoryPage() {
                       </p>
                     </div>
                     <div className="relative flex justify-center">
-                      <span
-                        className={`absolute left-1/2 top-7 -translate-x-1/2 border-l border-dotted border-slate-300 ${
-                          index < upcomingBookings.length - 1 ? "-bottom-5" : "bottom-2"
-                        }`}
-                      />
-                      <span className="relative mt-5 size-3 rounded-full border-2 border-white bg-amber-400 shadow-sm ring-4 ring-amber-100" />
+                      <span className="relative z-10 mt-5 size-3 rounded-full border-2 border-white bg-amber-400 shadow-sm ring-4 ring-amber-100" />
                     </div>
                     <button
                       type="button"
@@ -721,18 +718,21 @@ export function PatientMedicalHistoryPage() {
                 );
               })}
             </div>
-          </div>
-        )}
-
-        {/* Past visits grouped by month */}
-        {monthGroups.map((group) => (
-          <div key={group.label}>
-            <div className="mb-5 flex items-center gap-3">
-              <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{group.label}</p>
-              <div className="h-px flex-1 bg-slate-200" />
+          ) : (
+            <div className="flex flex-col items-center py-20 text-center">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+                <CalendarDays className="size-6 text-slate-400" />
+              </div>
+              <p className="text-sm font-bold text-slate-700">No upcoming visits</p>
+              <p className="mt-1 max-w-xs text-xs text-slate-500">Confirmed and pending visits will appear here.</p>
+              <Link to="/portal/book" className="mt-5 inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-5 py-2 text-xs font-semibold text-white">
+                <CalendarDays className="size-3.5" /> Book a visit
+              </Link>
             </div>
-            <div className="space-y-5">
-              {group.items.map((record, index) => {
+          )
+        ) : historyRecords.length > 0 ? (
+          <div className="relative space-y-5 before:absolute before:bottom-5 before:left-[6.375rem] before:top-5 before:border-l before:border-dotted before:border-slate-300 sm:before:left-[8.375rem]">
+            {historyRecords.map((record) => {
                 const linked = record.consultation;
                 const d = new Date(record.dateTime);
                 const rxList = linked ? prescriptions.filter((rx) => rx.consultationId === linked.id) : [];
@@ -782,12 +782,7 @@ export function PatientMedicalHistoryPage() {
                       </p>
                     </div>
                     <div className="relative flex justify-center">
-                      <span
-                        className={`absolute left-1/2 top-7 -translate-x-1/2 border-l border-dotted border-slate-300 ${
-                          index < group.items.length - 1 ? "-bottom-5" : "bottom-2"
-                        }`}
-                      />
-                      <span className="relative mt-5 size-3 rounded-full border-2 border-white bg-slate-400 shadow-sm ring-4 ring-slate-100" />
+                      <span className="relative z-10 mt-5 size-3 rounded-full border-2 border-white bg-slate-400 shadow-sm ring-4 ring-slate-100" />
                     </div>
                     <button
                       type="button"
@@ -821,21 +816,14 @@ export function PatientMedicalHistoryPage() {
                   </div>
                 );
               })}
-            </div>
           </div>
-        ))}
-
-        {/* Empty state */}
-        {historyRecords.length === 0 && upcomingBookings.length === 0 && (
+        ) : (
           <div className="flex flex-col items-center py-20 text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
               <Stethoscope className="size-6 text-slate-400" />
             </div>
-            <p className="text-sm font-bold text-slate-700">No visits yet</p>
-            <p className="mt-1 max-w-xs text-xs text-slate-500">Your clinic visits and appointments will appear here.</p>
-            <Link to="/portal/book" className="mt-5 inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-5 py-2 text-xs font-semibold text-white">
-              <CalendarDays className="size-3.5" /> Book a visit
-            </Link>
+            <p className="text-sm font-bold text-slate-700">No past visits yet</p>
+            <p className="mt-1 max-w-xs text-xs text-slate-500">Completed clinic visits and consultation records will appear here.</p>
           </div>
         )}
       </div>
