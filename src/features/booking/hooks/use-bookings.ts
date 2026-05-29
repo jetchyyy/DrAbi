@@ -125,6 +125,7 @@ export function useCreateBooking(userId: string | null) {
         intakeNotes: payload.intakeNotes,
         feeType: payload.feeType,
         feeAmount: payload.feeAmount,
+        visitType: payload.visitType,
         promoCodeId: payload.promoCodeId,
         discountAmount: payload.discountAmount,
       }),
