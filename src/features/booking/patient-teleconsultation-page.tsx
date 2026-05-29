@@ -32,10 +32,6 @@ function getStatusLabel(status: Appointment["status"]) {
   return status.replaceAll("_", " ");
 }
 
-function getStatusBorderColor(_status: Appointment["status"]) {
-  return "";
-}
-
 function isPast(status: Appointment["status"]) {
   return status === "completed" || status === "cancelled" || status === "no_show";
 }
@@ -356,4 +352,3 @@ export function PatientConsultationPage() {
     </div>
   );
 }
-
