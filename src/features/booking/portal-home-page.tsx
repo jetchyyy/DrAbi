@@ -9,6 +9,9 @@ import { ServicesSection } from './sections/services-section';
 /** Set true to show meet-the-team (`DoctorsSection`) on portal home again. */
 const portalHomeShowMeetTheTeamSection = false;
 
+/** Set true to show the services section on portal home again. */
+const portalHomeShowServicesSection = false;
+
 export function PortalHomePage() {
   return (
     <div className="pb-0">
@@ -19,9 +22,11 @@ export function PortalHomePage() {
         <ScrollReveal delayMs={60}>
           <HowItWorksSection />
         </ScrollReveal>
-        <ScrollReveal delayMs={100}>
-          <ServicesSection />
-        </ScrollReveal>
+        {portalHomeShowServicesSection ? (
+          <ScrollReveal delayMs={100}>
+            <ServicesSection />
+          </ScrollReveal>
+        ) : null}
         <ScrollReveal delayMs={140}>
           <FeaturesSection />
         </ScrollReveal>

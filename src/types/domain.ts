@@ -346,6 +346,7 @@ export interface Booking extends BaseRecord {
   feeAmount: number;
   receiptCode: string;
   paymentStatus: BookingPaymentStatus;
+  visitType: VisitType;
   relatedReferral_id?: string | null;
   promoCodeId?: string | null;
   discountAmount?: number;
