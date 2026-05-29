@@ -533,38 +533,17 @@ export function PatientMedicalHistoryPage() {
         </div>
       )}
       {/* Header and profile notes */}
-      <div className="mb-10 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm animate-fade-up">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              My Medical History
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Review your previous clinic visits, consultation notes, and booking
-              requests in one place.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 sm:justify-end">
-            <div
-              aria-label="History view"
-              className="inline-flex rounded-full bg-slate-100 p-1"
-              role="group"
-            >
-              {(["upcoming", "past"] as const).map((view) => (
-                <button
-                  key={view}
-                  type="button"
-                  aria-pressed={timelineView === view}
-                  className={`rounded-full px-4 py-2 text-sm font-bold capitalize transition ${
-                    timelineView === view
-                      ? "bg-slate-900 text-white shadow-sm"
-                      : "text-slate-500 hover:text-slate-900"
-                  }`}
-                  onClick={() => setTimelineView(view)}
-                >
-                  {view}
-                </button>
-              ))}
+      <div className="relative mb-14 animate-fade-up">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                My Medical History
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Review your previous clinic visits, consultation notes, and booking
+                requests in one place.
+              </p>
             </div>
             <Link
               className="inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
@@ -574,98 +553,122 @@ export function PatientMedicalHistoryPage() {
               Book Another Visit
             </Link>
           </div>
+
+          <div className="mt-6 grid grid-cols-1 gap-5 border-t border-slate-100 pt-5 sm:grid-cols-3">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 shrink-0 rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_12%,white)] p-2">
+                <FileText className="size-4 text-[var(--color-primary)]" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Medical History
+                </p>
+                <div className="relative mt-1">
+                  <p
+                    className={`text-xs leading-relaxed text-slate-700 ${showFullMedicalHistory ? "" : "line-clamp-3"}`}
+                  >
+                    {medicalHistoryText}
+                  </p>
+                  {!showFullMedicalHistory && canExpandMedicalHistory ? (
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t from-white to-transparent"
+                    />
+                  ) : null}
+                </div>
+                {canExpandMedicalHistory ? (
+                  <button
+                    type="button"
+                    className="mt-1 text-[10px] font-semibold text-[var(--color-primary)] hover:underline"
+                    onClick={() => setShowFullMedicalHistory((value) => !value)}
+                  >
+                    {showFullMedicalHistory ? "Show less" : "Show more"}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 shrink-0 rounded-xl bg-slate-100 p-2">
+                <Activity className="size-4 text-slate-500" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Allergies
+                </p>
+                <div className="relative mt-1">
+                  <p
+                    className={`text-xs leading-relaxed text-slate-700 ${showFullAllergies ? "" : "line-clamp-3"}`}
+                  >
+                    {allergiesText}
+                  </p>
+                  {!showFullAllergies && canExpandAllergies ? (
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t from-white to-transparent"
+                    />
+                  ) : null}
+                </div>
+                {canExpandAllergies ? (
+                  <button
+                    type="button"
+                    className="mt-1 text-[10px] font-semibold text-[var(--color-primary)] hover:underline"
+                    onClick={() => setShowFullAllergies((value) => !value)}
+                  >
+                    {showFullAllergies ? "Show less" : "Show more"}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 shrink-0 rounded-xl bg-slate-100 p-2">
+                <CheckCircle className="size-4 text-slate-500" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Visit Status
+                </p>
+                <p className="mt-1 text-xs font-semibold text-slate-700">
+                  {currentPatient.visitStatus === "visited_clinic"
+                    ? "Visited clinic"
+                    : "Registered, no visit yet"}
+                </p>
+                {currentPatient.lastClinicVisitAt ? (
+                  <p className="mt-0.5 text-[10px] text-slate-500">
+                    Last: {formatDateTimeLabel(currentPatient.lastClinicVisitAt)}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-5 border-t border-slate-100 pt-5 sm:grid-cols-3">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 shrink-0 rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_12%,white)] p-2">
-              <FileText className="size-4 text-[var(--color-primary)]" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Medical History
-              </p>
-              <div className="relative mt-1">
-                <p
-                  className={`text-xs leading-relaxed text-slate-700 ${showFullMedicalHistory ? "" : "line-clamp-3"}`}
-                >
-                  {medicalHistoryText}
-                </p>
-                {!showFullMedicalHistory && canExpandMedicalHistory ? (
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t from-white to-transparent"
-                  />
-                ) : null}
-              </div>
-              {canExpandMedicalHistory ? (
-                <button
-                  type="button"
-                  className="mt-1 text-[10px] font-semibold text-[var(--color-primary)] hover:underline"
-                  onClick={() => setShowFullMedicalHistory((value) => !value)}
-                >
-                  {showFullMedicalHistory ? "Show less" : "Show more"}
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 shrink-0 rounded-xl bg-slate-100 p-2">
-              <Activity className="size-4 text-slate-500" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Allergies
-              </p>
-              <div className="relative mt-1">
-                <p
-                  className={`text-xs leading-relaxed text-slate-700 ${showFullAllergies ? "" : "line-clamp-3"}`}
-                >
-                  {allergiesText}
-                </p>
-                {!showFullAllergies && canExpandAllergies ? (
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t from-white to-transparent"
-                  />
-                ) : null}
-              </div>
-              {canExpandAllergies ? (
-                <button
-                  type="button"
-                  className="mt-1 text-[10px] font-semibold text-[var(--color-primary)] hover:underline"
-                  onClick={() => setShowFullAllergies((value) => !value)}
-                >
-                  {showFullAllergies ? "Show less" : "Show more"}
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 shrink-0 rounded-xl bg-slate-100 p-2">
-              <CheckCircle className="size-4 text-slate-500" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Visit Status
-              </p>
-              <p className="mt-1 text-xs font-semibold text-slate-700">
-                {currentPatient.visitStatus === "visited_clinic"
-                  ? "Visited clinic"
-                  : "Registered, no visit yet"}
-              </p>
-              {currentPatient.lastClinicVisitAt ? (
-                <p className="mt-0.5 text-[10px] text-slate-500">
-                  Last: {formatDateTimeLabel(currentPatient.lastClinicVisitAt)}
-                </p>
-              ) : null}
-            </div>
+        <div className="absolute -bottom-5 right-4 z-10 sm:right-6">
+          <div
+            aria-label="History view"
+            className="inline-flex rounded-full border border-[color-mix(in_srgb,var(--color-primary)_18%,white)] bg-white p-1 shadow-sm"
+            role="group"
+          >
+            {(["upcoming", "past"] as const).map((view) => (
+              <button
+                key={view}
+                type="button"
+                aria-pressed={timelineView === view}
+                className={`rounded-full px-4 py-2 text-sm font-bold capitalize transition ${
+                  timelineView === view
+                    ? "bg-[var(--color-primary)] text-white shadow-sm"
+                    : "text-slate-500 hover:text-[var(--color-primary)]"
+                }`}
+                onClick={() => setTimelineView(view)}
+              >
+                {view}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Timeline */}
-      <div className="mt-6">
+      <div>
         {timelineView === "upcoming" ? (
           upcomingBookings.length > 0 ? (
             <div className="relative space-y-5 before:absolute before:bottom-5 before:left-[6.375rem] before:top-5 before:border-l before:border-dotted before:border-slate-300 sm:before:left-[8.375rem]">
