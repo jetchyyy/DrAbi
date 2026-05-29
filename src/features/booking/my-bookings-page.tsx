@@ -3,7 +3,6 @@ import {
   CalendarClock,
   CheckCircle,
   ChevronDown,
-  Clock,
   Clock4,
   Plus,
   Stethoscope,
@@ -47,12 +46,7 @@ export function MyBookingsPage() {
     (b) => b.status === "cancelled" || b.status === "completed",
   );
 
-  const getStatusColor = (status: string) => {
-    if (status === "confirmed") return "border-l-emerald-500 bg-white";
-    if (status === "cancelled") return "border-l-rose-500 bg-white";
-    if (status === "completed") return "border-l-slate-400 bg-white";
-    return "border-l-orange-500 bg-white";
-  };
+  const getStatusColor = (_status: string) => "bg-white";
 
   const getStatusIcon = (status: string, size = "size-5") => {
     if (status === "confirmed")
@@ -74,9 +68,9 @@ export function MyBookingsPage() {
   return (
     <div className="mx-auto max-w-5xl pb-16">
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4 animate-slide-left">
-        <div className="border-l-4 border-orange-600 pl-4">
+        <div>
           <h1 className="text-3xl font-extrabold uppercase tracking-tight text-slate-950">
-            My Bookings
+            My Consultations
           </h1>
           <p className="mt-1 text-sm font-medium text-slate-500">
             Track your appointment requests, receipt QR, and cashier payment
@@ -162,7 +156,7 @@ export function MyBookingsPage() {
                 return (
                   <div
                     key={booking.id}
-                    className={`animate-fade-up border border-slate-200 border-l-[5px] shadow-sm transition-shadow duration-200 hover:shadow-md ${getStatusColor(booking.status)}`}
+                    className={`animate-fade-up border border-slate-200 shadow-sm transition-shadow duration-200 hover:shadow-md ${getStatusColor(booking.status)}`}
                     style={{ animationDelay: `${0.05 * index}s` }}
                   >
                     {/* Card header */}
@@ -196,7 +190,6 @@ export function MyBookingsPage() {
                           Schedule
                         </p>
                         <p className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
-                          <Clock className="size-3 shrink-0 text-orange-600" />
                           {formatDateLabel(booking.preferredDate)}
                         </p>
                         <p className="mt-0.5 text-xs font-semibold text-slate-500">
@@ -331,8 +324,7 @@ export function MyBookingsPage() {
                                 Schedule
                               </p>
                               <p className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
-                                <Clock className="size-3 shrink-0 text-orange-600" />
-                                {formatDateLabel(booking.preferredDate)}
+                                      {formatDateLabel(booking.preferredDate)}
                               </p>
                               <p className="mt-0.5 text-xs font-semibold text-slate-500">
                                 {formatTimeLabel(

@@ -143,7 +143,7 @@ export function PatientProfilePage() {
       <section className="relative overflow-hidden border border-slate-200 bg-white p-6 shadow-sm animate-slide-left">
         <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-orange-200/50 blur-2xl" />
         <div className="relative flex flex-wrap items-start justify-between gap-4">
-          <div className="border-l-4 border-orange-600 pl-4">
+          <div>
             <h1 className="text-3xl font-extrabold uppercase tracking-tight text-slate-950">
               My profile
             </h1>
@@ -161,7 +161,7 @@ export function PatientProfilePage() {
 
 <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
         <Card>
-          <div className="flex items-center gap-3 border-l-4 border-orange-600 pl-3">
+          <div className="flex items-center gap-3">
             <div className="rounded-xl bg-orange-600 p-3 text-white">
               <UserRound className="size-5" />
             </div>
@@ -229,7 +229,7 @@ export function PatientProfilePage() {
 
         <div className="space-y-6">
           <Card>
-            <div className="flex items-center gap-3 border-l-4 border-orange-500 pl-3">
+            <div className="flex items-center gap-3">
               <div className="rounded-xl bg-orange-600 p-3 text-white">
                 <QrCode className="size-5" />
               </div>
@@ -263,7 +263,7 @@ export function PatientProfilePage() {
           </Card>
 
           <Card>
-            <div className="flex items-center gap-3 border-l-4 border-slate-800 pl-3">
+            <div className="flex items-center gap-3">
               <div className="rounded-xl bg-slate-900 p-3 text-white">
                 <LockKeyhole className="size-5" />
               </div>

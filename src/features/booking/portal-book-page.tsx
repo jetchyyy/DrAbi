@@ -511,7 +511,7 @@ export function PortalBookPage() {
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_0.8fr]">
       <Card>
-        <Badge intent="info">Booking portal</Badge>
+      
         <CardTitle className="mt-4 text-3xl">Book a medical service</CardTitle>
         <p className="mt-3 text-sm text-slate-500">
           You are signed in as {profile?.fullName ?? profile?.email}.
@@ -534,7 +534,7 @@ export function PortalBookPage() {
         ) : null}
 
         <form className="mt-6 space-y-4" onSubmit={onSubmit}>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <FormField label="Service">
               <Select {...form.register("serviceId")}>
                 {services.map((service) => (
@@ -543,26 +543,6 @@ export function PortalBookPage() {
                   </option>
                 ))}
               </Select>
-            </FormField>
-            <FormField label="Service type">
-              <Input
-                disabled
-                readOnly
-                value={
-                  (
-                    {
-                      laboratory_services: "Laboratory & Diagnostic Services",
-                      medical_certificates: "Medical Certificates",
-                      medical_clearance: "Medical Clearance for Abroad",
-                      aesthetic_services: "Procedures & Aesthetic Services",
-                      vaccination: "Vaccination Services",
-                      consultation: "General Consultation",
-                      follow_up: "Follow-up Visit", // Added this
-                      medical_service: "Medical Service", // Added this
-                    } as Record<string, string>
-                  )[selectedService?.serviceType || ""] || ""
-                }
-              />
             </FormField>
             <FormField label="Visit type" error={form.formState.errors.visitType?.message}>
               <Select {...form.register("visitType")}>
@@ -573,37 +553,17 @@ export function PortalBookPage() {
           </div>
 
           {requiresDoctor ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField label="Doctor">
-                <Select {...form.register("doctorId")}>
-                  <option value="">Select doctor</option>
-                  {directBookableDoctors.map((doctor) => (
-                    <option key={doctor.id} value={doctor.id}>
-                      {doctor.fullName}
-                      {doctor.specialtyName ? ` (${doctor.specialtyName})` : ""}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-              <FormField label="Charge type">
-                <Input
-                  disabled
-                  readOnly
-                  value={
-                    {
-                      follow_up: "Follow-up Fee",
-                      consultation: "Consultation Fee",
-                      laboratory_services: "Laboratory Fee",
-                      medical_certificates: "Certificate Fee",
-                      medical_clearance: "Clearance Fee",
-                      aesthetic_services: "Service Fee",
-                      vaccination: "Vaccination Fee",
-                      medical_service: "Medical Service Fee",
-                    }[selectedService?.serviceType || ""] || "Service Fee"
-                  }
-                />
-              </FormField>
-            </div>
+            <FormField label="Doctor">
+              <Select {...form.register("doctorId")}>
+                <option value="">Select doctor</option>
+                {directBookableDoctors.map((doctor) => (
+                  <option key={doctor.id} value={doctor.id}>
+                    {doctor.fullName}
+                    {doctor.specialtyName ? ` (${doctor.specialtyName})` : ""}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
           ) : null}
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -636,8 +596,8 @@ export function PortalBookPage() {
                         className={cn(
                           "rounded-sm border px-3 py-3 text-sm font-semibold transition",
                           isActive
-                            ? "border-orange-300 bg-orange-50 text-orange-700"
-                            : "border-slate-200 bg-white text-slate-700 hover:border-orange-200 hover:bg-orange-50/40",
+                            ? "border-emerald-500 bg-emerald-500 text-white"
+                            : "border-slate-200 bg-white text-slate-700",
                         )}
                         onClick={() => setSelectedTimeSession(sessionValue)}
                         type="button"
@@ -682,7 +642,7 @@ export function PortalBookPage() {
             <div className="rounded-sm border border-slate-200 bg-slate-50 p-4">
               <div className="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <span className="inline-flex items-center gap-2">
-                  <span className="size-3 rounded-full bg-emerald-500" />
+                  <span className="size-3 rounded-full border-2 border-emerald-400 bg-white" />
                   Available
                 </span>
                 <span className="inline-flex items-center gap-2">
@@ -690,7 +650,7 @@ export function PortalBookPage() {
                   Booked
                 </span>
                 <span className="inline-flex items-center gap-2">
-                  <span className="size-3 rounded-full bg-orange-500" />
+                  <span className="size-3 rounded-full bg-emerald-500" />
                   Selected
                 </span>
               </div>
@@ -705,9 +665,9 @@ export function PortalBookPage() {
                         className={cn(
                           "rounded-sm border px-3 py-3 text-sm font-semibold transition",
                           isSelected
-                            ? "border-orange-300 bg-orange-50 text-orange-700"
+                            ? "border-emerald-500 bg-emerald-500 text-white"
                             : isAvailable
-                              ? "border-emerald-200 bg-white text-slate-800 hover:border-emerald-400 hover:bg-emerald-50"
+                              ? "border-emerald-400 bg-white text-slate-800"
                               : "cursor-not-allowed border-rose-200 bg-rose-50 text-rose-500 opacity-80",
                         )}
                         disabled={isBooked}
