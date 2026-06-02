@@ -31,13 +31,18 @@ export function generateInvoiceNumber(existingInvoices: Invoice[]): string {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const yearMonth = `${year}-${month}`;
 
-  // Count invoices from the current month
-  const currentMonthInvoices = existingInvoices.filter((inv) =>
-    inv.invoiceNumber.startsWith(`INV-${yearMonth}`),
-  );
+  // Find the highest existing sequence number for the current month
+  const prefix = `INV-${yearMonth}-`;
+  const highest = existingInvoices
+    .filter((inv) => inv.invoiceNumber.startsWith(prefix))
+    .reduce((max, inv) => {
+      const m = inv.invoiceNumber.match(/(\d+)$/);
+      const val = m ? Number(m[1]) : 0;
+      return Math.max(max, Number.isFinite(val) ? val : 0);
+    }, 0);
 
-  // Generate sequential number (001, 002, etc.)
-  const sequence = String(currentMonthInvoices.length + 1).padStart(4, "0");
+  // Next sequence = highest + 1
+  const sequence = String(highest + 1).padStart(4, "0");
 
   return `INV-${yearMonth}-${sequence}`;
 }
@@ -204,6 +209,7 @@ export function useCreateInvoice() {
           discountAmount,
           taxAmount,
           total,
+          companyId: values.companyId || null,
         },
         values.items.map((item) => ({
           description: item.description,
@@ -330,6 +336,7 @@ export function useUpdateInvoice() {
           discountAmount,
           taxAmount,
           total,
+          companyId: values.companyId || null,
         },
         values.items.map((item) => ({
           description: item.description,

@@ -26,6 +26,7 @@ import { useCreatePatient } from "../patients/hooks/use-patients";
 import { usePatients } from "../patients/hooks/use-patients";
 import { useUpdatePatient } from "../patients/hooks/use-patients";
 import { useUpdateAppointment } from "../appointments/hooks/use-appointments";
+import { useCompanies } from "../companies/api/companies-hooks";
 import {
   formatCurrency,
   getPhilippineDateKey,
@@ -80,6 +81,7 @@ const walkInWizardSchema = z.object({
       patientId: z.string().min(1, "Patient is required."),
       bookingId: z.string().optional(),
       appointmentId: z.string().optional(),
+      companyId: z.string().optional().nullable(),
       paymentType: z.enum(["cash", "gcash", "card"]),
       referenceNumber: z.string().optional(),
       paymentStatus: z.enum(["unpaid", "paid"]),
@@ -636,6 +638,7 @@ export function WalkInWizardModal({
   const { data: services = [] } = useServicesCatalog();
   const { data: bookings = [] } = useBookings();
   const { data: patients = [] } = usePatients();
+  const { data: companies = [] } = useCompanies();
   const createPatient = useCreatePatient();
   const updatePatient = useUpdatePatient();
   const createAppointment = useCreateAppointment();
@@ -651,6 +654,18 @@ export function WalkInWizardModal({
   const [invoicePatientSearch, setInvoicePatientSearch] = useState("");
   const [isInvoicePatientDropdownOpen, setIsInvoicePatientDropdownOpen] =
     useState(false);
+  const [companySearch, setCompanySearch] = useState("");
+  const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
+
+  const filteredCompanies = useMemo(() => {
+    const query = companySearch.trim().toLowerCase();
+    if (!query) return companies;
+    return companies.filter(
+      (company) =>
+        company.companyName.toLowerCase().includes(query) ||
+        company.companyCode.toLowerCase().includes(query),
+    );
+  }, [companies, companySearch]);
   const [createdPatient, setCreatedPatient] = useState<{
     id: string;
     firstName: string;
@@ -710,6 +725,7 @@ export function WalkInWizardModal({
         patientId: "",
         bookingId: "",
         appointmentId: "",
+        companyId: "",
         paymentType: "cash",
         referenceNumber: "",
         paymentStatus: "paid",
@@ -745,6 +761,7 @@ export function WalkInWizardModal({
   const selectedPatientHeight = form.watch("patient.height");
   const selectedBillingPaymentStatus = form.watch("billing.paymentStatus");
   const selectedBillingPatientId = form.watch("billing.patientId");
+  const selectedBillingCompanyId = form.watch("billing.companyId");
   const billingLineItems = form.watch("billing.items");
   const today = new Date();
   const currentYear = today.getFullYear();
@@ -1137,6 +1154,7 @@ export function WalkInWizardModal({
         patientId: "",
         bookingId: "",
         appointmentId: "",
+        companyId: "",
         paymentType: "cash",
         referenceNumber: "",
         paymentStatus: "paid",
@@ -1158,6 +1176,8 @@ export function WalkInWizardModal({
     setCreatedPatient(null);
     setCreatedAppointment(null);
     setBillingReceiptPrintState(null);
+    setCompanySearch("");
+    setIsCompanyDropdownOpen(false);
   }, [
     defaultDoctor?.id,
     defaultDoctor?.specialtyId,
@@ -1342,6 +1362,9 @@ export function WalkInWizardModal({
     }
 
     const values = form.getValues("appointment");
+    const billingValues = form.getValues("billing");
+    const isTeleconsult = values.visitType === "teleconsultation";
+
     const resolvedSpecialtyId =
       values.specialtyId ||
       selectedService?.specialtyId ||
@@ -1350,34 +1373,74 @@ export function WalkInWizardModal({
       specialties[0]?.id ||
       "";
 
-    let queueNumber = "ODC-QUE-000001";
+    // --- Receipt code generation ---
+    const selectedCompany = billingValues.companyId
+      ? companies.find((c) => c.id === billingValues.companyId)
+      : null;
+    const companyCodePart = selectedCompany?.companyCode?.trim().toUpperCase() || "GEN";
+    const now = new Date();
+    const yearPart = now.getFullYear();
+    const monthPart = String(now.getMonth() + 1).padStart(2, "0");
+
+    let receiptSeq = 1;
     try {
       if (isSupabaseConfigured && supabase) {
-        const { data, error } = await supabase
+        const { data: rcData } = await supabase
           .from("appointments")
-          .select("queue_number")
-          .not("queue_number", "is", null)
-          .order("created_at", { ascending: false })
-          .limit(1);
-        const latest = (data ?? []) as Array<{
-          queue_number: string | null;
-        }>;
-        if (!error && latest && latest.length > 0 && latest[0].queue_number) {
-          const m = String(latest[0].queue_number).match(/(\d+)$/);
-          const next = m ? Number(m[1]) + 1 : 1;
-          queueNumber = `ODC-QUE-${String(next).padStart(6, "0")}`;
+          .select("receipt_code")
+          .not("receipt_code", "is", null);
+        const rcRows = (rcData ?? []) as Array<{ receipt_code: string | null }>;
+        if (rcRows.length > 0) {
+          const highest = rcRows.reduce((max, row) => {
+            const m = String(row.receipt_code ?? "").match(/(\d+)$/);
+            const val = m ? Number(m[1]) : 0;
+            return Math.max(max, Number.isFinite(val) ? val : 0);
+          }, 0);
+          receiptSeq = highest + 1;
         }
       } else {
+        const stored = Number(localStorage.getItem("appt_receipt_seq") || "0");
+        receiptSeq = stored + 1;
+        localStorage.setItem("appt_receipt_seq", String(receiptSeq));
+      }
+    } catch {
+      const stored = Number(localStorage.getItem("appt_receipt_seq") || "0");
+      receiptSeq = stored + 1;
+      localStorage.setItem("appt_receipt_seq", String(receiptSeq));
+    }
+    const receiptCode = `${companyCodePart}-${yearPart}-${monthPart}-${String(receiptSeq).padStart(6, "0")}`;
+
+    // --- Queue number generation (only for in-person) ---
+    let queueNumber = "ODC-QUE-000001";
+    if (!isTeleconsult) {
+      try {
+        if (isSupabaseConfigured && supabase) {
+          const { data, error } = await supabase
+            .from("appointments")
+            .select("queue_number")
+            .not("queue_number", "is", null)
+            .order("created_at", { ascending: false })
+            .limit(1);
+          const latest = (data ?? []) as Array<{
+            queue_number: string | null;
+          }>;
+          if (!error && latest && latest.length > 0 && latest[0].queue_number) {
+            const m = String(latest[0].queue_number).match(/(\d+)$/);
+            const next = m ? Number(m[1]) + 1 : 1;
+            queueNumber = `ODC-QUE-${String(next).padStart(6, "0")}`;
+          }
+        } else {
+          const stored = Number(localStorage.getItem("odc_queue_seq") || "0");
+          const next = stored + 1;
+          localStorage.setItem("odc_queue_seq", String(next));
+          queueNumber = `ODC-QUE-${String(next).padStart(6, "0")}`;
+        }
+      } catch {
         const stored = Number(localStorage.getItem("odc_queue_seq") || "0");
         const next = stored + 1;
         localStorage.setItem("odc_queue_seq", String(next));
         queueNumber = `ODC-QUE-${String(next).padStart(6, "0")}`;
       }
-    } catch {
-      const stored = Number(localStorage.getItem("odc_queue_seq") || "0");
-      const next = stored + 1;
-      localStorage.setItem("odc_queue_seq", String(next));
-      queueNumber = `ODC-QUE-${String(next).padStart(6, "0")}`;
     }
 
     const scheduledAtUtc = new Date().toISOString();
@@ -1410,9 +1473,10 @@ export function WalkInWizardModal({
       teleconsultationPlatform: undefined,
       teleconsultationUrl: undefined,
       teleconsultationAccessInstructions: undefined,
-      queue_number: queueNumber,
+      queue_number: isTeleconsult ? null : queueNumber,
       estimated_end: estimatedEnd,
-    });
+      receipt_code: receiptCode,
+    } as never);
 
     setCreatedAppointment(appointment);
     form.setValue("billing.appointmentId", appointment.id, {
@@ -1451,6 +1515,7 @@ export function WalkInWizardModal({
         patientId: values.patientId,
         bookingId: values.bookingId ?? "",
         appointmentId: values.appointmentId ?? createdAppointment.id,
+        companyId: values.companyId || null,
         items: values.items,
         paymentStatus: values.paymentStatus,
         paymentType: values.paymentType,
@@ -1487,6 +1552,45 @@ export function WalkInWizardModal({
       })),
     });
 
+    // --- Generate receipt_code at billing time (company is now known) ---
+    const billingCompany = values.companyId
+      ? companies.find((c) => c.id === values.companyId)
+      : null;
+    const rcCompanyCode = billingCompany?.companyCode?.trim().toUpperCase() || "GEN";
+    const rcNow = new Date();
+    const rcYear = rcNow.getFullYear();
+    const rcMonth = String(rcNow.getMonth() + 1).padStart(2, "0");
+
+    let rcSeq = 1;
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const { data: rcData } = await supabase
+          .from("appointments")
+          .select("receipt_code")
+          .like("receipt_code", `${rcCompanyCode}-%`);
+        const rcRows = (rcData ?? []) as Array<{ receipt_code: string | null }>;
+        if (rcRows.length > 0) {
+          const highest = rcRows.reduce((max, row) => {
+            const m = String(row.receipt_code ?? "").match(/(\d+)$/);
+            const val = m ? Number(m[1]) : 0;
+            return Math.max(max, Number.isFinite(val) ? val : 0);
+          }, 0);
+          rcSeq = highest + 1;
+        }
+      } else {
+        const lsKey = `appt_receipt_seq_${rcCompanyCode}`;
+        const stored = Number(localStorage.getItem(lsKey) || "0");
+        rcSeq = stored + 1;
+        localStorage.setItem(lsKey, String(rcSeq));
+      }
+    } catch {
+      const lsKey = `appt_receipt_seq_${rcCompanyCode}`;
+      const stored = Number(localStorage.getItem(lsKey) || "0");
+      rcSeq = stored + 1;
+      localStorage.setItem(lsKey, String(rcSeq));
+    }
+    const finalReceiptCode = `${rcCompanyCode}-${rcYear}-${rcMonth}-${String(rcSeq).padStart(6, "0")}`;
+
     await updateAppointment.mutateAsync({
       appointmentId: createdAppointment.id,
       payload: {
@@ -1497,6 +1601,7 @@ export function WalkInWizardModal({
         scheduledAt: createdAppointment.scheduledAt,
         queue_number: createdAppointment.queue_number ?? null,
         estimated_end: createdAppointment.estimated_end ?? null,
+        receipt_code: finalReceiptCode,
         status: "in_progress",
         source: createdAppointment.source,
         visitType: createdAppointment.visitType,
@@ -1508,18 +1613,21 @@ export function WalkInWizardModal({
           createdAppointment.teleconsultationUrl ?? undefined,
         teleconsultationAccessInstructions:
           createdAppointment.teleconsultationAccessInstructions ?? undefined,
-      },
+        companyId: values.companyId || null,
+      } as never,
     });
 
-    openQueuePrint({
-      queueNumber: createdAppointment.queue_number ?? "ODC-QUE-000001",
-      scheduledAt: createdAppointment.scheduledAt,
-      estimatedEnd:
-        createdAppointment.estimated_end ?? createdAppointment.scheduledAt,
-      patientName: createdPatient
-        ? `${createdPatient.firstName} ${createdPatient.lastName}`
-        : undefined,
-    });
+    if (createdAppointment.visitType !== "teleconsultation") {
+      openQueuePrint({
+        queueNumber: createdAppointment.queue_number ?? "ODC-QUE-000001",
+        scheduledAt: createdAppointment.scheduledAt,
+        estimatedEnd:
+          createdAppointment.estimated_end ?? createdAppointment.scheduledAt,
+        patientName: createdPatient
+          ? `${createdPatient.firstName} ${createdPatient.lastName}`
+          : undefined,
+      });
+    }
 
     setStage("complete");
     toast.success("Billing completed. The patient is ready for consultation.");
@@ -2443,6 +2551,82 @@ export function WalkInWizardModal({
                       );
                     })}
                 </Select>
+              </FormField>
+
+              <FormField
+                error={form.formState.errors.billing?.companyId?.message}
+                label="Company (optional)"
+              >
+                <div className="relative">
+                  <Input
+                    onBlur={() => {
+                      window.setTimeout(
+                        () => setIsCompanyDropdownOpen(false),
+                        120,
+                      );
+                    }}
+                    onFocus={() => setIsCompanyDropdownOpen(true)}
+                    onChange={(event) => {
+                      const query = event.target.value;
+                      setCompanySearch(query);
+                      setIsCompanyDropdownOpen(true);
+
+                      const exactMatch = companies.find(
+                        (c) =>
+                          c.companyName.trim().toLowerCase() ===
+                            query.trim().toLowerCase() ||
+                          c.companyCode.trim().toLowerCase() ===
+                            query.trim().toLowerCase(),
+                      );
+
+                      if (exactMatch) {
+                        form.setValue("billing.companyId", exactMatch.id, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                        return;
+                      }
+
+                      form.setValue("billing.companyId", "", {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    }}
+                    placeholder="Search/type company name"
+                    value={companySearch}
+                  />
+                  {isCompanyDropdownOpen ? (
+                    <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto border border-slate-200 bg-white shadow-lg">
+                      {filteredCompanies.length > 0 ? (
+                        filteredCompanies.map((company) => (
+                          <button
+                            className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${
+                              selectedBillingCompanyId === company.id
+                                ? "bg-emerald-50 text-emerald-800"
+                                : "text-slate-700"
+                            }`}
+                            key={company.id}
+                            onMouseDown={() => {
+                              form.setValue("billing.companyId", company.id, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                              setCompanySearch(company.companyName);
+                              setIsCompanyDropdownOpen(false);
+                            }}
+                            type="button"
+                          >
+                            {company.companyName} {company.companyCode ? `(${company.companyCode})` : ""}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="px-3 py-2 text-xs text-slate-500">
+                          No matching companies found.
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
               </FormField>
 
               <div className="grid gap-4 md:grid-cols-2">

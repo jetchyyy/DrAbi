@@ -62,6 +62,7 @@ import {
   useDeleteAppointment,
   useUpdateAppointment,
 } from "./hooks/use-appointments";
+import { useCompanies } from "../companies/api/companies-hooks";
 
 const appointmentSchema = z
   .object({
@@ -69,6 +70,7 @@ const appointmentSchema = z
     doctorId: z.string().min(1, "Doctor is required."),
     specialtyId: z.string().optional(),
     serviceId: z.string().min(1, "Service is required."),
+    companyId: z.string().optional(),
     scheduledAt: z.string().min(1, "Scheduled time is required."),
     status: z.enum([
       "scheduled",
@@ -116,6 +118,7 @@ export function AppointmentsPage() {
   const { data: doctors = [] } = useDoctorDirectory();
   const { data: services = [] } = useServicesCatalog();
   const { data: specialties = [] } = useSpecialtiesCatalog();
+  const { data: companies = [] } = useCompanies();
   const createAppointmentMutation = useCreateAppointment();
   const updateAppointmentMutation = useUpdateAppointment();
   const deleteAppointmentMutation = useDeleteAppointment();
@@ -142,6 +145,7 @@ export function AppointmentsPage() {
       doctorId: "",
       specialtyId: "",
       serviceId: "",
+      companyId: "",
       scheduledAt: "2026-03-26T09:00",
       status: "scheduled",
       source: "internal",
@@ -388,6 +392,7 @@ export function AppointmentsPage() {
       doctorId: doctors[0]?.id ?? "",
       specialtyId: defaultSpecialtyId,
       serviceId: services[0]?.id ?? "",
+      companyId: "",
       scheduledAt: defaultScheduledAt,
       status: "scheduled",
       source: source ?? "internal",
@@ -434,6 +439,7 @@ export function AppointmentsPage() {
       doctorId: appointment.doctorId,
       specialtyId: appointment.specialtyId,
       serviceId: appointment.serviceId,
+      companyId: appointment.companyId || "",
       scheduledAt,
       status: appointment.status,
       source: appointment.source,
@@ -476,6 +482,7 @@ export function AppointmentsPage() {
       doctorId: values.doctorId,
       specialtyId: values.specialtyId ?? "",
       serviceId: values.serviceId,
+      companyId: values.companyId || null,
       scheduledAt: scheduledAtUtc,
       status: values.status,
       source: values.source,
@@ -510,41 +517,84 @@ export function AppointmentsPage() {
           variant: "success",
         });
       } else {
-        let queueNumber = "ODC-QUE-000001";
+        const isTeleconsult = values.visitType === "teleconsultation";
+
+        // --- Receipt code generation ---
+        const selectedCompany = values.companyId
+          ? companies.find((c) => c.id === values.companyId)
+          : null;
+        const companyCodePart = selectedCompany?.companyCode?.trim().toUpperCase() || "GEN";
+        const now = new Date();
+        const yearPart = now.getFullYear();
+        const monthPart = String(now.getMonth() + 1).padStart(2, "0");
+
+        let receiptSeq = 1;
         try {
           if (isSupabaseConfigured && supabase) {
-            const { data, error } = await supabase
+            const { data: rcData } = await supabase
               .from("appointments")
-              .select("queue_number")
-              .not("queue_number", "is", null);
-            const latest = (data ?? []) as Array<{
-              queue_number: string | null;
-            }>;
-            if (!error && latest && latest.length > 0) {
-              const highestQueue = latest.reduce((max, row) => {
-                const m = String(row.queue_number ?? "").match(/(\d+)$/);
-                const value = m ? Number(m[1]) : 0;
-                return Math.max(max, Number.isFinite(value) ? value : 0);
+              .select("receipt_code")
+              .like("receipt_code", `${companyCodePart}-%`);
+            const rcRows = (rcData ?? []) as Array<{ receipt_code: string | null }>;
+            if (rcRows.length > 0) {
+              const highest = rcRows.reduce((max, row) => {
+                const m = String(row.receipt_code ?? "").match(/(\d+)$/);
+                const val = m ? Number(m[1]) : 0;
+                return Math.max(max, Number.isFinite(val) ? val : 0);
               }, 0);
-              const next = highestQueue + 1;
-              queueNumber = `ODC-QUE-${String(next).padStart(6, "0")}`;
+              receiptSeq = highest + 1;
             }
           } else {
+            const lsKey = `appt_receipt_seq_${companyCodePart}`;
+            const stored = Number(localStorage.getItem(lsKey) || "0");
+            receiptSeq = stored + 1;
+            localStorage.setItem(lsKey, String(receiptSeq));
+          }
+        } catch {
+          const lsKey = `appt_receipt_seq_${companyCodePart}`;
+          const stored = Number(localStorage.getItem(lsKey) || "0");
+          receiptSeq = stored + 1;
+          localStorage.setItem(lsKey, String(receiptSeq));
+        }
+        const receiptCode = `${companyCodePart}-${yearPart}-${monthPart}-${String(receiptSeq).padStart(6, "0")}`;
+
+        // --- Queue number generation (only for in-person) ---
+        let queueNumber = "ODC-QUE-000001";
+        if (!isTeleconsult) {
+          try {
+            if (isSupabaseConfigured && supabase) {
+              const { data, error } = await supabase
+                .from("appointments")
+                .select("queue_number")
+                .not("queue_number", "is", null);
+              const latest = (data ?? []) as Array<{
+                queue_number: string | null;
+              }>;
+              if (!error && latest && latest.length > 0) {
+                const highestQueue = latest.reduce((max, row) => {
+                  const m = String(row.queue_number ?? "").match(/(\d+)$/);
+                  const value = m ? Number(m[1]) : 0;
+                  return Math.max(max, Number.isFinite(value) ? value : 0);
+                }, 0);
+                const next = highestQueue + 1;
+                queueNumber = `ODC-QUE-${String(next).padStart(6, "0")}`;
+              }
+            } else {
+              const stored = Number(localStorage.getItem("odc_queue_seq") || "0");
+              const next = stored + 1;
+              localStorage.setItem("odc_queue_seq", String(next));
+              queueNumber = `ODC-QUE-${String(next).padStart(6, "0")}`;
+            }
+          } catch {
             const stored = Number(localStorage.getItem("odc_queue_seq") || "0");
             const next = stored + 1;
             localStorage.setItem("odc_queue_seq", String(next));
             queueNumber = `ODC-QUE-${String(next).padStart(6, "0")}`;
           }
-        } catch (err) {
-          const stored = Number(localStorage.getItem("odc_queue_seq") || "0");
-          const next = stored + 1;
-          localStorage.setItem("odc_queue_seq", String(next));
-          queueNumber = `ODC-QUE-${String(next).padStart(6, "0")}`;
         }
+
         const scheduledDate = new Date(scheduledAtUtc);
-
         const minutes = scheduledDate.getMinutes();
-
         let estimatedEndDate = new Date(scheduledDate);
 
         // if less than 15 mins -> set to :30
@@ -565,9 +615,10 @@ export function AppointmentsPage() {
 
         const created = await createAppointmentMutation.mutateAsync({
           ...basePayload,
-          queue_number: queueNumber,
+          queue_number: isTeleconsult ? null : queueNumber,
           estimated_end: estimatedEnd,
-        });
+          receipt_code: receiptCode,
+        } as never);
 
         setFeedbackModal({
           open: true,
@@ -581,7 +632,7 @@ export function AppointmentsPage() {
           ? `${patient.firstName} ${patient.lastName}`
           : (values.isDoctorsOnly ? "Doctors Collaboration Meeting" : "Patient");
 
-        if (!values.isDoctorsOnly) {
+        if (!values.isDoctorsOnly && !isTeleconsult) {
           openQueuePrint({
             queueNumber,
             scheduledAt: created?.scheduledAt ?? scheduledAtUtc,
@@ -1120,6 +1171,19 @@ export function AppointmentsPage() {
                       </Select>
                     </FormField>
                   </div>
+                  <FormField
+                    error={form.formState.errors.companyId?.message}
+                    label="Company (for receipt code)"
+                  >
+                    <Select {...form.register("companyId")}>
+                      <option value="">No company / walk-in</option>
+                      {companies.map((company) => (
+                        <option key={company.id} value={company.id}>
+                          {company.companyName} ({company.companyCode})
+                        </option>
+                      ))}
+                    </Select>
+                  </FormField>
                   {/* Schedule date and time removed — walk-in / quick queue will auto-assign schedule */}
                 </div>
 

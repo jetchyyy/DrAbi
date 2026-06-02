@@ -122,6 +122,7 @@ function mapAppointmentRow(
     scheduledAt: row.scheduled_at,
     queue_number: (row as any).queue_number ?? null,
     estimated_end: (row as any).estimated_end ?? null,
+    receipt_code: (row as any).receipt_code ?? null,
     status:
       row.status === "scheduled" ||
       row.status === "confirmed" ||
@@ -147,6 +148,7 @@ function mapAppointmentRow(
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
+    companyId: (row as any).company_id ?? null,
   };
 }
 
@@ -212,6 +214,7 @@ export async function createAppointmentLiveOrDemo(input: AppointmentInput) {
     scheduled_at: normalized.scheduledAt,
     queue_number: (normalized as any).queue_number ?? null,
     estimated_end: normalizeTimeOnlyValue((normalized as any).estimated_end),
+    receipt_code: (input as any).receipt_code ?? (normalized as any).receipt_code ?? null,
     status: normalized.status,
     source: normalized.source,
     visit_type: normalized.visitType,
@@ -224,6 +227,7 @@ export async function createAppointmentLiveOrDemo(input: AppointmentInput) {
     teleconsultation_access_instructions:
       normalized.teleconsultationAccessInstructions,
     additional_doctor_ids: (normalized as any).additionalDoctorIds || [],
+    company_id: (input as any).companyId ?? (normalized as any).companyId ?? null,
   };
 
   const { data, error } = await client
@@ -258,6 +262,7 @@ export async function updateAppointmentLiveOrDemo(
     scheduled_at: normalized.scheduledAt,
     queue_number: (normalized as any).queue_number ?? null,
     estimated_end: normalizeTimeOnlyValue((normalized as any).estimated_end),
+    receipt_code: (input as any).receipt_code ?? (normalized as any).receipt_code ?? null,
     status: normalized.status,
     source: normalized.source,
     visit_type: normalized.visitType,
@@ -270,6 +275,7 @@ export async function updateAppointmentLiveOrDemo(
     teleconsultation_access_instructions:
       normalized.teleconsultationAccessInstructions,
     additional_doctor_ids: (normalized as any).additionalDoctorIds || [],
+    company_id: (input as any).companyId ?? (normalized as any).companyId ?? null,
   };
 
   const { data, error } = await client

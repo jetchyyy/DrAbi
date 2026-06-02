@@ -779,6 +779,7 @@ function mapInvoiceRow(row: {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  company_id?: string | null;
 }): Invoice {
   return {
     id: row.id,
@@ -794,6 +795,7 @@ function mapInvoiceRow(row: {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
+    companyId: row.company_id ?? null,
   };
 }
 
@@ -1576,19 +1578,42 @@ export async function createInvoiceLiveOrDemo(
   }
 
   const client = requireSupabase();
+
+  // Always resolve the invoice number from the DB directly to avoid stale-cache gaps
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const prefix = `INV-${year}-${month}-`;
+
+  const { data: existingRows } = await client
+    .from("invoices")
+    .select("invoice_number")
+    .like("invoice_number", `${prefix}%`);
+
+  const highestSeq = ((existingRows ?? []) as Array<{ invoice_number: string }>).reduce(
+    (max, row) => {
+      const m = row.invoice_number.match(/(\d+)$/);
+      const val = m ? Number(m[1]) : 0;
+      return Math.max(max, Number.isFinite(val) ? val : 0);
+    },
+    0,
+  );
+  const resolvedInvoiceNumber = `${prefix}${String(highestSeq + 1).padStart(4, "0")}`;
+
   const invoicePayload = {
     patient_id: invoice.patientId,
     appointment_id:
       invoice.appointmentId && invoice.appointmentId !== ""
         ? invoice.appointmentId
         : null,
-    invoice_number: invoice.invoiceNumber,
+    invoice_number: resolvedInvoiceNumber,
     payment_status: invoice.paymentStatus,
     subtotal: invoice.subtotal,
     discount_type: invoice.discountType ?? "none",
     discount_amount: invoice.discountAmount ?? 0,
     tax_amount: invoice.taxAmount ?? 0,
     total: invoice.total,
+    company_id: invoice.companyId ?? null,
   };
 
   const { data, error } = await client
@@ -1641,6 +1666,7 @@ export async function createInvoiceLiveOrDemo(
   return createdInvoice;
 }
 
+
 export async function updateInvoiceLiveOrDemo(
   invoiceId: string,
   invoice: Omit<Invoice, "id" | "createdAt" | "updatedAt">,
@@ -1667,6 +1693,7 @@ export async function updateInvoiceLiveOrDemo(
     discount_amount: invoice.discountAmount ?? 0,
     tax_amount: invoice.taxAmount ?? 0,
     total: invoice.total,
+    company_id: invoice.companyId ?? null,
   };
 
   const { data, error } = await client

@@ -135,6 +135,14 @@ export const appNavigation: NavItem[] = [
     moduleKey: "billing",
   },
   {
+    label: "Companies",
+    to: "/app/companies",
+    icon: Building2,
+    permission: "companies.manage",
+    roles: ["owner_admin", "front_desk_cashier"],
+    moduleKey: "billing",
+  },
+  {
     label: "POS",
     to: "/app/pos",
     icon: ShoppingCart,

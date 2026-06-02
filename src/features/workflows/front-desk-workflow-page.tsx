@@ -1,4 +1,4 @@
-import {
+﻿import {
   Activity,
   ArrowRight,
   ExternalLink,
@@ -23,7 +23,10 @@ import { Input } from "../../components/ui/input";
 import { StatusPill } from "../../components/ui/status-pill";
 import { INTERNAL_SURFACE } from "../../lib/internal-ui";
 import { cn } from "../../lib/utils";
-import { useAppointments, useUpdateAppointment } from "../appointments/hooks/use-appointments";
+import {
+  useAppointments,
+  useUpdateAppointment,
+} from "../appointments/hooks/use-appointments";
 import { usePatientBookings } from "../appointments/hooks/use-patients-booking";
 import { useMarkBookingPaid } from "../booking/hooks/use-bookings";
 import { useInvoices } from "../billing/api/billing-mutations";
@@ -51,7 +54,9 @@ type FrontDeskQueueFilter =
   | "walk_in"
   | "overdue";
 
-function mapBookingRows(rows: ReturnType<typeof usePatientBookings>["data"]): Booking[] {
+function mapBookingRows(
+  rows: ReturnType<typeof usePatientBookings>["data"],
+): Booking[] {
   return (rows ?? []).map((row) => ({
     id: row.id,
     patientId: row.patientId,
@@ -72,12 +77,14 @@ function mapBookingRows(rows: ReturnType<typeof usePatientBookings>["data"]): Bo
   }));
 }
 
-
 function labelFromValue(value: string) {
   return value.replaceAll("_", " ");
 }
 
-function buildAppointmentPayload(appointment: Appointment, status: Appointment["status"]) {
+function buildAppointmentPayload(
+  appointment: Appointment,
+  status: Appointment["status"],
+) {
   return {
     patientId: appointment.patientId,
     doctorId: appointment.doctorId,
@@ -181,7 +188,9 @@ function VitalsModal({
   }
 
   const handleSubmit = async () => {
-    const hasAnyVitals = Object.values(values).some((entry) => entry.trim().length > 0);
+    const hasAnyVitals = Object.values(values).some(
+      (entry) => entry.trim().length > 0,
+    );
     if (!hasAnyVitals) {
       setError("Record at least one vital sign before saving.");
       return;
@@ -207,7 +216,9 @@ function VitalsModal({
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
               Front Desk Action
             </p>
-            <h2 className="mt-1 text-base font-extrabold text-slate-950">Record Vitals</h2>
+            <h2 className="mt-1 text-base font-extrabold text-slate-950">
+              Record Vitals
+            </h2>
             <p className="mt-1 text-sm text-slate-500">{patientName}</p>
           </div>
           <button
@@ -224,7 +235,10 @@ function VitalsModal({
           <FormField label="Temperature (C)">
             <Input
               onChange={(event) =>
-                setValues((prev) => ({ ...prev, temperature: event.target.value }))
+                setValues((prev) => ({
+                  ...prev,
+                  temperature: event.target.value,
+                }))
               }
               placeholder="e.g., 37.2"
               value={values.temperature}
@@ -233,7 +247,10 @@ function VitalsModal({
           <FormField label="Blood Pressure (mmHg)">
             <Input
               onChange={(event) =>
-                setValues((prev) => ({ ...prev, bloodPressure: event.target.value }))
+                setValues((prev) => ({
+                  ...prev,
+                  bloodPressure: event.target.value,
+                }))
               }
               placeholder="e.g., 120/80"
               value={values.bloodPressure}
@@ -242,7 +259,10 @@ function VitalsModal({
           <FormField label="Heart Rate (bpm)">
             <Input
               onChange={(event) =>
-                setValues((prev) => ({ ...prev, heartRate: event.target.value }))
+                setValues((prev) => ({
+                  ...prev,
+                  heartRate: event.target.value,
+                }))
               }
               placeholder="e.g., 78"
               value={values.heartRate}
@@ -250,7 +270,9 @@ function VitalsModal({
           </FormField>
           <FormField label="O2 Saturation (%)">
             <Input
-              onChange={(event) => setValues((prev) => ({ ...prev, o2Sat: event.target.value }))}
+              onChange={(event) =>
+                setValues((prev) => ({ ...prev, o2Sat: event.target.value }))
+              }
               placeholder="e.g., 98"
               value={values.o2Sat}
             />
@@ -258,7 +280,10 @@ function VitalsModal({
           <FormField label="Respiratory Rate (breaths/min)">
             <Input
               onChange={(event) =>
-                setValues((prev) => ({ ...prev, respiratoryRate: event.target.value }))
+                setValues((prev) => ({
+                  ...prev,
+                  respiratoryRate: event.target.value,
+                }))
               }
               placeholder="e.g., 16"
               value={values.respiratoryRate}
@@ -266,14 +291,18 @@ function VitalsModal({
           </FormField>
           <FormField label="Weight (kg)">
             <Input
-              onChange={(event) => setValues((prev) => ({ ...prev, weight: event.target.value }))}
+              onChange={(event) =>
+                setValues((prev) => ({ ...prev, weight: event.target.value }))
+              }
               placeholder="e.g., 65"
               value={values.weight}
             />
           </FormField>
           <FormField label="Height (cm)">
             <Input
-              onChange={(event) => setValues((prev) => ({ ...prev, height: event.target.value }))}
+              onChange={(event) =>
+                setValues((prev) => ({ ...prev, height: event.target.value }))
+              }
               placeholder="e.g., 172"
               value={values.height}
             />
@@ -281,14 +310,21 @@ function VitalsModal({
         </div>
 
         {error ? (
-          <p className="px-5 pb-2 text-sm font-semibold text-rose-700">{error}</p>
+          <p className="px-5 pb-2 text-sm font-semibold text-rose-700">
+            {error}
+          </p>
         ) : null}
 
         <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
           <Button onClick={onClose} type="button" variant="tertiary">
             Cancel
           </Button>
-          <Button disabled={isSaving} onClick={() => void handleSubmit()} type="button" variant="primary">
+          <Button
+            disabled={isSaving}
+            onClick={() => void handleSubmit()}
+            type="button"
+            variant="primary"
+          >
             <Stethoscope className="size-4" />
             Save Vitals
           </Button>
@@ -300,8 +336,12 @@ function VitalsModal({
 
 export function FrontDeskWorkflowPage() {
   const [walkInWizardOpen, setWalkInWizardOpen] = useState(false);
-  const [workflowMode, setWorkflowMode] = useState<"walk_in" | "online_bookings">("walk_in");
-  const [selectedPatientRowId, setSelectedPatientRowId] = useState<string | null>(null);
+  const [workflowMode, setWorkflowMode] = useState<
+    "walk_in" | "online_bookings"
+  >("walk_in");
+  const [selectedPatientRowId, setSelectedPatientRowId] = useState<
+    string | null
+  >(null);
   const [vitalsRowId, setVitalsRowId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFilter, setActiveFilter] = useState<FrontDeskQueueFilter>("all");
@@ -373,8 +413,9 @@ export function FrontDeskWorkflowPage() {
   }, [activeFilter, searchedRows]);
   const summary = useMemo(
     () => ({
-      paymentNeeded: rows.filter((row) => row.workflowState === "payment_needed")
-        .length,
+      paymentNeeded: rows.filter(
+        (row) => row.workflowState === "payment_needed",
+      ).length,
       needsVitals: rows.filter((row) => row.workflowState === "needs_vitals")
         .length,
       ready: rows.filter((row) => row.workflowState === "ready_for_doctor")
@@ -388,10 +429,17 @@ export function FrontDeskWorkflowPage() {
   const filterCounts = useMemo(
     () => ({
       all: rows.length,
-      payment_needed: rows.filter((row) => row.workflowState === "payment_needed").length,
-      needs_vitals: rows.filter((row) => row.workflowState === "needs_vitals").length,
-      ready_for_doctor: rows.filter((row) => row.workflowState === "ready_for_doctor").length,
-      in_consultation: rows.filter((row) => row.workflowState === "in_consultation").length,
+      payment_needed: rows.filter(
+        (row) => row.workflowState === "payment_needed",
+      ).length,
+      needs_vitals: rows.filter((row) => row.workflowState === "needs_vitals")
+        .length,
+      ready_for_doctor: rows.filter(
+        (row) => row.workflowState === "ready_for_doctor",
+      ).length,
+      in_consultation: rows.filter(
+        (row) => row.workflowState === "in_consultation",
+      ).length,
       walk_in: rows.filter((row) => row.isWalkInPatient).length,
       overdue: rows.filter((row) => isFrontDeskRowOverdue(row)).length,
     }),
@@ -404,14 +452,18 @@ export function FrontDeskWorkflowPage() {
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const pageStart = (safeCurrentPage - 1) * FRONT_DESK_WORKFLOW_PAGE_SIZE;
   const paginatedRows = useMemo(
-    () => filteredRows.slice(pageStart, pageStart + FRONT_DESK_WORKFLOW_PAGE_SIZE),
+    () =>
+      filteredRows.slice(pageStart, pageStart + FRONT_DESK_WORKFLOW_PAGE_SIZE),
     [filteredRows, pageStart],
   );
   const showingStart = filteredRows.length === 0 ? 0 : pageStart + 1;
   const showingEnd =
     filteredRows.length === 0
       ? 0
-      : Math.min(pageStart + FRONT_DESK_WORKFLOW_PAGE_SIZE, filteredRows.length);
+      : Math.min(
+          pageStart + FRONT_DESK_WORKFLOW_PAGE_SIZE,
+          filteredRows.length,
+        );
   const selectedPatientRow = useMemo(
     () => rows.find((entry) => entry.id === selectedPatientRowId) ?? null,
     [rows, selectedPatientRowId],
@@ -493,7 +545,9 @@ export function FrontDeskWorkflowPage() {
     void id;
     void createdAt;
     void updatedAt;
-    const hasAnyVitals = Object.values(values).some((entry) => entry.trim().length > 0);
+    const hasAnyVitals = Object.values(values).some(
+      (entry) => entry.trim().length > 0,
+    );
 
     await updatePatient.mutateAsync({
       patientId: vitalsPatient.id,
@@ -508,7 +562,7 @@ export function FrontDeskWorkflowPage() {
         height: values.height.trim() || undefined,
         vitalsRecordedAt: hasAnyVitals
           ? new Date().toISOString()
-          : vitalsPatient.vitalsRecordedAt ?? null,
+          : (vitalsPatient.vitalsRecordedAt ?? null),
       },
     });
 
@@ -563,479 +617,547 @@ export function FrontDeskWorkflowPage() {
     <div className="space-y-5">
       {workflowMode === "walk_in" ? (
         <>
-      <section className={cn(INTERNAL_SURFACE, 'divide-y divide-slate-100/90')}>
-        <div className="flex flex-col gap-5 px-6 py-5 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-4">
-            <div
-              className="mt-0.5 flex shrink-0 items-center justify-center rounded-xl p-2.5"
-              style={{
-                background: 'color-mix(in srgb, var(--color-primary) 14%, white)',
-                color: 'var(--color-primary)',
-                boxShadow: '0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, white)',
-              }}
-            >
-              <Activity className="size-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Role Workflow</p>
-              <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Front Desk Workflow</h1>
-              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">Intake, payment clearance, vitals check, and doctor handoff in one queue</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2 md:w-[780px] md:flex-none">
-            <WorkflowModeToggle
-              mode={workflowMode}
-              onOnlineBookings={() => setWorkflowMode("online_bookings")}
-              onWalkIn={() => setWorkflowMode("walk_in")}
-            />
-
-            {workflowMode === "walk_in" ? (
-              <>
-                <div className="relative" ref={patientSearchRef}>
-                  <div className="flex w-64 items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 shadow-[inset_0_1px_1px_rgba(15,41,71,0.04)]">
-                    <Search className="size-4 shrink-0 text-slate-400" />
-                    <input
-                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                      onFocus={() => {
-                        if (patientQuery.trim()) setPatientDropdownOpen(true);
-                      }}
-                      onChange={(event) => {
-                        setPatientQuery(event.target.value);
-                        setPatientDropdownOpen(event.target.value.trim().length > 0);
-                      }}
-                      placeholder="Lookup any patient..."
-                      value={patientQuery}
-                    />
-                    {patientQuery ? (
-                      <button
-                        aria-label="Clear patient search"
-                        className="shrink-0 text-slate-400 hover:text-slate-700"
-                        onClick={() => {
-                          setPatientQuery("");
-                          setPatientDropdownOpen(false);
-                        }}
-                        type="button"
-                      >
-                        <X className="size-3.5" />
-                      </button>
-                    ) : null}
-                  </div>
-                  {patientDropdownOpen && filteredPatients.length > 0 ? (
-                    <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-                      {filteredPatients.map((patient) => (
-                        <Link
-                          className="flex flex-col px-4 py-3 transition hover:bg-slate-50"
-                          key={patient.id}
-                          onClick={() => {
-                            setPatientQuery("");
-                            setPatientDropdownOpen(false);
-                          }}
-                          to={`/app/patients/${patient.id}`}
-                        >
-                          <span className="text-sm font-bold text-slate-950">
-                            {patient.firstName} {patient.lastName}
-                          </span>
-                          <span className="text-[11px] text-slate-500">
-                            {patient.mobileNumber || patient.email}
-                          </span>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : patientDropdownOpen && patientQuery.trim() ? (
-                    <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-lg">
-                      <p className="text-xs text-slate-500">No patients found.</p>
-                    </div>
-                  ) : null}
+          <section
+            className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}
+          >
+            <div className="flex flex-col gap-5 px-6 py-5 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-start gap-4">
+                <div
+                  className="mt-0.5 flex shrink-0 items-center justify-center rounded-xl p-2.5"
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--color-primary) 14%, white)",
+                    color: "var(--color-primary)",
+                    boxShadow:
+                      "0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, white)",
+                  }}
+                >
+                  <Activity className="size-5" />
                 </div>
-                <Button
-                  onClick={() => setWalkInWizardOpen(true)}
-                  type="button"
-                  variant="primary"
-                >
-                  <UserRoundPlus className="size-4" />
-                  Start Walk-in Flow
-                </Button>
-                <Link
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                  to="/app/appointments"
-                >
-                  <CalendarPlus className="size-4" />
-                  Schedule
-                </Link>
-                <Link
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                  to="/app/bookings/scan"
-                >
-                  <ReceiptText className="size-4" />
-                  Scan receipt
-                </Link>
-              </>
-            ) : null}
-          </div>
-        </div>
-        <div className="grid bg-slate-50/90 md:grid-cols-4">
-          <div className="border-b border-slate-100/90 px-6 py-4 md:border-b-0 md:border-r md:border-slate-100/90">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Payment</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{summary.paymentNeeded}</p>
-          </div>
-          <div className="border-b border-slate-100/90 px-6 py-4 md:border-b-0 md:border-r md:border-slate-100/90">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Vitals</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{summary.needsVitals}</p>
-          </div>
-          <div className="border-b border-slate-100/90 px-6 py-4 md:border-b-0 md:border-r md:border-slate-100/90">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Ready</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{summary.ready}</p>
-          </div>
-          <div className="px-6 py-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">In consultation</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{summary.inConsultation}</p>
-          </div>
-        </div>
-      </section>
-
-      <section className={INTERNAL_SURFACE}>
-        <div className="border-b border-slate-100/90 bg-slate-50/90 px-6 py-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Quick actions</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Link
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                  to="/app/patients?action=walk-in-intake"
-                >
-                  Add Patient
-                  <ArrowRight className="size-3.5" />
-                </Link>
-                <Link
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                  to="/app/appointments?action=create&source=internal"
-                >
-                  Appoint Patient
-                  <ArrowRight className="size-3.5" />
-                </Link>
-                <Link
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                  to="/app/billing?action=create"
-                >
-                  Billing
-                  <ArrowRight className="size-3.5" />
-                </Link>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    Role Workflow
+                  </p>
+                  <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">
+                    Front Desk Workflow
+                  </h1>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+                    Intake, payment clearance, vitals check, and doctor handoff
+                    in one queue
+                  </p>
+                </div>
               </div>
-            </div>
+              <div className="flex flex-wrap gap-2 md:w-[780px] md:flex-none">
+                <WorkflowModeToggle
+                  mode={workflowMode}
+                  onOnlineBookings={() => setWorkflowMode("online_bookings")}
+                  onWalkIn={() => setWorkflowMode("walk_in")}
+                />
 
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">View pages</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Link
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                  to="/app/patients"
-                >
-                  Patients
-                  <ArrowRight className="size-3.5" />
-                </Link>
-                <Link
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                  to="/app/appointments"
-                >
-                  Appointments
-                  <ArrowRight className="size-3.5" />
-                </Link>
-                <Link
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                  to="/app/billing"
-                >
-                  Billing
-                  <ArrowRight className="size-3.5" />
-                </Link>
-                <Link
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                  to="/app/doctor-workflow"
-                >
-                  Doctor Workflow
-                  <ArrowRight className="size-3.5" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100/90 px-6 py-4">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Today&apos;s Queue</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">
-              {filteredRows.length} active item{filteredRows.length === 1 ? "" : "s"}
-            </p>
-          </div>
-          <div className="flex w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 shadow-[inset_0_1px_1px_rgba(15,41,71,0.04)]">
-            <Search className="size-4 shrink-0 text-slate-400" />
-            <input
-              className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-              ref={searchInputRef}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Search patient, receipt, status"
-              value={search}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100/90 bg-slate-50/90 px-6 py-3">
-          <div className="flex flex-wrap gap-2">
-            {([
-              ["all", "All"],
-              ["payment_needed", "Payment Needed"],
-              ["needs_vitals", "Needs Vitals"],
-              ["ready_for_doctor", "Ready"],
-              ["in_consultation", "In Consultation"],
-              ["walk_in", "Walk-in"],
-              ["overdue", "Overdue"],
-            ] as const).map(([value, label]) => (
-              <button
-                className={cn(
-                  "inline-flex items-center rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition",
-                  activeFilter === value
-                    ? "bg-[var(--color-primary)] text-white shadow-sm"
-                    : "border border-slate-200/90 bg-white text-slate-600 hover:bg-slate-50"
-                )}
-                key={value}
-                onClick={() => {
-                  setActiveFilter(value);
-                  setCurrentPage(1);
-                }}
-                type="button"
-              >
-                {label} ({filterCounts[value]})
-              </button>
-            ))}
-          </div>
-
-          {search || activeFilter !== "all" ? (
-            <button
-              className="rounded-lg border border-slate-200/90 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600 transition hover:bg-slate-50"
-              onClick={() => {
-                setSearch("");
-                setActiveFilter("all");
-                setCurrentPage(1);
-              }}
-              type="button"
-            >
-              Reset filters
-            </button>
-          ) : null}
-        </div>
-
-        {filteredRows.length === 0 ? (
-          <EmptyQueue />
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="sticky top-0 z-10 bg-slate-50 px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                      #
-                    </th>
-                    <th className="sticky top-0 z-10 bg-slate-50 px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                      Patient
-                    </th>
-                    <th className="sticky top-0 z-10 bg-slate-50 px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                      Schedule
-                    </th>
-                    <th className="sticky top-0 z-10 bg-slate-50 px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                      Payment
-                    </th>
-                    <th className="sticky top-0 z-10 bg-slate-50 px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                      Workflow
-                    </th>
-                    <th className="sticky right-0 top-0 z-10 bg-slate-50 px-4 py-2.5 text-right text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {paginatedRows.map((row) => {
-                    const overdue = isFrontDeskRowOverdue(row);
-                    const waitingMinutes = getMinutesSinceScheduled(row.scheduledAt);
-
-                    return (
-                    <tr
-                      className={`align-top transition-colors ${
-                        overdue ? "bg-rose-50/40 hover:bg-rose-50" : "hover:bg-slate-50"
-                      }`}
-                      key={row.id}
-                    >
-                      <td className="px-4 py-3 text-center">
-                        <span className="inline-flex size-6 items-center justify-center rounded-full bg-slate-100 text-[11px] font-extrabold text-slate-600">
-                          {queueNumberMap.get(row.id)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {row.isWalkInPatient ? (
-                          <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                            Walk-in
-                          </p>
+                {workflowMode === "walk_in" ? (
+                  <>
+                    <div className="relative" ref={patientSearchRef}>
+                      <div className="flex w-64 items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 shadow-[inset_0_1px_1px_rgba(15,41,71,0.04)]">
+                        <Search className="size-4 shrink-0 text-slate-400" />
+                        <input
+                          className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                          onFocus={() => {
+                            if (patientQuery.trim())
+                              setPatientDropdownOpen(true);
+                          }}
+                          onChange={(event) => {
+                            setPatientQuery(event.target.value);
+                            setPatientDropdownOpen(
+                              event.target.value.trim().length > 0,
+                            );
+                          }}
+                          placeholder="Lookup any patient..."
+                          value={patientQuery}
+                        />
+                        {patientQuery ? (
+                          <button
+                            aria-label="Clear patient search"
+                            className="shrink-0 text-slate-400 hover:text-slate-700"
+                            onClick={() => {
+                              setPatientQuery("");
+                              setPatientDropdownOpen(false);
+                            }}
+                            type="button"
+                          >
+                            <X className="size-3.5" />
+                          </button>
                         ) : null}
-                        <button
-                          className="font-bold text-slate-950 hover:text-[var(--color-primary)] hover:underline"
-                          onClick={() => openPatientDetails(row)}
-                          type="button"
-                        >
-                          {row.patientName}
-                        </button>
-                        <p className="mt-1 text-xs text-slate-500">{row.reason}</p>
-                        <Link
-                          className="mt-1 inline-flex text-[11px] font-semibold text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline"
-                          to={`/app/patients/${row.patientId}`}
-                        >
-                          Open full chart
-                        </Link>
-                        {row.receiptCode ? (
-                          <p className="mt-1 font-mono text-[11px] font-semibold text-slate-400">
-                            {row.receiptCode}
-                          </p>
-                        ) : null}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
-                        <p>{formatDateTimeLabel(row.scheduledAt)}</p>
-                        <p className="mt-1 text-xs uppercase tracking-widest text-slate-400">
-                          {labelFromValue(row.appointmentStatus)}
-                        </p>
-                        <p
-                          className={`mt-1 inline-flex items-center gap-1 text-[11px] font-semibold ${
-                            overdue ? "text-rose-700" : "text-slate-500"
-                          }`}
-                        >
-                          {overdue
-                            ? `Overdue ${waitingMinutes}m`
-                            : `Waiting ${waitingMinutes}m`}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusPill status={row.paymentState} size="sm" />
-                        {row.invoiceNumber ? (
-                          <p className="mt-1 text-xs text-slate-500">{row.invoiceNumber}</p>
-                        ) : null}
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusPill status={row.workflowState} size="sm" />
-                        {row.missingVitals ? (
-                          <p className="mt-1 text-xs text-slate-500">Vitals needed</p>
-                        ) : null}
-                      </td>
-                      <td
-                        className={`sticky right-0 px-4 py-3 ${
-                          overdue ? "bg-rose-50/95" : "bg-white"
-                        }`}
-                      >
-                        <div className="flex min-w-max justify-end gap-1.5">
-                          {row.paymentState !== "paid" ? (
-                            row.receiptCode ? (
-                              <Button
-                                aria-label={`Mark ${row.patientName} as paid`}
-                                className="size-8 p-0"
-                                disabled={markBookingPaid.isPending || !row.receiptCode}
-                                onClick={() => void handleMarkBookingPaid(row)}
-                                type="button"
-                                variant="tertiary"
-                              >
-                                <CreditCard className="size-3.5" />
-                              </Button>
-                            ) : (
-                              <Link
-                                aria-label={`Create invoice for ${row.patientName}`}
-                                className="inline-flex size-8 items-center justify-center rounded-xl border border-slate-200/90 bg-white p-0 text-slate-700 transition hover:bg-slate-50"
-                                to={`/app/billing?action=create&patientId=${row.patientId}&appointmentId=${row.appointmentId}`}
-                              >
-                                <ReceiptText className="size-3.5" />
-                              </Link>
-                            )
-                          ) : null}
-                          {row.workflowState === "needs_vitals" || row.missingVitals ? (
-                            <Button
-                              aria-label={`Record vitals for ${row.patientName}`}
-                              className="size-8 p-0"
-                              disabled={updatePatient.isPending}
-                              onClick={() => openVitalsModal(row)}
-                              type="button"
-                              variant="tertiary"
+                      </div>
+                      {patientDropdownOpen && filteredPatients.length > 0 ? (
+                        <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                          {filteredPatients.map((patient) => (
+                            <Link
+                              className="flex flex-col px-4 py-3 transition hover:bg-slate-50"
+                              key={patient.id}
+                              onClick={() => {
+                                setPatientQuery("");
+                                setPatientDropdownOpen(false);
+                              }}
+                              to={`/app/patients/${patient.id}`}
                             >
-                              <Stethoscope className="size-3.5" />
-                            </Button>
-                          ) : null}
-                          <Link
-                            aria-label={`Open ${row.patientName} patient page`}
-                            className="inline-flex size-8 items-center justify-center rounded-xl border border-slate-200/90 bg-white text-slate-700 transition hover:bg-slate-50"
-                            to={`/app/patients/${row.patientId}`}
-                          >
-                            <ExternalLink className="size-3.5" />
-                          </Link>
-                          <Button
-                            aria-label={`Open ${row.patientName} details modal`}
-                            className="size-8 p-0"
-                            onClick={() => openPatientDetails(row)}
-                            type="button"
-                            variant="tertiary"
-                          >
-                            <Eye className="size-3.5" />
-                          </Button>
-                          <Button
-                            aria-label={`Send ${row.patientName} to doctor`}
-                            className="px-3 py-1.5 text-xs"
-                            disabled={
-                              updateAppointment.isPending ||
-                              row.workflowState !== "ready_for_doctor"
-                            }
-                            onClick={() => void handleSendToDoctor(row)}
-                            type="button"
-                            variant="primary"
-                          >
-                            <PlayCircle className="size-3.5" />
-                            Send
-                          </Button>
+                              <span className="text-sm font-bold text-slate-950">
+                                {patient.firstName} {patient.lastName}
+                              </span>
+                              <span className="text-[11px] text-slate-500">
+                                {patient.mobileNumber || patient.email}
+                              </span>
+                            </Link>
+                          ))}
                         </div>
-                      </td>
-                    </tr>
-                  )})}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
-              <p className="text-xs font-semibold text-slate-500">
-                Showing {showingStart}-{showingEnd} of {filteredRows.length} items
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  disabled={safeCurrentPage <= 1}
-                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                  type="button"
-                  variant="tertiary"
-                  size="sm"
-                >
-                  Previous
-                </Button>
-                <span className="text-xs font-semibold text-slate-500">
-                  Page {safeCurrentPage} of {totalPages}
-                </span>
-                <Button
-                  disabled={safeCurrentPage >= totalPages}
-                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                  type="button"
-                  variant="tertiary"
-                  size="sm"
-                >
-                  Next
-                </Button>
+                      ) : patientDropdownOpen && patientQuery.trim() ? (
+                        <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-lg">
+                          <p className="text-xs text-slate-500">
+                            No patients found.
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                    <Button
+                      onClick={() => setWalkInWizardOpen(true)}
+                      type="button"
+                      variant="primary"
+                    >
+                      <UserRoundPlus className="size-4" />
+                      Start Teleconsult / Walk-in Flow
+                    </Button>
+                    <Link
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                      to="/app/appointments"
+                    >
+                      <CalendarPlus className="size-4" />
+                      Schedule
+                    </Link>
+                    <Link
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                      to="/app/bookings/scan"
+                    >
+                      <ReceiptText className="size-4" />
+                      Scan receipt
+                    </Link>
+                  </>
+                ) : null}
               </div>
             </div>
-          </>
-        )}
-      </section>
+            <div className="grid bg-slate-50/90 md:grid-cols-4">
+              <div className="border-b border-slate-100/90 px-6 py-4 md:border-b-0 md:border-r md:border-slate-100/90">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Payment
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">
+                  {summary.paymentNeeded}
+                </p>
+              </div>
+              <div className="border-b border-slate-100/90 px-6 py-4 md:border-b-0 md:border-r md:border-slate-100/90">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Vitals
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">
+                  {summary.needsVitals}
+                </p>
+              </div>
+              <div className="border-b border-slate-100/90 px-6 py-4 md:border-b-0 md:border-r md:border-slate-100/90">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Ready
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">
+                  {summary.ready}
+                </p>
+              </div>
+              <div className="px-6 py-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  In consultation
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">
+                  {summary.inConsultation}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className={INTERNAL_SURFACE}>
+            <div className="border-b border-slate-100/90 bg-slate-50/90 px-6 py-4">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    Quick actions
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Link
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                      to="/app/patients?action=walk-in-intake"
+                    >
+                      Add Patient
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+                    <Link
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                      to="/app/appointments?action=create&source=internal"
+                    >
+                      Appoint Patient
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+                    <Link
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                      to="/app/billing?action=create"
+                    >
+                      Billing
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    View pages
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Link
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                      to="/app/patients"
+                    >
+                      Patients
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+                    <Link
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                      to="/app/appointments"
+                    >
+                      Appointments
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+                    <Link
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                      to="/app/billing"
+                    >
+                      Billing
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+                    <Link
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                      to="/app/doctor-workflow"
+                    >
+                      Doctor Workflow
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100/90 px-6 py-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Today&apos;s Queue
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {filteredRows.length} active item
+                  {filteredRows.length === 1 ? "" : "s"}
+                </p>
+              </div>
+              <div className="flex w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 shadow-[inset_0_1px_1px_rgba(15,41,71,0.04)]">
+                <Search className="size-4 shrink-0 text-slate-400" />
+                <input
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                  ref={searchInputRef}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Search patient, receipt, status"
+                  value={search}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100/90 bg-slate-50/90 px-6 py-3">
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ["all", "All"],
+                    ["payment_needed", "Payment Needed"],
+                    ["needs_vitals", "Needs Vitals"],
+                    ["ready_for_doctor", "Ready"],
+                    ["in_consultation", "In Consultation"],
+                    ["walk_in", "Walk-in"],
+                    ["overdue", "Overdue"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    className={cn(
+                      "inline-flex items-center rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition",
+                      activeFilter === value
+                        ? "bg-[var(--color-primary)] text-white shadow-sm"
+                        : "border border-slate-200/90 bg-white text-slate-600 hover:bg-slate-50",
+                    )}
+                    key={value}
+                    onClick={() => {
+                      setActiveFilter(value);
+                      setCurrentPage(1);
+                    }}
+                    type="button"
+                  >
+                    {label} ({filterCounts[value]})
+                  </button>
+                ))}
+              </div>
+
+              {search || activeFilter !== "all" ? (
+                <button
+                  className="rounded-lg border border-slate-200/90 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600 transition hover:bg-slate-50"
+                  onClick={() => {
+                    setSearch("");
+                    setActiveFilter("all");
+                    setCurrentPage(1);
+                  }}
+                  type="button"
+                >
+                  Reset filters
+                </button>
+              ) : null}
+            </div>
+
+            {filteredRows.length === 0 ? (
+              <EmptyQueue />
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="sticky top-0 z-10 bg-slate-50 px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                          #
+                        </th>
+                        <th className="sticky top-0 z-10 bg-slate-50 px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                          Patient
+                        </th>
+                        <th className="sticky top-0 z-10 bg-slate-50 px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                          Schedule
+                        </th>
+                        <th className="sticky top-0 z-10 bg-slate-50 px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                          Payment
+                        </th>
+                        <th className="sticky top-0 z-10 bg-slate-50 px-4 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                          Workflow
+                        </th>
+                        <th className="sticky right-0 top-0 z-10 bg-slate-50 px-4 py-2.5 text-right text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {paginatedRows.map((row) => {
+                        const overdue = isFrontDeskRowOverdue(row);
+                        const waitingMinutes = getMinutesSinceScheduled(
+                          row.scheduledAt,
+                        );
+
+                        return (
+                          <tr
+                            className={`align-top transition-colors ${
+                              overdue
+                                ? "bg-rose-50/40 hover:bg-rose-50"
+                                : "hover:bg-slate-50"
+                            }`}
+                            key={row.id}
+                          >
+                            <td className="px-4 py-3 text-center">
+                              <span className="inline-flex size-6 items-center justify-center rounded-full bg-slate-100 text-[11px] font-extrabold text-slate-600">
+                                {queueNumberMap.get(row.id)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {row.isWalkInPatient ? (
+                                <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                  Walk-in
+                                </p>
+                              ) : null}
+                              <button
+                                className="font-bold text-slate-950 hover:text-[var(--color-primary)] hover:underline"
+                                onClick={() => openPatientDetails(row)}
+                                type="button"
+                              >
+                                {row.patientName}
+                              </button>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {row.reason}
+                              </p>
+                              <Link
+                                className="mt-1 inline-flex text-[11px] font-semibold text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline"
+                                to={`/app/patients/${row.patientId}`}
+                              >
+                                Open full chart
+                              </Link>
+                              {row.receiptCode ? (
+                                <p className="mt-1 font-mono text-[11px] font-semibold text-slate-400">
+                                  {row.receiptCode}
+                                </p>
+                              ) : null}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-600">
+                              <p>{formatDateTimeLabel(row.scheduledAt)}</p>
+                              <p className="mt-1 text-xs uppercase tracking-widest text-slate-400">
+                                {labelFromValue(row.appointmentStatus)}
+                              </p>
+                              <p
+                                className={`mt-1 inline-flex items-center gap-1 text-[11px] font-semibold ${
+                                  overdue ? "text-rose-700" : "text-slate-500"
+                                }`}
+                              >
+                                {overdue
+                                  ? `Overdue ${waitingMinutes}m`
+                                  : `Waiting ${waitingMinutes}m`}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3">
+                              <StatusPill status={row.paymentState} size="sm" />
+                              {row.invoiceNumber ? (
+                                <p className="mt-1 text-xs text-slate-500">
+                                  {row.invoiceNumber}
+                                </p>
+                              ) : null}
+                            </td>
+                            <td className="px-4 py-3">
+                              <StatusPill
+                                status={row.workflowState}
+                                size="sm"
+                              />
+                              {row.missingVitals ? (
+                                <p className="mt-1 text-xs text-slate-500">
+                                  Vitals needed
+                                </p>
+                              ) : null}
+                            </td>
+                            <td
+                              className={`sticky right-0 px-4 py-3 ${
+                                overdue ? "bg-rose-50/95" : "bg-white"
+                              }`}
+                            >
+                              <div className="flex min-w-max justify-end gap-1.5">
+                                {row.paymentState !== "paid" ? (
+                                  row.receiptCode ? (
+                                    <Button
+                                      aria-label={`Mark ${row.patientName} as paid`}
+                                      className="size-8 p-0"
+                                      disabled={
+                                        markBookingPaid.isPending ||
+                                        !row.receiptCode
+                                      }
+                                      onClick={() =>
+                                        void handleMarkBookingPaid(row)
+                                      }
+                                      type="button"
+                                      variant="tertiary"
+                                    >
+                                      <CreditCard className="size-3.5" />
+                                    </Button>
+                                  ) : (
+                                    <Link
+                                      aria-label={`Create invoice for ${row.patientName}`}
+                                      className="inline-flex size-8 items-center justify-center rounded-xl border border-slate-200/90 bg-white p-0 text-slate-700 transition hover:bg-slate-50"
+                                      to={`/app/billing?action=create&patientId=${row.patientId}&appointmentId=${row.appointmentId}`}
+                                    >
+                                      <ReceiptText className="size-3.5" />
+                                    </Link>
+                                  )
+                                ) : null}
+                                {row.workflowState === "needs_vitals" ||
+                                row.missingVitals ? (
+                                  <Button
+                                    aria-label={`Record vitals for ${row.patientName}`}
+                                    className="size-8 p-0"
+                                    disabled={updatePatient.isPending}
+                                    onClick={() => openVitalsModal(row)}
+                                    type="button"
+                                    variant="tertiary"
+                                  >
+                                    <Stethoscope className="size-3.5" />
+                                  </Button>
+                                ) : null}
+                                <Link
+                                  aria-label={`Open ${row.patientName} patient page`}
+                                  className="inline-flex size-8 items-center justify-center rounded-xl border border-slate-200/90 bg-white text-slate-700 transition hover:bg-slate-50"
+                                  to={`/app/patients/${row.patientId}`}
+                                >
+                                  <ExternalLink className="size-3.5" />
+                                </Link>
+                                <Button
+                                  aria-label={`Open ${row.patientName} details modal`}
+                                  className="size-8 p-0"
+                                  onClick={() => openPatientDetails(row)}
+                                  type="button"
+                                  variant="tertiary"
+                                >
+                                  <Eye className="size-3.5" />
+                                </Button>
+                                <Button
+                                  aria-label={`Send ${row.patientName} to doctor`}
+                                  className="px-3 py-1.5 text-xs"
+                                  disabled={
+                                    updateAppointment.isPending ||
+                                    row.workflowState !== "ready_for_doctor"
+                                  }
+                                  onClick={() => void handleSendToDoctor(row)}
+                                  type="button"
+                                  variant="primary"
+                                >
+                                  <PlayCircle className="size-3.5" />
+                                  Send
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3">
+                  <p className="text-xs font-semibold text-slate-500">
+                    Showing {showingStart}-{showingEnd} of {filteredRows.length}{" "}
+                    items
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      disabled={safeCurrentPage <= 1}
+                      onClick={() =>
+                        setCurrentPage((page) => Math.max(1, page - 1))
+                      }
+                      type="button"
+                      variant="tertiary"
+                      size="sm"
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-xs font-semibold text-slate-500">
+                      Page {safeCurrentPage} of {totalPages}
+                    </span>
+                    <Button
+                      disabled={safeCurrentPage >= totalPages}
+                      onClick={() =>
+                        setCurrentPage((page) => Math.min(totalPages, page + 1))
+                      }
+                      type="button"
+                      variant="tertiary"
+                      size="sm"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
         </>
       ) : null}
       {workflowMode === "online_bookings" ? (
-        <OnlineBookingsWorkflow onSwitchToWalkIn={() => setWorkflowMode("walk_in")} />
+        <OnlineBookingsWorkflow
+          onSwitchToWalkIn={() => setWorkflowMode("walk_in")}
+        />
       ) : null}
 
       <WalkInWizardModal
@@ -1057,7 +1179,6 @@ export function FrontDeskWorkflowPage() {
         open={Boolean(vitalsRow && vitalsPatient)}
         patientName={vitalsRow?.patientName ?? ""}
       />
-
     </div>
   );
 }

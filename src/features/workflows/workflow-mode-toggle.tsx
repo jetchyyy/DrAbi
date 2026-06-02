@@ -26,7 +26,7 @@ export function WorkflowModeToggle({
         type="button"
       >
         <UserRoundPlus className="size-4" />
-        Walk In
+        Teleconsult / Walk-in
       </button>
       <button
         className={cn(

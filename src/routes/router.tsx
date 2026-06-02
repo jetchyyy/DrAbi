@@ -13,6 +13,7 @@ import { ResetPasswordPage } from "../features/auth/reset-password-page";
 import { WalkInAccountSetupPage } from "../features/auth/walk-in-account-setup-page";
 import { WalkInUniqueLoginPage } from "../features/auth/walk-in-unique-login-page";
 import { BillingPage } from "../features/billing/billing-page";
+import { CompaniesPage } from "../features/companies/companies-page";
 import { BookingReceiptScanPage } from "../features/booking/booking-receipt-scan-page";
 import { PatientConsultationPage } from "../features/booking/patient-teleconsultation-page";
 import { PatientMedicalHistoryPage } from "../features/booking/patient-medical-history-page";
@@ -224,7 +225,10 @@ export const router = createBrowserRouter([
                 element: <ModuleGate moduleKey="dashboard" />,
                 children: [
                   { path: "dashboard", element: <DashboardPage /> },
-                  { path: "analytics", element: <Navigate replace to="/app/dashboard" /> },
+                  {
+                    path: "analytics",
+                    element: <Navigate replace to="/app/dashboard" />,
+                  },
                 ],
               },
               {
@@ -387,9 +391,18 @@ export const router = createBrowserRouter([
                     children: [{ path: "billing", element: <BillingPage /> }],
                   },
                   {
+                    element: <PermissionGate permission="companies.manage" />,
+                    children: [
+                      { path: "companies", element: <CompaniesPage /> },
+                    ],
+                  },
+                  {
                     element: <PermissionGate permission="appointments.view" />,
                     children: [
-                      { path: "doctor-payouts", element: <DoctorPayoutsPage /> },
+                      {
+                        path: "doctor-payouts",
+                        element: <DoctorPayoutsPage />,
+                      },
                     ],
                   },
                 ],
@@ -456,8 +469,14 @@ export const router = createBrowserRouter([
                     children: [
                       { path: "hmo/providers", element: <HmoProvidersPage /> },
                       { path: "hmo/claims", element: <HmoClaimsPage /> },
-                      { path: "hmo/payments", element: <Navigate replace to="/app/hmo/claims" /> },
-                      { path: "hmo/reports", element: <Navigate replace to="/app/hmo/claims" /> },
+                      {
+                        path: "hmo/payments",
+                        element: <Navigate replace to="/app/hmo/claims" />,
+                      },
+                      {
+                        path: "hmo/reports",
+                        element: <Navigate replace to="/app/hmo/claims" />,
+                      },
                     ],
                   },
                 ],
@@ -476,7 +495,10 @@ export const router = createBrowserRouter([
               { path: "settings/users", element: <SettingsUsersPage /> },
               { path: "settings/roles", element: <SettingsRolesPage /> },
               { path: "settings/support", element: <SettingsSupportPage /> },
-              { path: "settings/promo-codes", element: <SettingsPromoCodesPage /> },
+              {
+                path: "settings/promo-codes",
+                element: <SettingsPromoCodesPage />,
+              },
               {
                 path: "settings/documents",
                 element: <SettingsDocumentsPage />,

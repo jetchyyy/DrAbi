@@ -53,6 +53,7 @@ export const queryKeys = {
   chatThreads: (userId: string | null) => ["chat-threads", userId] as const,
   invoices: ["invoices"] as const,
   invoiceItems: ["invoice-items"] as const,
+  companies: ["companies"] as const,
   posSales: ["pos-sales"] as const,
   inventory: ["inventory"] as const,
   inventoryCategories: ["inventory-categories"] as const,
