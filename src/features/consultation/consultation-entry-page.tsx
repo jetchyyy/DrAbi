@@ -23,6 +23,7 @@ import { Card, CardTitle } from "../../components/ui/card";
 import { FeedbackModal } from "../../components/ui/feedback-modal";
 import { Select } from "../../components/ui/select";
 import { Textarea } from "../../components/ui/textarea";
+import { MedicationCombobox } from "../../components/ui/medication-combobox";
 import { useProviderDirectory } from "../../hooks/use-clinic-data";
 import { evaluateVitalsAlerts } from "../../lib/vitals-alerts";
 import { formatDateLabel, formatDateTimeLabel } from "../../lib/utils";
@@ -1287,12 +1288,69 @@ export function ConsultationEntryPage() {
                 label={stepFields.medications.label}
                 error={form.formState.errors.medications?.message}
               >
-                <Textarea
-                  {...form.register("medications")}
-                  placeholder={stepFields.medications.placeholder}
-                  rows={4}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
-                />
+                <div className="space-y-2">
+                  {/* Predictive search: PNF formulary */}
+                  <MedicationCombobox
+                    id="consultation-medication-search"
+                    onSelect={(line) => {
+                      const current = form.getValues("medications") ?? "";
+                      const separator = current.trim() ? "\n" : "";
+                      form.setValue(
+                        "medications",
+                        `${current}${separator}${line}`,
+                        { shouldDirty: true },
+                      );
+                    }}
+                    placeholder="Search PNF formulary — type a drug name or form…"
+                  />
+                  {/* Free-text textarea */}
+                  <Textarea
+                    {...form.register("medications")}
+                    placeholder="Selected medications appear here. Add dosage, frequency, and instructions…"
+                    rows={5}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 focus:border-red-500 focus:outline-none"
+                  />
+                  {/* SIG quick-fill chips — appends to textarea */}
+                  <div>
+                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                      Quick SIG
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {([
+                        { label: "1 tab OD",     value: "  \u2192 1 tab once daily (OD)" },
+                        { label: "1 tab BID",    value: "  \u2192 1 tab twice daily (BID) \u2014 morning & evening" },
+                        { label: "1 tab TID",    value: "  \u2192 1 tab three times daily (TID) \u2014 every 8 hours" },
+                        { label: "1 cap OD",     value: "  \u2192 1 capsule once daily (OD)" },
+                        { label: "1 cap BID",    value: "  \u2192 1 capsule twice daily (BID)" },
+                        { label: "PRN",          value: "  \u2192 Take as needed (PRN)" },
+                        { label: "After meals",  value: "  \u2192 Take after meals (PC)" },
+                        { label: "Before meals", value: "  \u2192 Take 30 min before meals (AC)" },
+                        { label: "At bedtime",   value: "  \u2192 Take at bedtime (HS)" },
+                        { label: "5 mL TID",     value: "  \u2192 5 mL three times daily after meals" },
+                        { label: "IM stat",      value: "  \u2192 Inject IM as single dose (stat)" },
+                        { label: "IV infusion",  value: "  \u2192 IV infusion over 30 minutes" },
+                        { label: "Apply BID",    value: "  \u2192 Apply to affected area twice daily (BID)" },
+                        { label: "Nebulize PRN", value: "  \u2192 Nebulize as needed (PRN)" },
+                      ] as const).map(({ label, value }) => (
+                        <button
+                          key={label}
+                          type="button"
+                          className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-600 transition hover:border-red-400 hover:bg-red-50 hover:text-red-700 active:scale-95"
+                          onClick={() => {
+                            const current = form.getValues("medications") ?? "";
+                            form.setValue(
+                              "medications",
+                              current.trimEnd() + "\n" + value,
+                              { shouldDirty: true },
+                            );
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </FormField>
 
               <FormField

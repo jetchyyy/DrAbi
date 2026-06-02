@@ -41,6 +41,99 @@ import {
 import { formatDateLabel, formatDateTimeLabel } from "../../lib/utils";
 import { evaluateVitalsAlerts } from "../../lib/vitals-alerts";
 import type { MedicalCertificate, Prescription } from "../../types/domain";
+import pnfData from "../../data/pnf-medicines.json";
+
+const PNF_LIST = pnfData as Array<{ name: string; routes: string[] }>;
+
+// ── PNF chip helpers ──────────────────────────────────────────────────────────
+
+/** Infer which route family this drug primarily uses */
+function getPrimaryRouteType(routes: string[]): "oral" | "inj" | "topical" | "inhalation" | "other" {
+  const all = routes.join(" ").toLowerCase();
+  if (all.includes("inhalation") || all.includes("inhaler") || all.includes("nebul")) return "inhalation";
+  if (all.includes("topical") || all.includes("ointment") || all.includes("cream") || all.includes("lotion")) return "topical";
+  if (all.includes("inj.") || all.includes("iv") || all.includes("im,") || all.includes("ampul") || all.includes("vial")) return "inj";
+  if (all.includes("oral") || all.includes("tablet") || all.includes("capsule") || all.includes("syrup") || all.includes("suspension")) return "oral";
+  return "other";
+}
+
+/** Extract concise dosage chips from PNF route strings
+ *  e.g. "Oral: 500 mg and 250 mg tablet" → ["500 mg tablet", "250 mg tablet"]
+ */
+function getDosageChipsFromRoutes(routes: string[]): string[] {
+  const chips: string[] = [];
+  for (const route of routes) {
+    // Strip the route prefix ("Oral:", "Inj.:", etc.)
+    const body = route.replace(/^[^:]+:\s*/, "").trim();
+    if (!body) continue;
+    // Split on " and " to separate multiple strengths
+    const parts = body.split(/\s+and\s+/i);
+    for (const part of parts) {
+      const chip = part
+        // Keep only the strength + dosage form — drop parenthetical annotations
+        .replace(/\s*\([^)]*\)/g, "")
+        .replace(/,\s*\d+\s*mL[^,]*/g, "") // drop "10 mL ampul" sizing
+        .replace(/\s+/g, " ")
+        .trim();
+      if (chip.length > 1 && chip.length < 40 && !chips.includes(chip)) {
+        chips.push(chip);
+      }
+    }
+  }
+  return chips.slice(0, 8);
+}
+
+/** Contextual SIG chips based on route type */
+const SIG_CHIPS: Record<string, Array<{ label: string; value: string }>> = {
+  oral: [
+    { label: "1 tab OD",     value: "1 tab once daily (OD)" },
+    { label: "1 tab BID",    value: "1 tab twice daily (BID) — morning & evening" },
+    { label: "1 tab TID",    value: "1 tab three times daily (TID) — every 8 hours" },
+    { label: "1 tab QID",    value: "1 tab four times daily (QID) — every 6 hours" },
+    { label: "1 cap OD",     value: "1 capsule once daily (OD)" },
+    { label: "1 cap BID",    value: "1 capsule twice daily (BID)" },
+    { label: "PRN",          value: "Take as needed (PRN)" },
+    { label: "After meals",  value: "Take after meals (PC)" },
+    { label: "Before meals", value: "Take 30 min before meals (AC)" },
+    { label: "At bedtime",   value: "Take at bedtime (HS)" },
+    { label: "5 mL TID",     value: "5 mL three times daily after meals" },
+    { label: "10 mL BID",    value: "10 mL twice daily after meals" },
+  ],
+  inj: [
+    { label: "IM stat",          value: "Inject IM as a single dose (stat)" },
+    { label: "IM OD",            value: "Inject IM once daily (OD)" },
+    { label: "IV slow push",     value: "IV slow push over 3–5 minutes" },
+    { label: "IV infusion",      value: "IV infusion over 30 minutes" },
+    { label: "IV infusion 1 hr", value: "IV infusion over 1 hour" },
+    { label: "IM BID",           value: "Inject IM twice daily (BID)" },
+    { label: "SC OD",            value: "Inject subcutaneously once daily (SC OD)" },
+    { label: "PRN pain",         value: "IM as needed for pain (PRN) — max q4h" },
+  ],
+  topical: [
+    { label: "Apply OD",   value: "Apply thin layer to affected area once daily (OD)" },
+    { label: "Apply BID",  value: "Apply thin layer to affected area twice daily (BID)" },
+    { label: "Apply TID",  value: "Apply to affected area three times daily (TID)" },
+    { label: "Apply PRN",  value: "Apply to affected area as needed (PRN)" },
+    { label: "Wash off",   value: "Apply, leave for 10 min, then wash off" },
+  ],
+  inhalation: [
+    { label: "1 puff OD",    value: "1 puff inhaled once daily (OD)" },
+    { label: "1 puff BID",   value: "1 puff inhaled twice daily (BID)" },
+    { label: "2 puffs PRN",  value: "2 puffs as needed for symptoms (PRN)" },
+    { label: "Nebulize TID", value: "Nebulize three times daily (TID)" },
+    { label: "Nebulize PRN", value: "Nebulize as needed (PRN)" },
+  ],
+  other: [
+    { label: "1 tab OD",    value: "1 tab once daily (OD)" },
+    { label: "1 tab BID",   value: "1 tab twice daily (BID)" },
+    { label: "PRN",         value: "As needed (PRN)" },
+    { label: "After meals", value: "Take after meals (PC)" },
+    { label: "At bedtime",  value: "Take at bedtime (HS)" },
+  ],
+};
+
+const GENERIC_DOSAGE_CHIPS = ["500 mg", "250 mg", "1 g", "1 tab", "2 tabs", "5 mL", "10 mL", "1 cap", "1 amp"];
+const GENERIC_SIG_CHIPS = SIG_CHIPS.oral;
 import { useAuth } from "../auth/auth-context";
 import { LabResultsDisplay } from "../consultation/components/lab-results-display";
 import { extractInventoryItemQrCode } from "../inventory/inventory-qr";
@@ -690,6 +783,10 @@ export function PatientDetailPage() {
     instruction: "",
     numberOfMedications: "",
   });
+  // PNF routes for the currently-selected draft drug (drives contextual chips)
+  const [draftPnfRoutes, setDraftPnfRoutes] = useState<string[]>([]);
+  // PNF routes per edit-modal row (keyed by row index)
+  const [editPnfRoutes, setEditPnfRoutes] = useState<Record<number, string[]>>({});
   const [expandedMedicalCertificateId, setExpandedMedicalCertificateId] =
     useState<string | null | undefined>(undefined);
   const [expandedReferralId, setExpandedReferralId] = useState<
@@ -732,17 +829,36 @@ export function PatientDetailPage() {
 
   const getGenericInventorySuggestions = useCallback(
     (query: string) => {
-      const normalizedQuery = query.trim().toLowerCase();
-      return [...inventoryItems]
-        .filter((item) => item.name.trim().length > 0)
-        .filter((item) =>
-          normalizedQuery.length === 0
-            ? true
-            : item.name.toLowerCase().includes(normalizedQuery) ||
-              (item.brandName ?? "").toLowerCase().includes(normalizedQuery),
+      const q = query.trim().toLowerCase();
+
+      // ── Search PNF formulary (primary) ────────────────────────────────────
+      // Return up to 8 PNF medicines that match by name or any route string.
+      // Annotate with live stock from the clinic inventory where available.
+      const pnfResults = PNF_LIST
+        .filter((entry) =>
+          q.length === 0
+            ? false  // don't open dropdown on empty
+            : entry.name.toLowerCase().includes(q) ||
+              entry.routes.some((r) => r.toLowerCase().includes(q)),
         )
-        .sort((left, right) => left.name.localeCompare(right.name))
-        .slice(0, 8);
+        .slice(0, 8)
+        .map((entry) => {
+          // Optional inventory annotation
+          const inv = inventoryItems.find(
+            (item) =>
+              item.name.toLowerCase().includes(entry.name.toLowerCase()) ||
+              entry.name.toLowerCase().includes(item.name.toLowerCase()),
+          );
+          return {
+            id: inv?.id ?? `pnf-${entry.name}`,
+            name: entry.name,
+            brandName: inv?.brandName ?? null,
+            stockOnHand: inv?.stockOnHand ?? -1, // -1 = PNF-only, not stocked
+            unit: inv?.unit ?? entry.routes[0]?.split(":")[0] ?? "tablet",
+          };
+        });
+
+      return pnfResults;
     },
     [inventoryItems],
   );
@@ -913,6 +1029,13 @@ export function PatientDetailPage() {
               : input.itemName,
         };
       });
+      // Store PNF routes for contextual dosage/SIG chips
+      if (input.field === "genericName") {
+        const pnf = PNF_LIST.find(
+          (e) => e.name.toLowerCase() === input.itemName.toLowerCase(),
+        );
+        setDraftPnfRoutes(pnf?.routes ?? []);
+      }
       setActiveInventoryLookup(null);
       return;
     }
@@ -928,6 +1051,14 @@ export function PatientDetailPage() {
         }
 
         if (input.field === "genericName") {
+          // Store PNF routes for contextual chips in this edit row
+          const pnf = PNF_LIST.find(
+            (e) => e.name.toLowerCase() === input.itemName.toLowerCase(),
+          );
+          setEditPnfRoutes((prev) => ({
+            ...prev,
+            [input.rowIndex!]: pnf?.routes ?? [],
+          }));
           return {
             ...row,
             genericName: input.itemName,
@@ -2413,7 +2544,7 @@ export function PatientDetailPage() {
                             <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
                               {editGenericSuggestions.length === 0 ? (
                                 <p className="px-3 py-2 text-xs text-slate-500">
-                                  No matching inventory item.
+                                  Not found in PNF formulary.
                                 </p>
                               ) : (
                                 editGenericSuggestions.map((item) => (
@@ -2444,11 +2575,19 @@ export function PatientDetailPage() {
                                       ) : null}
                                     </span>
                                     <span
-                                      className={`ml-3 shrink-0 text-xs font-semibold ${item.stockOnHand > 0 ? "text-emerald-700" : "text-rose-700"}`}
+                                      className={`ml-3 shrink-0 text-xs font-semibold ${
+                                        item.stockOnHand < 0
+                                          ? "text-sky-600"
+                                          : item.stockOnHand > 0
+                                            ? "text-emerald-700"
+                                            : "text-rose-700"
+                                      }`}
                                     >
-                                      {item.stockOnHand > 0
-                                        ? `${item.stockOnHand} ${item.unit}`
-                                        : "Out of stock"}
+                                      {item.stockOnHand < 0
+                                        ? "PNF listed"
+                                        : item.stockOnHand > 0
+                                          ? `${item.stockOnHand} ${item.unit}`
+                                          : "Out of stock"}
                                     </span>
                                   </button>
                                 ))
@@ -2546,6 +2685,27 @@ export function PatientDetailPage() {
                           }
                           value={row.dosage}
                         />
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {(editPnfRoutes[index] && editPnfRoutes[index].length > 0
+                            ? getDosageChipsFromRoutes(editPnfRoutes[index])
+                            : GENERIC_DOSAGE_CHIPS
+                          ).map((chip) => (
+                            <button
+                              key={chip}
+                              type="button"
+                              className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-600 transition hover:border-[var(--color-primary)] hover:bg-[color-mix(in_srgb,var(--color-primary)_8%,white)] hover:text-[var(--color-primary)] active:scale-95"
+                              onClick={() =>
+                                setEditPrescriptionRows((current) =>
+                                  current.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, dosage: chip } : item,
+                                  ),
+                                )
+                              }
+                            >
+                              {chip}
+                            </button>
+                          ))}
+                        </div>
                       </FormField>
 
                       <FormField
@@ -2566,6 +2726,27 @@ export function PatientDetailPage() {
                           rows={2}
                           value={row.instruction}
                         />
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {(editPnfRoutes[index] && editPnfRoutes[index].length > 0
+                            ? SIG_CHIPS[getPrimaryRouteType(editPnfRoutes[index])]
+                            : GENERIC_SIG_CHIPS
+                          ).map(({ label, value }) => (
+                            <button
+                              key={label}
+                              type="button"
+                              className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-600 transition hover:border-[var(--color-primary)] hover:bg-[color-mix(in_srgb,var(--color-primary)_8%,white)] hover:text-[var(--color-primary)] active:scale-95"
+                              onClick={() =>
+                                setEditPrescriptionRows((current) =>
+                                  current.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, instruction: value } : item,
+                                  ),
+                                )
+                              }
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
                       </FormField>
 
                       <FormField
@@ -3900,9 +4081,9 @@ export function PatientDetailPage() {
                           {activeInventoryLookup?.scope === "draft" &&
                           activeInventoryLookup.field === "genericName" ? (
                             <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
-                              {draftGenericSuggestions.length === 0 ? (
+                                {draftGenericSuggestions.length === 0 ? (
                                 <p className="px-3 py-2 text-xs text-slate-500">
-                                  No matching inventory item.
+                                  Not found in PNF formulary.
                                 </p>
                               ) : (
                                 draftGenericSuggestions.map((item) => (
@@ -3932,11 +4113,19 @@ export function PatientDetailPage() {
                                       ) : null}
                                     </span>
                                     <span
-                                      className={`ml-3 shrink-0 text-xs font-semibold ${item.stockOnHand > 0 ? "text-emerald-700" : "text-rose-700"}`}
+                                      className={`ml-3 shrink-0 text-xs font-semibold ${
+                                        item.stockOnHand < 0
+                                          ? "text-sky-600"
+                                          : item.stockOnHand > 0
+                                            ? "text-emerald-700"
+                                            : "text-rose-700"
+                                      }`}
                                     >
-                                      {item.stockOnHand > 0
-                                        ? `${item.stockOnHand} ${item.unit}`
-                                        : "Out of stock"}
+                                      {item.stockOnHand < 0
+                                        ? "PNF listed"
+                                        : item.stockOnHand > 0
+                                          ? `${item.stockOnHand} ${item.unit}`
+                                          : "Out of stock"}
                                     </span>
                                   </button>
                                 ))
@@ -4023,6 +4212,22 @@ export function PatientDetailPage() {
                           }
                           value={draftMedication.dosage}
                         />
+                        {/* Quick-fill dosage chips — PNF-specific when a drug is selected */}
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {(draftPnfRoutes.length > 0
+                            ? getDosageChipsFromRoutes(draftPnfRoutes)
+                            : GENERIC_DOSAGE_CHIPS
+                          ).map((chip) => (
+                            <button
+                              key={chip}
+                              type="button"
+                              className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-600 transition hover:border-[var(--color-primary)] hover:bg-[color-mix(in_srgb,var(--color-primary)_8%,white)] hover:text-[var(--color-primary)] active:scale-95"
+                              onClick={() => setDraftMedication((prev) => ({ ...prev, dosage: chip }))}
+                            >
+                              {chip}
+                            </button>
+                          ))}
+                        </div>
                       </FormField>
                       <FormField
                         error={draftMedicationErrors.instruction}
@@ -4039,6 +4244,22 @@ export function PatientDetailPage() {
                           rows={2}
                           value={draftMedication.instruction}
                         />
+                        {/* Quick-fill SIG chips — contextual to the selected drug's route */}
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {(draftPnfRoutes.length > 0
+                            ? SIG_CHIPS[getPrimaryRouteType(draftPnfRoutes)]
+                            : GENERIC_SIG_CHIPS
+                          ).map(({ label, value }) => (
+                            <button
+                              key={label}
+                              type="button"
+                              className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-600 transition hover:border-[var(--color-primary)] hover:bg-[color-mix(in_srgb,var(--color-primary)_8%,white)] hover:text-[var(--color-primary)] active:scale-95"
+                              onClick={() => setDraftMedication((prev) => ({ ...prev, instruction: value }))}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
                       </FormField>
                       <FormField
                         error={draftMedicationErrors.numberOfMedications}

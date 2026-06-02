@@ -1,0 +1,2776 @@
+[
+  {
+    "name": "Abacavir",
+    "routes": [
+      "Oral: 300mg tablet (as sulfate)"
+    ]
+  },
+  {
+    "name": "Acetazolamide",
+    "routes": [
+      "Oral: 250 mg tablet"
+    ]
+  },
+  {
+    "name": "Acetylcysteine",
+    "routes": [
+      "Oral: 600 mg effervescent tablet",
+      "Inj.: 200 mg/mL, 10 mL ampul (IV infusion) (1, 2)",
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Aciclovir",
+    "routes": [
+      "Oral: 200 mg, 400 mg and 800 mg tablet",
+      "Inj.: 25 mg/mL, 10 mL vial (IV infusion)"
+    ]
+  },
+  {
+    "name": "Adenosine",
+    "routes": [
+      "Inj.: 3 mg/mL, 2 mL vial (IV)"
+    ]
+  },
+  {
+    "name": "Albendazole",
+    "routes": [
+      "Oral: 400 mg chewable tablet (B)"
+    ]
+  },
+  {
+    "name": "Albumin, Human",
+    "routes": [
+      "Inj.: 20%, 50 mL and 100 mL bottle (IV, IV infusion)"
+    ]
+  },
+  {
+    "name": "Alcohol, Ethyl",
+    "routes": [
+      "Oral: 95%, USP grade",
+      "Inj.: absolute, 1 mL ampul (IV)",
+      "Solution"
+    ]
+  },
+  {
+    "name": "Alendronate (as sodium salt)",
+    "routes": [
+      "Oral: 10 mg and 70 mg tablet"
+    ]
+  },
+  {
+    "name": "Alendronate + Cholecalciferol",
+    "routes": [
+      "Oral: 70 mg (as sodium salt) + 5600 IU tablet"
+    ]
+  },
+  {
+    "name": "Alfuzosin (as hydrochloride)",
+    "routes": [
+      "Oral: 10 mg tablet"
+    ]
+  },
+  {
+    "name": "Allâ inâ one Admixtures",
+    "routes": [
+      "Solution"
+    ]
+  },
+  {
+    "name": "Allopurinol",
+    "routes": [
+      "Oral: 100 mg and 300 mg tablet"
+    ]
+  },
+  {
+    "name": "Alprazolam",
+    "routes": [
+      "Oral: â 250 microgram, 500 microgram and 1 mg tablet"
+    ]
+  },
+  {
+    "name": "Amikacin (as sulfate)",
+    "routes": [
+      "Inj.: 50 mg/mL, 100 mg/mL, 125 mg/mL and 250 mg/mL,"
+    ]
+  },
+  {
+    "name": "Aminophylline (theophylline",
+    "routes": [
+      "Inj.: 25 mg/mL, 10 mL ampul (IV)"
+    ]
+  },
+  {
+    "name": "Amiodarone (as hydrochloride)",
+    "routes": [
+      "Oral: 200 mg tablet",
+      "Inj.: 50 mg/mL, 3 mL ampul (IV) (2)"
+    ]
+  },
+  {
+    "name": "Amlodipine",
+    "routes": [
+      "Oral: 5 mg and 10 mg tablet"
+    ]
+  },
+  {
+    "name": "Amoxicillin (as trihydrate)",
+    "routes": [
+      "Oral: 250 mg and 500 mg capsule"
+    ]
+  },
+  {
+    "name": "Ampicillin (as sodium salt)",
+    "routes": [
+      "Inj.: 250 mg, 500 mg and 1 g vial (IM, IV)"
+    ]
+  },
+  {
+    "name": "Ampicillin + Sulbactam",
+    "routes": [
+      "Inj.: 500 mg ampicillin + 250 mg sulbactam (IM, IV) (as"
+    ]
+  },
+  {
+    "name": "Anastrazole",
+    "routes": [
+      "Oral: 1 mg film coated tablet"
+    ]
+  },
+  {
+    "name": "Antiâ D Immunoglobulin (human",
+    "routes": [
+      "Inj.: 200 micrograms/mL, 1.5 mL ampul (IM)"
+    ]
+  },
+  {
+    "name": "Antiâ rabies serum (equine)",
+    "routes": [
+      "Inj.: 200 IU/mL, 5 mL vial (IM)"
+    ]
+  },
+  {
+    "name": "Antiâ tetanus serum (equine)",
+    "routes": [
+      "Inj.: 4000 IU/mL, 2.5 mL vial (IM)"
+    ]
+  },
+  {
+    "name": "Antimicrobial",
+    "routes": [
+      "Oral: 200 mg film-coated tablet",
+      "Inj.: 200mg lyophilized powder for solution for IV"
+    ]
+  },
+  {
+    "name": "Approximately 10 m,Eq potassium",
+    "routes": [
+      "Inj.: 1 mmol/mL syrup, 30 mL and and 60 mL(as"
+    ]
+  },
+  {
+    "name": "Aripiprazole",
+    "routes": [
+      "Oral: 10 mg, 15 mg, 20 mg and 30 mg tablet",
+      "Inj.: 300 mg and 400 mg (200 mg/mL) lyophilized"
+    ]
+  },
+  {
+    "name": "Artemether + Lumefantrin",
+    "routes": [
+      "Oral: 20 mg artemether + 120 mg lumefantrin tablet"
+    ]
+  },
+  {
+    "name": "Artesunate",
+    "routes": [
+      "Inj: 60 mg vial injectable",
+      "Rectal: 50 mg suppository"
+    ]
+  },
+  {
+    "name": "Asparaginase",
+    "routes": [
+      "Inj.: lyophilized powder, 10,000 IU vial (IV)"
+    ]
+  },
+  {
+    "name": "Aspirin",
+    "routes": [
+      "Oral: 80 mg, 100 mg tablet, 300 mg tablet and 325mg"
+    ]
+  },
+  {
+    "name": "Atenolol",
+    "routes": [
+      "Oral: 50 mg and 100 mg tablet"
+    ]
+  },
+  {
+    "name": "Atracurium (as besilate)",
+    "routes": [
+      "Inj.: 10 mg/mL, 2.5 mL and 5 mL ampul (IV)"
+    ]
+  },
+  {
+    "name": "Atropine (as sulfate)",
+    "routes": [
+      "Oral: 600 micrograms (equiv. to 500 mcg atropine) tablet",
+      "Inj.: 500 micrograms/mL, 600 micrograms/mL and 1",
+      "Solution"
+    ]
+  },
+  {
+    "name": "Azathioprine (1, 2)",
+    "routes": [
+      "Oral: 50 mg tablet"
+    ]
+  },
+  {
+    "name": "Azithromycin",
+    "routes": [
+      "Oral: 250 mg capsule (as base*/asdihydrate)",
+      "Inj.: 500 mg powder, vial (IV infusion) (as base*/as"
+    ]
+  },
+  {
+    "name": "Aztreonam",
+    "routes": [
+      "Inj.: 1 g powder for injection"
+    ]
+  },
+  {
+    "name": "Baclofen",
+    "routes": [
+      "Oral: 10 mg tablet"
+    ]
+  },
+  {
+    "name": "Basiliximab",
+    "routes": [
+      "Inj.: 20 mg vial (IV infusion)"
+    ]
+  },
+  {
+    "name": "Beractant",
+    "routes": [
+      "Inj.: 25 mg/mL suspension, 4 mL and 8 mL vial,"
+    ]
+  },
+  {
+    "name": "Betahistine (as hydrochloride/",
+    "routes": [
+      "Oral: 8 mg, 16 mg and 24 mg tablet"
+    ]
+  },
+  {
+    "name": "Bicalutamide",
+    "routes": [
+      "Oral: 50 mg and 150 mg tablet/ film coated tablet"
+    ]
+  },
+  {
+    "name": "Biperiden",
+    "routes": [
+      "Oral: 2 mg tablet (as hydrochloride)",
+      "Inj.: 5 mg/mL, 1 mL ampul (IM, IV) (as lactate)"
+    ]
+  },
+  {
+    "name": "Bisacodyl",
+    "routes": [
+      "Oral: 5 mg tablet",
+      "Rectal: 5 mg (children) and 10 mg (adult) suppository"
+    ]
+  },
+  {
+    "name": "Bisoprolol",
+    "routes": [
+      "Oral: 2.5 mg and 5 mg tablet (as fumarate)"
+    ]
+  },
+  {
+    "name": "Bleomycin (as sulfate) (1, 2)",
+    "routes": [
+      "Inj.: powder, 15 IU ampul/vial (IM, IV)"
+    ]
+  },
+  {
+    "name": "Boraginaceae)]",
+    "routes": [
+      "Oral: 250 mg tablet"
+    ]
+  },
+  {
+    "name": "Bromazepam (A,1)",
+    "routes": [
+      "Oral: â 1.5 mg tablet"
+    ]
+  },
+  {
+    "name": "Bromocriptine (as mesilate)",
+    "routes": [
+      "Oral: 2.5 mg tablet"
+    ]
+  },
+  {
+    "name": "Budesonide",
+    "routes": [
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Budesonide + Formoterol",
+    "routes": [
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Bumetanide",
+    "routes": [
+      "Oral: 1 mg tablet",
+      "Inj.: 500 micrograms/mL, 4 mL ampul (IM, IV)"
+    ]
+  },
+  {
+    "name": "Bupivacaine (as hydrochloride)",
+    "routes": [
+      "Inj.: 0.5%, 5 mL, 10 mL and 20 mL vial"
+    ]
+  },
+  {
+    "name": "Butamirate (as citrate) (2)",
+    "routes": [
+      "Oral: 50 mg MR tablet"
+    ]
+  },
+  {
+    "name": "Butorphanol (as tartrate) (A,1)",
+    "routes": [
+      "Inj.: 2 mg/mL, 1 mL and 2 mL ampul/vial (IM, IV)"
+    ]
+  },
+  {
+    "name": "Calcitriol (1, 2)",
+    "routes": [
+      "Oral: 0.25 microgram capsule"
+    ]
+  },
+  {
+    "name": "Calcium",
+    "routes": [
+      "Oral: tablet (equiv. to 500 mg elemental calcium) (as"
+    ]
+  },
+  {
+    "name": "Capecitabine (1, 2)",
+    "routes": [
+      "Oral: 150 mg and 500 mg tablet"
+    ]
+  },
+  {
+    "name": "Capreomycin",
+    "routes": [
+      "Inj.: 1 gram powder for injection (IV, IM)"
+    ]
+  },
+  {
+    "name": "Captopril",
+    "routes": [
+      "Oral: 25 mg and 50 mg tablet"
+    ]
+  },
+  {
+    "name": "Carbamazepine",
+    "routes": [
+      "Oral: 200 mg tablet (B)"
+    ]
+  },
+  {
+    "name": "Carbetocin",
+    "routes": [
+      "Inj.: 100 mcg/mL, 1 mL ampule/vial, solution for"
+    ]
+  },
+  {
+    "name": "Carboplatin (1, 2)",
+    "routes": [
+      "Inj.: powder, 150 mg and 450 mg vial (IV)"
+    ]
+  },
+  {
+    "name": "Carboprost",
+    "routes": [
+      "Inj.: 125 mcg/0.5 mL solution for injection, 0.5 mL"
+    ]
+  },
+  {
+    "name": "Carvedilol",
+    "routes": [
+      "Oral: 6.25 mg tablet and 25 mg tablet"
+    ]
+  },
+  {
+    "name": "Cefalexin (as monohydrate)",
+    "routes": [
+      "Oral: 500 mg capsule"
+    ]
+  },
+  {
+    "name": "Cefazolin (as sodium salt)",
+    "routes": [
+      "Inj.: 500 mg and 1 g vial (IM, IV)"
+    ]
+  },
+  {
+    "name": "Cefepime (as hydrochloride)",
+    "routes": [
+      "Inj.: 500 mg, 1 g and 2 g vial (IM, IV)"
+    ]
+  },
+  {
+    "name": "Cefixime",
+    "routes": [
+      "Oral: 200 mg and 400 mg capsule (B)"
+    ]
+  },
+  {
+    "name": "Cefotaxime (as sodium salt)",
+    "routes": [
+      "Inj.: 250 mg vial + 2 mL diluent (IM, IV) 500 mg vial + 2"
+    ]
+  },
+  {
+    "name": "Cefoxitin",
+    "routes": [
+      "Inj.: 1 g vial (IM, IV) (as sodium salt)"
+    ]
+  },
+  {
+    "name": "Ceftaxidime (Ceftazidime)",
+    "routes": [
+      "Inj.: 250 mg, 500 mg and 1 g vial (IM, IV) (as"
+    ]
+  },
+  {
+    "name": "Ceftriaxone",
+    "routes": [
+      "Inj.: 250 mg vial + 2 mL 1% solution of lidocaine (IM)"
+    ]
+  },
+  {
+    "name": "Cefuroxime",
+    "routes": [
+      "Oral: 500 mg tablet (as axetil)",
+      "Inj.: 250 mg and 750 mg vial (IM, IV)"
+    ]
+  },
+  {
+    "name": "Celecoxib",
+    "routes": [
+      "Oral: 100 mg, 200 mg and 400 mg capsule"
+    ]
+  },
+  {
+    "name": "Cell (purified, inactivated)",
+    "routes": [
+      "Inj.: lyophilized powder, 2.5 IU/mL, 1 dose vial + 1 mL"
+    ]
+  },
+  {
+    "name": "Cetirizine",
+    "routes": [
+      "Oral: 10 mg tablet"
+    ]
+  },
+  {
+    "name": "Chlorambucil (1, 2)",
+    "routes": [
+      "Oral: 2 mg tablet"
+    ]
+  },
+  {
+    "name": "Chloramphenicol",
+    "routes": [
+      "Oral: 500 mg capsule",
+      "Inj.: 1 g vial (IV; IM if recommended by manufacturer)"
+    ]
+  },
+  {
+    "name": "Chlorhexidine",
+    "routes": [
+      "Solution"
+    ]
+  },
+  {
+    "name": "Chloride",
+    "routes": [
+      "Inj.: 250 mL, 500 mL and 1 L bottle/bag (IV infusion)"
+    ]
+  },
+  {
+    "name": "Chloroquine (as phosphate or",
+    "routes": [
+      "Oral: 250 mg (150 mg base) tablet",
+      "Inj.: 50 mg/mL, 20 mL vial (IM, IV)"
+    ]
+  },
+  {
+    "name": "Chlorphenamine",
+    "routes": [
+      "Oral: 4 mg tablet",
+      "Inj.: 10 mg/mL, 1 mL ampul/vial (IM, IV)"
+    ]
+  },
+  {
+    "name": "Chlorpromazine (as",
+    "routes": [
+      "Oral: 100 mg and 200 mg tablet"
+    ]
+  },
+  {
+    "name": "Cholecalciferol (vitamin D,3)",
+    "routes": [
+      "Oral: Equiv. to 500 mg elemental Ca + 400 IU Vit. D,3"
+    ]
+  },
+  {
+    "name": "Ciclosporin (1, 2)",
+    "routes": [
+      "Oral: 25 mg, 50 mg and 100 mg capsule (B)"
+    ]
+  },
+  {
+    "name": "Cilostazol",
+    "routes": [
+      "Oral: 50 mg and 100 mg tablet"
+    ]
+  },
+  {
+    "name": "Cinnarizine",
+    "routes": [
+      "Oral: 25 mg tablet"
+    ]
+  },
+  {
+    "name": "Ciprofloxacin",
+    "routes": [
+      "Oral: 250 mg and 500 mg tablet (as hydrochloride)",
+      "Inj.: 2 mg/mL, 100 mL vial (IV infusion) (as lactate)"
+    ]
+  },
+  {
+    "name": "Cisplatin (1, 2)",
+    "routes": [
+      "Inj.: 1 mg/mL, 10 mL and 50 mL vial (IV)"
+    ]
+  },
+  {
+    "name": "Clâ â 154 mmol/L",
+    "routes": [
+      "Inj.: 250 mL, 500 mL and 1 L bottle/bag (IV infusion)"
+    ]
+  },
+  {
+    "name": "Clarithromycin",
+    "routes": [
+      "Oral: 250 mg and 500 mg base tablet"
+    ]
+  },
+  {
+    "name": "Clindamycin",
+    "routes": [
+      "Oral: 150 mg and 300 mg capsule (as hydrochloride)",
+      "Inj.: 150 mg/mL, 2 mL ampul/vial and 4 mL ampul (IM,"
+    ]
+  },
+  {
+    "name": "Clofazimine (B)",
+    "routes": [
+      "Oral: 50 mg and 100 mg capsule (available under DOH"
+    ]
+  },
+  {
+    "name": "Clomifene (1, 2)",
+    "routes": [
+      "Oral: 50 mg tablet (as citrate)"
+    ]
+  },
+  {
+    "name": "Clonazepam (A,1)",
+    "routes": [
+      "Oral: â 500 micrograms and 2 mg tablet"
+    ]
+  },
+  {
+    "name": "Clonidine",
+    "routes": [
+      "Oral: 75 micrograms and 150 micrograms tablet (as",
+      "Inj.: 150 micrograms/mL, 1 mL ampul (IV) (as"
+    ]
+  },
+  {
+    "name": "Clopidogrel",
+    "routes": [
+      "Oral: 75 mg tablet"
+    ]
+  },
+  {
+    "name": "Cloxacillin (as sodium salt)",
+    "routes": [
+      "Oral: 500 mg capsule"
+    ]
+  },
+  {
+    "name": "Clozapine (1, 2)",
+    "routes": [
+      "Oral: 25 mg and 100 mg tablet (requires hematologic"
+    ]
+  },
+  {
+    "name": "Co-Amoxiclav (amoxicillin +",
+    "routes": [
+      "Oral: 500 mg amoxicillin (as trihydrate) + 125 mg"
+    ]
+  },
+  {
+    "name": "Codeine (A,1)",
+    "routes": [
+      "Oral: 30 mg MR capsule (as phosphate)"
+    ]
+  },
+  {
+    "name": "Colchicine",
+    "routes": [
+      "Oral: 500 microgram tablet"
+    ]
+  },
+  {
+    "name": "Colistin",
+    "routes": [
+      "Inj.: 2,000,000 IU lyophilized powder for injection (IV"
+    ]
+  },
+  {
+    "name": "Complex)",
+    "routes": [
+      "Inj.: 50 mg lyophilized powder, vial (IV infusion)"
+    ]
+  },
+  {
+    "name": "Condition",
+    "routes": [
+      "Solution"
+    ]
+  },
+  {
+    "name": "Cotrimoxazole",
+    "routes": [
+      "Oral: 400 mg sulfamethoxazole + 80 mg trimethoprim",
+      "Inj.: 400 mg sulfamethoxazole + 80 mg trimethoprim, 5"
+    ]
+  },
+  {
+    "name": "Cyclophosphamide (1, 2)",
+    "routes": [
+      "Inj.: powder, 200 mg, 500 mg and 1 g vial (IV)"
+    ]
+  },
+  {
+    "name": "Cycloserine",
+    "routes": [
+      "Oral: 250 mg capsule"
+    ]
+  },
+  {
+    "name": "Cyproterone (as acetate) (1, 2)",
+    "routes": [
+      "Oral: 50 mg tablet"
+    ]
+  },
+  {
+    "name": "Cytarabine (1, 2)",
+    "routes": [
+      "Inj.: 20 mg/mL, 5 mL ampul (IM, SC, intrathecal)"
+    ]
+  },
+  {
+    "name": "Dacarbazine (1, 2)",
+    "routes": [
+      "Inj.: powder, 100 mg and 200 mg vial (IV, IV infusion)"
+    ]
+  },
+  {
+    "name": "Daclatasvir",
+    "routes": [
+      "Oral: 60 mg tablet"
+    ]
+  },
+  {
+    "name": "Dactinomycin (1, 2)",
+    "routes": [
+      "Inj.: powder, 500 micrograms vial (IV)"
+    ]
+  },
+  {
+    "name": "Danazol (1)",
+    "routes": [
+      "Oral: 200 mg capsule"
+    ]
+  },
+  {
+    "name": "Dantrolene (as sodium salt)",
+    "routes": [
+      "Oral: 25 mg and 50 mg capsule (1)",
+      "Inj.: 20 mg (with mannitol 3 g)/vial (for reconstitution"
+    ]
+  },
+  {
+    "name": "Dapsone (B)",
+    "routes": [
+      "Oral: 100 mg tablet"
+    ]
+  },
+  {
+    "name": "Deferasirox",
+    "routes": [
+      "Oral: 125 mg and 250 mg dispersible tablets"
+    ]
+  },
+  {
+    "name": "Deferiprone (1, 2)",
+    "routes": [
+      "Oral: 500 mg tablet"
+    ]
+  },
+  {
+    "name": "Deferoxamine (as mesilate)",
+    "routes": [
+      "Inj.: powder, 500 mg vial (IM, IV infusion, SC)"
+    ]
+  },
+  {
+    "name": "Delamanid",
+    "routes": [
+      "Oral: 50 mg film coated tablet (For use by the National"
+    ]
+  },
+  {
+    "name": "Derivative (PPD)",
+    "routes": [
+      "Inj.: 2 TU/0.1 mL solution, 1 mL and 5 mL vial (ID)"
+    ]
+  },
+  {
+    "name": "Desflurane (1)",
+    "routes": [
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Desmopressin (as acetate)",
+    "routes": [
+      "Oral: 100 micrograms and 200 micrograms tablet",
+      "Inj.: 15 micrograms/mL, 1 mL ampul (IM, SC) (as"
+    ]
+  },
+  {
+    "name": "Dexamethasone",
+    "routes": [
+      "Oral: 500 micrograms, 750 micrograms, 3 mg and 4 mg",
+      "Inj.: 4 mg/mL, 1 mL and 2 mL ampul/vial (IM, IV) (as"
+    ]
+  },
+  {
+    "name": "Dextran, High Molecular Weight",
+    "routes": [
+      "Inj.: 6% dextran 70 in 0.9% sodium chloride, 500 mL"
+    ]
+  },
+  {
+    "name": "Dextromethorphan",
+    "routes": [
+      "Oral: 10 mg tablet"
+    ]
+  },
+  {
+    "name": "Diazepam (1, A,1)",
+    "routes": [
+      "Oral: â 5 mg tablet",
+      "Inj.: 5 mg/mL, 2 mL ampul (IM, IV)"
+    ]
+  },
+  {
+    "name": "Diclofenac",
+    "routes": [
+      "Oral: 25 mg and 50 mg tablet/capsule (as sodium or",
+      "Inj.: 25 mg/mL, 3 mL ampul (IM, IV) (as sodiumsalt)"
+    ]
+  },
+  {
+    "name": "Dicycloverine (Dicyclomine)",
+    "routes": [
+      "Oral: 10 mg tablet"
+    ]
+  },
+  {
+    "name": "Diethylcarbamazine",
+    "routes": [
+      "Oral: 50 mg and 100 mg tablet (available under DOH"
+    ]
+  },
+  {
+    "name": "Digoxin (2)",
+    "routes": [
+      "Oral: 250 micrograms tablet",
+      "Inj.: 250 micrograms/mL, 2 mL ampul (IM, IV)"
+    ]
+  },
+  {
+    "name": "Diloxanide (as furoate)",
+    "routes": [
+      "Oral: 500 mg tablet (B)"
+    ]
+  },
+  {
+    "name": "Diltiazem (as hydrochloride)",
+    "routes": [
+      "Oral: 60 mg tablet"
+    ]
+  },
+  {
+    "name": "Dimercaprol (1, 2)",
+    "routes": [
+      "Inj.: (in oil) 50 mg/mL, 2 mL ampul (IM)"
+    ]
+  },
+  {
+    "name": "Dimercaptopropane-sulphonate",
+    "routes": [
+      "Inj.: 100 mg/mL, 1 mL ampul and 10 mL vial (IM)"
+    ]
+  },
+  {
+    "name": "Diphenhydramine (as",
+    "routes": [
+      "Oral: 25 mg and 50 mg capsule",
+      "Inj.: 50 mg/mL, 1 mL ampul (IM, IV)"
+    ]
+  },
+  {
+    "name": "Diphtheria-Tetanus Toxoids (DT)",
+    "routes": [
+      "Inj.: 30 IU diphtheria toxoid + 40 IU tetanus toxoid per"
+    ]
+  },
+  {
+    "name": "Diphtheria-Tetanus Toxoids (Td)",
+    "routes": [
+      "Inj.: â ¥ 2 IU diphtheria toxoid + â ¥ 40 IU tetanus toxoid"
+    ]
+  },
+  {
+    "name": "Dipyridamole (2)",
+    "routes": [
+      "Oral: 25 mg tablet (preferably used in combination with"
+    ]
+  },
+  {
+    "name": "Dobutamine (1, 2)",
+    "routes": [
+      "Inj.: 50 mg/mL, 5 mL ampul (concentrate) (IV"
+    ]
+  },
+  {
+    "name": "Docetaxel (1, 2)",
+    "routes": [
+      "Inj.: 10 mg/mL solution for infusion (IV), 2 mL and 8 mL"
+    ]
+  },
+  {
+    "name": "Dolutegravir",
+    "routes": [
+      "Oral: 300 mg + 300 mg + 50 mg (fixed-dose combination)"
+    ]
+  },
+  {
+    "name": "Domperidone",
+    "routes": [
+      "Oral: 10 mg tablet"
+    ]
+  },
+  {
+    "name": "Donepezil",
+    "routes": [
+      "Oral: 5 mg and 10 mg tablet/ orodispersible tablet (ODT)"
+    ]
+  },
+  {
+    "name": "Dopamine (as hydrochloride) (1,",
+    "routes": [
+      "Inj.: 40 mg/mL, 5 mL vial/ampul (IV"
+    ]
+  },
+  {
+    "name": "Doxorubicin (as hydrochloride)",
+    "routes": [
+      "Inj.: powder, 10 mg and 50 mg vial (IV)"
+    ]
+  },
+  {
+    "name": "Doxycycline",
+    "routes": [
+      "Oral: 100 mg capsule (as hyclate)"
+    ]
+  },
+  {
+    "name": "DTa,P + Hib",
+    "routes": [
+      "Inj.: 0.5 mL preâ filled syringe (IM)"
+    ]
+  },
+  {
+    "name": "DTP + Hepatitis B Vaccine",
+    "routes": [
+      "Inj.: 0.5 mL vial (IM, SC)"
+    ]
+  },
+  {
+    "name": "DTP + Hib",
+    "routes": [
+      "Inj.: 0.5 mL DTP diluent in preâ filled syringe + freezeâ"
+    ]
+  },
+  {
+    "name": "DTP + Inactivated Polio Vaccine",
+    "routes": [
+      "Inj.: 0.5 mL monodose vial (IM, SC)"
+    ]
+  },
+  {
+    "name": "DTP + IPV + Hib",
+    "routes": [
+      "Inj.: 0.5 mL preâ filled syringe (IM, SC)"
+    ]
+  },
+  {
+    "name": "Dydrogesterone",
+    "routes": [
+      "Oral: 10 mg tablet"
+    ]
+  },
+  {
+    "name": "Efavirenz",
+    "routes": [
+      "Oral: 50 mg, 100 mg, 200 mg and 600 mg tablet/capsule"
+    ]
+  },
+  {
+    "name": "Elemental",
+    "routes": [
+      "Oral"
+    ]
+  },
+  {
+    "name": "Enalapril (as maleate)",
+    "routes": [
+      "Oral: 5 mg and 20 mg tablet"
+    ]
+  },
+  {
+    "name": "Enalapril + Hydrochlorothiazide",
+    "routes": [
+      "Oral: 20 mg enalapril + 12.5 mg hydrochlorothiazide"
+    ]
+  },
+  {
+    "name": "Enoxaparin (as sodium salt) (1,",
+    "routes": [
+      "Inj.: 100 mg/mL, 0.2 mL, 0.4 mL and 0.6 mL preâ filled"
+    ]
+  },
+  {
+    "name": "Entecavir",
+    "routes": [
+      "Oral: 500 mcg and 1 mg tablet/ film-coated tablet"
+    ]
+  },
+  {
+    "name": "Ephedrine (A,1)",
+    "routes": [
+      "Inj.: 30 mg/mL, 1 mL ampul solution for injection"
+    ]
+  },
+  {
+    "name": "Epinephrine (adrenaline) (1, 2)",
+    "routes": [
+      "Inj.: 1 mg/mL, 1 mL ampul (IV, IM, SC) (as hydrochloride)"
+    ]
+  },
+  {
+    "name": "Epirubicin (as hydrochloride)",
+    "routes": [
+      "Inj.: powder, 10 mg and 50 mg vial (IV)"
+    ]
+  },
+  {
+    "name": "Ergotamine (1, 2, A,2)",
+    "routes": [
+      "Oral: 1 mg tablet (as tartrate)"
+    ]
+  },
+  {
+    "name": "Ertapenem (as sodium salt)",
+    "routes": [
+      "Inj.: 1 g powder, vial (IM/IV)"
+    ]
+  },
+  {
+    "name": "Erythromycin",
+    "routes": [
+      "Oral: 500 mg tablet (as stearate) (B)"
+    ]
+  },
+  {
+    "name": "Escitalopram (as oxalate)",
+    "routes": [
+      "Oral: 10 mg tablet"
+    ]
+  },
+  {
+    "name": "Esmolol (as hydrochloride) (1, 2)",
+    "routes": [
+      "Inj.: 10 mg/mL, 10 mL vial (IV)"
+    ]
+  },
+  {
+    "name": "Ethambutol (as hydrochloride)",
+    "routes": [
+      "Oral: 100 mg tablet (pediatric)"
+    ]
+  },
+  {
+    "name": "Ethambutol (B)",
+    "routes": [
+      "Oral: 75 mg + 150 mg + 275 mg tablet"
+    ]
+  },
+  {
+    "name": "Ethinylestradiol + Desogestrel",
+    "routes": [
+      "Oral: 30 micrograms ethinylestradiol + 150 microgram"
+    ]
+  },
+  {
+    "name": "Ethinylestradiol + Norgestrel",
+    "routes": [
+      "Oral: 30 micrograms ethinylestradiol + 300 microgram"
+    ]
+  },
+  {
+    "name": "Etoposide (1, 2)",
+    "routes": [
+      "Inj.: 20 mg/mL, 5 mL ampul/vial (IV)"
+    ]
+  },
+  {
+    "name": "Everolimus",
+    "routes": [
+      "Oral: 250 mcg and 500 mcg tablet"
+    ]
+  },
+  {
+    "name": "Failure",
+    "routes": [
+      "Solution"
+    ]
+  },
+  {
+    "name": "Famotidine",
+    "routes": [
+      "Oral: 20 mg tablet",
+      "Inj.: 20 mg powder/lyophilized powder for injection,"
+    ]
+  },
+  {
+    "name": "Felodipine",
+    "routes": [
+      "Oral: 5 mg and 10 mg MR tablet"
+    ]
+  },
+  {
+    "name": "Fenofibrate (1)",
+    "routes": [
+      "Oral: 200 mg capsule"
+    ]
+  },
+  {
+    "name": "Fenoterol (as hydrobromide)",
+    "routes": [
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Fentanyl (as citrate) (A,1)",
+    "routes": [
+      "Oral: 100 mcg, 200 mcg, 300 mcg and 400 mcg",
+      "Inj.: 50 micrograms/mL, 2 mL and 10 mL ampul(IV)"
+    ]
+  },
+  {
+    "name": "Filgrastim (G-CSF) (1, 2)",
+    "routes": [
+      "Inj.: 150 micrograms/0.6 mL, vial (IV, SC)"
+    ]
+  },
+  {
+    "name": "Finasteride",
+    "routes": [
+      "Oral: 5 mg tablet"
+    ]
+  },
+  {
+    "name": "Fluconazole",
+    "routes": [
+      "Oral: 50 mg, 150 mg and 200 mg capsule",
+      "Inj.: 2 mg/mL, 100 mL vial (IV infusion)"
+    ]
+  },
+  {
+    "name": "Flucytosine (5-fluorocytosine)",
+    "routes": [
+      "Oral: 250 mg tablet"
+    ]
+  },
+  {
+    "name": "Flumazenil (1, 2)",
+    "routes": [
+      "Inj.: 100 micrograms/mL, 5 mL ampul (slow"
+    ]
+  },
+  {
+    "name": "Flunarizine (as hydrochloride)",
+    "routes": [
+      "Oral: 5 mg capsule"
+    ]
+  },
+  {
+    "name": "Fluorescein (as sodium salt)",
+    "routes": [
+      "Inj.: 10% (100mg/mL), 5 mL ampul (IV)"
+    ]
+  },
+  {
+    "name": "Fluorouracil (1, 2)",
+    "routes": [
+      "Inj.: 50 mg/mL, 10 mL ampul/vial (IV, IV infusion)"
+    ]
+  },
+  {
+    "name": "Fluoxetine (1)",
+    "routes": [
+      "Oral: 20 mg dispersable tablet/capsule"
+    ]
+  },
+  {
+    "name": "Flupentixol (as decanoate) (1)",
+    "routes": [
+      "Inj.: 20 mg/mL, 1 mL ampul and 10 mL vial (IM)"
+    ]
+  },
+  {
+    "name": "Fluphenazine (as decanoate) (1)",
+    "routes": [
+      "Inj.: 25 mg/mL, 1 mL ampul and 10 mL vial (IM)"
+    ]
+  },
+  {
+    "name": "Flutamide (1, 2)",
+    "routes": [
+      "Oral: 250 mg tablet"
+    ]
+  },
+  {
+    "name": "Fomepizole (4 â methylprazole)",
+    "routes": [
+      "Inj.: 1 g/mL, 1.5 mL vial (IV)"
+    ]
+  },
+  {
+    "name": "Fondaparinux (as sodium salt)",
+    "routes": [
+      "Inj.: 2.5 mg/0.5 mL solution"
+    ]
+  },
+  {
+    "name": "Formoterol",
+    "routes": [
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Formoterol (as fumarate",
+    "routes": [
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Fosfomycin",
+    "routes": [
+      "Oral: 3 g granules for solution"
+    ]
+  },
+  {
+    "name": "Furosemide",
+    "routes": [
+      "Oral: 20 mg and 40 mg tablet (B)",
+      "Inj.: 10 mg/mL, 2 mL ampul (IM, IV)"
+    ]
+  },
+  {
+    "name": "Gabapentin",
+    "routes": [
+      "Oral: 100 mg and 300 mg capsule"
+    ]
+  },
+  {
+    "name": "Gadobutrol",
+    "routes": [
+      "Inj.: 1.0 mmol/mL solution for injection, 15 mL vial"
+    ]
+  },
+  {
+    "name": "Ganciclovir",
+    "routes": [
+      "Inj.: 500 mg vial (IV infusion) (as sodium) (1, 2)"
+    ]
+  },
+  {
+    "name": "Gemcitabine (as hydrochloride)",
+    "routes": [
+      "Inj.: 200 mg and 1 g vial (IV infusion)"
+    ]
+  },
+  {
+    "name": "Gentamicin (as sulfate)",
+    "routes": [
+      "Inj.: 10 mg/mL, 2 mL ampul/vial (IM, IV)"
+    ]
+  },
+  {
+    "name": "Gliclazide",
+    "routes": [
+      "Oral: 30 mg and 60 mg MR tablet"
+    ]
+  },
+  {
+    "name": "Glucagon (as hydrochloride)",
+    "routes": [
+      "Inj.: lyophilized powder, 1 mg + solvent (IM, IV, SC)"
+    ]
+  },
+  {
+    "name": "Glucose (dextrose)",
+    "routes": [
+      "Inj.: 50%, 50 mL vial (IV)"
+    ]
+  },
+  {
+    "name": "Glycerol (glycerin)",
+    "routes": [
+      "Oral: USP grade (liquid)",
+      "Rectal: 2 g and 2.5 g suppository"
+    ]
+  },
+  {
+    "name": "Goserelin (as acetate)",
+    "routes": [
+      "Inj.: 3.6 mg depot solution, preâ filled syringe (SC)"
+    ]
+  },
+  {
+    "name": "Haloperidol (1)",
+    "routes": [
+      "Oral: 2 mg, 5 mg, and 10 mg tablet (B)",
+      "Inj.: 5 mg/mL, 1 mL ampul (IM)"
+    ]
+  },
+  {
+    "name": "Halothane (1)",
+    "routes": [
+      "Inhalation: 250 mL bottle"
+    ]
+  },
+  {
+    "name": "Heparin (unfractionated)",
+    "routes": [
+      "Inj.: 1000 IU/mL and 5000 IU/mL, 5 mL vial"
+    ]
+  },
+  {
+    "name": "Hydralazine (as hydrochloride)",
+    "routes": [
+      "Oral: 25 mg and 50 mg tablet",
+      "Inj.: 20 mg/mL, 1 mL ampul (IM, IV)"
+    ]
+  },
+  {
+    "name": "Hydrochlorothiazide",
+    "routes": [
+      "Oral: 12.5 mg and 25 mg tablet",
+      "Oral: 150 mg irbesartan + 12.5 mg hydrochlorothiazide",
+      "Oral: 40 mg + 12.5 mg tablet"
+    ]
+  },
+  {
+    "name": "Hydrocortisone",
+    "routes": [
+      "Oral: 5 mg and 20 mg tablet",
+      "Inj.: 50 mg/mL, 2 mL vial (IM, IV) (as sodium succinate)"
+    ]
+  },
+  {
+    "name": "Hydroxychloroquine (as sulfate)",
+    "routes": [
+      "Oral: 200 mg tablet"
+    ]
+  },
+  {
+    "name": "Hydroxyurea (1, 2)",
+    "routes": [
+      "Oral: 500 mg capsule"
+    ]
+  },
+  {
+    "name": "Hydroxyzine (as dihydrochloride)",
+    "routes": [
+      "Oral: 25 mg tablet"
+    ]
+  },
+  {
+    "name": "Hyoscine (as N-butyl bromide)",
+    "routes": [
+      "Oral: 10 mg tablet",
+      "Inj.: 5 mg/5 mL syrup, 60 mL"
+    ]
+  },
+  {
+    "name": "Ibuprofen",
+    "routes": [
+      "Oral: 200 mg and 400 mg tablet"
+    ]
+  },
+  {
+    "name": "Idarubicin (as hydrochloride)",
+    "routes": [
+      "Inj.: powder, 5 mg vial (IV)"
+    ]
+  },
+  {
+    "name": "Ifosfamide (1, 2)",
+    "routes": [
+      "Inj.: powder, 1 g and 2 g vial (IV infusion)"
+    ]
+  },
+  {
+    "name": "Imatinib (as mesilate) (1, 2)",
+    "routes": [
+      "Inj.: 100 mg and 400 mg tablet"
+    ]
+  },
+  {
+    "name": "Imiglucerase",
+    "routes": [
+      "Inj: 400 U powder for intravenous infusion, 20 mL vial"
+    ]
+  },
+  {
+    "name": "Immunoenhancement",
+    "routes": [
+      "Solution"
+    ]
+  },
+  {
+    "name": "Indacaterol (as maleate) +",
+    "routes": [
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Indapamide",
+    "routes": [
+      "Oral: 1.5 mg MR tablet"
+    ]
+  },
+  {
+    "name": "Insulin 70/30 (recombinant DNA)",
+    "routes": [
+      "Inj.: 70% isophane suspension + 30% soluble insulin in:"
+    ]
+  },
+  {
+    "name": "Intraocular",
+    "routes": [
+      "Solution"
+    ]
+  },
+  {
+    "name": "Iodine",
+    "routes": [
+      "Oral: aqueous iodine solution (Lugol'ssolution)",
+      "Solution"
+    ]
+  },
+  {
+    "name": "Iodixanol",
+    "routes": [
+      "Inj.: 652 mg/mL (equivalent to 320 mg iodine) solution"
+    ]
+  },
+  {
+    "name": "Iohexol",
+    "routes": [
+      "Inj.: (Intravascular and other parenteral routes as"
+    ]
+  },
+  {
+    "name": "Iopamidol",
+    "routes": [
+      "Inj.: (Intravascular and other parenteral routes as"
+    ]
+  },
+  {
+    "name": "Iopromide",
+    "routes": [
+      "Inj.: 300 mg/mL equiv. to 623 mg iodine, 50 mL and 100"
+    ]
+  },
+  {
+    "name": "Iothalamate",
+    "routes": [
+      "Inj.: 600 mg/mL, 30 mL, 50 mL and 100 mL vial"
+    ]
+  },
+  {
+    "name": "Ioversol",
+    "routes": [
+      "Inj.: 636 mg/mL equiv. to 300 mg/mL iodine, 50 mL and"
+    ]
+  },
+  {
+    "name": "Ipratropium (as bromide)",
+    "routes": [
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Ipratropium + Salbutamol",
+    "routes": [
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Irbesartan",
+    "routes": [
+      "Oral: 150 mg and 300 mg tablet"
+    ]
+  },
+  {
+    "name": "Irinotecan (as hydrochloride)",
+    "routes": [
+      "Inj.: 40 mg/2 mL concentrate, vial (IV infusion)"
+    ]
+  },
+  {
+    "name": "Isoflurane (1)",
+    "routes": [
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Isoniazid",
+    "routes": [
+      "Oral: 300 mg and 400 mg tablet"
+    ]
+  },
+  {
+    "name": "Isoniazid + Rifampicin (B)",
+    "routes": [
+      "Oral: 50 mg + 75 mg dispersible fixed dose combination"
+    ]
+  },
+  {
+    "name": "Isosorbide-5-Mononitrate",
+    "routes": [
+      "Oral: 40 mg tablet"
+    ]
+  },
+  {
+    "name": "Isoxsuprine (as hydrochloride)",
+    "routes": [
+      "Oral: 10 mg and 40 mg tablet",
+      "Inj.: 5 mg/mL, 2 mL ampul (IM, IV infusion)"
+    ]
+  },
+  {
+    "name": "Itraconazole",
+    "routes": [
+      "Oral: 100 mg capsule"
+    ]
+  },
+  {
+    "name": "Ivermectin",
+    "routes": [
+      "Oral: 3 mg and 6 mg tablet"
+    ]
+  },
+  {
+    "name": "Kanamycin (as sulfate)",
+    "routes": [
+      "Inj.: 1 g vial (IM)"
+    ]
+  },
+  {
+    "name": "Ketamine (as hydrochloride)",
+    "routes": [
+      "Inj.: â 50 mg/mL, 10 mL vial (IM, IV)"
+    ]
+  },
+  {
+    "name": "Ketoprofen",
+    "routes": [
+      "Oral: 100 mg tablet",
+      "Inj.: 50 mg/mL, 2 mL ampul (IM)"
+    ]
+  },
+  {
+    "name": "Ketorolac (as tromethamol)",
+    "routes": [
+      "Inj.: 30 mg/mL, 1 mL ampul (IM, IV)"
+    ]
+  },
+  {
+    "name": "Lactate â 28 mmol/L",
+    "routes": [
+      "Inj.: 250 mL, 500 mL and 1 L bottle/bag (IV infusion",
+      "Inj.: 250 mL, 500 mL and 1 L bottle/bag (IV infusion)"
+    ]
+  },
+  {
+    "name": "Lactulose",
+    "routes": [
+      "Oral: 3.3 g/5 mL (3.35 g/5 mL) syrup"
+    ]
+  },
+  {
+    "name": "Lagundi â [Vitex negundo L.",
+    "routes": [
+      "Oral: 300 mg and 600 mg tablet"
+    ]
+  },
+  {
+    "name": "Lamivudine",
+    "routes": [
+      "Oral: 100 mg and 150 mg tablet/film coated tablet"
+    ]
+  },
+  {
+    "name": "Lamivudine + Zidovudine",
+    "routes": [
+      "Oral: 150 mg + 300 mg tablet"
+    ]
+  },
+  {
+    "name": "Lamivudine +Tenofovir",
+    "routes": [
+      "Oral: 300 mg + 300 mg tablet"
+    ]
+  },
+  {
+    "name": "Lamotrigine",
+    "routes": [
+      "Oral: 50 mg and 100 mg tablet"
+    ]
+  },
+  {
+    "name": "Lansoprazole",
+    "routes": [
+      "Oral: 15 mg and 30 mg capsule"
+    ]
+  },
+  {
+    "name": "Letrozole",
+    "routes": [
+      "Oral: 2.5 mg tablet/film-coated tablet"
+    ]
+  },
+  {
+    "name": "Leuproreline (as acetate) (1, 2)",
+    "routes": [
+      "Inj.: 3.75 mg/ 2 mL vial with syringe (IM, SC)"
+    ]
+  },
+  {
+    "name": "Levetiracetam",
+    "routes": [
+      "Oral: 250 mg, 500 mg, 750 mg, and 1 g film coated tablet",
+      "Inj.: 500 mg/5 mL (100 mg/mL) concentrate solution for"
+    ]
+  },
+  {
+    "name": "Levobupivacaine",
+    "routes": [
+      "Inj.: 5 mg/mL solution for injection, 10 mL ampule"
+    ]
+  },
+  {
+    "name": "Levodopa + Carbidopa",
+    "routes": [
+      "Oral: 100 mg levodopa + 25 mg carbidopa per tablet"
+    ]
+  },
+  {
+    "name": "Levofloxacin",
+    "routes": [
+      "Oral: 250 mg, 500 mg and 750 mg tablet",
+      "Inj.: 5 mg/mL solution for IV infusion, 100 mL and 150"
+    ]
+  },
+  {
+    "name": "Levonorgestrel",
+    "routes": [
+      "Oral: 30 micrograms ethinylestradiol + 150 microgram"
+    ]
+  },
+  {
+    "name": "Levothyroxine",
+    "routes": [
+      "Oral: 50 mcg, 100 mcg and 150 mcg tablet"
+    ]
+  },
+  {
+    "name": "Lidocaine (as hydrochloride) (1,",
+    "routes": [
+      "Inj.: 1%, 20 mL ampul"
+    ]
+  },
+  {
+    "name": "Linezolid",
+    "routes": [
+      "Oral: 600 mg tablet/film-coated tablet",
+      "Inj.: 2 mg/mL (600 mg/300 mL), solution for infusion (IV)"
+    ]
+  },
+  {
+    "name": "Lipids",
+    "routes": [
+      "Inj.: 10%, 100 mL, 200 mL and 500 mL bottle (IV infusion)"
+    ]
+  },
+  {
+    "name": "Loperamide (as hydrochloride)",
+    "routes": [
+      "Oral: 2 mg capsule"
+    ]
+  },
+  {
+    "name": "Lopinavir + Ritonavir",
+    "routes": [
+      "Oral: 200 mg + 50 mg tablet/capsule"
+    ]
+  },
+  {
+    "name": "Loratadine",
+    "routes": [
+      "Oral: 10 mg tablet/film coated tablet"
+    ]
+  },
+  {
+    "name": "Losartan (as potassium salt)",
+    "routes": [
+      "Oral: 50 mg and 100 mg tablet"
+    ]
+  },
+  {
+    "name": "Losartan + Hydrochlorothiazide",
+    "routes": [
+      "Oral: 50 mg losartan + 12.5 mg hydrochlorothiazide"
+    ]
+  },
+  {
+    "name": "Lynestrenol",
+    "routes": [
+      "Oral: 500 mcg tablet"
+    ]
+  },
+  {
+    "name": "Mannitol",
+    "routes": [
+      "Inj.: 20%, 250 mL and 500 mL bottle (IV)"
+    ]
+  },
+  {
+    "name": "Mebendazole",
+    "routes": [
+      "Oral: 100 mg tablet/capsule"
+    ]
+  },
+  {
+    "name": "Mebeverine (as hydrochloride)",
+    "routes": [
+      "Oral: 100 mg tablet"
+    ]
+  },
+  {
+    "name": "Mecobalamin",
+    "routes": [
+      "Oral: 500 microgram tablet",
+      "Inj.: 500 micrograms/mL, 1 mL ampul (IM, IV)"
+    ]
+  },
+  {
+    "name": "Medroxyprogesterone (2)",
+    "routes": [
+      "Oral: 5 mg and 10 mg tablet (as acetate)",
+      "Inj.: 50 mg/mL, 3 mL vial + syringe (IM) (as acetate)"
+    ]
+  },
+  {
+    "name": "Mefloquine (as hydrochloride)",
+    "routes": [
+      "Oral: 250 mg tablet"
+    ]
+  },
+  {
+    "name": "Megestrol (as acetate) (1, 2)",
+    "routes": [
+      "Oral: 40 mg and 160 mg tablet"
+    ]
+  },
+  {
+    "name": "Melphalan (1, 2)",
+    "routes": [
+      "Oral: 2 mg tablet"
+    ]
+  },
+  {
+    "name": "Memantine",
+    "routes": [
+      "Oral: 5 mg and 10 mg film coated tablet"
+    ]
+  },
+  {
+    "name": "Mercaptopurine (1, 2, B)",
+    "routes": [
+      "Oral: 50 mg tablet"
+    ]
+  },
+  {
+    "name": "Meropenem (as trihydrate)",
+    "routes": [
+      "Inj.: 500 mg and 1 g powder, vial (IV)"
+    ]
+  },
+  {
+    "name": "Mesalazine (1)",
+    "routes": [
+      "Oral: 500 mg enteric coated tablet",
+      "Rectal: 250 mg suppository"
+    ]
+  },
+  {
+    "name": "Mesna (sodium-2-",
+    "routes": [
+      "Inj.: 100 mg/mL, 4 mL ampul (IV)"
+    ]
+  },
+  {
+    "name": "Metformin (as hydrochloride)",
+    "routes": [
+      "Oral: 500 mg tablet/film coated tablet 850 mg tablet"
+    ]
+  },
+  {
+    "name": "Methimazole (thiamazole)",
+    "routes": [
+      "Oral: 5 mg and 10 mg tablet"
+    ]
+  },
+  {
+    "name": "Methotrexate (1)",
+    "routes": [
+      "Oral: 2.5 mg tablet (as base, sodium salt or disodiumsalt)",
+      "Inj.: 5 mg/mL, 3 mL vial (IM, IV) (as sodium salt)"
+    ]
+  },
+  {
+    "name": "Methyldopa",
+    "routes": [
+      "Oral: 250 mg tablet"
+    ]
+  },
+  {
+    "name": "Methylergometrine",
+    "routes": [
+      "Inj.: 200 micrograms/mL, 1 mL ampul (IM, IV)"
+    ]
+  },
+  {
+    "name": "Methylphenidate (1, 2, A,1)",
+    "routes": [
+      "Oral: 10 mg tablet"
+    ]
+  },
+  {
+    "name": "Methylprednisolone",
+    "routes": [
+      "Oral: 4 mg and 16 mg tablet",
+      "Inj.: powder, 125 mg/mL, 2 mL vial + diluent vial (IM, IV,"
+    ]
+  },
+  {
+    "name": "Metoclopramide",
+    "routes": [
+      "Oral: 10 mg tablet (as hydrochloride)",
+      "Inj.: 5 mg/mL, 2 mL ampul (IM, IV) (as base and as"
+    ]
+  },
+  {
+    "name": "Metoprolol (as tartrate)",
+    "routes": [
+      "Oral: 50 mg and 100 mg tablet"
+    ]
+  },
+  {
+    "name": "Metronidazole",
+    "routes": [
+      "Oral: 250 mg and 500 mg tablet",
+      "Inj.: 5 mg/mL, 100 mL vial (IV infusion)"
+    ]
+  },
+  {
+    "name": "Micafungin",
+    "routes": [
+      "Inj.: 50 mg lyophilized powder for infusion (IV)"
+    ]
+  },
+  {
+    "name": "Midazolam (A,1)",
+    "routes": [
+      "Oral: â 15 mg tablet",
+      "Inj.: 1 mg/mL, 5 mL ampul/vial (IM, IV)"
+    ]
+  },
+  {
+    "name": "Mitoxantrone (1, 2)",
+    "routes": [
+      "Inj.: 2 mg/mL solution, 5 mL and 10 mL"
+    ]
+  },
+  {
+    "name": "Montelukast (as sodium salt) (1)",
+    "routes": [
+      "Oral: 4 mg granules, sachet"
+    ]
+  },
+  {
+    "name": "Morphine (as sulfate) (A,1)",
+    "routes": [
+      "Oral: 10 mg, 20 mg and 30 mg tablet/capsule",
+      "Inj.: 10 mg/mL, 1 mL ampul (IM, IV, SC)"
+    ]
+  },
+  {
+    "name": "Moxifloxacin",
+    "routes": [
+      "Oral: 400 mg film coated tablet"
+    ]
+  },
+  {
+    "name": "Multivitamins",
+    "routes": [
+      "Oral"
+    ]
+  },
+  {
+    "name": "Nalbuphine (as hydrochloride)",
+    "routes": [
+      "Inj.: 10 mg/mL, 1 mL ampul (IM, IV, SC)"
+    ]
+  },
+  {
+    "name": "Naloxone (as hydrochloride)",
+    "routes": [
+      "Inj.: 400 micrograms/mL, 1 mL ampul (IM, IV, SC)",
+      "Oral: 5 mg + 2.5 mg, 10 mg + 5 mg, 20 mg + 10 mg,"
+    ]
+  },
+  {
+    "name": "Naltrexone (as hydrochloride)",
+    "routes": [
+      "Oral: 50 mg tablet"
+    ]
+  },
+  {
+    "name": "Naproxen (as sodium salt)",
+    "routes": [
+      "Oral: 250 mg base (275 mg) and 500 mg base (550mg)"
+    ]
+  },
+  {
+    "name": "Neostigmine",
+    "routes": [
+      "Inj.: 500 mcg/mL, 10 mL vial"
+    ]
+  },
+  {
+    "name": "Nevirapine",
+    "routes": [
+      "Oral: 150 mg + 300 mg + 200 mg tablet",
+      "Oral: 200 mg tablet (B)"
+    ]
+  },
+  {
+    "name": "Nicardipine (as hydrochloride)",
+    "routes": [
+      "Inj.: 1 mg/mL, 2 mL and 10 mL ampul (IV)"
+    ]
+  },
+  {
+    "name": "Nifedipine",
+    "routes": [
+      "Oral: 10 mg capsule (B) (restricted use for acute"
+    ]
+  },
+  {
+    "name": "Nimodipine",
+    "routes": [
+      "Oral: 30 mg tablet"
+    ]
+  },
+  {
+    "name": "Nitrofurantoin (B)",
+    "routes": [
+      "Oral: 50 mg and 100 mg capsule (asmacrocrystals)"
+    ]
+  },
+  {
+    "name": "Norepinephrine (as bitartrate) (1,",
+    "routes": [
+      "Inj.: 1 mg/mL, 2 mL and 4 mL ampul (IV infusion)"
+    ]
+  },
+  {
+    "name": "Norethisterone",
+    "routes": [
+      "Oral: 35 micrograms ethinylestradiol + 400 microgram"
+    ]
+  },
+  {
+    "name": "Norethisterone (as acetate and",
+    "routes": [
+      "Oral: 5 mg tablet"
+    ]
+  },
+  {
+    "name": "Nystatin",
+    "routes": [
+      "Oral: 100,000 units/mL suspension, 30 mL",
+      "Vaginal"
+    ]
+  },
+  {
+    "name": "Octreotide (as acetate) (1, 2)",
+    "routes": [
+      "Inj.: 100 micrograms/mL and 500 micrograms/mL, 1"
+    ]
+  },
+  {
+    "name": "Ofloxacin",
+    "routes": [
+      "Oral: 200 mg tablet"
+    ]
+  },
+  {
+    "name": "Olanzapine (1, 2)",
+    "routes": [
+      "Oral: 5 mg and 10 mg tablet"
+    ]
+  },
+  {
+    "name": "Olodaterol (as hydrochloride)",
+    "routes": [
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Omeprazole",
+    "routes": [
+      "Oral: 20 mg and 40 mg capsule",
+      "Inj.: powder, 40 mg vial + 10 mL solvent ampul/vial (IV)"
+    ]
+  },
+  {
+    "name": "Ondansetron (1, 2)",
+    "routes": [
+      "Oral: 8 mg tablet (as hydrochloridedihydrate)",
+      "Inj.: 2 mg/mL, 2 mL and 4 mL ampul (IM,IV)"
+    ]
+  },
+  {
+    "name": "Ophthalmic",
+    "routes": [
+      "Solution"
+    ]
+  },
+  {
+    "name": "Opthalmic",
+    "routes": [
+      "Solution"
+    ]
+  },
+  {
+    "name": "Oral:",
+    "routes": [
+      "Oral: 50 mg tablet"
+    ]
+  },
+  {
+    "name": "Oseltamivir (as phosphate)",
+    "routes": [
+      "Oral: 75 mg capsule"
+    ]
+  },
+  {
+    "name": "Oxacillin (as sodium salt)",
+    "routes": [
+      "Inj.: 250 mg and 500 mg vial (IM, IV)"
+    ]
+  },
+  {
+    "name": "Oxaliplatin (1, 2)",
+    "routes": [
+      "Inj.: 5 mg/mL concentrate solution, 10 mL and 20 mL"
+    ]
+  },
+  {
+    "name": "Oxcarbazepine",
+    "routes": [
+      "Oral: 300 mg and 600 mg tablet"
+    ]
+  },
+  {
+    "name": "Oxycodone (as hydrochloride)",
+    "routes": [
+      "Oral: 5 mg capsule",
+      "Inj: 10 mg/mL, 1 mL and 2 mL ampule for IV infusion"
+    ]
+  },
+  {
+    "name": "Oxygen",
+    "routes": [
+      "Inhalation: (medicinal gas)"
+    ]
+  },
+  {
+    "name": "Oxytocin (synthetic) (2)",
+    "routes": [
+      "Inj.: 10 IU/mL, 1 mL ampul (IM, IV)"
+    ]
+  },
+  {
+    "name": "Paclitaxel (1, 2)",
+    "routes": [
+      "Inj.: 6 mg/mL, 5 mL, 16.7 mL, 17 mL, 25 mL and 43.4"
+    ]
+  },
+  {
+    "name": "Paliperidone",
+    "routes": [
+      "Inj.: 50 mg/0.5 mL, 75 mg/0.75 mL, 100 mg/mL and"
+    ]
+  },
+  {
+    "name": "Pancuronium (as bromide) (1)",
+    "routes": [
+      "Inj.: 2 mg/mL, 2 mL ampul (IM, IV)"
+    ]
+  },
+  {
+    "name": "Pantoprazole",
+    "routes": [
+      "Oral: 20 mg and 40 mg tablet/enteric-coatedtablet"
+    ]
+  },
+  {
+    "name": "Paracetamol",
+    "routes": [
+      "Oral: 300 mg and 500 mg tablet",
+      "Inj.: 150 mg/mL, 2mL ampule solution for injection",
+      "Rectal: 125 mg and 250 mg suppository"
+    ]
+  },
+  {
+    "name": "Pethidine (meperidine) (as",
+    "routes": [
+      "Inj.: 50 mg/mL, 2 mL ampul (IM, IV, SC)"
+    ]
+  },
+  {
+    "name": "Phenobarbital (A,1)",
+    "routes": [
+      "Oral: â 15 mg, 30 mg, 60 mg and 90 mg tablet",
+      "Inj.: 120 mg/mL (130 mg/mL), 1 mL ampul (IM, IV) (as"
+    ]
+  },
+  {
+    "name": "Phenytoin (as sodium salt)",
+    "routes": [
+      "Oral: 100 mg capsule (B)",
+      "Inj.: 50 mg/mL, 2 mL and 5 mL ampul (IV) (1)"
+    ]
+  },
+  {
+    "name": "Phosphate",
+    "routes": [
+      "Oral: 48 g/18 g per 100 mL solution, 45 mL bottle",
+      "Rectal: 19 g/7 g solution per 133 mL and 66 mL bottle"
+    ]
+  },
+  {
+    "name": "Physostigmine (as salicylate)",
+    "routes": [
+      "Inj.: 1 mg/mL, 2 mL ampul (IM, IV)"
+    ]
+  },
+  {
+    "name": "Phytomenadione (phytonadione,",
+    "routes": [
+      "Inj.: 10 mg/mL, 1 mL ampul (IM, IV, SC) (as aqueous"
+    ]
+  },
+  {
+    "name": "Piperacillin + Tazobactam (as",
+    "routes": [
+      "Inj.: 2 g piperacillin + 250 mg tazobactam per vial (IV"
+    ]
+  },
+  {
+    "name": "Polymeric",
+    "routes": [
+      "Oral"
+    ]
+  },
+  {
+    "name": "Potassium (as citrate)",
+    "routes": [
+      "Oral: 1080 mg (10 m,Eq) tablet"
+    ]
+  },
+  {
+    "name": "Praziquantel (B)",
+    "routes": [
+      "Oral: 600 mg tablet (available under DOH program)"
+    ]
+  },
+  {
+    "name": "Prednisolone",
+    "routes": [
+      "Oral: 15 mg/5 mL syrup, 60 mL (as sodium phosphate)"
+    ]
+  },
+  {
+    "name": "Prednisone",
+    "routes": [
+      "Oral: 5 mg, 10 mg and 20 mg tablet"
+    ]
+  },
+  {
+    "name": "Primaquine (as diphosphate)",
+    "routes": [
+      "Oral: 26.3 mg (15 mg base) tablet"
+    ]
+  },
+  {
+    "name": "Propofol (1)",
+    "routes": [
+      "Inj.: 10 mg/mL, 20 mL ampul (IV)"
+    ]
+  },
+  {
+    "name": "Propranolol (as hydrochloride)",
+    "routes": [
+      "Oral: 10 mg and 40 mg tablet"
+    ]
+  },
+  {
+    "name": "Propylthiouracil",
+    "routes": [
+      "Oral: 50 mg tablet"
+    ]
+  },
+  {
+    "name": "Prothionamide",
+    "routes": [
+      "Oral: 250 mg film coated tablet"
+    ]
+  },
+  {
+    "name": "Pyrazinamide",
+    "routes": [
+      "Oral: 500 mg tablet"
+    ]
+  },
+  {
+    "name": "Pyrazinamide (B)",
+    "routes": [
+      "Oral: 50 mg + 75 mg + 150 mg dispersible fixed dose"
+    ]
+  },
+  {
+    "name": "Pyrazinamide + Ethambutol (B)",
+    "routes": [
+      "Oral: 75 mg + 150 mg + 400 mg + 275 mg tablet"
+    ]
+  },
+  {
+    "name": "Pyridostigmine (as bromide)",
+    "routes": [
+      "Oral: 60 mg tablet"
+    ]
+  },
+  {
+    "name": "Pyridoxine (vitamin B,6) (as",
+    "routes": [
+      "Oral: 100 mg tablet"
+    ]
+  },
+  {
+    "name": "Pyrimethamine (B)",
+    "routes": [
+      "Oral: 25 mg and 75 mg tablet"
+    ]
+  },
+  {
+    "name": "Quetiapine (as fumarate)",
+    "routes": [
+      "Oral: 25 mg, 100 mg, 200 mg and 300 mg tablet"
+    ]
+  },
+  {
+    "name": "Quinine",
+    "routes": [
+      "Oral: 325 mg (300 mg base) tablet (as sulfate)",
+      "Inj.: 300 mg/mL, 1 mL ampul (IV) (as dihydrochloride)"
+    ]
+  },
+  {
+    "name": "Ranitidine (as hydrochloride)",
+    "routes": [
+      "Oral: 150 mg and 300 mg tablet",
+      "Inj.: 25 mg/mL, 2 mL ampul/vial (IM, IV, IV infusion)"
+    ]
+  },
+  {
+    "name": "Remifentanil",
+    "routes": [
+      "Inj.: 1 mg and 2 mg (in vial) lyophilized powder (IV"
+    ]
+  },
+  {
+    "name": "Retinol (vitamin A) (as palmitate)",
+    "routes": [
+      "Oral: 10,000 IU, 25,000 IU and 50,000 IU soft gel capsule"
+    ]
+  },
+  {
+    "name": "Ribavirin",
+    "routes": [
+      "Oral: 200 mg, 500 mg and 600 mg tablet"
+    ]
+  },
+  {
+    "name": "Rifabutin",
+    "routes": [
+      "Oral: 150 mg capsule (for HIV/AIDS patient on"
+    ]
+  },
+  {
+    "name": "Rifampicin",
+    "routes": [
+      "Oral: 300 mg, 450 mg and 600 mg tablet/capsule (B)"
+    ]
+  },
+  {
+    "name": "Rifapentine",
+    "routes": [
+      "Oral: 150 mg film coated tablet"
+    ]
+  },
+  {
+    "name": "Rifaximin",
+    "routes": [
+      "Oral: 200 mg tablet"
+    ]
+  },
+  {
+    "name": "Rilpivirine (as hydrochloride)",
+    "routes": [
+      "Oral: 25 mg tablet"
+    ]
+  },
+  {
+    "name": "Risperidone",
+    "routes": [
+      "Oral: 1 mg, 2 mg, 3 mg and 4 mg tablet",
+      "Inj.: 25 mg and 37.5 mg MR powder for suspension, vial"
+    ]
+  },
+  {
+    "name": "Rituximab (1, 2)",
+    "routes": [
+      "Inj.: 10 mg/mL, 10 mL and 50 mL vial (IV)"
+    ]
+  },
+  {
+    "name": "Rivastigmine (as hydrogen",
+    "routes": [
+      "Oral: 1.5 mg, 3 mg, and 6 mg capsule"
+    ]
+  },
+  {
+    "name": "Rocuronium (as bromide) (1)",
+    "routes": [
+      "Inj.: 10 mg/mL, 5 mL ampul/vial (IV)"
+    ]
+  },
+  {
+    "name": "Ropivacaine (as hydrochloride)",
+    "routes": [
+      "Inj.: 10 mg/mL, 10 mL ampul (IV)"
+    ]
+  },
+  {
+    "name": "Rosuvastatin (as calcium salt)",
+    "routes": [
+      "Oral: 10 mg and 20 mg tablet"
+    ]
+  },
+  {
+    "name": "Rubella (MR) Vaccine",
+    "routes": [
+      "Inj.: multidose vial (10 doses/vial) + 5 mL diluent (SC),"
+    ]
+  },
+  {
+    "name": "Sacubitril/Valsartan",
+    "routes": [
+      "Oral: 50 mg, 100 mg and 200 mg tablet (Restricted for"
+    ]
+  },
+  {
+    "name": "Salbutamol (as sulfate)",
+    "routes": [
+      "Oral: 2 mg/5 mL syrup, 60 mL",
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Salmeterol (as xinafoate)",
+    "routes": [
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Sambong [Blumea balsamifera",
+    "routes": [
+      "Oral: 250 mg and 500 mg tablet"
+    ]
+  },
+  {
+    "name": "Selegiline (as hydrochloride)",
+    "routes": [
+      "Oral: 5 mg tablet"
+    ]
+  },
+  {
+    "name": "Sertraline (as hydrochloride)",
+    "routes": [
+      "Oral: 50 mg tablet"
+    ]
+  },
+  {
+    "name": "Sevoflurane (1)",
+    "routes": [
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Simvastatin (1)",
+    "routes": [
+      "Oral: 20 mg and 40 mg tablet"
+    ]
+  },
+  {
+    "name": "Sirolimus (1, 2)",
+    "routes": [
+      "Oral: 0.5 mg and 1 mg tablet"
+    ]
+  },
+  {
+    "name": "Sofosbuvir",
+    "routes": [
+      "Oral: 400 mg tablet"
+    ]
+  },
+  {
+    "name": "Sofosbuvir + ledipasvir",
+    "routes": [
+      "Oral: 400 mg + 90 mg tablet"
+    ]
+  },
+  {
+    "name": "Sofosbuvir + velpatasvir",
+    "routes": [
+      "Oral: 400 mg + 100 mg tablet"
+    ]
+  },
+  {
+    "name": "Solution",
+    "routes": [
+      "Inj.: with 5% dextrose, 250 mL and 500 mL (infants)",
+      "Inj.: 500 mL and 1 L bottle/bag (IV infusion)"
+    ]
+  },
+  {
+    "name": "Somatostatin (1, 2)",
+    "routes": [
+      "Inj.: 250 microgram and 3 mg ampul/vial (IV, IV infusion)"
+    ]
+  },
+  {
+    "name": "Spectinomycin (2)",
+    "routes": [
+      "Inj.: 2 g vial (IM)"
+    ]
+  },
+  {
+    "name": "Spironolactone (K-sparer) (2, B)",
+    "routes": [
+      "Oral: 25 mg, 50 mg and 100 mg tablet"
+    ]
+  },
+  {
+    "name": "Standard",
+    "routes": [
+      "Inj.: 3.5%, 500 mL bottle (IV infusion)"
+    ]
+  },
+  {
+    "name": "Streptokinase (1, 2)",
+    "routes": [
+      "Inj.: powder, 1,500,000 IU vial (IV infusion)"
+    ]
+  },
+  {
+    "name": "Streptomycin (as sulfate)",
+    "routes": [
+      "Inj.: 1 g vial (IM)"
+    ]
+  },
+  {
+    "name": "Succimer (dimercapto succinic",
+    "routes": [
+      "Oral: 100 mg and 200 mg capsule"
+    ]
+  },
+  {
+    "name": "Sucralfate",
+    "routes": [
+      "Oral: 1 g tablet"
+    ]
+  },
+  {
+    "name": "Sugammadex",
+    "routes": [
+      "Inj: 100 mg/mL solution for injection (IV), 2 mL vial"
+    ]
+  },
+  {
+    "name": "Sumatriptan",
+    "routes": [
+      "Oral: 50 mg tablet"
+    ]
+  },
+  {
+    "name": "Suxamethonium",
+    "routes": [
+      "Inj.: 20 mg/mL, 10 mL vial (IV)"
+    ]
+  },
+  {
+    "name": "Tacrolimus (1, 2)",
+    "routes": [
+      "Oral: 1 mg and 5 mg capsule"
+    ]
+  },
+  {
+    "name": "Tamoxifen (as citrate) (1, 2)",
+    "routes": [
+      "Oral: 10 mg and 20 mg tablet"
+    ]
+  },
+  {
+    "name": "Tamsulosin",
+    "routes": [
+      "Oral: 200 micrograms capsule (as hydrochloride)"
+    ]
+  },
+  {
+    "name": "Tegafur + Uracil (1, 2)",
+    "routes": [
+      "Oral: 100 mg + 224 mg capsule"
+    ]
+  },
+  {
+    "name": "Telmisartan",
+    "routes": [
+      "Oral: 40 mg and 80 mg tablet"
+    ]
+  },
+  {
+    "name": "Tenofovir",
+    "routes": [
+      "Oral: 300 mg + 600 mg + 300 mg tablet"
+    ]
+  },
+  {
+    "name": "Terazosin (as hydrochloride)",
+    "routes": [
+      "Oral: 1 mg, 2 mg and 5 mg tablet"
+    ]
+  },
+  {
+    "name": "Terbinafine",
+    "routes": [
+      "Oral: 250 mg tablet"
+    ]
+  },
+  {
+    "name": "Terbutaline (as sulfate)",
+    "routes": [
+      "Oral: 5 mg tablet",
+      "Inj.: 500 micrograms/mL, 1 mL ampul (IM, IV, SC)",
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Testosterone (as undecanoate)",
+    "routes": [
+      "Inj.: 250 mg/mL solution for injection, 4 mL"
+    ]
+  },
+  {
+    "name": "Tetracaine",
+    "routes": [
+      "Inj.: 20 mg ampul (sterile powder) (spinal) (as"
+    ]
+  },
+  {
+    "name": "Tetracycline",
+    "routes": [
+      "Oral: 250 mg and 500 mg capsule"
+    ]
+  },
+  {
+    "name": "Theophylline (anhydrous)",
+    "routes": [
+      "Oral: 150 mg and 200 mg tablet (B)"
+    ]
+  },
+  {
+    "name": "Thiamine (Vitamin B,1)",
+    "routes": [
+      "Oral: 100 mg and 300 mg tablet (as hydrochloride)",
+      "Inj.: 100 mg/mL, 1 mL ampul/vial (IV)"
+    ]
+  },
+  {
+    "name": "Tinzaparin (as sodium) (1, 2)",
+    "routes": [
+      "Inj.: 10,000 antiâ Xa IU/mL, 0.35 mL and 0.45 mL preâ"
+    ]
+  },
+  {
+    "name": "Tiotropium (as bromide)",
+    "routes": [
+      "Inhalation"
+    ]
+  },
+  {
+    "name": "Tocilizumab",
+    "routes": [
+      "Inj.: 80 mg/4 mL (20 mg/mL) Concentrate for Solution"
+    ]
+  },
+  {
+    "name": "Tolvaptan",
+    "routes": [
+      "Oral: 15 mg tablet"
+    ]
+  },
+  {
+    "name": "Topiramate",
+    "routes": [
+      "Oral: 25 mg, 50 mg and 100 mg tablet"
+    ]
+  },
+  {
+    "name": "Tramadol (as hydrochloride) (1)",
+    "routes": [
+      "Oral: 50 mg capsule",
+      "Inj.: 50 mg/mL, 1 mL and 2 mL ampul (IM, IV, SC)"
+    ]
+  },
+  {
+    "name": "Trastuzumab (1, 2)",
+    "routes": [
+      "Inj.: 150 mg lyophilized powder (IV infusion)"
+    ]
+  },
+  {
+    "name": "Triclabendazole",
+    "routes": [
+      "Oral: 250 mg tablet"
+    ]
+  },
+  {
+    "name": "Trimetazidine (as hydrochloride)",
+    "routes": [
+      "Oral: 35 mg tablet"
+    ]
+  },
+  {
+    "name": "Trinitrate)",
+    "routes": [
+      "Inj.: 1 mg/mL, 10 mL and 25 mL ampul (IV infusion)"
+    ]
+  },
+  {
+    "name": "Vaccine",
+    "routes": [
+      "Inj.: monodose vial + 0.5 mL diluent (SC)",
+      "Inj.: monodose vial + 0.5 mL diluent (SC) multidose vial",
+      "Inj.: 25 micrograms/0.5 mL (polysaccharide from each"
+    ]
+  },
+  {
+    "name": "Vaccine (PCV) Multi-dose vial",
+    "routes": [
+      "Inj.: 10-valent, 2 mL in a 3 mL multidose vial suspension"
+    ]
+  },
+  {
+    "name": "Valaciclovir (as hydrochloride)",
+    "routes": [
+      "Oral: 500 mg tablet"
+    ]
+  },
+  {
+    "name": "Valganciclovir",
+    "routes": [
+      "Oral: 450 mg tablet"
+    ]
+  },
+  {
+    "name": "Valsartan",
+    "routes": [
+      "Oral: 80 mg and 160 mg tablet/film coated tablet"
+    ]
+  },
+  {
+    "name": "Valsartan + Hydrochlorothiazide",
+    "routes": [
+      "Oral: 80 mg valsartan + 12.5 mg hydrochlorothiazide"
+    ]
+  },
+  {
+    "name": "Vancomycin (as hydrochloride)",
+    "routes": [
+      "Inj.: 500 mg and 1 g vial (IV)"
+    ]
+  },
+  {
+    "name": "Varenicline",
+    "routes": [
+      "Oral: 0.5 mg and 1 mg tablet"
+    ]
+  },
+  {
+    "name": "Vasopressin",
+    "routes": [
+      "Inj.: 20 IU/mL (IM, IV)"
+    ]
+  },
+  {
+    "name": "Vecuronium (as bromide) (1",
+    "routes": [
+      "Inj.: freezeâ dried powder, 4 mg/mL ampul + 1 mL"
+    ]
+  },
+  {
+    "name": "Verapamil (as hydrochloride)",
+    "routes": [
+      "Oral: 80 mg tablet (B)",
+      "Inj.: 2.5 mg/mL, 2 mL ampul (IV) (1, 2)"
+    ]
+  },
+  {
+    "name": "Vinblastine (as sulfate) (1, 2)",
+    "routes": [
+      "Inj.: powder, 10 mg vial for reconstitution (IV)"
+    ]
+  },
+  {
+    "name": "Vincristine (as sulfate) (1, 2)",
+    "routes": [
+      "Inj.: 1 mg/mL, 1 mL and 2 mL vial (IV)"
+    ]
+  },
+  {
+    "name": "Warfarin (as sodium salt) (1, 2)",
+    "routes": [
+      "Oral: 1 mg, 2.5 mg and 5 mg tablet"
+    ]
+  },
+  {
+    "name": "Zidovudine",
+    "routes": [
+      "Oral: 100 mg capsule"
+    ]
+  },
+  {
+    "name": "Zidovudine + Lamivudine",
+    "routes": [
+      "Oral: 60 mg + 30 mg dispersible tablet"
+    ]
+  },
+  {
+    "name": "Zinc",
+    "routes": [
+      "Oral: chewable tablet, (equiv. to 10 mg elementalzinc)"
+    ]
+  },
+  {
+    "name": "Zolmitriptan",
+    "routes": [
+      "Oral: 2.5 mg tablet"
+    ]
+  },
+  {
+    "name": "Zolpidem (A,1)",
+    "routes": [
+      "Oral: â 10 mg tablet"
+    ]
+  }
+]
