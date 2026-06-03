@@ -232,7 +232,10 @@ export function usePatientBookings(patientId: string | null) {
   });
 }
 
-export function usePatientConsultations(patientId: string | null, options?: any) {
+export function usePatientConsultations(
+  patientId: string | null,
+  options?: Omit<UseQueryOptions<Awaited<ReturnType<typeof listConsultationsByPatientIdLiveOrDemo>>>, 'queryKey' | 'queryFn' | 'enabled'>,
+) {
   return useQuery({
     queryKey: queryKeys.patientConsultations(patientId),
     queryFn: async () => {
@@ -244,7 +247,10 @@ export function usePatientConsultations(patientId: string | null, options?: any)
   }) as UseQueryResult<Consultation[], Error>;
 }
 
-export function usePatientPrescriptions(patientId: string | null, options?: any) {
+export function usePatientPrescriptions(
+  patientId: string | null,
+  options?: Omit<UseQueryOptions<Awaited<ReturnType<typeof listPrescriptionsByPatientIdLiveOrDemo>>>, 'queryKey' | 'queryFn' | 'enabled'>,
+) {
   return useQuery({
     queryKey: queryKeys.patientPrescriptions(patientId),
     queryFn: async () => {
@@ -256,7 +262,10 @@ export function usePatientPrescriptions(patientId: string | null, options?: any)
   }) as UseQueryResult<Prescription[], Error>;
 }
 
-export function usePatientMedicalCertificates(patientId: string | null, options?: any) {
+export function usePatientMedicalCertificates(
+  patientId: string | null,
+  options?: Omit<UseQueryOptions<Awaited<ReturnType<typeof listMedicalCertificatesByPatientIdLiveOrDemo>>>, 'queryKey' | 'queryFn' | 'enabled'>,
+) {
   return useQuery({
     queryKey: queryKeys.patientMedicalCertificates(patientId),
     queryFn: async () => {
