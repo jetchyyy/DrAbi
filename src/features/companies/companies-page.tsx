@@ -1,48 +1,67 @@
 import { useDeferredValue, useMemo, useState } from "react";
-import { Building2, Plus, Pencil, Trash2, Search, X, FileSpreadsheet, Download } from "lucide-react";
-import { toast } from "sonner";
+import { Building2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { InternalPage } from "../../components/ui/internal-page";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Select } from "../../components/ui/select";
-import { Textarea } from "../../components/ui/textarea";
-import { FormField } from "../../components/forms/form-field";
-import {
-  INTERNAL_SURFACE,
-  INTERNAL_TABLE,
-  INTERNAL_TABLE_SCROLL,
-  INTERNAL_THEAD_ROW,
-  INTERNAL_TH,
-  INTERNAL_TR,
-  INTERNAL_TD,
-} from "../../lib/internal-ui";
+import { INTERNAL_SURFACE } from "../../lib/internal-ui";
 import { cn, formatDateTimeLabel } from "../../lib/utils";
-import { StatusPill } from "../../components/ui/status-pill";
-import {
-  useCompanies,
-  useCreateCompany,
-  useUpdateCompany,
-  useDeleteCompany,
-} from "./api/companies-hooks";
-import { useAppointments } from "../appointments/hooks/use-appointments";
-import { useInvoices, useInvoiceItems } from "../billing/api/billing-mutations";
-import { usePatients } from "../patients/hooks/use-patients";
-import { useProviderDirectory, useServicesCatalog } from "../../hooks/use-clinic-data";
-import type { Company } from "../../types/domain";
-import * as XLSX from "xlsx";
+import { useCompanies } from "./api/companies-hooks";
 
-// Helper functions for company billing summaries table
-async function getCompanyBillingSummariesLiveOrDemo() {
+// Tab sub-components (each section is its own file for easier debugging)
+import { CompaniesDirectoryTab } from "./companies-directory-tab";
+import { CompaniesSummaryTab } from "./companies-summary-tab";
+import { CompaniesDetailedTab } from "./companies-detailed-tab";
+import { CompaniesPaidHistoryTab } from "./companies-paid-history-tab";
+
+// ---------------------------------------------------------------------------
+// Data-fetching helpers (kept in this file; they own the DB interaction)
+// ---------------------------------------------------------------------------
+
+async function getCompanyBillingSummaryLiveOrDemo() {
   const { supabase } = await import("../../lib/supabase");
   if (!supabase) {
-    const localData = localStorage.getItem("odyssey-clinic-company-billing-summaries");
+    const localData = localStorage.getItem("odyssey-clinic-company-billing-summary");
     return localData ? JSON.parse(localData) : [];
   }
   const { data, error } = await supabase
-    .from("company_billing_summaries")
-    .select("*");
+    .from("company_billing_summary" as any)
+    .select("*")
+    .order("company_name");
+  if (error) throw error;
+  return data || [];
+}
+
+async function getCompanyBillingDetailedLiveOrDemo() {
+  const { supabase } = await import("../../lib/supabase");
+  if (!supabase) {
+    const localData = localStorage.getItem("odyssey-clinic-company-billing-detailed");
+    return localData ? JSON.parse(localData) : [];
+  }
+  const { data, error } = await supabase
+    .from("company_billing_detailed" as any)
+    .select("*, appointments(receipt_code)")
+    .order("consultation_date", { ascending: false });
+  if (error) throw error;
+  // Prefer the appointment's receipt_code if available (always up-to-date)
+  return (data || []).map((row: any) => ({
+    ...row,
+    receipt_code:
+      (row.appointments as any)?.receipt_code ||
+      row.receipt_code ||
+      "",
+  }));
+}
+
+async function getCompanyBillingPaymentHistoryLiveOrDemo() {
+  const { supabase } = await import("../../lib/supabase");
+  if (!supabase) {
+    const localData = localStorage.getItem("odyssey-clinic-company-billing-payment-history");
+    return localData ? JSON.parse(localData) : [];
+  }
+  const { data, error } = await supabase
+    .from("company_billing_payment_history" as any)
+    .select("*")
+    .order("paid_at", { ascending: false });
   if (error) throw error;
   return data || [];
 }
@@ -53,83 +72,316 @@ async function upsertCompanyBillingSummaryLiveOrDemo(
 ) {
   const { supabase } = await import("../../lib/supabase");
   if (!supabase) {
-    const localData = localStorage.getItem("odyssey-clinic-company-billing-summaries");
-    const list = localData ? JSON.parse(localData) : [];
-    const index = list.findIndex((item: any) => item.company_id === companyId);
-    const existing = index >= 0 ? list[index] : { company_id: companyId, payment_status: "unpaid", discount_amount: 0 };
-    
-    const updated = {
-      ...existing,
-      ...payload,
-      updated_at: new Date().toISOString()
-    };
-    
-    if (index >= 0) {
-      list[index] = updated;
-    } else {
-      list.push(updated);
+    const summaryLocal = localStorage.getItem("odyssey-clinic-company-billing-summary");
+    const summaryList = summaryLocal ? JSON.parse(summaryLocal) : [];
+    let index = summaryList.findIndex((item: any) => item.company_id === companyId);
+
+    if (index === -1) {
+      const localDbStr = localStorage.getItem("odyssey-clinic-demo-db-v2");
+      const db = localDbStr ? JSON.parse(localDbStr) : null;
+      const companiesList = db?.companies || [];
+      const company = companiesList.find((c: any) => c.id === companyId);
+
+      const newSummary = {
+        company_id: companyId,
+        company_name: company ? company.companyName : "Unknown Company",
+        company_code: company ? company.companyCode : "",
+        total_consultations: 0,
+        total_billed: 0,
+        discount: 0,
+        total_amount_due: 0,
+        payment_status: "unpaid",
+        updated_by: "admin@odyssey.clinic",
+        updated_at: new Date().toISOString(),
+      };
+      summaryList.push(newSummary);
+      index = summaryList.length - 1;
     }
-    localStorage.setItem("odyssey-clinic-company-billing-summaries", JSON.stringify(list));
+
+    const existing = summaryList[index];
+    let discount = payload.discount_amount !== undefined ? payload.discount_amount : existing.discount;
+
+    if (payload.payment_status === "paid") {
+      const detailedLocal = localStorage.getItem("odyssey-clinic-company-billing-detailed");
+      const detailedList = detailedLocal ? JSON.parse(detailedLocal) : [];
+      const unpaidList = detailedList.filter(
+        (row: any) => row.company_id === companyId && row.billing_status === "unpaid"
+      );
+
+      if (unpaidList.length === 0) return;
+
+      const totalConsultations = unpaidList.length;
+      const totalBilled = unpaidList.reduce(
+        (sum: number, row: any) => sum + Number(row.consultation_fee || 0),
+        0
+      );
+      const discountApplied = existing ? Number(existing.discount || 0) : 0.0;
+      const amountPaid = Math.max(0, totalBilled - discountApplied);
+
+      const localDbStr = localStorage.getItem("odyssey-clinic-demo-db-v2");
+      const db = localDbStr ? JSON.parse(localDbStr) : null;
+      const company = db?.companies?.find((c: any) => c.id === companyId);
+      const companyName = company ? company.companyName : existing ? existing.company_name : "Unknown Company";
+      const companyCode = company ? company.companyCode : existing ? existing.company_code : "";
+
+      const paymentId = crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).substring(2, 15);
+
+      const historyLocal = localStorage.getItem("odyssey-clinic-company-billing-payment-history");
+      const historyList = historyLocal ? JSON.parse(historyLocal) : [];
+      historyList.push({
+        id: paymentId,
+        company_id: companyId,
+        company_name: companyName,
+        company_code: companyCode,
+        total_consultations: totalConsultations,
+        total_billed: totalBilled,
+        discount_applied: discountApplied,
+        amount_paid: amountPaid,
+        paid_by: "admin@odyssey.clinic",
+        paid_at: new Date().toISOString(),
+      });
+      localStorage.setItem(
+        "odyssey-clinic-company-billing-payment-history",
+        JSON.stringify(historyList)
+      );
+
+      detailedList.forEach((row: any) => {
+        if (row.company_id === companyId && row.billing_status === "unpaid") {
+          row.billing_status = "paid";
+          row.payment_id = paymentId;
+          row.updated_by = "admin@odyssey.clinic";
+          row.updated_at = new Date().toISOString();
+        }
+      });
+      localStorage.setItem(
+        "odyssey-clinic-company-billing-detailed",
+        JSON.stringify(detailedList)
+      );
+
+      summaryList[index] = {
+        ...existing,
+        payment_status: "paid",
+        discount: 0,
+        total_billed: 0,
+        total_consultations: 0,
+        total_amount_due: 0,
+        updated_by: "admin@odyssey.clinic",
+        updated_at: new Date().toISOString(),
+      };
+    } else if (payload.discount_amount !== undefined) {
+      const totalAmountDue = Math.max(0, existing.total_billed - discount);
+      summaryList[index] = {
+        ...existing,
+        discount: discount,
+        total_amount_due: totalAmountDue,
+        updated_by: "admin@odyssey.clinic",
+        updated_at: new Date().toISOString(),
+      };
+    }
+    localStorage.setItem("odyssey-clinic-company-billing-summary", JSON.stringify(summaryList));
     return;
   }
-  
-  const { error } = await supabase
-    .from("company_billing_summaries")
-    .upsert({
-      company_id: companyId,
-      ...payload,
-      updated_at: new Date().toISOString()
-    }, { onConflict: "company_id" });
-    
-  if (error) throw error;
+
+  // Live Supabase mode
+  const { data: userData } = await supabase.auth.getUser();
+  const updatedBy = userData?.user?.email || userData?.user?.id || "System";
+
+  const { data: existingSummary } = await supabase
+    .from("company_billing_summary" as any)
+    .select("*")
+    .eq("company_id", companyId)
+    .maybeSingle();
+
+  if (!existingSummary) {
+    const { data: company } = await supabase
+      .from("companies" as any)
+      .select("company_name, company_code")
+      .eq("id", companyId)
+      .single();
+
+    const companyName = company ? (company as any).company_name : "Unknown Company";
+    const companyCode = company ? (company as any).company_code : "";
+
+    await supabase
+      .from("company_billing_summary" as any)
+      .insert({
+        company_id: companyId,
+        company_name: companyName,
+        company_code: companyCode,
+        total_consultations: 0,
+        total_billed: 0,
+        discount: 0,
+        total_amount_due: 0,
+        payment_status: "unpaid",
+        updated_by: updatedBy,
+        updated_at: new Date().toISOString(),
+      } as never);
+  }
+
+  if (payload.payment_status === "paid") {
+    const { data: unpaidDetailedList } = await supabase
+      .from("company_billing_detailed" as any)
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("billing_status", "unpaid");
+
+    if (!unpaidDetailedList || unpaidDetailedList.length === 0) return;
+
+    const totalConsultations = unpaidDetailedList.length;
+    const totalBilled = unpaidDetailedList.reduce(
+      (sum, row: any) => sum + Number(row.consultation_fee || 0),
+      0
+    );
+
+    const { data: currentSummary } = await supabase
+      .from("company_billing_summary" as any)
+      .select("*")
+      .eq("company_id", companyId)
+      .single();
+
+    const discountApplied = currentSummary ? Number((currentSummary as any).discount || 0) : 0.0;
+    const amountPaid = Math.max(0, totalBilled - discountApplied);
+
+    const { data: company } = await supabase
+      .from("companies" as any)
+      .select("company_name, company_code")
+      .eq("id", companyId)
+      .single();
+
+    const companyName =
+      company
+        ? (company as any).company_name
+        : existingSummary
+        ? (existingSummary as any).company_name
+        : "Unknown Company";
+    const companyCode =
+      company
+        ? (company as any).company_code
+        : existingSummary
+        ? (existingSummary as any).company_code
+        : "";
+
+    const { data: paymentRecord, error: insertError } = await supabase
+      .from("company_billing_payment_history" as any)
+      .insert({
+        company_id: companyId,
+        company_name: companyName,
+        company_code: companyCode,
+        total_consultations: totalConsultations,
+        total_billed: totalBilled,
+        discount_applied: discountApplied,
+        amount_paid: amountPaid,
+        paid_by: updatedBy,
+        paid_at: new Date().toISOString(),
+      } as never)
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    const paymentId = (paymentRecord as any).id;
+
+    await supabase
+      .from("company_billing_detailed" as any)
+      .update({
+        billing_status: "paid",
+        payment_id: paymentId,
+        updated_by: updatedBy,
+        updated_at: new Date().toISOString(),
+      } as never)
+      .eq("company_id", companyId)
+      .eq("billing_status", "unpaid");
+
+    await supabase
+      .from("company_billing_summary" as any)
+      .update({
+        payment_status: "paid",
+        discount: 0.0,
+        total_billed: 0.0,
+        total_consultations: 0,
+        total_amount_due: 0.0,
+        updated_by: updatedBy,
+        updated_at: new Date().toISOString(),
+      } as never)
+      .eq("company_id", companyId);
+  } else if (payload.discount_amount !== undefined) {
+    const { data: currentSummary } = await supabase
+      .from("company_billing_summary" as any)
+      .select("total_billed")
+      .eq("company_id", companyId)
+      .single();
+
+    const totalBilled = currentSummary ? Number((currentSummary as any).total_billed || 0) : 0.0;
+    const discount = payload.discount_amount;
+    const totalAmountDue = Math.max(0, totalBilled - discount);
+
+    await supabase
+      .from("company_billing_summary" as any)
+      .update({
+        discount: discount,
+        total_amount_due: totalAmountDue,
+        updated_by: updatedBy,
+        updated_at: new Date().toISOString(),
+      } as never)
+      .eq("company_id", companyId);
+  }
 }
+
+// ---------------------------------------------------------------------------
+// Main Page Component — thin shell
+// ---------------------------------------------------------------------------
+
+type TabId = "directory" | "summary" | "detailed" | "paid_history";
 
 export function CompaniesPage() {
   const queryClient = useQueryClient();
   const { data: companies = [], isLoading: isCompaniesLoading } = useCompanies();
-  const createMutation = useCreateCompany();
-  const updateMutation = useUpdateCompany();
-  const deleteMutation = useDeleteCompany();
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState<"directory" | "summary" | "detailed">("directory");
+  // ── Tab State ──────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<TabId>("directory");
 
-  // Detailed Report Filters State
+  // ── Directory Search ───────────────────────────────────────────────────────
+  const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
+
+  const filtered = useMemo(
+    () =>
+      companies.filter((company) =>
+        `${company.companyName} ${company.companyCode} ${company.contactPerson} ${company.contactEmail} ${company.contactPhone}`
+          .toLowerCase()
+          .includes(deferredSearch.toLowerCase())
+      ),
+    [companies, deferredSearch]
+  );
+
+  // ── Detailed Report Filters ────────────────────────────────────────────────
   const [detailedSearch, setDetailedSearch] = useState("");
   const [detailedCompanyId, setDetailedCompanyId] = useState("");
-  const [detailedStatus, setDetailedStatus] = useState("");
   const [detailedStartDate, setDetailedStartDate] = useState("");
   const [detailedEndDate, setDetailedEndDate] = useState("");
 
-  // Summary Report Filters State
+  // ── Summary Filter ─────────────────────────────────────────────────────────
   const [summaryCompanyId, setSummaryCompanyId] = useState("");
 
-  // Discount Modal State
-  const [discountModalOpen, setDiscountModalOpen] = useState(false);
-  const [discountCompanyId, setDiscountCompanyId] = useState<string | null>(null);
-  const [discountInput, setDiscountInput] = useState("");
-
-  // Additional Queries
-  const { data: appointments = [], isLoading: isAppointmentsLoading } = useAppointments();
-  const { data: invoices = [], isLoading: isInvoicesLoading } = useInvoices();
-  const { data: invoiceItems = [], isLoading: isItemsLoading } = useInvoiceItems();
-  const { data: patients = [], isLoading: isPatientsLoading } = usePatients();
-  const { data: doctors = [], isLoading: isDoctorsLoading } = useProviderDirectory();
-  const { data: services = [], isLoading: isServicesLoading } = useServicesCatalog();
-
-  // Fetch billing summaries
-  const { data: billingSummaries = [], isLoading: isSummariesLoading } = useQuery({
-    queryKey: ["company-billing-summaries"],
-    queryFn: getCompanyBillingSummariesLiveOrDemo,
+  // ── Queries ────────────────────────────────────────────────────────────────
+  const { data: billingSummaryRows = [], isLoading: isSummaryRowsLoading } = useQuery({
+    queryKey: ["company-billing-summary"],
+    queryFn: getCompanyBillingSummaryLiveOrDemo,
   });
 
-  const billingSummariesMap = useMemo(() => {
-    return new Map<string, { company_id: string; payment_status: "paid" | "unpaid"; discount_amount: number }>(
-      billingSummaries.map((s: any) => [s.company_id, s])
-    );
-  }, [billingSummaries]);
+  const { data: billingDetailedRows = [], isLoading: isDetailedRowsLoading } = useQuery({
+    queryKey: ["company-billing-detailed"],
+    queryFn: getCompanyBillingDetailedLiveOrDemo,
+  });
 
-  // Mutation to update billing summaries (payment status and/or discount amount)
+  const { data: billingPaymentHistoryRows = [], isLoading: isPaymentHistoryLoading } = useQuery({
+    queryKey: ["company-billing-payment-history"],
+    queryFn: getCompanyBillingPaymentHistoryLiveOrDemo,
+  });
+
+  // ── Mutation ───────────────────────────────────────────────────────────────
   const updateCompanyBillingSummaryMutation = useMutation({
     mutationFn: async ({
       companyId,
@@ -141,216 +393,102 @@ export function CompaniesPage() {
       await upsertCompanyBillingSummaryLiveOrDemo(companyId, input);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["company-billing-summaries"] });
+      void queryClient.invalidateQueries({ queryKey: ["company-billing-summary"] });
+      void queryClient.invalidateQueries({ queryKey: ["company-billing-detailed"] });
+      void queryClient.invalidateQueries({ queryKey: ["company-billing-payment-history"] });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to update billing info");
+      // toast errors are shown in child components or here
+      import("sonner").then(({ toast }) => {
+        toast.error(err instanceof Error ? err.message : "Failed to update billing info");
+      });
     },
   });
 
   const isLoadingData =
-    isCompaniesLoading ||
-    isAppointmentsLoading ||
-    isInvoicesLoading ||
-    isItemsLoading ||
-    isPatientsLoading ||
-    isDoctorsLoading ||
-    isServicesLoading ||
-    isSummariesLoading;
+    isCompaniesLoading || isSummaryRowsLoading || isDetailedRowsLoading || isPaymentHistoryLoading;
 
-  const [search, setSearch] = useState("");
-  const deferredSearch = useDeferredValue(search);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  // ── Derived Data ───────────────────────────────────────────────────────────
 
-  const [formCompanyName, setFormCompanyName] = useState("");
-  const [formCompanyCode, setFormCompanyCode] = useState("");
-  const [formContactPerson, setFormContactPerson] = useState("");
-  const [formContactEmail, setFormContactEmail] = useState("");
-  const [formContactPhone, setFormContactPhone] = useState("");
-  const [formAddress, setFormAddress] = useState("");
-  const [formBillingCycle, setFormBillingCycle] = useState("monthly");
-  const [formPaymentTerms, setFormPaymentTerms] = useState("Net 30");
-  const [formStatus, setFormStatus] = useState("active");
-
-  const filtered = useMemo(
-    () =>
-      companies.filter((company) =>
-        `${company.companyName} ${company.companyCode} ${company.contactPerson} ${company.contactEmail} ${company.contactPhone}`
-          .toLowerCase()
-          .includes(deferredSearch.toLowerCase()),
-      ),
-    [companies, deferredSearch],
-  );
-
-  // Mappings
-  const patientMap = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
-  const doctorMap = useMemo(() => new Map(doctors.map((d) => [d.id, d])), [doctors]);
-  const serviceMap = useMemo(() => new Map(services.map((s) => [s.id, s])), [services]);
-  const appointmentMap = useMemo(() => new Map(appointments.map((a) => [a.id, a])), [appointments]);
-
-  const invoiceItemsMap = useMemo(() => {
-    const map = new Map<string, typeof invoiceItems>();
-    invoiceItems.forEach((item) => {
-      const list = map.get(item.invoiceId) || [];
-      list.push(item);
-      map.set(item.invoiceId, list);
-    });
-    return map;
-  }, [invoiceItems]);
-
-
-
-  // Summary Report calculation
   const summaryReportData = useMemo(() => {
     return companies.map((company) => {
-      // Prioritize receipt prefix match first, then appointment company, then invoice company
-      const companyInvoices = invoices.filter((inv) => {
-        const appointment = inv.appointmentId ? appointmentMap.get(inv.appointmentId) : null;
-        const receiptCode = (appointment && appointment.receipt_code) || inv.invoiceNumber || "";
-        
-        let resolvedCompanyId = appointment?.companyId || inv.companyId;
-        if (receiptCode) {
-          const prefix = receiptCode.split("-")[0]?.toUpperCase();
-          if (prefix) {
-            const companyByCode = companies.find((c) => c.companyCode?.toUpperCase() === prefix);
-            if (companyByCode) {
-              resolvedCompanyId = companyByCode.id;
-            }
-          }
-        }
-        return resolvedCompanyId === company.id;
-      });
-
-      const consultationInvoicesCount = companyInvoices.filter((inv) => {
-        const hasConsultationItem = (invoiceItemsMap.get(inv.id) || []).some(
-          (item) => item.category === "consultation"
-        );
-        const hasAppointment = !!inv.appointmentId;
-        return hasConsultationItem || hasAppointment;
-      }).length;
-
-      const totalBilled = companyInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
-      
-      const billingSummary = billingSummariesMap.get(company.id);
-      const paymentStatus = billingSummary?.payment_status || "unpaid";
-      const discountVal = billingSummary?.discount_amount || 0;
-      const isPaid = paymentStatus === "paid";
-      const totalAmountDue = isPaid ? 0 : Math.max(0, totalBilled - discountVal);
-
+      const r = billingSummaryRows.find((row: any) => row.company_id === company.id);
       return {
         id: company.id,
         companyName: company.companyName,
         companyCode: company.companyCode,
-        totalConsultations: consultationInvoicesCount,
-        totalBilled,
-        totalAmountDue,
-        paymentStatus,
-        discountAmount: discountVal,
+        totalConsultations: r ? r.total_consultations : 0,
+        totalBilled: r ? Number(r.total_billed || 0) : 0,
+        discountAmount: r ? Number(r.discount || 0) : 0,
+        totalAmountDue: r ? Number(r.total_amount_due || 0) : 0,
+        paymentStatus: r ? r.payment_status : "unpaid",
       };
     });
-  }, [companies, invoices, invoiceItemsMap, appointmentMap, billingSummariesMap]);
+  }, [companies, billingSummaryRows]);
+
+  const paidHistoryData = useMemo(() => {
+    return billingPaymentHistoryRows.map((p: any) => {
+      const items = billingDetailedRows
+        .filter((r: any) => r.payment_id === p.id)
+        .map((r: any) => ({
+          id: r.id,
+          patientName: r.patient,
+          consultationDate: formatDateTimeLabel(r.consultation_date),
+          doctorName: r.doctor_name || "—",
+          serviceType: r.service_type,
+          receiptCode: r.receipt_code || "",
+          invoiceNo: r.invoice_no || "",
+          consultationFee: Number(r.consultation_fee || 0),
+          paidDate: formatDateTimeLabel(r.updated_at || p.paid_at),
+          paidBy: r.updated_by || p.paid_by || "System",
+        }));
+
+      return {
+        id: p.id,
+        companyId: p.company_id,
+        companyName: p.company_name,
+        companyCode: p.company_code,
+        totalConsultations: p.total_consultations,
+        totalBilled: Number(p.total_billed || 0),
+        discountAmount: Number(p.discount_applied || 0),
+        totalAmountPaid: Number(p.amount_paid || 0),
+        paidDate: formatDateTimeLabel(p.paid_at),
+        paidBy: p.paid_by,
+        items,
+      };
+    });
+  }, [billingPaymentHistoryRows, billingDetailedRows]);
 
   const filteredSummaryReport = useMemo(() => {
     if (!summaryCompanyId) return summaryReportData;
     return summaryReportData.filter((row) => row.id === summaryCompanyId);
   }, [summaryReportData, summaryCompanyId]);
 
-  // Detailed Report calculation
   const detailedReportData = useMemo(() => {
-    const rows: Array<{
-      id: string;
-      companyId: string;
-      companyName: string;
-      patientName: string;
-      consultationDate: string;
-      doctorName: string;
-      serviceType: string;
-      receiptCode: string;
-      subtotal: number;
-      discountAmount: number;
-      total: number;
-      consultationFee: number;
-      paymentStatus: string;
-      rawDate: string;
-    }> = [];
+    const rows = billingDetailedRows.map((r: any) => ({
+      id: r.id,
+      companyId: r.company_id,
+      companyName: r.company,
+      patientName: r.patient,
+      consultationDate: formatDateTimeLabel(r.consultation_date),
+      doctorName: r.doctor_name || "—",
+      serviceType: r.service_type,
+      receiptCode: r.receipt_code || "",
+      invoiceNo: r.invoice_no || "",
+      subtotal: Number(r.consultation_fee || 0),
+      discountAmount: 0.0,
+      total: Number(r.consultation_fee || 0),
+      consultationFee: Number(r.consultation_fee || 0),
+      paymentStatus: r.billing_status || "unpaid",
+      rawDate: r.consultation_date || "",
+    }));
+    return rows.sort((left: any, right: any) => right.rawDate.localeCompare(left.rawDate));
+  }, [billingDetailedRows]);
 
-    // Prioritize receipt prefix match first, then appointment company, then invoice company
-    const resolvedCompanyInvoices = invoices.map((inv) => {
-      const appointment = inv.appointmentId ? appointmentMap.get(inv.appointmentId) : null;
-      const receiptCode = (appointment && appointment.receipt_code) || inv.invoiceNumber || "";
-      
-      let resolvedCompanyId = appointment?.companyId || inv.companyId;
-      if (receiptCode) {
-        const prefix = receiptCode.split("-")[0]?.toUpperCase();
-        if (prefix) {
-          const companyByCode = companies.find((c) => c.companyCode?.toUpperCase() === prefix);
-          if (companyByCode) {
-            resolvedCompanyId = companyByCode.id;
-          }
-        }
-      }
-      return { invoice: inv, appointment, resolvedCompanyId, receiptCode };
-    }).filter((item) => !!item.resolvedCompanyId);
-
-    resolvedCompanyInvoices.forEach(({ invoice, appointment, resolvedCompanyId, receiptCode }) => {
-      const company = companies.find((c) => c.id === resolvedCompanyId);
-      const patient = patientMap.get(invoice.patientId);
-      const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown Patient";
-
-      const rawDate = appointment ? appointment.scheduledAt : invoice.createdAt;
-      const consultationDate = formatDateTimeLabel(rawDate);
-
-      const doctor = appointment ? doctorMap.get(appointment.doctorId) : null;
-      const doctorName = doctor ? doctor.fullName : "—";
-
-      const service = appointment ? serviceMap.get(appointment.serviceId) : null;
-      let serviceType = service ? service.name : "";
-
-      const items = invoiceItemsMap.get(invoice.id) || [];
-
-      if (!serviceType && items.length > 0) {
-        serviceType = items[0].description;
-      }
-      if (!serviceType) {
-        serviceType = "Consultation";
-      }
-
-      const consultationItems = items.filter((item) => item.category === "consultation");
-      const consultationFee = consultationItems.length > 0
-        ? consultationItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
-        : invoice.total;
-
-      rows.push({
-        id: invoice.id,
-        companyId: resolvedCompanyId || "",
-        companyName: company ? company.companyName : "Unknown Company",
-        patientName,
-        consultationDate,
-        doctorName,
-        serviceType,
-        receiptCode,
-        subtotal: invoice.subtotal || 0,
-        discountAmount: invoice.discountAmount || 0,
-        total: invoice.total || 0,
-        consultationFee,
-        paymentStatus: invoice.paymentStatus,
-        rawDate,
-      });
-    });
-
-    return rows.sort((left, right) => right.rawDate.localeCompare(left.rawDate));
-  }, [invoices, companies, patientMap, appointmentMap, doctorMap, serviceMap, invoiceItemsMap]);
-
-  // Filter Detailed Report
   const filteredDetailedReport = useMemo(() => {
-    return detailedReportData.filter((row) => {
-      if (detailedCompanyId && row.companyId !== detailedCompanyId) {
-        return false;
-      }
-      if (detailedStatus && row.paymentStatus !== detailedStatus) {
-        return false;
-      }
+    return detailedReportData.filter((row: any) => {
+      if (row.paymentStatus !== "unpaid") return false;
+      if (detailedCompanyId && row.companyId !== detailedCompanyId) return false;
       if (detailedStartDate) {
         const rowDateOnly = row.rawDate.slice(0, 10);
         if (rowDateOnly < detailedStartDate) return false;
@@ -365,199 +503,35 @@ export function CompaniesPage() {
           row.patientName.toLowerCase().includes(term) ||
           row.doctorName.toLowerCase().includes(term) ||
           row.receiptCode.toLowerCase().includes(term) ||
+          row.invoiceNo.toLowerCase().includes(term) ||
           row.serviceType.toLowerCase().includes(term) ||
           row.companyName.toLowerCase().includes(term)
         );
       }
       return true;
     });
-  }, [detailedReportData, detailedCompanyId, detailedStatus, detailedStartDate, detailedEndDate, detailedSearch]);
+  }, [detailedReportData, detailedCompanyId, detailedStartDate, detailedEndDate, detailedSearch]);
 
-  // Export handlers
-  function handleExportSummary(format: "excel" | "csv") {
-    const dataToExport = filteredSummaryReport.map((row) => ({
-      "Company Name": row.companyName,
-      "Company Code": row.companyCode,
-      "Total Consultations": row.totalConsultations,
-      "Total Billed (₱)": row.totalBilled,
-      "Discount Applied (₱)": row.discountAmount,
-      "Total Amount Due (₱)": row.totalAmountDue,
-      "Status": row.paymentStatus.toUpperCase(),
-    }));
+  // ── Tab Pills Config ───────────────────────────────────────────────────────
 
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Summary Report");
-
-    if (format === "excel") {
-      const buffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-      const blob = new Blob([buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `company-summary-report-${new Date().toISOString().slice(0, 10)}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } else {
-      const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
-      const blob = new Blob([csvOutput], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `company-summary-report-${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }
-    toast.success(`${format === "excel" ? "Excel" : "CSV"} export completed`);
-  }
-
-  function handleExportDetailed(format: "excel" | "csv") {
-    const dataToExport = filteredDetailedReport.map((row) => ({
-      "Company": row.companyName,
-      "Patient Name": row.patientName,
-      "Consultation Date": row.consultationDate,
-      "Doctor": row.doctorName,
-      "Service Type": row.serviceType,
-      "Receipt Code": row.receiptCode,
-      "Original Fee (₱)": row.subtotal,
-      "Discount (₱)": row.discountAmount,
-      "Total Charged (₱)": row.total,
-      "Payment Status": row.paymentStatus.toUpperCase(),
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Detailed Report");
-
-    if (format === "excel") {
-      const buffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-      const blob = new Blob([buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `company-detailed-report-${new Date().toISOString().slice(0, 10)}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } else {
-      const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
-      const blob = new Blob([csvOutput], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `company-detailed-report-${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }
-    toast.success(`${format === "excel" ? "Excel" : "CSV"} export completed`);
-  }
-
-
-  function resetForm() {
-    setFormCompanyName("");
-    setFormCompanyCode("");
-    setFormContactPerson("");
-    setFormContactEmail("");
-    setFormContactPhone("");
-    setFormAddress("");
-    setFormBillingCycle("monthly");
-    setFormPaymentTerms("Net 30");
-    setFormStatus("active");
-  }
-
-  function openCreate() {
-    resetForm();
-    setEditingId(null);
-    setModalOpen(true);
-  }
-
-  function openEdit(company: Company) {
-    setFormCompanyName(company.companyName);
-    setFormCompanyCode(company.companyCode);
-    setFormContactPerson(company.contactPerson);
-    setFormContactEmail(company.contactEmail);
-    setFormContactPhone(company.contactPhone);
-    setFormAddress(company.address);
-    setFormBillingCycle(company.billingCycle);
-    setFormPaymentTerms(company.paymentTerms);
-    setFormStatus(company.isActive ? "active" : "inactive");
-    setEditingId(company.id);
-    setModalOpen(true);
-  }
-
-  async function handleSubmit() {
-    if (!formCompanyName.trim()) {
-      toast.error("Company name is required");
-      return;
-    }
-
-    const input = {
-      companyName: formCompanyName.trim(),
-      companyCode: formCompanyCode.trim(),
-      contactPerson: formContactPerson.trim(),
-      contactEmail: formContactEmail.trim(),
-      contactPhone: formContactPhone.trim(),
-      address: formAddress.trim(),
-      billingCycle: formBillingCycle,
-      paymentTerms: formPaymentTerms,
-      isActive: formStatus === "active",
-    };
-
-    try {
-      if (editingId) {
-        await updateMutation.mutateAsync({ id: editingId, input });
-        toast.success("Company updated");
-      } else {
-        await createMutation.mutateAsync(input);
-        toast.success("Company created");
-      }
-      setModalOpen(false);
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to save company",
-      );
-    }
-  }
-
-  async function handleDelete(id: string) {
-    if (!window.confirm("Delete this company?")) return;
-    try {
-      await deleteMutation.mutateAsync(id);
-      toast.success("Company deleted");
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to delete company",
-      );
-    }
-  }
+  const tabs: { id: TabId; label: string; count: string }[] = [
+    { id: "directory", label: "Company Directory", count: `${filtered.length} compan${filtered.length === 1 ? "y" : "ies"}` },
+    { id: "summary", label: "Summary Report", count: `${summaryReportData.length} corporate accounts` },
+    { id: "detailed", label: "Detailed Report", count: `${filteredDetailedReport.length} billing records` },
+    { id: "paid_history", label: "Paid History", count: `${paidHistoryData.length} paid account${paidHistoryData.length === 1 ? "" : "s"}` },
+  ];
 
   return (
     <InternalPage>
+      {/* ── Page Header ─────────────────────────────────────────────────────── */}
       <section className={cn(INTERNAL_SURFACE, "divide-y divide-slate-100/90")}>
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
             <div
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-              style={{
-                background:
-                  "color-mix(in srgb, var(--color-primary) 14%, white)",
-              }}
+              style={{ background: "color-mix(in srgb, var(--color-primary) 14%, white)" }}
             >
-              <Building2
-                className="size-5"
-                style={{ color: "var(--color-primary)" }}
-              />
+              <Building2 className="size-5" style={{ color: "var(--color-primary)" }} />
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -571,737 +545,87 @@ export function CompaniesPage() {
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {activeTab === "directory" && (
-              <>
-                <Button variant="primary" onClick={openCreate}>
-                  <Plus className="mr-2 size-4" /> Add Company
-                </Button>
-                <div className="flex w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
-                  <Search className="size-4 shrink-0 text-slate-400" />
-                  <input
-                    className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search companies…"
-                    value={search}
-                  />
-                </div>
-              </>
-            )}
-            {activeTab === "summary" && (
-              <div className="flex items-center gap-2">
-                <Button variant="tertiary" onClick={() => handleExportSummary("csv")}>
-                  <Download className="mr-2 size-4" /> Export CSV
-                </Button>
-                <Button variant="primary" onClick={() => handleExportSummary("excel")}>
-                  <FileSpreadsheet className="mr-2 size-4" /> Export Excel
-                </Button>
-              </div>
-            )}
-            {activeTab === "detailed" && (
-              <div className="flex items-center gap-2">
-                <Button variant="tertiary" onClick={() => handleExportDetailed("csv")}>
-                  <Download className="mr-2 size-4" /> Export CSV
-                </Button>
-                <Button variant="primary" onClick={() => handleExportDetailed("excel")}>
-                  <FileSpreadsheet className="mr-2 size-4" /> Export Excel
-                </Button>
-              </div>
-            )}
-          </div>
         </div>
+
+        {/* ── Tab Pills ─────────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50/90 px-6 py-2.5">
           <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-100 p-1">
-            <button
-              className={cn(
-                "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition",
-                activeTab === "directory"
-                  ? "bg-white text-slate-950 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700",
-              )}
-              onClick={() => setActiveTab("directory")}
-              type="button"
-            >
-              Company Directory
-            </button>
-            <button
-              className={cn(
-                "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition",
-                activeTab === "summary"
-                  ? "bg-white text-slate-950 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700",
-              )}
-              onClick={() => setActiveTab("summary")}
-              type="button"
-            >
-              Summary Report
-            </button>
-            <button
-              className={cn(
-                "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition",
-                activeTab === "detailed"
-                  ? "bg-white text-slate-950 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700",
-              )}
-              onClick={() => setActiveTab("detailed")}
-              type="button"
-            >
-              Detailed Report
-            </button>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition",
+                  activeTab === tab.id
+                    ? "bg-white text-slate-950 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+                onClick={() => setActiveTab(tab.id)}
+                type="button"
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
           <span className="text-xs font-bold text-slate-500">
-            {activeTab === "directory" && `${filtered.length} compan${filtered.length === 1 ? "y" : "ies"}`}
-            {activeTab === "summary" && `${summaryReportData.length} corporate accounts`}
-            {activeTab === "detailed" && `${filteredDetailedReport.length} consultation billing records`}
+            {tabs.find((t) => t.id === activeTab)?.count}
           </span>
         </div>
       </section>
 
+      {/* ── Tab Content ───────────────────────────────────────────────────────── */}
+
       {activeTab === "directory" && (
         <section className={INTERNAL_SURFACE}>
-          <div className={INTERNAL_TABLE_SCROLL}>
-            <table className={INTERNAL_TABLE}>
-              <thead>
-                <tr className={INTERNAL_THEAD_ROW}>
-                  <th className={INTERNAL_TH}>Company</th>
-                  <th className={INTERNAL_TH}>Code</th>
-                  <th className={INTERNAL_TH}>Contact</th>
-                  <th className={INTERNAL_TH}>Billing Cycle</th>
-                  <th className={INTERNAL_TH}>Payment Terms</th>
-                  <th className={INTERNAL_TH}>Status</th>
-                  <th className={INTERNAL_TH}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isCompaniesLoading ? (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="px-6 py-10 text-center text-sm text-slate-400"
-                    >
-                      Loading companies…
-                    </td>
-                  </tr>
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="px-6 py-10 text-center text-sm text-slate-400"
-                    >
-                      No companies found
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((company) => (
-                    <tr key={company.id} className={INTERNAL_TR}>
-                      <td className={INTERNAL_TD}>
-                        <span className="font-semibold text-slate-900">
-                          {company.companyName}
-                        </span>
-                      </td>
-                      <td className={INTERNAL_TD}>
-                        {company.companyCode || "—"}
-                      </td>
-                      <td className={INTERNAL_TD}>
-                        <div className="text-sm">
-                          {company.contactPerson || "—"}
-                        </div>
-                        {company.contactEmail ? (
-                          <div className="text-xs text-slate-500">
-                            {company.contactEmail}
-                          </div>
-                        ) : null}
-                        {company.contactPhone ? (
-                          <div className="text-xs text-slate-500">
-                            {company.contactPhone}
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className={INTERNAL_TD}>
-                        {company.billingCycle || "—"}
-                      </td>
-                      <td className={INTERNAL_TD}>
-                        {company.paymentTerms || "—"}
-                      </td>
-                      <td className={INTERNAL_TD}>
-                        <StatusPill
-                          status={company.isActive ? "active" : "inactive"}
-                        />
-                      </td>
-                      <td className={INTERNAL_TD}>
-                        <div className="flex gap-1">
-                          <button
-                            className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
-                            onClick={() => openEdit(company)}
-                            title="Edit"
-                            type="button"
-                          >
-                            <Pencil className="size-4" />
-                          </button>
-                          <button
-                            className="rounded-lg p-1.5 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
-                            onClick={() => void handleDelete(company.id)}
-                            title="Delete"
-                            type="button"
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <CompaniesDirectoryTab
+            companies={companies}
+            isCompaniesLoading={isCompaniesLoading}
+            search={search}
+            onSearchChange={setSearch}
+            filtered={filtered}
+          />
         </section>
       )}
 
       {activeTab === "summary" && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Consultations</p>
-              <h3 className="mt-2 text-3xl font-bold text-slate-900">
-                {filteredSummaryReport.reduce((sum, r) => sum + r.totalConsultations, 0)}
-              </h3>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Amount Billed</p>
-              <h3 className="mt-2 text-3xl font-bold text-slate-900">
-                ₱{filteredSummaryReport.reduce((sum, r) => sum + r.totalBilled, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </h3>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Amount Outstanding</p>
-              <h3 className="mt-2 text-3xl font-bold text-rose-600">
-                ₱{filteredSummaryReport.reduce((sum, r) => sum + r.totalAmountDue, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </h3>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <h3 className="text-sm font-bold text-slate-900">Summary Report Filters</h3>
-              {summaryCompanyId && (
-                <button
-                  onClick={() => setSummaryCompanyId("")}
-                  className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline"
-                >
-                  Clear filter
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <FormField label="Filter by Company">
-                <Select
-                  value={summaryCompanyId}
-                  onChange={(e) => setSummaryCompanyId(e.target.value)}
-                >
-                  <option value="">All Companies</option>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.companyName}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-            </div>
-          </div>
-
-          <section className={INTERNAL_SURFACE}>
-            <div className={INTERNAL_TABLE_SCROLL}>
-              <table className={INTERNAL_TABLE}>
-                <thead>
-                  <tr className={INTERNAL_THEAD_ROW}>
-                    <th className={INTERNAL_TH}>Company Name</th>
-                    <th className={INTERNAL_TH}>Company Code</th>
-                    <th className={INTERNAL_TH}>Total Consultations</th>
-                    <th className={INTERNAL_TH}>Total Billed</th>
-                    <th className={INTERNAL_TH}>Total Amount Due</th>
-                    <th className={INTERNAL_TH}>Status</th>
-                    <th className={INTERNAL_TH}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoadingData ? (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-10 text-center text-sm text-slate-400">
-                        Loading summary report…
-                      </td>
-                    </tr>
-                  ) : filteredSummaryReport.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-10 text-center text-sm text-slate-400">
-                        No corporate data found
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredSummaryReport.map((row) => (
-                      <tr key={row.id} className={INTERNAL_TR}>
-                        <td className={INTERNAL_TD}>
-                          <span className="font-semibold text-slate-900">{row.companyName}</span>
-                        </td>
-                        <td className={INTERNAL_TD}>{row.companyCode || "—"}</td>
-                        <td className={INTERNAL_TD}>{row.totalConsultations}</td>
-                        <td className={INTERNAL_TD}>
-                          ₱{row.totalBilled.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </td>
-                        <td className={INTERNAL_TD}>
-                          {row.paymentStatus === "paid" ? (
-                            <span className="text-slate-500 font-semibold">₱0.00</span>
-                          ) : row.discountAmount > 0 ? (
-                            <div className="flex flex-col">
-                              <span className="text-xs text-slate-400 line-through">
-                                ₱{row.totalBilled.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              </span>
-                              <span className="font-semibold text-rose-600">
-                                ₱{row.totalAmountDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              </span>
-                              <span className="text-[10px] text-emerald-600 font-medium leading-none mt-0.5">
-                                (Disc: ₱{row.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })})
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="font-semibold text-rose-600">
-                              ₱{row.totalAmountDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </span>
-                          )}
-                        </td>
-                        <td className={INTERNAL_TD}>
-                          <StatusPill status={row.paymentStatus} size="sm" />
-                        </td>
-                        <td className={INTERNAL_TD}>
-                          <div className="flex items-center gap-1.5">
-                            {row.paymentStatus === "paid" ? (
-                              <button
-                                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50"
-                                onClick={() =>
-                                  updateCompanyBillingSummaryMutation.mutate({
-                                    companyId: row.id,
-                                    input: { payment_status: "unpaid" },
-                                  })
-                                }
-                                disabled={updateCompanyBillingSummaryMutation.isPending}
-                                type="button"
-                              >
-                                {updateCompanyBillingSummaryMutation.isPending &&
-                                updateCompanyBillingSummaryMutation.variables?.companyId === row.id &&
-                                updateCompanyBillingSummaryMutation.variables?.input.payment_status === "unpaid"
-                                  ? "Updating..."
-                                  : "Mark Pending"}
-                              </button>
-                            ) : (
-                              <button
-                                className="inline-flex items-center justify-center rounded-lg border border-transparent bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
-                                onClick={() =>
-                                  updateCompanyBillingSummaryMutation.mutate({
-                                    companyId: row.id,
-                                    input: { payment_status: "paid" },
-                                  })
-                                }
-                                disabled={updateCompanyBillingSummaryMutation.isPending}
-                                type="button"
-                              >
-                                {updateCompanyBillingSummaryMutation.isPending &&
-                                updateCompanyBillingSummaryMutation.variables?.companyId === row.id &&
-                                updateCompanyBillingSummaryMutation.variables?.input.payment_status === "paid"
-                                  ? "Updating..."
-                                  : "Mark Paid"}
-                              </button>
-                            )}
-                            <button
-                              className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
-                              onClick={() => {
-                                setDiscountCompanyId(row.id);
-                                setDiscountInput(row.discountAmount > 0 ? String(row.discountAmount) : "");
-                                setDiscountModalOpen(true);
-                              }}
-                              type="button"
-                            >
-                              Discount
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
+        <section className={INTERNAL_SURFACE}>
+          <CompaniesSummaryTab
+            companies={companies}
+            filteredSummaryReport={filteredSummaryReport}
+            summaryReportData={summaryReportData}
+            summaryCompanyId={summaryCompanyId}
+            onSummaryCompanyIdChange={setSummaryCompanyId}
+            isLoadingData={isLoadingData}
+            updateCompanyBillingSummaryMutation={updateCompanyBillingSummaryMutation}
+            onMarkPaidSuccess={() => setActiveTab("paid_history")}
+          />
+        </section>
       )}
 
       {activeTab === "detailed" && (
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <h3 className="text-sm font-bold text-slate-900">Detailed Report Filters</h3>
-              {(detailedSearch || detailedCompanyId || detailedStatus || detailedStartDate || detailedEndDate) && (
-                <button
-                  onClick={() => {
-                    setDetailedSearch("");
-                    setDetailedCompanyId("");
-                    setDetailedStatus("");
-                    setDetailedStartDate("");
-                    setDetailedEndDate("");
-                  }}
-                  className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline"
-                >
-                  Clear all filters
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-5">
-              <FormField label="Search">
-                <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm">
-                  <Search className="size-4 shrink-0 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Patient, doctor, code…"
-                    className="w-full bg-transparent outline-none"
-                    value={detailedSearch}
-                    onChange={(e) => setDetailedSearch(e.target.value)}
-                  />
-                </div>
-              </FormField>
-
-              <FormField label="Company">
-                <Select
-                  value={detailedCompanyId}
-                  onChange={(e) => setDetailedCompanyId(e.target.value)}
-                >
-                  <option value="">All Companies</option>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.companyName}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-
-              <FormField label="Status">
-                <Select
-                  value={detailedStatus}
-                  onChange={(e) => setDetailedStatus(e.target.value)}
-                >
-                  <option value="">All Statuses</option>
-                  <option value="paid">Paid</option>
-                  <option value="unpaid">Unpaid</option>
-                  <option value="partial">Partial</option>
-                </Select>
-              </FormField>
-
-              <FormField label="Start Date">
-                <Input
-                  type="date"
-                  value={detailedStartDate}
-                  onChange={(e) => setDetailedStartDate(e.target.value)}
-                />
-              </FormField>
-
-              <FormField label="End Date">
-                <Input
-                  type="date"
-                  value={detailedEndDate}
-                  onChange={(e) => setDetailedEndDate(e.target.value)}
-                />
-              </FormField>
-            </div>
-          </div>
-
-          <section className={INTERNAL_SURFACE}>
-            <div className={INTERNAL_TABLE_SCROLL}>
-              <table className={INTERNAL_TABLE}>
-                <thead>
-                  <tr className={INTERNAL_THEAD_ROW}>
-                    <th className={INTERNAL_TH}>Company</th>
-                    <th className={INTERNAL_TH}>Patient Name</th>
-                    <th className={INTERNAL_TH}>Consultation Date</th>
-                    <th className={INTERNAL_TH}>Doctor</th>
-                    <th className={INTERNAL_TH}>Service Type</th>
-                    <th className={INTERNAL_TH}>Receipt Code</th>
-                    <th className={INTERNAL_TH}>Consultation Fee</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoadingData ? (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-10 text-center text-sm text-slate-400">
-                        Loading detailed report…
-                      </td>
-                    </tr>
-                  ) : filteredDetailedReport.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-10 text-center text-sm text-slate-400">
-                        No detailed consultation records match the filters
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredDetailedReport.map((row) => (
-                      <tr key={row.id} className={INTERNAL_TR}>
-                        <td className={INTERNAL_TD}>{row.companyName}</td>
-                        <td className={INTERNAL_TD}>
-                          <span className="font-semibold text-slate-900">{row.patientName}</span>
-                        </td>
-                        <td className={INTERNAL_TD}>{row.consultationDate}</td>
-                        <td className={INTERNAL_TD}>{row.doctorName}</td>
-                        <td className={INTERNAL_TD}>
-                          <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-1 text-xs text-slate-700">
-                            {row.serviceType}
-                          </span>
-                        </td>
-                        <td className={INTERNAL_TD}>
-                          <span className="font-mono text-xs font-semibold text-slate-500">
-                            {row.receiptCode}
-                          </span>
-                        </td>
-                        <td className={INTERNAL_TD}>
-                          ₱{(row.consultationFee || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
+        <section className={INTERNAL_SURFACE}>
+          <CompaniesDetailedTab
+            companies={companies}
+            filteredDetailedReport={filteredDetailedReport}
+            detailedSearch={detailedSearch}
+            detailedCompanyId={detailedCompanyId}
+            detailedStartDate={detailedStartDate}
+            detailedEndDate={detailedEndDate}
+            onDetailedSearchChange={setDetailedSearch}
+            onDetailedCompanyIdChange={setDetailedCompanyId}
+            onDetailedStartDateChange={setDetailedStartDate}
+            onDetailedEndDateChange={setDetailedEndDate}
+            isLoadingData={isLoadingData}
+          />
+        </section>
       )}
 
-      {modalOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-900 px-6 py-4 text-white">
-              <h2 className="text-lg font-bold">
-                {editingId ? "Edit Company" : "Add Company"}
-              </h2>
-              <button
-                className="rounded-lg p-1 transition hover:bg-slate-700"
-                onClick={() => setModalOpen(false)}
-                type="button"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-            <div className="space-y-4 px-6 py-5">
-              <FormField label="Company Name *">
-                <Input
-                  value={formCompanyName}
-                  onChange={(e) => setFormCompanyName(e.target.value)}
-                  placeholder="e.g. ABC Holdings"
-                />
-              </FormField>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="Company Code">
-                  <Input
-                    value={formCompanyCode}
-                    onChange={(e) => setFormCompanyCode(e.target.value)}
-                    placeholder="e.g. ABC001"
-                  />
-                </FormField>
-                <FormField label="Status">
-                  <Select
-                    value={formStatus}
-                    onChange={(e) => setFormStatus(e.target.value)}
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </Select>
-                </FormField>
-              </div>
-              <FormField label="Contact Person">
-                <Input
-                  value={formContactPerson}
-                  onChange={(e) => setFormContactPerson(e.target.value)}
-                />
-              </FormField>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="Email">
-                  <Input
-                    value={formContactEmail}
-                    onChange={(e) => setFormContactEmail(e.target.value)}
-                    type="email"
-                  />
-                </FormField>
-                <FormField label="Phone">
-                  <Input
-                    value={formContactPhone}
-                    onChange={(e) => setFormContactPhone(e.target.value)}
-                    type="tel"
-                  />
-                </FormField>
-              </div>
-              <FormField label="Address">
-                <Textarea
-                  value={formAddress}
-                  onChange={(e) => setFormAddress(e.target.value)}
-                  rows={2}
-                />
-              </FormField>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="Billing Cycle">
-                  <Select
-                    value={formBillingCycle}
-                    onChange={(e) => setFormBillingCycle(e.target.value)}
-                  >
-                    <option value="monthly">Monthly</option>
-                    <option value="quarterly">Quarterly</option>
-                    <option value="semi-annual">Semi-annual</option>
-                    <option value="annual">Annual</option>
-                  </Select>
-                </FormField>
-                <FormField label="Payment Terms">
-                  <Select
-                    value={formPaymentTerms}
-                    onChange={(e) => setFormPaymentTerms(e.target.value)}
-                  >
-                    <option value="Net 15">Net 15</option>
-                    <option value="Net 30">Net 30</option>
-                    <option value="Net 45">Net 45</option>
-                    <option value="Net 60">Net 60</option>
-                    <option value="Due on receipt">Due on receipt</option>
-                  </Select>
-                </FormField>
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
-              <Button variant="tertiary" onClick={() => setModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => void handleSubmit()}
-                disabled={createMutation.isPending || updateMutation.isPending}
-              >
-                {editingId ? "Update" : "Create"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {discountModalOpen && discountCompanyId && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-900 px-6 py-4 text-white">
-              <h2 className="text-lg font-bold">Apply Company Discount</h2>
-              <button
-                className="rounded-lg p-1 transition hover:bg-slate-700"
-                onClick={() => {
-                  setDiscountModalOpen(false);
-                  setDiscountCompanyId(null);
-                }}
-                type="button"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-            {(() => {
-              const company = companies.find((c) => c.id === discountCompanyId);
-              if (!company) return <div className="p-6 text-sm text-slate-500">Company not found</div>;
-
-              // Calculate total billed for the company dynamically
-              const companyInvoices = invoices.filter((inv) => {
-                const appointment = inv.appointmentId ? appointmentMap.get(inv.appointmentId) : null;
-                const receiptCode = (appointment && appointment.receipt_code) || inv.invoiceNumber || "";
-                
-                let resolvedCompanyId = appointment?.companyId || inv.companyId;
-                if (receiptCode) {
-                  const prefix = receiptCode.split("-")[0]?.toUpperCase();
-                  if (prefix) {
-                    const companyByCode = companies.find((c) => c.companyCode?.toUpperCase() === prefix);
-                    if (companyByCode) {
-                      resolvedCompanyId = companyByCode.id;
-                    }
-                  }
-                }
-                return resolvedCompanyId === discountCompanyId;
-              });
-
-              const totalBilled = companyInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
-              const discountValue = Number(discountInput) || 0;
-              const prospectiveTotal = Math.max(0, totalBilled - discountValue);
-              
-              return (
-                <>
-                  <div className="space-y-4 px-6 py-5">
-                    <div className="rounded-xl bg-slate-50 p-4 space-y-2 text-sm text-slate-600 border border-slate-100">
-                      <div className="flex justify-between">
-                        <span className="font-medium text-slate-500">Company:</span>
-                        <span className="font-semibold text-slate-900">{company.companyName}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium text-slate-500">Company Code:</span>
-                        <span className="font-semibold text-slate-900">{company.companyCode || "—"}</span>
-                      </div>
-                      <div className="flex justify-between border-t border-slate-200/60 pt-2 mt-2">
-                        <span className="font-medium text-slate-500">Total Billed:</span>
-                        <span className="font-semibold text-slate-900">₱{totalBilled.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                      </div>
-                    </div>
-
-                    <FormField label="Discount Amount (₱)">
-                      <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">₱</span>
-                        <Input
-                          type="number"
-                          min="0"
-                          max={totalBilled}
-                          step="0.01"
-                          className="pl-8"
-                          value={discountInput}
-                          onChange={(e) => setDiscountInput(e.target.value)}
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </FormField>
-
-                    <div className="rounded-xl bg-emerald-50/50 border border-emerald-100 p-4 flex justify-between items-center text-sm">
-                      <span className="font-semibold text-emerald-800">New Amount Due:</span>
-                      <span className="text-lg font-bold text-emerald-950">
-                        ₱{prospectiveTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
-                    <Button
-                      variant="tertiary"
-                      onClick={() => {
-                        setDiscountModalOpen(false);
-                        setDiscountCompanyId(null);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="primary"
-                      disabled={updateMutation.isPending}
-                      onClick={() => {
-                        updateMutation.mutate({
-                          id: discountCompanyId,
-                          input: { discountAmount: discountValue },
-                        }, {
-                          onSuccess: () => {
-                            toast.success("Discount applied successfully");
-                            setDiscountModalOpen(false);
-                            setDiscountCompanyId(null);
-                          },
-                          onError: (err) => {
-                            toast.error(err instanceof Error ? err.message : "Failed to apply discount");
-                          }
-                        });
-                      }}
-                    >
-                      {updateMutation.isPending ? "Applying..." : "Apply Discount"}
-                    </Button>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
+      {activeTab === "paid_history" && (
+        <section className={INTERNAL_SURFACE}>
+          <CompaniesPaidHistoryTab
+            paidHistoryData={paidHistoryData}
+            isPaymentHistoryLoading={isPaymentHistoryLoading}
+          />
+        </section>
       )}
     </InternalPage>
   );

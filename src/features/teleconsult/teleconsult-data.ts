@@ -50,6 +50,7 @@ export interface TeleconsultAppointmentSummary {
   teleconsultationAccessInstructions: string | null;
   roomName: string;
   joinPath: string;
+  serviceId?: string;
 }
 
 function getClient() {
@@ -177,6 +178,7 @@ function buildTeleconsultSummary(
     teleconsultationAccessInstructions: access ?? null,
     roomName,
     joinPath: targetPath,
+    serviceId: appointment.serviceId,
   };
 }
 

@@ -31,6 +31,7 @@ import {
   useClinicSettingsData,
   useProviderDirectory,
 } from "../../hooks/use-clinic-data";
+import { useCompanies } from "../companies/api/companies-hooks";
 import { getDatabase } from "../../lib/local-db";
 import { printHtmlDocument } from "../../lib/print";
 import { queryKeys } from "../../lib/query-keys";
@@ -548,6 +549,7 @@ export function PatientDetailPage() {
   const { profile } = useAuth();
   const { data: clinicSettings } = useClinicSettingsData();
   const { data: providers = [] } = useProviderDirectory();
+  const { data: companies = [] } = useCompanies();
   const { data: referrals = [] } = useReferrals(patientId || null);
   const createReferral = useCreateReferral(patientId || null);
   const updateReferralOutcome = useUpdateReferralOutcome(patientId || null);
@@ -2831,6 +2833,14 @@ export function PatientDetailPage() {
               <CardTitle className="mt-1 text-2xl leading-tight sm:text-3xl">
                 {patient.firstName} {patient.lastName}
               </CardTitle>
+              {patient.companyId && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-750">
+                    <span className="size-1.5 rounded-full bg-indigo-400" />
+                    Employer: {companies.find((c) => c.id === patient.companyId)?.companyName || "Company"}
+                  </span>
+                </div>
+              )}
               {/* Demographic line */}
               <div className="mt-1.5 flex flex-wrap items-center gap-x-2 text-sm text-slate-500">
                 {patient.birthDate ? (() => {

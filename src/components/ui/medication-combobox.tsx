@@ -81,7 +81,7 @@ function stockStatus(item: InventoryItem): StockStatus {
 }
 
 /** Highlights all occurrences of `query` inside `text` */
-function hl(text: string, query: string): (string | JSX.Element)[] {
+function hl(text: string, query: string): any[] {
   if (!query.trim()) return [text];
   const esc = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const parts = text.split(new RegExp(`(${esc})`, "gi"));
