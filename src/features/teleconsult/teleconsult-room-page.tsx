@@ -1,4 +1,16 @@
-import { AlertCircle, LoaderCircle, Video, Mic, MicOff, VideoOff, PhoneOff, Users } from 'lucide-react';
+import { AlertCircle, LoaderCircle, Video, Mic, MicOff, VideoOff, PhoneOff, Users, Award, FileText, Pill, Printer, X } from 'lucide-react';
+import {
+  usePatientConsultations,
+  usePatientPrescriptions,
+  usePatientMedicalCertificates,
+  usePatientDetail,
+} from '../patients/hooks/use-patients';
+import { useClinicSettingsData, useProviderDirectory } from '../../hooks/use-clinic-data';
+import { printHtmlDocument } from '../../lib/print';
+import { buildPrescriptionPrintDocument } from '../patients/prescription-print-document';
+import { buildMedicalCertificatePrintDocument } from '../patients/medical-certificate-print-document';
+import { formatDateLabel } from '../../lib/utils';
+import QRCode from 'qrcode';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -91,6 +103,179 @@ export function TeleconsultRoomPage() {
   const { profile } = useAuth();
   const { data: appointment, isLoading } = useAuthorizedTeleconsultAppointment(appointmentId);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const [docPreviewModal, setDocPreviewModal] = useState<{ open: boolean; title: string; html: string; isPrinting: boolean }>({
+    open: false, title: "", html: "", isPrinting: false,
+  });
+
+  const isDoctor = profile?.role === 'doctor';
+
+  const { data: patient } = usePatientDetail(!isDoctor && appointment?.patientId ? appointment.patientId : null);
+  const { data: consultations = [] } = usePatientConsultations(!isDoctor && appointment?.patientId ? appointment.patientId : null, { refetchInterval: 3000 });
+  const { data: prescriptions = [] } = usePatientPrescriptions(!isDoctor && appointment?.patientId ? appointment.patientId : null, { refetchInterval: 3000 });
+  const { data: certificates = [] } = usePatientMedicalCertificates(!isDoctor && appointment?.patientId ? appointment.patientId : null, { refetchInterval: 3000 });
+  const { data: clinicSettings } = useClinicSettingsData();
+  const { data: providers = [] } = useProviderDirectory();
+
+  const clinicInfo = {
+    clinicName: clinicSettings?.clinicName ?? "Clinic",
+    clinicAddress: clinicSettings?.address ?? "",
+    clinicContactNumber: clinicSettings?.contactNumber ?? "",
+    clinicEmail: clinicSettings?.email ?? "",
+  };
+
+  const parsePrescriptionDisplayName = (value: string) => {
+    const text = (value ?? "").trim();
+    const match = text.match(/^(.*?)(?:\s*\(Brand:\s*(.*?)\))?$/i);
+    if (!match) return { genericName: text, brandName: "" };
+    return {
+      genericName: (match[1] ?? "").trim(),
+      brandName: (match[2] ?? "").trim(),
+    };
+  };
+
+  const formatDoctorDisplayName = (name: string | null | undefined, postNominals?: string | null) => {
+    const baseName = (name ?? "").trim().replace(/^dr\.?\s+/i, "").trim();
+    if (!baseName) return "Attending Physician";
+    const suffix = (postNominals ?? "").trim();
+    return suffix ? `${baseName} ${suffix}` : baseName;
+  };
+
+  const resolveDoctorPostNominals = (input: { linkedDoctorTitle?: string | null }) => {
+    return (input.linkedDoctorTitle ?? "").trim();
+  };
+
+  const buildDocDoctorInfo = (consultationId: string | null | undefined) => {
+    const linkedConsultation = consultations.find((c) => c.id === consultationId) ?? null;
+    const linkedDoctor = linkedConsultation
+      ? providers.find((p) => p.id === linkedConsultation.doctorId || p.profileId === linkedConsultation.doctorId)
+      : null;
+    const doctorNameRaw =
+      linkedDoctor?.fullName ??
+      linkedConsultation?.providerName ??
+      appointment?.doctorName ??
+      "Attending Physician";
+    const doctorPostNominals = resolveDoctorPostNominals({
+      linkedDoctorTitle: linkedDoctor?.title ?? null,
+    });
+    const doctorName = formatDoctorDisplayName(doctorNameRaw, doctorPostNominals);
+    const doctorSpecialty = linkedDoctor?.specialtyName ?? "Physician";
+    const doctorLicenseNumber = linkedDoctor?.licenseNumber ?? "";
+    const doctorBirNumber = linkedDoctor?.birNumber ?? "";
+    const doctorPtrNumber = linkedDoctor?.ptrNumber ?? "";
+    const prcLicense = (doctorLicenseNumber || "").replace(/\s+/g, "").toUpperCase();
+    const doctorPrcQrData = prcLicense ? `https://www.prc.gov.ph/licensee?id=${encodeURIComponent(prcLicense)}&type=PRC` : "";
+
+    return {
+      linkedConsultation,
+      doctorName,
+      doctorSpecialty,
+      doctorLicenseNumber,
+      doctorBirNumber,
+      doctorPtrNumber,
+      doctorPrcQrData,
+    };
+  };
+
+  const buildPatientAge = (birthDate?: string | null) => {
+    if (!birthDate) return "";
+    const today = new Date();
+    const birth = new Date(birthDate);
+    return String(today.getFullYear() - birth.getFullYear() - (today < new Date(birth.setFullYear(today.getFullYear())) ? 1 : 0));
+  };
+
+  const buildAndOpenPrescriptionDoc = (rxList: any[]) => {
+    if (rxList.length === 0) return;
+    const { doctorName, doctorSpecialty, doctorLicenseNumber, doctorBirNumber, doctorPtrNumber, doctorPrcQrData, linkedConsultation } =
+      buildDocDoctorInfo(rxList[0].consultationId);
+    const nextAppointment = linkedConsultation
+      ? `${linkedConsultation.consultationDate} ${linkedConsultation.consultationTime}`
+      : "";
+    const html = buildPrescriptionPrintDocument({
+      ...clinicInfo,
+      doctorName,
+      doctorSpecialty,
+      doctorLicenseNumber,
+      doctorBirNumber,
+      doctorPtrNumber,
+      doctorPrcQrData,
+      patientName: appointment?.patientName ?? "Patient",
+      patientAge: buildPatientAge(patient?.birthDate),
+      patientSex: patient?.sex ?? "other",
+      patientAddress: patient?.address ?? "",
+      issuedDate: rxList[0].createdAt,
+      nextAppointment,
+      medications: rxList.map((rx) => ({
+        name: parsePrescriptionDisplayName(rx.prescriptionName).genericName || rx.prescriptionName,
+        brandName: (rx.brandName ?? "").trim() || parsePrescriptionDisplayName(rx.prescriptionName).brandName,
+        dosage: rx.dosage,
+        instruction: rx.instruction,
+        numberOfMedications:
+          rx.numberOfMedications == null ? undefined : `${rx.numberOfMedications}`,
+      })),
+    });
+    setDocPreviewModal({ open: true, title: "Prescription", html, isPrinting: false });
+  };
+
+  const buildAndOpenMedCertDoc = async (cert: any) => {
+    const { doctorName, doctorSpecialty, doctorLicenseNumber, doctorBirNumber, doctorPtrNumber, doctorPrcQrData } =
+      buildDocDoctorInfo(cert.consultationId);
+    let patientQrSvg = "";
+    try {
+      if (patient?.qrCode) {
+        patientQrSvg = await QRCode.toString(patient.qrCode, {
+          errorCorrectionLevel: "M",
+          margin: 1,
+          type: "svg",
+          width: 120,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    const html = buildMedicalCertificatePrintDocument({
+      ...clinicInfo,
+      certificateNumber:
+        cert.certificateNumber != null ? String(cert.certificateNumber) : "",
+      patientQrSvg,
+      patientQrCode: patient?.qrCode ?? "",
+      patientReferenceCode: patient?.id ?? "",
+      doctorName,
+      doctorSpecialty,
+      doctorLicenseNumber,
+      doctorBirNumber,
+      doctorPtrNumber,
+      doctorPrcQrData,
+      patientName: appointment?.patientName ?? "Patient",
+      patientAge: buildPatientAge(patient?.birthDate),
+      patientSex: patient?.sex ?? "other",
+      patientAddress: patient?.address ?? "",
+      issuedDate: cert.createdAt,
+      certificatePurpose: cert.certificatePurpose,
+      diagnosis: cert.diagnosis,
+      recommendation: cert.recommendation,
+      restFrom: cert.restFrom ?? "",
+      restUntil: cert.restUntil ?? "",
+      checkFinancial: cert.checkFinancial ?? false,
+      checkSchool: cert.checkSchool ?? false,
+      checkWork: cert.checkWork ?? false,
+    });
+    setDocPreviewModal({ open: true, title: "Medical Certificate", html, isPrinting: false });
+  };
+
+  const handlePrintModalDoc = async () => {
+    if (!docPreviewModal.html) return;
+    setDocPreviewModal((prev) => ({ ...prev, isPrinting: true }));
+    try {
+      await printHtmlDocument(docPreviewModal.html);
+    } finally {
+      setDocPreviewModal((prev) => ({ ...prev, isPrinting: false }));
+    }
+  };
+
+  const linkedConsultation = consultations.find((c: any) => c.appointmentId === appointment?.id) ?? null;
+  const rxList = linkedConsultation ? prescriptions.filter((rx: any) => rx.consultationId === linkedConsultation.id) : [];
+  const certList = linkedConsultation ? certificates.filter((c: any) => c.consultationId === linkedConsultation.id) : [];
   
   // Config Mode
   const teleconsultMode = import.meta.env.VITE_TELECONSULT_MODE || 'custom_webrtc';
@@ -447,7 +632,6 @@ export function TeleconsultRoomPage() {
     }
   };
 
-  const isDoctor = profile?.role === 'doctor';
   const backPath = profile?.role === 'patient' ? '/portal/my-bookings' : '/app/appointments';
 
   if (isLoading) {
@@ -682,7 +866,129 @@ export function TeleconsultRoomPage() {
         {isDoctor && (
           <TeleconsultDoctorPanel appointment={appointment} />
         )}
+
+        {/* Patient Documents Panel (Real-Time) */}
+        {!isDoctor && linkedConsultation && (rxList.length > 0 || certList.length > 0) && (
+          <Card className="h-fit space-y-4 border-slate-200/80 bg-white shadow-md">
+            <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <FileText className="size-4 text-orange-600" />
+              Clinical Documents
+            </CardTitle>
+            <p className="text-xs text-slate-500 leading-relaxed -mt-2">
+              View or print/save official documents issued during this teleconsultation.
+            </p>
+
+            {/* Prescriptions */}
+            {rxList.length > 0 && (
+              <div className="rounded-2xl border border-violet-100 bg-violet-50/50 p-4 animate-fade-up">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Pill className="size-3.5 text-violet-600" />
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-violet-700">Prescription</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-white px-2 py-1 text-[10px] font-bold text-violet-700 hover:bg-violet-50 transition-colors shadow-sm"
+                    onClick={() => buildAndOpenPrescriptionDoc(rxList)}
+                  >
+                    <Printer className="size-3" /> View &amp; Print
+                  </button>
+                </div>
+                <div className="space-y-2.5">
+                  {rxList.map((rx: any) => (
+                    <div key={rx.id} className="text-xs">
+                      <p className="font-bold text-slate-800">
+                        {rx.prescriptionName}
+                        {rx.brandName ? <span className="ml-1 font-normal text-slate-500">({rx.brandName})</span> : null}
+                      </p>
+                      <p className="text-slate-500 mt-0.5">
+                        {rx.dosage} &mdash; {rx.instruction}
+                        {rx.numberOfMedications ? ` · Qty: ${rx.numberOfMedications}` : ""}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Medical Certificates */}
+            {certList.length > 0 && (
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 animate-fade-up">
+                <div className="space-y-3">
+                  {certList.map((cert: any) => (
+                    <div key={cert.id} className="flex items-start justify-between gap-3 text-xs">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Award className="size-3.5 text-emerald-600" />
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700">Medical Certificate</span>
+                        </div>
+                        <p className="font-bold text-slate-800 leading-tight">{cert.certificatePurpose}</p>
+                        {cert.diagnosis && <p className="text-slate-600 mt-1">Diagnosis: {cert.diagnosis}</p>}
+                        {cert.restUntil && (
+                          <p className="font-semibold text-emerald-700 mt-1">
+                            Rest recommended until: {formatDateLabel(cert.restUntil)}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-emerald-200 bg-white px-2 py-1 text-[10px] font-bold text-emerald-700 hover:bg-emerald-50 transition-colors shadow-sm"
+                        onClick={() => { void buildAndOpenMedCertDoc(cert); }}
+                      >
+                        <Printer className="size-3" /> View
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
       </div>
+
+      {docPreviewModal.open && (
+        <div
+          aria-modal="true"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm animate-fade-in"
+          onClick={() => setDocPreviewModal((prev) => ({ ...prev, open: false }))}
+          role="dialog"
+        >
+          <div
+            className="flex h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-extrabold uppercase tracking-widest text-slate-600">
+                {docPreviewModal.title}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+                  disabled={docPreviewModal.isPrinting}
+                  onClick={() => { void handlePrintModalDoc(); }}
+                  type="button"
+                >
+                  <Printer className="size-3.5" />
+                  {docPreviewModal.isPrinting ? "Printing..." : "Print"}
+                </button>
+                <button
+                  className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:bg-slate-100"
+                  onClick={() => setDocPreviewModal((prev) => ({ ...prev, open: false }))}
+                  type="button"
+                  aria-label="Close document preview"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            </div>
+            <iframe
+              className="h-full w-full border-0 bg-white"
+              srcDoc={docPreviewModal.html}
+              title={docPreviewModal.title || "Document preview"}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

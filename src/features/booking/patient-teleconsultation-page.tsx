@@ -10,7 +10,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { CouponJoinModal } from "../../components/ui/coupon-join-modal";
 
 import { Badge } from "../../components/ui/badge";
 import { Card, CardTitle } from "../../components/ui/card";
@@ -37,10 +38,12 @@ function isPast(status: Appointment["status"]) {
 }
 
 export function PatientConsultationPage() {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const { data: appointments = [], isLoading } =
     usePatientTeleconsultAppointments();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [pendingJoinAppointment, setPendingJoinAppointment] = useState<{ joinPath: string; serviceId: string } | null>(null);
 
   if (isLoading) {
     return (
@@ -230,13 +233,19 @@ export function PatientConsultationPage() {
                     {/* Join CTA footer */}
                     <div className="border-t border-slate-100 px-5 py-3">
                       {joinable ? (
-                        <Link
-                          to={appointment.joinPath}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPendingJoinAppointment({
+                              joinPath: appointment.joinPath,
+                              serviceId: appointment.serviceId ?? "",
+                            })
+                          }
                           className="inline-flex items-center gap-2 bg-emerald-600 px-5 py-2 text-xs font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-emerald-700"
                         >
                           <Video className="size-3.5" />
                           Join Teleconsult Room
-                        </Link>
+                        </button>
                       ) : (
                         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
                           <AlertCircle className="size-3.5" />
@@ -348,6 +357,18 @@ export function PatientConsultationPage() {
             </div>
           )}
         </div>
+      )}
+      {pendingJoinAppointment && (
+        <CouponJoinModal
+          isOpen={true}
+          onClose={() => setPendingJoinAppointment(null)}
+          onValidationSuccess={() => {
+            const path = pendingJoinAppointment.joinPath;
+            setPendingJoinAppointment(null);
+            navigate(path);
+          }}
+          serviceId={pendingJoinAppointment.serviceId}
+        />
       )}
     </div>
   );

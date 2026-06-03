@@ -202,6 +202,7 @@ export interface Service extends BaseRecord {
 
 export interface Patient extends BaseRecord {
   userId?: string | null;
+  companyId?: string | null;
   qrCode: string;
   uniqueLoginId?: string | null;
   walkInAccountClaimedAt?: string | null;

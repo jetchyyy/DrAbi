@@ -43,6 +43,7 @@ import {
   usePatients,
   useUpdatePatient,
 } from "./hooks/use-patients";
+import { useCompanies } from "../companies/api/companies-hooks";
 
 const patientSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters."),
@@ -160,6 +161,7 @@ export function PatientsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: patients = [] } = usePatients();
+  const { data: companies = [] } = useCompanies();
   const { can, profile } = useAuth();
   const createPatient = useCreatePatient();
   const updatePatient = useUpdatePatient();
@@ -692,6 +694,11 @@ export function PatientsPage() {
                             <span className="text-[10px] uppercase tracking-[0.16em] text-slate-400">
                               {patient.sex}
                             </span>
+                            {patient.companyId && (
+                              <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-200/80">
+                                {companies.find((c) => c.id === patient.companyId)?.companyName || "Company"}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </td>

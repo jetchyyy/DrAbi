@@ -132,6 +132,7 @@ export interface PatientTeleconsultationSummary {
   teleconsultationPlatform: string;
   teleconsultationAccessInstructions: string;
   joinPath: string;
+  serviceId?: string;
 }
 
 export interface WalkInUniqueLoginProfile {
@@ -564,6 +565,7 @@ export function mapPatient(row: PatientRow): Patient {
   return {
     id: row.id,
     userId: row.user_id,
+    companyId: (row as any).company_id ?? null,
     qrCode: row.qr_code,
     uniqueLoginId: row.unique_login_id,
     walkInAccountClaimedAt: row.walk_in_account_claimed_at,
@@ -628,6 +630,7 @@ function mapAppointment(row: AppointmentRow): Appointment {
     completedBy: row.completed_by,
     completedAt: row.completed_at,
     additionalDoctorIds: row.additional_doctor_ids ?? [],
+    receipt_code: (row as any).receipt_code,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
@@ -1574,7 +1577,9 @@ export async function createInvoiceLiveOrDemo(
 ) {
   if (!isSupabaseConfigured) {
     const { createInvoice } = await import("./local-db");
-    return createInvoice(invoice, items);
+    const result = createInvoice(invoice, items);
+    await syncBillingReportOnInvoice(result.id, result);
+    return result;
   }
 
   const client = requireSupabase();
@@ -1663,6 +1668,7 @@ export async function createInvoiceLiveOrDemo(
     }
   }
 
+  await syncBillingReportOnInvoice(createdInvoice.id, createdInvoice);
   return createdInvoice;
 }
 
@@ -1676,7 +1682,9 @@ export async function updateInvoiceLiveOrDemo(
 ) {
   if (!isSupabaseConfigured) {
     const { updateInvoiceRecord } = await import("./local-db");
-    return updateInvoiceRecord(invoiceId, invoice, items);
+    const result = updateInvoiceRecord(invoiceId, invoice, items);
+    await syncBillingReportOnInvoice(invoiceId, result);
+    return result;
   }
 
   const client = requireSupabase();
@@ -1734,7 +1742,7 @@ export async function updateInvoiceLiveOrDemo(
     }
   }
 
-  return mapInvoiceRow(
+  const result = mapInvoiceRow(
     data as {
       id: string;
       patient_id: string;
@@ -1751,6 +1759,9 @@ export async function updateInvoiceLiveOrDemo(
       deleted_at: string | null;
     },
   );
+
+  await syncBillingReportOnInvoice(invoiceId, result);
+  return result;
 }
 
 export async function deleteInvoiceLiveOrDemo(invoiceId: string) {
@@ -2004,7 +2015,9 @@ export async function createAppointmentLiveOrDemo(
 ) {
   if (!isSupabaseConfigured) {
     const { createAppointment } = await import("./local-db");
-    return createAppointment(input);
+    const result = createAppointment(input);
+    await syncBillingReportOnAppointment(result);
+    return result;
   }
 
   const client = requireSupabase();
@@ -2038,7 +2051,9 @@ export async function createAppointmentLiveOrDemo(
     throw error;
   }
 
-  return mapAppointment(data as AppointmentRow);
+  const result = mapAppointment(data as AppointmentRow);
+  await syncBillingReportOnAppointment(result);
+  return result;
 }
 
 export async function createConsultationLiveOrDemo(
@@ -3567,6 +3582,7 @@ export async function listPatientTeleconsultAppointmentsForCurrentUserLiveOrDemo
             appointment.teleconsultationAccessInstructions,
           ),
         joinPath: `/portal/teleconsult/${appointment.id}`,
+        serviceId: appointment.serviceId,
       }));
   }
 
@@ -3682,6 +3698,7 @@ export async function listPatientTeleconsultAppointmentsForCurrentUserLiveOrDemo
       appointment.teleconsultation_access_instructions,
     ),
     joinPath: `/portal/teleconsult/${appointment.id}`,
+    serviceId: appointment.service_id ?? "",
   }));
 }
 
@@ -4158,7 +4175,20 @@ export async function markBookingPaidAndCreateInvoiceLiveOrDemo(
 ) {
   if (!isSupabaseConfigured) {
     const { markBookingPaidAndCreateInvoice } = await import("./local-db");
-    return markBookingPaidAndCreateInvoice(receiptCode);
+    const result = await markBookingPaidAndCreateInvoice(receiptCode);
+    const invoice = result.invoice;
+    if (invoice) {
+      const localDbStr = localStorage.getItem("odyssey-clinic-demo-db-v2");
+      const db = localDbStr ? JSON.parse(localDbStr) : null;
+      if (db) {
+        const appt = db.appointments?.find((a: any) => a.id === invoice.appointmentId);
+        if (appt) {
+          await syncBillingReportOnAppointment(appt);
+        }
+      }
+      await syncBillingReportOnInvoice(invoice.id, invoice);
+    }
+    return result;
   }
 
   const client = requireSupabase();
@@ -4220,6 +4250,8 @@ export async function markBookingPaidAndCreateInvoiceLiveOrDemo(
         const createdAppointment = createdAppointmentRow as AppointmentRow;
         createdAppointmentId = createdAppointment.id;
         appointmentId = createdAppointment.id;
+        
+        await syncBillingReportOnAppointment(mapAppointment(createdAppointment));
       }
 
       await updateBookingPaymentStatusWithOptionalAppointmentLink(client, {
@@ -4253,6 +4285,8 @@ export async function markBookingPaidAndCreateInvoiceLiveOrDemo(
       };
       createdInvoiceId = createdInvoice.id;
       invoice = createdInvoice;
+
+      await syncBillingReportOnInvoice(createdInvoice.id, mapInvoiceRow(createdInvoiceRow as any));
     } catch (error) {
       if (createdAppointmentId) {
         await updateBookingPaymentStatusWithOptionalAppointmentLink(client, {
@@ -5843,6 +5877,43 @@ export async function validatePromoCode(
   code: string,
   serviceId: string,
 ): Promise<PromoCode> {
+  if (!isSupabaseConfigured) {
+    const codeUpper = code.trim().toUpperCase();
+    if (codeUpper === "FREE100") {
+      return {
+        id: "promo_free100",
+        code: "FREE100",
+        description: "100% off teleconsultation",
+        maxUses: 100,
+        usedCount: 0,
+        discountType: "percentage",
+        discountValue: 100,
+        applicableServiceId: null,
+        active: true,
+        expiresAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    } else if (codeUpper === "DISCOUNT50") {
+      return {
+        id: "promo_discount50",
+        code: "DISCOUNT50",
+        description: "50% off teleconsultation",
+        maxUses: 100,
+        usedCount: 0,
+        discountType: "percentage",
+        discountValue: 50,
+        applicableServiceId: null,
+        active: true,
+        expiresAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    } else {
+      throw new Error("Promo code not found.");
+    }
+  }
+
   const client = requireSupabase();
   const { data, error } = await (client as any)
     .from("promo_codes")
@@ -5971,5 +6042,719 @@ export async function recordInventoryUsageLiveOrDemo(
     recordedBy: log.recorded_by,
     createdAt: log.created_at,
     updatedAt: log.updated_at,
+  };
+}
+
+// Sync reporting tables (supporting both Supabase Live and Demo modes)
+async function resolveDoctorName(doctorId: string | null | undefined, client?: any, db?: any): Promise<string> {
+  if (!doctorId || doctorId === "user_owner") {
+    return "Dr. Abi";
+  }
+
+  if (!isSupabaseConfigured) {
+    const user = db?.users?.find((u: any) => u.id === doctorId);
+    return user ? (user.fullName || user.name || user.full_name || "Dr. Abi") : "Dr. Abi";
+  } else {
+    const supabaseClient = client || requireSupabase();
+    try {
+      const { data: doctorRow } = await supabaseClient
+        .from("doctors")
+        .select("profiles(full_name)")
+        .eq("id", doctorId)
+        .maybeSingle();
+
+      const profile = doctorRow?.profiles;
+      const fullName = Array.isArray(profile)
+        ? profile[0]?.full_name
+        : (profile as any)?.full_name;
+
+      if (fullName) {
+        return fullName;
+      }
+    } catch (e) {
+      console.error("Error resolving doctor profiles from doctors table:", e);
+    }
+
+    try {
+      const { data: profileRow } = await supabaseClient
+        .from("profiles")
+        .select("full_name")
+        .eq("id", doctorId)
+        .maybeSingle();
+
+      if (profileRow?.full_name) {
+        return profileRow.full_name;
+      }
+    } catch (e) {
+      console.error("Error resolving doctor name directly from profiles:", e);
+    }
+
+    return "Dr. Abi";
+  }
+}
+
+export async function syncBillingReportOnAppointment(appointment: any) {
+  if (!isSupabaseConfigured) {
+    // Demo mode:
+    const localDbStr = localStorage.getItem("odyssey-clinic-demo-db-v2");
+    const db = localDbStr ? JSON.parse(localDbStr) : null;
+    if (!db) return;
+
+    const companiesList = db.companies || [];
+    const patient = db.patients?.find((p: any) => p.id === appointment.patientId);
+    const service = db.services?.find((s: any) => s.id === appointment.serviceId);
+    const doctorName = await resolveDoctorName(appointment.doctorId, null, db);
+
+    const receiptCode = appointment.receipt_code || appointment.receiptCode || "";
+    let resolvedCompanyId = appointment.companyId;
+    if (receiptCode) {
+      const prefix = receiptCode.split("-")[0]?.toUpperCase();
+      if (prefix) {
+        const companyByCode = companiesList.find((c: any) => c.companyCode?.toUpperCase() === prefix);
+        if (companyByCode) {
+          resolvedCompanyId = companyByCode.id;
+        }
+      }
+    }
+
+    if (!resolvedCompanyId) return;
+
+    const company = companiesList.find((c: any) => c.id === resolvedCompanyId);
+    if (!company) return;
+
+    const detailedLocal = localStorage.getItem("odyssey-clinic-company-billing-detailed");
+    const detailedList = detailedLocal ? JSON.parse(detailedLocal) : [];
+    
+    let existingIndex = detailedList.findIndex((item: any) => item.appointment_id === appointment.id);
+    const existing = existingIndex >= 0 ? detailedList[existingIndex] : null;
+
+    const detailedRow = {
+      id: appointment.id,
+      company_id: resolvedCompanyId,
+      company: company.companyName,
+      patient: patient ? `${patient.firstName} ${patient.lastName}` : "Unknown Patient",
+      consultation_date: appointment.scheduledAt,
+      doctor_name: doctorName,
+      service_type: service ? service.name : "General Consultation",
+      receipt_code: receiptCode,
+      invoice_no: existing ? existing.invoice_no : null,
+      consultation_fee: existing ? Number(existing.consultation_fee || 0) : 0.00,
+      appointment_id: appointment.id,
+      invoice_id: existing ? existing.invoice_id : null,
+      billing_status: existing ? existing.billing_status : "unpaid",
+      payment_id: existing ? existing.payment_id : null,
+      updated_by: "admin@odyssey.clinic",
+      created_at: existing ? existing.created_at : new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    if (existingIndex >= 0) {
+      detailedList[existingIndex] = { ...detailedList[existingIndex], ...detailedRow };
+    } else {
+      detailedList.push(detailedRow);
+    }
+    localStorage.setItem("odyssey-clinic-company-billing-detailed", JSON.stringify(detailedList));
+
+    // Recalculate summary
+    const summaryLocal = localStorage.getItem("odyssey-clinic-company-billing-summary");
+    const summaryList = summaryLocal ? JSON.parse(summaryLocal) : [];
+    
+    const index = summaryList.findIndex((item: any) => item.company_id === resolvedCompanyId);
+    const existingSummary = index >= 0 ? summaryList[index] : {
+      company_id: resolvedCompanyId,
+      company_name: company.companyName,
+      company_code: company.companyCode,
+      total_consultations: 0,
+      total_billed: 0,
+      discount: 0,
+      total_amount_due: 0,
+      payment_status: "unpaid",
+      updated_by: "admin@odyssey.clinic",
+      updated_at: new Date().toISOString()
+    };
+
+    const companyConsultations = detailedList.filter((item: any) => item.company_id === resolvedCompanyId && item.billing_status === "unpaid");
+    const totalBilled = companyConsultations.reduce((sum: number, item: any) => sum + (item.consultation_fee || 0), 0);
+    const totalConsultations = companyConsultations.length;
+    const discount = existingSummary.discount || 0;
+    const paymentStatus = "unpaid";
+    const totalAmountDue = Math.max(0, totalBilled - discount);
+
+    const updatedSummary = {
+      ...existingSummary,
+      total_consultations: totalConsultations,
+      total_billed: totalBilled,
+      total_amount_due: totalAmountDue,
+      payment_status: paymentStatus,
+      updated_by: "admin@odyssey.clinic",
+      updated_at: new Date().toISOString()
+    };
+
+    if (index >= 0) {
+      summaryList[index] = updatedSummary;
+    } else {
+      summaryList.push(updatedSummary);
+    }
+    localStorage.setItem("odyssey-clinic-company-billing-summary", JSON.stringify(summaryList));
+  } else {
+    // Live Supabase mode:
+    const client = requireSupabase();
+    
+    // 1. Resolve company
+    let resolvedCompanyId = appointment.company_id || appointment.companyId;
+    const receiptCode = appointment.receipt_code || appointment.receiptCode || "";
+    if (receiptCode) {
+      const prefix = receiptCode.split("-")[0]?.toUpperCase();
+      if (prefix) {
+        const { data: companyByCode } = await client
+          .from("companies" as any)
+          .select("id")
+          .ilike("company_code", prefix)
+          .maybeSingle();
+        if (companyByCode) {
+          resolvedCompanyId = (companyByCode as any).id;
+        }
+      }
+    }
+
+    if (!resolvedCompanyId) return;
+
+    // Fetch company name and code
+    const { data: company } = await client
+      .from("companies" as any)
+      .select("company_name, company_code")
+      .eq("id", resolvedCompanyId)
+      .single();
+    if (!company) return;
+
+    // Fetch patient name
+    const patientId = appointment.patient_id || appointment.patientId;
+    const { data: patient } = await client
+      .from("patients" as any)
+      .select("first_name, last_name")
+      .eq("id", patientId)
+      .single();
+    const patientName = patient ? `${(patient as any).first_name} ${(patient as any).last_name}` : "Unknown Patient";
+
+    // Fetch doctor name
+    const doctorId = appointment.doctor_id || appointment.doctorId;
+    const doctorName = await resolveDoctorName(doctorId, client);
+
+    // Fetch service name
+    const serviceId = appointment.service_id || appointment.serviceId;
+    let serviceName = "General Consultation";
+    if (serviceId) {
+      const { data: service } = await client
+        .from("services" as any)
+        .select("name")
+        .eq("id", serviceId)
+        .single();
+      if (service) {
+        serviceName = (service as any).name;
+      }
+    }
+
+    // Get current logged-in user
+    const { data: userData } = await client.auth.getUser();
+    const updatedBy = userData?.user?.email || userData?.user?.id || "System";
+
+    // Insert or update detailed table
+    const { data: existingDetailed } = await client
+      .from("company_billing_detailed" as any)
+      .select("id, billing_status, consultation_fee, payment_id, invoice_no, invoice_id")
+      .eq("appointment_id", appointment.id)
+      .maybeSingle();
+
+    const detailedPayload = {
+      company_id: resolvedCompanyId,
+      company: (company as any).company_name,
+      patient: patientName,
+      consultation_date: appointment.scheduled_at || appointment.scheduledAt,
+      doctor_name: doctorName,
+      service_type: serviceName,
+      receipt_code: receiptCode,
+      invoice_no: existingDetailed ? (existingDetailed as any).invoice_no : null,
+      invoice_id: existingDetailed ? (existingDetailed as any).invoice_id : null,
+      consultation_fee: existingDetailed ? Number((existingDetailed as any).consultation_fee || 0) : 0.00,
+      appointment_id: appointment.id,
+      billing_status: existingDetailed ? (existingDetailed as any).billing_status : "unpaid",
+      payment_id: existingDetailed ? (existingDetailed as any).payment_id : null,
+      updated_by: updatedBy,
+      updated_at: new Date().toISOString()
+    };
+
+    if (existingDetailed) {
+      await client
+        .from("company_billing_detailed" as any)
+        .update(detailedPayload as never)
+        .eq("appointment_id", appointment.id);
+    } else {
+      await client
+        .from("company_billing_detailed" as any)
+        .insert({
+          ...detailedPayload,
+          id: appointment.id,
+          created_at: new Date().toISOString()
+        } as never);
+    }
+
+    // Recalculate summary
+    const { data: unpaidDetailedList } = await client
+      .from("company_billing_detailed" as any)
+      .select("consultation_fee")
+      .eq("company_id", resolvedCompanyId)
+      .eq("billing_status", "unpaid");
+
+    const unpaidCount = unpaidDetailedList?.length || 0;
+    const totalBilled = (unpaidDetailedList || []).reduce((sum, row: any) => sum + Number(row.consultation_fee || 0), 0);
+
+    const { data: existingSummary } = await client
+      .from("company_billing_summary" as any)
+      .select("*")
+      .eq("company_id", resolvedCompanyId)
+      .maybeSingle();
+
+    const discount = existingSummary ? Number((existingSummary as any).discount || 0) : 0.00;
+    const totalAmountDue = Math.max(0, totalBilled - discount);
+
+    const summaryPayload = {
+      company_id: resolvedCompanyId,
+      company_name: (company as any).company_name,
+      company_code: (company as any).company_code,
+      total_consultations: unpaidCount,
+      total_billed: totalBilled,
+      total_amount_due: totalAmountDue,
+      payment_status: "unpaid",
+      updated_by: updatedBy,
+      updated_at: new Date().toISOString()
+    };
+
+    if (existingSummary) {
+      await client
+        .from("company_billing_summary" as any)
+        .update(summaryPayload as never)
+        .eq("company_id", resolvedCompanyId);
+    } else {
+      await client
+        .from("company_billing_summary" as any)
+        .insert(summaryPayload as never);
+    }
+  }
+}
+
+export async function syncBillingReportOnInvoice(invoiceId: string, invoice: any) {
+  const isPaid = (invoice.paymentStatus || invoice.payment_status) === "paid";
+  const invoiceTotal = Number(invoice.total ?? 0);
+  const appointmentId = invoice.appointmentId || invoice.appointment_id;
+  const invoiceNumber = invoice.invoiceNumber || invoice.invoice_number;
+  const companyId = invoice.companyId || invoice.company_id;
+
+  if (!isSupabaseConfigured) {
+    const detailedLocal = localStorage.getItem("odyssey-clinic-company-billing-detailed");
+    const detailedList = detailedLocal ? JSON.parse(detailedLocal) : [];
+
+    let index = detailedList.findIndex((item: any) => 
+      (appointmentId && item.appointment_id === appointmentId) || 
+      (invoiceNumber && item.receipt_code === invoiceNumber)
+    );
+
+    let resolvedCompanyId = companyId;
+    if (index >= 0) {
+      const row = detailedList[index];
+      row.consultation_fee = row.billing_status === "paid" 
+        ? Number(row.consultation_fee || 0) 
+        : (isPaid ? invoiceTotal : 0.00);
+      row.invoice_id = invoiceId;
+      row.invoice_no = invoiceNumber;
+
+      if (!row.receipt_code && appointmentId) {
+        const localDbStr = localStorage.getItem("odyssey-clinic-demo-db-v2");
+        const db = localDbStr ? JSON.parse(localDbStr) : null;
+        const appointment = db?.appointments?.find((a: any) => a.id === appointmentId);
+        if (appointment?.receipt_code || appointment?.receiptCode) {
+          row.receipt_code = appointment.receipt_code || appointment.receiptCode;
+        }
+      }
+
+      row.updated_at = new Date().toISOString();
+      detailedList[index] = row;
+      localStorage.setItem("odyssey-clinic-company-billing-detailed", JSON.stringify(detailedList));
+      resolvedCompanyId = row.company_id;
+    } else if (resolvedCompanyId) {
+      // Create detailed row if not exists
+      const localDbStr = localStorage.getItem("odyssey-clinic-demo-db-v2");
+      const db = localDbStr ? JSON.parse(localDbStr) : null;
+      if (db) {
+        const companiesList = db.companies || [];
+        const company = companiesList.find((c: any) => c.id === resolvedCompanyId);
+        const patient = db.patients?.find((p: any) => p.id === (invoice.patientId || invoice.patient_id));
+        const appointment = db.appointments?.find((a: any) => a.id === appointmentId);
+        const doctorName = await resolveDoctorName(appointment?.doctorId, null, db);
+        
+        if (company) {
+          const detailedRow = {
+            id: invoiceId,
+            company_id: resolvedCompanyId,
+            company: company.companyName,
+            patient: patient ? `${patient.firstName} ${patient.lastName}` : "Unknown Patient",
+            consultation_date: invoice.createdAt || new Date().toISOString(),
+            doctor_name: doctorName,
+            service_type: "General Consultation",
+            receipt_code: appointment?.receipt_code || appointment?.receiptCode || "",
+            invoice_no: invoiceNumber,
+            consultation_fee: isPaid ? invoiceTotal : 0.00,
+            appointment_id: appointmentId || null,
+            invoice_id: invoiceId,
+            billing_status: "unpaid",
+            updated_by: "admin@odyssey.clinic",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          detailedList.push(detailedRow);
+          localStorage.setItem("odyssey-clinic-company-billing-detailed", JSON.stringify(detailedList));
+        }
+      }
+    }
+
+    if (resolvedCompanyId) {
+      const summaryLocal = localStorage.getItem("odyssey-clinic-company-billing-summary");
+      const summaryList = summaryLocal ? JSON.parse(summaryLocal) : [];
+      const summaryIndex = summaryList.findIndex((item: any) => item.company_id === resolvedCompanyId);
+
+      const companyConsultations = detailedList.filter((item: any) => item.company_id === resolvedCompanyId && item.billing_status === "unpaid");
+      const totalBilled = companyConsultations.reduce((sum: number, item: any) => sum + (item.consultation_fee || 0), 0);
+      const totalConsultations = companyConsultations.length;
+
+      if (summaryIndex >= 0) {
+        const existing = summaryList[summaryIndex];
+        const discount = existing.discount || 0;
+        // If there are new unpaid items, always reset to unpaid so the new bill is visible
+        const paymentStatus = totalConsultations > 0 ? "unpaid" : (existing.payment_status || "unpaid");
+        const totalAmountDue = Math.max(0, totalBilled - discount);
+
+        summaryList[summaryIndex] = {
+          ...existing,
+          total_consultations: totalConsultations,
+          total_billed: totalBilled,
+          total_amount_due: totalAmountDue,
+          payment_status: paymentStatus,
+          updated_at: new Date().toISOString()
+        };
+      } else {
+        const localDbStr = localStorage.getItem("odyssey-clinic-demo-db-v2");
+        const db = localDbStr ? JSON.parse(localDbStr) : null;
+        const companiesList = db?.companies || [];
+        const company = companiesList.find((c: any) => c.id === resolvedCompanyId);
+
+        if (company) {
+          const newSummary = {
+            company_id: resolvedCompanyId,
+            company_name: company.companyName,
+            company_code: company.companyCode,
+            total_consultations: totalConsultations,
+            total_billed: totalBilled,
+            discount: 0,
+            total_amount_due: totalBilled,
+            payment_status: "unpaid",
+            updated_by: "admin@odyssey.clinic",
+            updated_at: new Date().toISOString()
+          };
+          summaryList.push(newSummary);
+        }
+      }
+      localStorage.setItem("odyssey-clinic-company-billing-summary", JSON.stringify(summaryList));
+    }
+  } else {
+    const client = requireSupabase();
+
+    // Get current logged-in user
+    const { data: userData } = await client.auth.getUser();
+    const updatedBy = userData?.user?.email || userData?.user?.id || "System";
+
+    // Find detailed row
+    let detailedRow: any = null;
+    if (appointmentId) {
+      const { data } = await client
+        .from("company_billing_detailed" as any)
+        .select("*")
+        .eq("appointment_id", appointmentId)
+        .maybeSingle();
+      detailedRow = data;
+    }
+    if (!detailedRow && invoiceNumber) {
+      const { data } = await client
+        .from("company_billing_detailed" as any)
+        .select("*")
+        .eq("receipt_code", invoiceNumber)
+        .maybeSingle();
+      detailedRow = data;
+    }
+
+    let resolvedCompanyId = companyId;
+    if (detailedRow) {
+      resolvedCompanyId = detailedRow.company_id;
+      
+      let receiptCode = detailedRow.receipt_code;
+      if (!receiptCode && appointmentId) {
+        const { data: appt } = await client
+          .from("appointments" as any)
+          .select("receipt_code")
+          .eq("id", appointmentId)
+          .maybeSingle();
+        if (appt && (appt as any).receipt_code) {
+          receiptCode = (appt as any).receipt_code;
+        }
+      }
+
+      await client
+        .from("company_billing_detailed" as any)
+        .update({
+          consultation_fee: detailedRow.billing_status === "paid" 
+            ? Number(detailedRow.consultation_fee || 0) 
+            : (isPaid ? invoiceTotal : 0.00),
+          invoice_id: invoiceId,
+          invoice_no: invoiceNumber,
+          receipt_code: receiptCode,
+          updated_by: updatedBy,
+          updated_at: new Date().toISOString()
+        } as never)
+        .eq("id", detailedRow.id);
+    } else if (resolvedCompanyId) {
+      // Create detailed row
+      const { data: company } = await client
+        .from("companies" as any)
+        .select("company_name")
+        .eq("id", resolvedCompanyId)
+        .single();
+      const patientId = invoice.patientId || invoice.patient_id;
+      const { data: patient } = await client
+        .from("patients" as any)
+        .select("first_name, last_name")
+        .eq("id", patientId)
+        .single();
+      const patientName = patient ? `${(patient as any).first_name} ${(patient as any).last_name}` : "Unknown Patient";
+
+      let receiptCode = "";
+      let doctorName = "—";
+      if (appointmentId) {
+        const { data: appt } = await client
+          .from("appointments" as any)
+          .select("doctor_id, receipt_code")
+          .eq("id", appointmentId)
+          .maybeSingle();
+        if (appt) {
+          receiptCode = (appt as any).receipt_code || "";
+          if ((appt as any).doctor_id) {
+            doctorName = await resolveDoctorName((appt as any).doctor_id, client);
+          }
+        }
+      }
+
+      if (company) {
+        await client
+          .from("company_billing_detailed" as any)
+          .insert({
+            company_id: resolvedCompanyId,
+            company: (company as any).company_name,
+            patient: patientName,
+            consultation_date: invoice.created_at || invoice.createdAt || new Date().toISOString(),
+            doctor_name: doctorName,
+            service_type: "General Consultation",
+            receipt_code: receiptCode,
+            invoice_no: invoiceNumber,
+            consultation_fee: isPaid ? invoiceTotal : 0.00,
+            appointment_id: appointmentId || null,
+            invoice_id: invoiceId,
+            billing_status: "unpaid",
+            updated_by: updatedBy,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          } as never);
+      }
+    }
+
+    if (resolvedCompanyId) {
+      // Recalculate summary
+      const { data: unpaidDetailedList } = await client
+        .from("company_billing_detailed" as any)
+        .select("consultation_fee")
+        .eq("company_id", resolvedCompanyId)
+        .eq("billing_status", "unpaid");
+
+      const unpaidCount = unpaidDetailedList?.length || 0;
+      const totalBilled = (unpaidDetailedList || []).reduce((sum, row: any) => sum + Number(row.consultation_fee || 0), 0);
+
+      const { data: existingSummary } = await client
+        .from("company_billing_summary" as any)
+        .select("*")
+        .eq("company_id", resolvedCompanyId)
+        .maybeSingle();
+
+      if (existingSummary) {
+        const discount = Number((existingSummary as any).discount || 0);
+        // If there are new unpaid items, always reset to unpaid so the new bill is visible
+        const paymentStatus = unpaidCount > 0 ? "unpaid" : ((existingSummary as any).payment_status || "unpaid");
+        const totalAmountDue = Math.max(0, totalBilled - discount);
+
+        await client
+          .from("company_billing_summary" as any)
+          .update({
+            total_consultations: unpaidCount,
+            total_billed: totalBilled,
+            total_amount_due: totalAmountDue,
+            payment_status: paymentStatus,
+            updated_by: updatedBy,
+            updated_at: new Date().toISOString()
+          } as never)
+          .eq("company_id", resolvedCompanyId);
+      } else {
+        const { data: company } = await client
+          .from("companies" as any)
+          .select("company_name, company_code")
+          .eq("id", resolvedCompanyId)
+          .single();
+        const companyName = company ? (company as any).company_name : "Unknown Company";
+        const companyCode = company ? (company as any).company_code : "";
+
+        await client
+          .from("company_billing_summary" as any)
+          .insert({
+            company_id: resolvedCompanyId,
+            company_name: companyName,
+            company_code: companyCode,
+            total_consultations: unpaidCount,
+            total_billed: totalBilled,
+            total_amount_due: totalBilled,
+            discount: 0.00,
+            payment_status: "unpaid",
+            updated_by: updatedBy,
+            updated_at: new Date().toISOString()
+          } as never);
+      }
+    }
+  }
+}
+
+// ── Companies dropdown helper ─────────────────────────────────────────────────
+export interface CompanyDropdownItem {
+  id: string;
+  companyName: string;
+  companyCode?: string | null;
+}
+
+export async function getCompaniesListForDropdown(): Promise<CompanyDropdownItem[]> {
+  if (!isSupabaseConfigured) {
+    // Demo mode — pull from local-db if companies exist there
+    try {
+      const db = (await import('./local-db')).getDatabase();
+      const list = (db as any).companies ?? [];
+      return list.map((c: any) => ({ id: c.id, companyName: c.companyName ?? c.company_name ?? 'Unknown', companyCode: c.companyCode ?? c.company_code ?? null }));
+    } catch {
+      return [];
+    }
+  }
+  const client = requireSupabase();
+  const { data, error } = await (client as any)
+    .from('companies')
+    .select('id, company_name, company_code')
+    .order('company_name', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    companyName: row.company_name ?? '',
+    companyCode: row.company_code ?? null,
+  }));
+}
+
+// ── Patient lab result files ──────────────────────────────────────────────────
+export interface PatientLabResultFile {
+  id: string;
+  patientId: string;
+  uploadedBy: string | null;
+  fileName: string;
+  fileUrl: string;
+  notes: string | null;
+  uploadedAt: string;
+  createdAt: string;
+}
+
+export async function getPatientLabResultFiles(
+  patientId: string,
+): Promise<PatientLabResultFile[]> {
+  if (!isSupabaseConfigured) {
+    return []; // Not supported in demo mode
+  }
+  const client = requireSupabase();
+  const { data, error } = await (client as any)
+    .from('patient_lab_results')
+    .select('*')
+    .eq('patient_id', patientId)
+    .order('uploaded_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    patientId: row.patient_id,
+    uploadedBy: row.uploaded_by ?? null,
+    fileName: row.file_name,
+    fileUrl: row.file_url,
+    notes: row.notes ?? null,
+    uploadedAt: row.uploaded_at,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function uploadPatientLabResultFile(input: {
+  patientId: string;
+  uploadedBy: string | null;
+  file: File;
+  notes?: string | null;
+}): Promise<PatientLabResultFile> {
+  if (!isSupabaseConfigured) {
+    throw new Error('Lab result upload is not supported in demo mode.');
+  }
+  const client = requireSupabase();
+
+  // Upload file to Supabase Storage
+  const filePath = `${input.patientId}/${Date.now()}_${input.file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+  const { data: storageData, error: storageError } = await (client as any)
+    .storage
+    .from('lab-results')
+    .upload(filePath, input.file, { upsert: false });
+
+  if (storageError) throw storageError;
+
+  // Get public URL
+  const { data: urlData } = (client as any)
+    .storage
+    .from('lab-results')
+    .getPublicUrl(filePath);
+
+  const fileUrl: string = urlData?.publicUrl ?? storageData?.path ?? filePath;
+
+  // Insert record in DB
+  const { data, error } = await (client as any)
+    .from('patient_lab_results')
+    .insert({
+      patient_id: input.patientId,
+      uploaded_by: input.uploadedBy ?? null,
+      file_name: input.file.name,
+      file_url: fileUrl,
+      notes: input.notes ?? null,
+      uploaded_at: new Date().toISOString(),
+    })
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  const row = data as any;
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    uploadedBy: row.uploaded_by ?? null,
+    fileName: row.file_name,
+    fileUrl: row.file_url,
+    notes: row.notes ?? null,
+    uploadedAt: row.uploaded_at,
+    createdAt: row.created_at,
   };
 }

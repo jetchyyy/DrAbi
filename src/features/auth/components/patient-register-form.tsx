@@ -15,6 +15,7 @@ import { Select } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
 import { isSupabaseConfigured } from '../../../lib/supabase';
 import { useAuth } from '../auth-context';
+import { getCompaniesListForDropdown, type CompanyDropdownItem } from '../../../lib/supabase-clinic';
 
 const REGISTER_DRAFT_KEY = 'patient-register-draft-v1';
 const bloodTypeOptions = ['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const;
@@ -61,6 +62,7 @@ const registerSchema = z.object({
   birthDate: z.string().min(1, 'Birth date is required'),
   address: z.string().min(1, 'Address is required'),
   allergies: z.string().optional(),
+  companyId: z.string().optional(),
   medicalHistory: z.string().optional(),
   emergencyContactName: z.string().min(1, 'Emergency contact name is required'),
   emergencyContactPhone: z.string().min(1, 'Emergency contact phone is required'),
@@ -85,7 +87,7 @@ const stepConfigs: ReadonlyArray<{
   {
     title: 'Contact & demographics',
     description: 'So we can reach you and tailor care.',
-    fields: ['phone', 'sex', 'bloodType', 'birthDate', 'address'],
+    fields: ['phone', 'sex', 'bloodType', 'birthDate', 'address', 'companyId'],
   },
   {
     title: 'Health snapshot',
@@ -111,6 +113,11 @@ export function PatientRegisterForm() {
   const [allergyInput, setAllergyInput] = useState('');
   const [showAllergyDropdown, setShowAllergyDropdown] = useState(false);
   const allergyContainerRef = useRef<HTMLDivElement>(null);
+  const [companySearch, setCompanySearch] = useState('');
+  const [companiesList, setCompaniesList] = useState<CompanyDropdownItem[]>([]);
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const [selectedCompanyName, setSelectedCompanyName] = useState('');
+  const companyContainerRef = useRef<HTMLDivElement>(null);
   const [confirmModalEmail, setConfirmModalEmail] = useState('');
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -125,6 +132,7 @@ export function PatientRegisterForm() {
       birthDate: '',
       address: '',
       allergies: '',
+      companyId: '',
       medicalHistory: '',
       emergencyContactName: '',
       emergencyContactPhone: '+63',
@@ -231,6 +239,21 @@ export function PatientRegisterForm() {
     return () => document.removeEventListener('mousedown', handler);
   }, [showAllergyDropdown]);
 
+  useEffect(() => {
+    void getCompaniesListForDropdown().then(setCompaniesList).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!showCompanyDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (companyContainerRef.current && !companyContainerRef.current.contains(e.target as Node)) {
+        setShowCompanyDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showCompanyDropdown]);
+
   const allergySuggestions = allergyOptions
     .filter((opt) => opt !== '')
     .filter((opt) =>
@@ -254,6 +277,7 @@ export function PatientRegisterForm() {
         medicalHistory: computedMedicalHistory,
         emergencyContactName: values.emergencyContactName,
         emergencyContactPhone: values.emergencyContactPhone,
+        companyId: values.companyId || undefined,
       }, captchaToken);
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(REGISTER_DRAFT_KEY);
@@ -460,6 +484,58 @@ export function PatientRegisterForm() {
                   ))}
                 </Select>
               </FormField>
+              <div className="sm:col-span-2">
+                <FormField error={undefined}>
+                  <Label htmlFor="company">Company (optional)</Label>
+                  <div className="relative" ref={companyContainerRef}>
+                    <Input
+                      id="company"
+                      autoComplete="off"
+                      placeholder="Search company..."
+                      value={companySearch}
+                      onChange={(e) => {
+                        setCompanySearch(e.target.value);
+                        setSelectedCompanyName('');
+                        form.setValue('companyId', '');
+                        setShowCompanyDropdown(true);
+                      }}
+                      onFocus={() => setShowCompanyDropdown(true)}
+                    />
+                    {selectedCompanyName ? (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-emerald-600 font-semibold">
+                        ✓ {selectedCompanyName}
+                      </span>
+                    ) : null}
+                    {showCompanyDropdown && companiesList.filter(c =>
+                      !companySearch || c.companyName.toLowerCase().includes(companySearch.toLowerCase())
+                    ).length > 0 ? (
+                      <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                        {companiesList
+                          .filter(c => !companySearch || c.companyName.toLowerCase().includes(companySearch.toLowerCase()))
+                          .slice(0, 8)
+                          .map((company) => (
+                            <button
+                              key={company.id}
+                              type="button"
+                              className="flex w-full items-center px-3.5 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setCompanySearch(company.companyName);
+                                setSelectedCompanyName(company.companyName);
+                                form.setValue('companyId', company.id);
+                                setShowCompanyDropdown(false);
+                              }}
+                            >
+                              <span className="font-medium">{company.companyName}</span>
+                              {company.companyCode ? <span className="ml-2 text-xs text-slate-400">{company.companyCode}</span> : null}
+                            </button>
+                          ))}
+                      </div>
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-slate-500">Select your employer or company if applicable.</p>
+                </FormField>
+              </div>
               <div className="sm:col-span-2">
                 <FormField error={form.formState.errors.birthDate?.message}>
                   <Label htmlFor="birthMonth">Date of birth</Label>

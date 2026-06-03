@@ -36,6 +36,7 @@ interface AuthContextValue {
     medicalHistory: string;
     emergencyContactName: string;
     emergencyContactPhone: string;
+    companyId?: string | null;
   }, captchaToken?: string) => Promise<{ requiresEmailConfirmation: boolean }>;
   can: (permission: Permission) => boolean;
 }
@@ -370,6 +371,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
                 medical_history: input.medicalHistory,
                 emergency_contact_name: input.emergencyContactName,
                 emergency_contact_phone: input.emergencyContactPhone,
+                company_id: input.companyId ?? null,
               },
             },
           });
@@ -406,6 +408,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
               medicalHistory: input.medicalHistory,
               emergencyContactName: input.emergencyContactName,
               emergencyContactPhone: input.emergencyContactPhone,
+              companyId: input.companyId ?? null,
             },
           );
         }

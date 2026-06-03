@@ -8,7 +8,8 @@ import {
   Stethoscope,
   XCircle,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { CouponJoinModal } from "../../components/ui/coupon-join-modal";
 
 import { Badge } from "../../components/ui/badge";
 import { Card, CardTitle } from "../../components/ui/card";
@@ -31,6 +32,7 @@ function formatFeeLabel(feeType: "consultation" | "follow_up" | "service_fee" | 
 }
 
 export function MyBookingsPage() {
+  const navigate = useNavigate();
   const { profile, session } = useAuth();
   const { data: bookings = [] } = useMyBookings(
     session?.user.id ?? profile?.email ?? null,
@@ -38,6 +40,7 @@ export function MyBookingsPage() {
   const { data: teleconsultAppointments = [] } = useMyTeleconsultAppointments();
   const [expandedPastId, setExpandedPastId] = useState<string | null>(null);
   const [openReceiptId, setOpenReceiptId] = useState<string | null>(null);
+  const [pendingJoinAppointment, setPendingJoinAppointment] = useState<{ joinPath: string; serviceId: string } | null>(null);
 
   const activeBookings = bookings.filter(
     (b) => b.status !== "cancelled" && b.status !== "completed",
@@ -112,12 +115,18 @@ export function MyBookingsPage() {
                       {appointment.teleconsultationPlatform}
                     </Badge>
                     {isTeleconsultJoinableStatus(appointment.status) ? (
-                      <Link
-                        className="mt-3 inline-flex text-sm font-semibold text-[var(--color-primary)]"
-                        to={appointment.joinPath}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPendingJoinAppointment({
+                            joinPath: appointment.joinPath,
+                            serviceId: appointment.serviceId ?? "",
+                          })
+                        }
+                        className="mt-3 inline-flex text-sm font-semibold text-[var(--color-primary)] hover:underline"
                       >
                         Join teleconsult
-                      </Link>
+                      </button>
                     ) : null}
                   </div>
                 </div>
@@ -400,6 +409,18 @@ export function MyBookingsPage() {
             </div>
           )}
         </div>
+      )}
+      {pendingJoinAppointment && (
+        <CouponJoinModal
+          isOpen={true}
+          onClose={() => setPendingJoinAppointment(null)}
+          onValidationSuccess={() => {
+            const path = pendingJoinAppointment.joinPath;
+            setPendingJoinAppointment(null);
+            navigate(path);
+          }}
+          serviceId={pendingJoinAppointment.serviceId}
+        />
       )}
     </div>
   );

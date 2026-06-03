@@ -231,7 +231,7 @@ export function usePatientBookings(patientId: string | null) {
   });
 }
 
-export function usePatientConsultations(patientId: string | null) {
+export function usePatientConsultations(patientId: string | null, options?: any) {
   return useQuery({
     queryKey: queryKeys.patientConsultations(patientId),
     queryFn: async () => {
@@ -239,10 +239,11 @@ export function usePatientConsultations(patientId: string | null) {
       return listConsultationsByPatientIdLiveOrDemo(patientId);
     },
     enabled: Boolean(patientId),
+    ...options,
   });
 }
 
-export function usePatientPrescriptions(patientId: string | null) {
+export function usePatientPrescriptions(patientId: string | null, options?: any) {
   return useQuery({
     queryKey: queryKeys.patientPrescriptions(patientId),
     queryFn: async () => {
@@ -250,10 +251,11 @@ export function usePatientPrescriptions(patientId: string | null) {
       return listPrescriptionsByPatientIdLiveOrDemo(patientId);
     },
     enabled: Boolean(patientId),
+    ...options,
   });
 }
 
-export function usePatientMedicalCertificates(patientId: string | null) {
+export function usePatientMedicalCertificates(patientId: string | null, options?: any) {
   return useQuery({
     queryKey: queryKeys.patientMedicalCertificates(patientId),
     queryFn: async () => {
@@ -261,6 +263,7 @@ export function usePatientMedicalCertificates(patientId: string | null) {
       return listMedicalCertificatesByPatientIdLiveOrDemo(patientId);
     },
     enabled: Boolean(patientId),
+    ...options,
   });
 }
 
