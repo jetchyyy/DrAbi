@@ -31,6 +31,8 @@ import {
   formatCurrency,
   getPhilippineDateKey,
   getPhilippineTimeKey,
+  toUtcIsoFromPhilippineDateTime,
+  toPhilippineDateTimeLocalValue,
 } from "../../lib/utils";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
 import { printHtmlDocument } from "../../lib/print";
@@ -71,7 +73,7 @@ const walkInWizardSchema = z.object({
     serviceId: z.string().min(1, "Service is required."),
     status: z.enum(["scheduled", "confirmed", "in_progress", "completed"]),
     source: z.enum(["internal", "portal"]),
-    visitType: z.enum(["in_person", "teleconsultation"]),
+    visitType: z.enum(["teleconsultation", "in_person"]),
     scheduledAt: z.string().min(1, "Schedule is required."),
     reason: z.string().min(4, "Reason is required."),
     notes: z.string().min(2, "Notes are required."),
@@ -138,8 +140,63 @@ type BillingReceiptPrintState = {
 
 type WalkInWizardStage = "patient" | "appointment" | "billing" | "complete";
 
+const WALK_IN_TIME_SLOTS = [
+  { value: "10:00", label: "10:00 AM" },
+  { value: "10:30", label: "10:30 AM" },
+  { value: "11:00", label: "11:00 AM" },
+  { value: "11:30", label: "11:30 AM" },
+  { value: "12:00", label: "12:00 PM" },
+  { value: "12:30", label: "12:30 PM" },
+  { value: "13:00", label: "01:00 PM" },
+  { value: "13:30", label: "01:30 PM" },
+  { value: "14:00", label: "02:00 PM" },
+  { value: "14:30", label: "02:30 PM" },
+  { value: "15:00", label: "03:00 PM" },
+  { value: "15:30", label: "03:30 PM" },
+  { value: "16:00", label: "04:00 PM" },
+  { value: "16:30", label: "04:30 PM" },
+  { value: "17:00", label: "05:00 PM" },
+  { value: "17:30", label: "05:30 PM" },
+  { value: "18:00", label: "06:00 PM" },
+  { value: "18:30", label: "06:30 PM" },
+  { value: "19:00", label: "07:00 PM" },
+  { value: "19:30", label: "07:30 PM" },
+  { value: "20:00", label: "08:00 PM" },
+  { value: "20:30", label: "08:30 PM" },
+  { value: "21:00", label: "09:00 PM" },
+  { value: "21:30", label: "09:30 PM" },
+  { value: "22:00", label: "10:00 PM" },
+];
+
 function getDefaultWalkInScheduledAtValue() {
-  return `${getPhilippineDateKey()}T${getPhilippineTimeKey().slice(0, 5)}`;
+  const dateKey = getPhilippineDateKey();
+  const timeKey = getPhilippineTimeKey();
+  const [hStr, mStr] = timeKey.split(":");
+  let hour = Number(hStr);
+  const minutes = Number(mStr);
+
+  let newMinutes = 0;
+  if (minutes >= 15 && minutes < 45) {
+    newMinutes = 30;
+  } else if (minutes >= 45) {
+    newMinutes = 0;
+    hour += 1;
+  } else {
+    newMinutes = 0;
+  }
+
+  if (hour < 10) {
+    hour = 10;
+    newMinutes = 0;
+  } else if (hour >= 22) {
+    hour = 22;
+    newMinutes = 0;
+  }
+
+  const paddedHour = String(hour).padStart(2, "0");
+  const paddedMinutes = String(newMinutes).padStart(2, "0");
+
+  return `${dateKey}T${paddedHour}:${paddedMinutes}`;
 }
 
 function getAgeLabelFromBirthDate(birthDate: string) {
@@ -716,7 +773,7 @@ export function WalkInWizardModal({
         serviceId: defaultService?.id ?? "",
         status: "confirmed",
         source: "internal",
-        visitType: "in_person",
+        visitType: "teleconsultation",
         scheduledAt: getDefaultWalkInScheduledAtValue(),
         reason: "Walk-in consultation",
         notes: "Front desk walk-in flow",
@@ -763,6 +820,105 @@ export function WalkInWizardModal({
   const selectedBillingPatientId = form.watch("billing.patientId");
   const selectedBillingCompanyId = form.watch("billing.companyId");
   const billingLineItems = form.watch("billing.items");
+
+  const selectedScheduledAt = form.watch("appointment.scheduledAt");
+  const selectedScheduleDate = selectedScheduledAt?.slice(0, 10) ?? "";
+  const selectedScheduleTime = selectedScheduledAt?.slice(11, 16) ?? "";
+
+  const handleDateChange = (date: string) => {
+    form.setValue(
+      "appointment.scheduledAt",
+      `${date}T${selectedScheduleTime}`,
+      {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      },
+    );
+  };
+
+  const handleTimeChange = (time: string) => {
+    form.setValue(
+      "appointment.scheduledAt",
+      `${selectedScheduleDate}T${time}`,
+      {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      },
+    );
+  };
+
+  const todayDateKey = getPhilippineDateKey();
+  const currentTimeKey = getPhilippineTimeKey();
+
+  const bookedSlots = useMemo(() => {
+    if (!selectedScheduleDate || !selectedDoctorId) {
+      return new Set<string>();
+    }
+
+    const set = new Set<string>();
+    appointments.forEach((appt) => {
+      if (appt.status === "cancelled" || appt.status === "no_show") {
+        return;
+      }
+      if (appt.doctorId !== selectedDoctorId) {
+        return;
+      }
+
+      const localDateTime = toPhilippineDateTimeLocalValue(appt.scheduledAt);
+      const apptDate = localDateTime.slice(0, 10);
+      const apptTime = localDateTime.slice(11, 16);
+
+      if (apptDate === selectedScheduleDate) {
+        set.add(apptTime);
+      }
+    });
+
+    return set;
+  }, [appointments, selectedScheduleDate, selectedDoctorId]);
+
+  useEffect(() => {
+    if (!selectedScheduleDate) return;
+
+    const activeSlots = WALK_IN_TIME_SLOTS.filter((slot) => {
+      const isPast =
+        selectedScheduleDate === todayDateKey && slot.value <= currentTimeKey;
+      const isBooked = bookedSlots.has(slot.value);
+      return !isPast && !isBooked;
+    });
+
+    if (activeSlots.length > 0) {
+      const isCurrentPast =
+        selectedScheduleDate === todayDateKey &&
+        selectedScheduleTime <= currentTimeKey;
+      const isCurrentBooked = bookedSlots.has(selectedScheduleTime);
+
+      if (
+        isCurrentPast ||
+        isCurrentBooked ||
+        !WALK_IN_TIME_SLOTS.some((s) => s.value === selectedScheduleTime)
+      ) {
+        form.setValue(
+          "appointment.scheduledAt",
+          `${selectedScheduleDate}T${activeSlots[0].value}`,
+          {
+            shouldDirty: true,
+            shouldTouch: true,
+            shouldValidate: true,
+          },
+        );
+      }
+    }
+  }, [
+    selectedScheduleDate,
+    selectedDoctorId,
+    bookedSlots,
+    selectedScheduleTime,
+    todayDateKey,
+    currentTimeKey,
+    form,
+  ]);
   const today = new Date();
   const currentYear = today.getFullYear();
   const currentMonth = today.getMonth() + 1;
@@ -960,6 +1116,22 @@ export function WalkInWizardModal({
       shouldDirty: true,
       shouldValidate: false,
     });
+    if (patient.companyId) {
+      form.setValue("billing.companyId", patient.companyId, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      const match = companies.find((c) => c.id === patient.companyId);
+      if (match) {
+        setCompanySearch(match.companyName);
+      }
+    } else {
+      form.setValue("billing.companyId", "", {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      setCompanySearch("");
+    }
   };
 
   const handleBirthDatePartChange = (
@@ -1145,7 +1317,7 @@ export function WalkInWizardModal({
         serviceId: defaultService?.id ?? "",
         status: "confirmed",
         source: "internal",
-        visitType: "in_person",
+        visitType: "teleconsultation",
         scheduledAt: getDefaultWalkInScheduledAtValue(),
         reason: "Walk-in consultation",
         notes: "Front desk walk-in flow",
@@ -1377,7 +1549,8 @@ export function WalkInWizardModal({
     const selectedCompany = billingValues.companyId
       ? companies.find((c) => c.id === billingValues.companyId)
       : null;
-    const companyCodePart = selectedCompany?.companyCode?.trim().toUpperCase() || "GEN";
+    const companyCodePart =
+      selectedCompany?.companyCode?.trim().toUpperCase() || "GEN";
     const now = new Date();
     const yearPart = now.getFullYear();
     const monthPart = String(now.getMonth() + 1).padStart(2, "0");
@@ -1443,20 +1616,9 @@ export function WalkInWizardModal({
       }
     }
 
-    const scheduledAtUtc = new Date().toISOString();
+    const scheduledAtUtc = toUtcIsoFromPhilippineDateTime(values.scheduledAt);
     const scheduledDate = new Date(scheduledAtUtc);
-    const minutes = scheduledDate.getMinutes();
-    const estimatedEndDate = new Date(scheduledDate);
-
-    if (minutes < 15) {
-      estimatedEndDate.setMinutes(30, 0, 0);
-    } else if (minutes >= 30) {
-      estimatedEndDate.setHours(estimatedEndDate.getHours() + 1);
-      estimatedEndDate.setMinutes(0, 0, 0);
-    } else {
-      estimatedEndDate.setMinutes(30, 0, 0);
-    }
-
+    const estimatedEndDate = new Date(scheduledDate.getTime() + 30 * 60 * 1000);
     const estimatedEnd = estimatedEndDate.toISOString();
 
     const appointment = await createAppointment.mutateAsync({
@@ -1556,7 +1718,8 @@ export function WalkInWizardModal({
     const billingCompany = values.companyId
       ? companies.find((c) => c.id === values.companyId)
       : null;
-    const rcCompanyCode = billingCompany?.companyCode?.trim().toUpperCase() || "GEN";
+    const rcCompanyCode =
+      billingCompany?.companyCode?.trim().toUpperCase() || "GEN";
     const rcNow = new Date();
     const rcYear = rcNow.getFullYear();
     const rcMonth = String(rcNow.getMonth() + 1).padStart(2, "0");
@@ -1616,6 +1779,43 @@ export function WalkInWizardModal({
         companyId: values.companyId || null,
       } as never,
     });
+
+    if (createdPatient) {
+      const patientRecord = patients.find((p) => p.id === createdPatient.id);
+      if (patientRecord && patientRecord.companyId !== (values.companyId || null)) {
+        await updatePatient.mutateAsync({
+          patientId: patientRecord.id,
+          payload: {
+            userId: patientRecord.userId ?? null,
+            qrCode: patientRecord.qrCode,
+            intakeSource: patientRecord.intakeSource,
+            visitStatus: patientRecord.visitStatus,
+            lastClinicVisitAt: patientRecord.lastClinicVisitAt ?? null,
+            firstName: patientRecord.firstName,
+            lastName: patientRecord.lastName,
+            sex: patientRecord.sex,
+            birthDate: patientRecord.birthDate,
+            mobileNumber: patientRecord.mobileNumber,
+            email: patientRecord.email,
+            address: patientRecord.address,
+            bloodType: patientRecord.bloodType,
+            allergies: patientRecord.allergies,
+            medicalHistory: patientRecord.medicalHistory,
+            emergencyContactName: patientRecord.emergencyContactName,
+            emergencyContactPhone: patientRecord.emergencyContactPhone,
+            temperature: patientRecord.temperature,
+            bloodPressure: patientRecord.bloodPressure,
+            heartRate: patientRecord.heartRate,
+            o2Sat: patientRecord.o2Sat,
+            respiratoryRate: patientRecord.respiratoryRate,
+            weight: patientRecord.weight,
+            height: patientRecord.height,
+            vitalsRecordedAt: patientRecord.vitalsRecordedAt ?? null,
+            companyId: values.companyId || null,
+          },
+        });
+      }
+    }
 
     if (createdAppointment.visitType !== "teleconsultation") {
       openQueuePrint({
@@ -2323,15 +2523,53 @@ export function WalkInWizardModal({
                 label="Visit type"
               >
                 <Select {...form.register("appointment.visitType")}>
-                  <option value="in_person">In person</option>
                   <option value="teleconsultation">Teleconsultation</option>
+
+                  <option value="in_person">In person</option>
                 </Select>
               </FormField>
 
-              <div className="rounded-sm border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                Appointment schedule is now queue-based. When you create this
-                appointment, the system will auto-assign queue number, scheduled
-                time, and estimated end time.
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  error={
+                    form.formState.errors.appointment?.scheduledAt?.message
+                  }
+                  label="Appointment Date"
+                >
+                  <Input
+                    type="date"
+                    value={selectedScheduleDate}
+                    onChange={(e) => handleDateChange(e.target.value)}
+                  />
+                </FormField>
+                <FormField
+                  error={
+                    form.formState.errors.appointment?.scheduledAt?.message
+                  }
+                  label="Appointment Time Slot"
+                >
+                  <Select
+                    value={selectedScheduleTime}
+                    onChange={(e) => handleTimeChange(e.target.value)}
+                  >
+                    {WALK_IN_TIME_SLOTS.map((slot) => {
+                      const isPast =
+                        selectedScheduleDate === todayDateKey &&
+                        slot.value <= currentTimeKey;
+                      const isBooked = bookedSlots.has(slot.value);
+                      return (
+                        <option
+                          key={slot.value}
+                          value={slot.value}
+                          disabled={isPast || isBooked}
+                        >
+                          {slot.label}{" "}
+                          {isBooked ? " (Booked)" : isPast ? " (Past)" : ""}
+                        </option>
+                      );
+                    })}
+                  </Select>
+                </FormField>
               </div>
 
               <FormField
@@ -2616,7 +2854,10 @@ export function WalkInWizardModal({
                             }}
                             type="button"
                           >
-                            {company.companyName} {company.companyCode ? `(${company.companyCode})` : ""}
+                            {company.companyName}{" "}
+                            {company.companyCode
+                              ? `(${company.companyCode})`
+                              : ""}
                           </button>
                         ))
                       ) : (

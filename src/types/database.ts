@@ -282,7 +282,7 @@ export interface Database {
           address: string | null;
           blood_type: string | null;
           allergies: string;
-          medical_history: string;
+           medical_history: string;
           emergency_contact_name: string | null;
           emergency_contact_phone: string | null;
           temperature: string | null;
@@ -293,6 +293,7 @@ export interface Database {
           weight: string | null;
           height: string | null;
           vitals_recorded_at: string | null;
+          company_id: string | null;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -325,6 +326,7 @@ export interface Database {
           weight?: string | null;
           height?: string | null;
           vitals_recorded_at?: string | null;
+          company_id?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["patients"]["Insert"]>;
       };
