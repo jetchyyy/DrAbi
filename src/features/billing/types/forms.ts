@@ -20,6 +20,7 @@ export const billingSchema = z
     patientId: z.string().min(1, "Patient is required."),
     bookingId: z.string().optional(),
     appointmentId: z.string().optional(),
+    companyId: z.string().optional().nullable(),
     items: z
       .array(invoiceItemSchema)
       .min(1, "At least one invoice item is required."),

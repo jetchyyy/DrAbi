@@ -17,6 +17,7 @@ export type Permission =
   | "consultations.manage"
   | "billing.view"
   | "billing.manage"
+  | "companies.manage"
   | "pos.view"
   | "pos.manage"
   | "inventory.view"
@@ -243,6 +244,7 @@ export interface Appointment extends BaseRecord {
   notes: string;
   queue_number?: string | null;
   estimated_end?: string | null;
+  receipt_code?: string | null;
   teleconsultationPlatform?: string | null;
   teleconsultationUrl?: string | null;
   teleconsultationAccessInstructions?: string | null;
@@ -250,6 +252,7 @@ export interface Appointment extends BaseRecord {
   completedBy?: string | null;
   completedAt?: string | null;
   additionalDoctorIds?: string[] | null;
+  companyId?: string | null;
 }
 
 export interface DoctorAvailability extends BaseRecord {
@@ -283,7 +286,7 @@ export interface Consultation extends BaseRecord {
   assessment?: string;
   plan?: string;
   outcome?: string;
-  payoutStatus?: 'pending' | 'paid';
+  payoutStatus?: "pending" | "paid";
   payoutSettledAt?: string | null;
 }
 
@@ -380,7 +383,7 @@ export interface InvoiceItem extends BaseRecord {
   unitPrice: number;
   category: "consultation" | "laboratory" | "medicine" | "other";
   referenceId?: string | null;
-  referenceType?: 'consultation' | 'inventory_usage' | 'lab_order' | null;
+  referenceType?: "consultation" | "inventory_usage" | "lab_order" | null;
 }
 
 export interface Invoice extends BaseRecord {
@@ -389,12 +392,12 @@ export interface Invoice extends BaseRecord {
   invoiceNumber: string;
   paymentStatus: PaymentStatus;
   subtotal: number;
-  discountType?: 'none' | 'senior' | 'pwd' | 'philhealth' | 'custom' | null;
+  discountType?: "none" | "senior" | "pwd" | "philhealth" | "custom" | null;
   discountAmount?: number | null;
   taxAmount?: number | null;
   total: number;
+  companyId?: string | null;
 }
-
 
 export interface Payment extends BaseRecord {
   invoiceId: string;
@@ -409,6 +412,18 @@ export interface Supplier extends BaseRecord {
   contact_person: string;
   phone: string;
   email: string;
+}
+
+export interface Company extends BaseRecord {
+  companyCode: string;
+  companyName: string;
+  contactPerson: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  billingCycle: string;
+  paymentTerms: string;
+  isActive: boolean;
 }
 
 export interface InventoryCategory extends BaseRecord {

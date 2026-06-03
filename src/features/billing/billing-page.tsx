@@ -47,6 +47,7 @@ import {
   useUpdatePayment,
   usePaymentsForInvoice,
 } from './api/billing-mutations';
+import { useCompanies } from '../companies/api/companies-hooks';
 
 import {
   billingSchema,
@@ -185,6 +186,8 @@ export function BillingPage() {
 
   const { data: labServiceOptions = [] } = useLabServiceOptions();
 
+  const { data: companies = [] } = useCompanies();
+
   const createInvoiceMutation = useCreateInvoice();
 
   const updateInvoiceMutation = useUpdateInvoice();
@@ -206,6 +209,7 @@ export function BillingPage() {
       paymentStatus: 'unpaid',
       paymentType: 'cash',
       referenceNumber: '',
+      companyId: '',
       items: [
         {
           description: 'General Consultation',
@@ -511,6 +515,7 @@ export function BillingPage() {
       paymentStatus: 'unpaid',
       paymentType: 'cash',
       referenceNumber: '',
+      companyId: '',
       items: [
         {
           description: 'General Consultation',
@@ -611,6 +616,7 @@ export function BillingPage() {
       discountType: 'none',
       discountAmount: 0,
       taxAmount: 0,
+      companyId: '',
       items: [
         {
           description: 'General Consultation',
@@ -653,6 +659,7 @@ export function BillingPage() {
       discountType: invoice.discountType ?? 'none',
       discountAmount: invoice.discountAmount ?? 0,
       taxAmount: invoice.taxAmount ?? 0,
+      companyId: invoice.companyId ?? '',
       items: items.map((item) => ({
         description: item.description,
         category: item.category,
@@ -1265,6 +1272,17 @@ export function BillingPage() {
                     </Select>
                   </FormField>
                   <p className="text-xs text-slate-500">Linking to an appointment ensures payment verification is tied to the specific session, preventing old invoices from authorizing access.</p>
+
+                  <FormField error={form.formState.errors.companyId?.message} label="Company (optional)">
+                    <Select {...form.register('companyId')}>
+                      <option value="">No Company</option>
+                      {companies.map((company) => (
+                        <option key={company.id} value={company.id}>
+                          {company.companyName} {company.companyCode ? `(${company.companyCode})` : ''}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormField>
                 </div>
 
                 {selectedPatientId && totalUnbilledCount > 0 ? (
