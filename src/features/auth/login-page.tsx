@@ -64,7 +64,7 @@ export function LoginPage() {
               className="h-[3.25rem] w-auto max-w-[13rem] object-contain object-left opacity-98 sm:h-14 xl:h-[3.625rem]"
               decoding="async"
               height={90}
-              src="/logo.png"
+              src={clinic?.logoUrl || "/logo.png"}
               width={248}
             />
 
@@ -105,7 +105,7 @@ export function LoginPage() {
       {/* Right: Sign-in focus */}
       <div className="relative flex flex-1 flex-col items-center justify-center bg-white px-6 py-12 sm:py-14 lg:px-10 xl:px-12">
         <div className="absolute left-6 top-6 flex items-center gap-3 lg:hidden">
-          <img alt={`${clinicName} logo`} className="h-9 w-auto object-contain" decoding="async" src="/logo.png" width={200} />
+          <img alt={`${clinicName} logo`} className="h-9 w-auto object-contain" decoding="async" src={clinic?.logoUrl || "/logo.png"} width={200} />
           <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">{clinicName}</span>
         </div>
         <div className="absolute right-6 top-6">

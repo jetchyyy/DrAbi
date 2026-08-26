@@ -135,6 +135,8 @@ export interface ClinicSettings extends BaseRecord {
     close: string;
     enabled: boolean;
   }>;
+  clinicId?: string | null;
+  domain?: string | null;
 }
 
 export interface UserProfile extends BaseRecord {
@@ -151,6 +153,7 @@ export interface UserProfile extends BaseRecord {
   consultationFee?: number | null;
   followUpFee?: number | null;
   doctorSharePercentage?: number | null;
+  isSuperadmin?: boolean;
 }
 
 export interface AccessRoleTemplate extends BaseRecord {

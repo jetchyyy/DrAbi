@@ -11,10 +11,11 @@ function hexToRgbTriplet(primaryColor: string): string {
 interface SplashScreenProps {
   clinicName: string;
   primaryColor?: string;
+  logoUrl?: string;
 }
 
 /** Initial app splash: white canvas, prominent logo wordmark, tagline + ring loader. */
-export function SplashScreen({ clinicName, primaryColor = '#4cb154' }: SplashScreenProps) {
+export function SplashScreen({ clinicName, primaryColor = '#4cb154', logoUrl }: SplashScreenProps) {
   const rgb = hexToRgbTriplet(primaryColor);
 
   return (
@@ -29,7 +30,7 @@ export function SplashScreen({ clinicName, primaryColor = '#4cb154' }: SplashScr
           className="splash-screen-v2__mark -mb-2.5 h-[5.5rem] w-auto max-w-[min(100%,24rem)] object-contain object-center opacity-96 sm:-mb-3 sm:h-[6.625rem]"
           decoding="async"
           height={158}
-          src="/logo.png"
+          src={logoUrl || "/logo.png"}
           width={420}
         />
         <p className="splash-screen-v2__tag mt-2 text-[0.8125rem] font-medium leading-snug text-slate-500 sm:mt-2 sm:text-sm">

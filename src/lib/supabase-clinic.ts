@@ -542,6 +542,7 @@ export function mapProfile(
     role: mapRole(row.role),
     phone: row.phone ?? "",
     title: row.title,
+    isSuperadmin: (row as any).is_superadmin ?? false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
@@ -1017,8 +1018,8 @@ function mapDoctorAvailability(row: DoctorAvailabilityRow): DoctorAvailability {
     id: row.id,
     doctorId: row.doctor_id,
     dayOfWeek: row.day_of_week,
-    startTime: row.start_time,
-    endTime: row.end_time,
+    startTime: row.start_time ? row.start_time.slice(0, 5) : "",
+    endTime: row.end_time ? row.end_time.slice(0, 5) : "",
     slotMinutes: row.slot_minutes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -1071,8 +1072,8 @@ function mapSpecialistScheduleRowsToAvailability(
           id: `${row.id}:${dayOfWeek}:${slot.start}`,
           doctorId: specialistId,
           dayOfWeek,
-          startTime: slot.start,
-          endTime: slot.end,
+          startTime: slot.start ? slot.start.slice(0, 5) : "",
+          endTime: slot.end ? slot.end.slice(0, 5) : "",
           slotMinutes:
             Math.max(
               15,
@@ -2331,6 +2332,8 @@ function mapClinicSettings(row: ClinicSettingsRow): ClinicSettings {
     operatingHours: Array.isArray(row.operating_hours)
       ? (row.operating_hours as ClinicSettings["operatingHours"])
       : [],
+    clinicId: (row as any).clinic_id,
+    domain: (row as any).domain,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -2342,13 +2345,28 @@ export async function getClinicSettingsLiveOrDemo() {
   }
 
   const client = requireSupabase();
-  const { data, error } = await client
-    .from("clinic_settings")
-    .select("*")
-    .limit(1)
-    .maybeSingle();
+  const clinicId = import.meta.env.VITE_CLINIC_ID;
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+
+  let query = client.from("clinic_settings").select("*");
+
+  if (clinicId) {
+    query = query.eq("clinic_id", clinicId);
+  } else if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+    query = query.eq("domain", hostname);
+  } else {
+    query = query.limit(1);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
+    const { data: fallbackData } = await client
+      .from("clinic_settings")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
+    if (fallbackData) return mapClinicSettings(fallbackData);
     throw error;
   }
 
@@ -2364,13 +2382,20 @@ export async function updateClinicSettingsLiveOrDemo(
   }
 
   const client = requireSupabase();
+  const clinicId = import.meta.env.VITE_CLINIC_ID;
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
 
-  // Fetch the current row id (singleton — only one row exists)
-  const { data: existing, error: fetchError } = (await client
-    .from("clinic_settings")
-    .select("id")
-    .limit(1)
-    .maybeSingle()) as { data: { id: string } | null; error: any };
+  let query = client.from("clinic_settings").select("id");
+
+  if (clinicId) {
+    query = query.eq("clinic_id", clinicId);
+  } else if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+    query = query.eq("domain", hostname);
+  } else {
+    query = query.limit(1);
+  }
+
+  const { data: existing, error: fetchError } = (await query.maybeSingle()) as { data: { id: string } | null; error: any };
 
   if (fetchError) throw fetchError;
 

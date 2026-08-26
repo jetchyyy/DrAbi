@@ -86,9 +86,10 @@ export default function App() {
 
   const clinicName   = clinic?.clinicName   ?? defaultClinicSettings.clinicName;
   const primaryColor = clinic?.primaryColor ?? defaultClinicSettings.primaryColor;
+  const logoUrl      = clinic?.logoUrl      ?? defaultClinicSettings.logoUrl;
 
   if (showSplash) {
-    return <SplashScreen clinicName={clinicName} primaryColor={primaryColor} />;
+    return <SplashScreen clinicName={clinicName} primaryColor={primaryColor} logoUrl={logoUrl} />;
   }
 
   return (

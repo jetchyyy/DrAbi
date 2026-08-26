@@ -330,7 +330,7 @@ export function AppShell() {
               alt={`${clinic.clinicName || clinic.legalName || "Clinic"} logo`}
               className="h-8 w-auto object-contain"
               decoding="async"
-              src="/logo.png"
+              src={clinic.logoUrl || "/logo.png"}
             />
             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
               Operations Hub
@@ -381,7 +381,7 @@ export function AppShell() {
               alt={`${clinic.clinicName || clinic.legalName || "Clinic"} logo`}
               className="h-8 w-auto object-contain"
               decoding="async"
-              src="/logo.png"
+              src={clinic.logoUrl || "/logo.png"}
             />
             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
               Operations Hub
