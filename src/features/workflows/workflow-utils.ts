@@ -201,7 +201,13 @@ export function buildFrontDeskWorkflowRows(input: FrontDeskWorkflowInput) {
   const patientMap = new Map(input.patients.map((patient) => [patient.id, patient]));
 
   return input.appointments
-    .filter((appointment) => isTodayAppointment(appointment, input.todayDateKey) && appointment.patientId)
+    .filter(
+      (appointment) =>
+        (isTodayAppointment(appointment, input.todayDateKey) ||
+          appointment.status === "confirmed" ||
+          appointment.status === "in_progress") &&
+        appointment.patientId,
+    )
     .filter(
       (appointment) =>
         appointment.status !== "cancelled" && appointment.status !== "no_show",
@@ -215,7 +221,7 @@ export function buildFrontDeskWorkflowRows(input: FrontDeskWorkflowInput) {
         input.invoices,
         input.bookings,
       );
-      const missingVitals = !hasRecordedVitals(patient);
+      const missingVitals = appointment.visitType === "teleconsultation" ? false : !hasRecordedVitals(patient);
 
       return {
         id: appointment.id,
@@ -247,7 +253,13 @@ export function buildDoctorWorkflowRows(input: DoctorWorkflowInput) {
   const patientMap = new Map(input.patients.map((patient) => [patient.id, patient]));
 
   return input.appointments
-    .filter((appointment) => isTodayAppointment(appointment, input.todayDateKey) && appointment.patientId)
+    .filter(
+      (appointment) =>
+        (isTodayAppointment(appointment, input.todayDateKey) ||
+          appointment.status === "confirmed" ||
+          appointment.status === "in_progress") &&
+        appointment.patientId,
+    )
     .filter((appointment) =>
       input.doctorId ? appointment.doctorId === input.doctorId : true,
     )
@@ -264,7 +276,7 @@ export function buildDoctorWorkflowRows(input: DoctorWorkflowInput) {
         appointment,
         input.invoices,
       );
-      const missingVitals = !hasRecordedVitals(patient);
+      const missingVitals = appointment.visitType === "teleconsultation" ? false : !hasRecordedVitals(patient);
       const blockingReason = getDoctorBlockingReason(
         appointment,
         paymentState,

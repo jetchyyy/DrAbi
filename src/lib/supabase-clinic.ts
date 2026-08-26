@@ -1716,6 +1716,13 @@ export async function updateInvoiceLiveOrDemo(
     throw error;
   }
 
+  if (invoice.paymentStatus === "paid" && invoice.appointmentId) {
+    await client
+      .from("bookings")
+      .update({ payment_status: "paid" } as never)
+      .eq("appointment_id", invoice.appointmentId);
+  }
+
   const { error: deleteItemsError } = await client
     .from("invoice_items")
     .delete()
@@ -2040,6 +2047,11 @@ export async function createAppointmentLiveOrDemo(
     consultation_id: input.consultationId ?? null,
     completed_by: input.completedBy ?? null,
     completed_at: input.completedAt ?? null,
+    queue_number: (input as any).queue_number ?? null,
+    estimated_end: (input as any).estimated_end
+      ? new Date((input as any).estimated_end).toTimeString().slice(0, 8)
+      : null,
+    additional_doctor_ids: input.additionalDoctorIds ?? null,
   };
 
   const { data, error } = await client
@@ -2119,9 +2131,7 @@ export async function createPrescriptionLiveOrDemo(
     dosage: input.dosage,
     instructions: input.instruction,
     prescription_name: input.prescriptionName,
-    brand_name: input.brandName ?? null,
     instruction: input.instruction,
-    number_of_medications: input.numberOfMedications ?? null,
   };
 
   const { data, error } = await client
@@ -2163,9 +2173,7 @@ export async function updatePrescriptionLiveOrDemo(input: {
       dosage: input.dosage,
       instructions: input.instruction,
       prescription_name: input.prescriptionName,
-      brand_name: input.brandName ?? null,
       instruction: input.instruction,
-      number_of_medications: input.numberOfMedications ?? null,
     } as never)
     .eq("id", input.prescriptionId)
     .select("*")
@@ -2191,9 +2199,6 @@ export async function createMedicalCertificateLiveOrDemo(
     {
       consultation_id: input.consultationId,
       patient_id: input.patientId,
-      check_financial: input.checkFinancial ?? false,
-      check_school: input.checkSchool ?? false,
-      check_work: input.checkWork ?? false,
       certificate_purpose: input.certificatePurpose,
       diagnosis: input.diagnosis,
       recommendation: input.recommendation,

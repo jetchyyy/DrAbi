@@ -36,6 +36,7 @@ export interface PatientBookingRow {
   rescheduledReason: string | null;
   receiptCode: string;
   createdAt: string;
+  visitType?: string;
 }
 
 export interface UpdateBookingStatusInput {
@@ -211,6 +212,7 @@ async function fetchAllPatientBookings(): Promise<PatientBookingRow[]> {
     rescheduledReason: row.rescheduled_reason ?? null,
     receiptCode: row.receipt_code ?? "",
     createdAt: row.created_at,
+    visitType: (row as any).visit_type ?? "in_person",
   }));
 }
 
@@ -292,7 +294,7 @@ async function updateBookingStatus(
             scheduled_at: scheduledAt,
             status: "confirmed",
             source: "internal",
-            visit_type: "in_person",
+            visit_type: booking.visitType ?? "in_person",
             reason: booking.intakeNotes || "",
             notes: booking.intakeNotes || "",
           } as never,
@@ -390,6 +392,7 @@ async function fetchSingleBooking(bookingId: string) {
     status: row.status,
     receiptCode: row.receipt_code ?? "",
     intakeNotes: row.intake_notes ?? "",
+    visitType: (row as any).visit_type ?? "in_person",
   };
 }
 
@@ -407,6 +410,7 @@ function fetchSingleBookingFromDemo(bookingId: string) {
     status: booking.status,
     receiptCode: booking.receiptCode || "",
     intakeNotes: booking.intakeNotes || "",
+    visitType: (booking as any).visitType || "in_person",
   };
 }
 

@@ -361,7 +361,7 @@ export function ConsultationEntryPage() {
       return;
     }
 
-    if (profile?.role === "specialist") {
+    if (profile?.role === "doctor" || profile?.role === "specialist") {
       setAccessState("allowed");
       setAccessError("");
       return;

@@ -281,7 +281,7 @@ export function OnlineBookingsWorkflow({
               <tbody className="divide-y divide-slate-100 bg-white">
                 {paginatedRows.map((booking) => {
                   const patient = patientMap.get(booking.patientId);
-                  const vitalsMissing = !hasVitals(patient);
+                  const vitalsMissing = booking.visitType === "teleconsultation" ? false : !hasVitals(patient);
 
                   return (
                     <tr className="align-top transition-colors hover:bg-slate-50" key={booking.id}>
