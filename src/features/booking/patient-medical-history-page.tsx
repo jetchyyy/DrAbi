@@ -641,29 +641,33 @@ export function PatientMedicalHistoryPage() {
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="absolute -bottom-5 right-4 z-10 sm:right-6">
-          <div
-            aria-label="History view"
-            className="inline-flex rounded-full border border-[color-mix(in_srgb,var(--color-primary)_18%,white)] bg-white p-1 shadow-sm"
-            role="group"
-          >
-            {(["upcoming", "past"] as const).map((view) => (
-              <button
-                key={view}
-                type="button"
-                aria-pressed={timelineView === view}
-                className={`rounded-full px-4 py-2 text-sm font-bold capitalize transition ${
-                  timelineView === view
-                    ? "bg-[var(--color-primary)] text-white shadow-sm"
-                    : "text-slate-500 hover:text-[var(--color-primary)]"
-                }`}
-                onClick={() => setTimelineView(view)}
-              >
-                {view}
-              </button>
-            ))}
-          </div>
+      {/* Timeline Controls & Header */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 animate-fade-up">
+        <h2 className="text-lg font-bold text-slate-900 capitalize">
+          {timelineView} Visits
+        </h2>
+        <div
+          aria-label="History view"
+          className="inline-flex rounded-full border border-[color-mix(in_srgb,var(--color-primary)_18%,white)] bg-white p-1 shadow-sm"
+          role="group"
+        >
+          {(["upcoming", "past"] as const).map((view) => (
+            <button
+              key={view}
+              type="button"
+              aria-pressed={timelineView === view}
+              className={`rounded-full px-4 py-1.5 text-xs font-bold capitalize transition ${
+                timelineView === view
+                  ? "bg-[var(--color-primary)] text-white shadow-sm"
+                  : "text-slate-500 hover:text-[var(--color-primary)]"
+              }`}
+              onClick={() => setTimelineView(view)}
+            >
+              {view}
+            </button>
+          ))}
         </div>
       </div>
 
