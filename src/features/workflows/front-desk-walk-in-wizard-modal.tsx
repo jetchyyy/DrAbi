@@ -1386,9 +1386,8 @@ export function WalkInWizardModal({
     try {
       if (isSupabaseConfigured && supabase) {
         const { data: rcData } = await supabase
-          .from("appointments")
-          .select("receipt_code")
-          .not("receipt_code", "is", null);
+          .from("company_billing_detailed" as never)
+          .select("receipt_code");
         const rcRows = (rcData ?? []) as Array<{ receipt_code: string | null }>;
         if (rcRows.length > 0) {
           const highest = rcRows.reduce((max, row) => {
@@ -1565,7 +1564,7 @@ export function WalkInWizardModal({
     try {
       if (isSupabaseConfigured && supabase) {
         const { data: rcData } = await supabase
-          .from("appointments")
+          .from("company_billing_detailed" as never)
           .select("receipt_code")
           .like("receipt_code", `${rcCompanyCode}-%`);
         const rcRows = (rcData ?? []) as Array<{ receipt_code: string | null }>;
