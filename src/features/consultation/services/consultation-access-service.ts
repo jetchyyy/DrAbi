@@ -55,6 +55,13 @@ function getTodaysSoonestAppointment(
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
+  const inProgressAppointment = appointments.find(
+    (appointment) => appointment.status === "in_progress",
+  );
+  if (inProgressAppointment) {
+    return inProgressAppointment;
+  }
+
   const todayAppointments = appointments
     .filter((appointment) => {
       const scheduledDate = new Date(appointment.scheduledAt);

@@ -25,11 +25,17 @@ export function CouponJoinModal({
 
   if (!isOpen) return null;
 
-  const handleValidateAndJoin = async (e: React.FormEvent) => {
+  const handleSkipAndJoin = () => {
+    onValidationSuccess();
+  };
+
+  const handleApplyAndJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = couponCode.trim();
+
+    // If no code entered, just join without validating
     if (!code) {
-      setError("Please enter a coupon code.");
+      onValidationSuccess();
       return;
     }
 
@@ -38,7 +44,7 @@ export function CouponJoinModal({
 
     try {
       await validatePromoCode(code, serviceId);
-      toast.success("Coupon code successfully applied!", {
+      toast.success("Coupon code applied!", {
         description: "You may now join the teleconsultation room.",
       });
       onValidationSuccess();
@@ -69,7 +75,7 @@ export function CouponJoinModal({
         </button>
 
         {/* Modal Content */}
-        <form onSubmit={handleValidateAndJoin} className="p-6">
+        <form onSubmit={handleApplyAndJoin} className="p-6">
           <div className="flex justify-center mb-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-50 text-orange-600">
               <Ticket className="size-6" />
@@ -77,21 +83,22 @@ export function CouponJoinModal({
           </div>
 
           <h3 className="text-center text-lg font-bold text-slate-900">
-            Enter Teleconsult Coupon
+            Join Teleconsultation
           </h3>
           <p className="mt-2 text-center text-xs text-slate-500 leading-relaxed">
-            Please enter your promo code or coupon code before joining the teleconsultation room.
+            Have a promo or coupon code? Enter it below to apply a discount.
+            Otherwise, you can skip and join directly.
           </p>
 
           <div className="mt-5 space-y-3.5">
             <div className="space-y-1.5">
               <label htmlFor="coupon-input" className="text-xs font-semibold text-slate-700">
-                Promo / Coupon Code
+                Promo / Coupon Code <span className="font-normal text-slate-400">(optional)</span>
               </label>
               <Input
                 id="coupon-input"
                 autoComplete="off"
-                placeholder="e.g. FREE100"
+                placeholder="e.g. FREE100 (leave blank to skip)"
                 value={couponCode}
                 onChange={(e) => {
                   setCouponCode(e.target.value);
@@ -107,11 +114,11 @@ export function CouponJoinModal({
               <Button
                 type="button"
                 variant="secondary"
-                onClick={onClose}
+                onClick={handleSkipAndJoin}
                 className="w-1/2 h-10 rounded-xl"
                 disabled={isValidating}
               >
-                Cancel
+                Skip &amp; Join
               </Button>
               <Button
                 type="submit"
@@ -124,8 +131,10 @@ export function CouponJoinModal({
                     <Loader2 className="size-4 animate-spin" />
                     Validating...
                   </span>
-                ) : (
+                ) : couponCode.trim() ? (
                   "Apply & Join"
+                ) : (
+                  "Join Now"
                 )}
               </Button>
             </div>

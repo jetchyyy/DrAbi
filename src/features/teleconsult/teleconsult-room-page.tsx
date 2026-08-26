@@ -296,6 +296,7 @@ export function TeleconsultRoomPage() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionsRef = useRef<{ [peerId: string]: RTCPeerConnection }>({});
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const pendingCandidatesRef = useRef<{ [peerId: string]: RTCIceCandidateInit[] }>({});
 
   // ── JITSI EFFECT ──
   useEffect(() => {
@@ -537,6 +538,18 @@ export function TeleconsultRoomPage() {
         }));
 
         await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+        
+        // Add any queued ICE candidates for this peer
+        const pending = pendingCandidatesRef.current[senderId] || [];
+        for (const cand of pending) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(cand));
+          } catch (e) {
+            console.error("Failed to add queued ice candidate:", e);
+          }
+        }
+        delete pendingCandidatesRef.current[senderId];
+
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
@@ -560,6 +573,17 @@ export function TeleconsultRoomPage() {
         const pc = peerConnectionsRef.current[senderId];
         if (pc) {
           await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+          
+          // Add any queued ICE candidates for this peer
+          const pending = pendingCandidatesRef.current[senderId] || [];
+          for (const cand of pending) {
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(cand));
+            } catch (e) {
+              console.error("Failed to add queued ice candidate:", e);
+            }
+          }
+          delete pendingCandidatesRef.current[senderId];
         }
       })
       .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
@@ -567,8 +591,17 @@ export function TeleconsultRoomPage() {
         if (targetId !== profile.id) return;
 
         const pc = peerConnectionsRef.current[senderId];
-        if (pc) {
-          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        if (pc && pc.remoteDescription) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch (e) {
+            console.error("Failed to add ice candidate:", e);
+          }
+        } else {
+          if (!pendingCandidatesRef.current[senderId]) {
+            pendingCandidatesRef.current[senderId] = [];
+          }
+          pendingCandidatesRef.current[senderId].push(candidate);
         }
       })
       .on('broadcast', { event: 'leave' }, ({ payload }) => {

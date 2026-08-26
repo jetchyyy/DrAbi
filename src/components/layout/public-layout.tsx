@@ -96,7 +96,7 @@ export function PublicLayout() {
               to="/portal"
             >
               <img
-                src="/logo.png"
+                src={clinic.logoUrl || "/logo.png"}
                 alt=""
                 width={248}
                 height={60}
@@ -347,7 +347,7 @@ export function PublicLayout() {
             <div className="flex min-w-0 flex-col gap-5 sm:gap-7">
               <Link className="inline-flex w-fit shrink-0 items-center" to="/portal">
                 <img
-                  src="/logo.png"
+                  src={clinic.logoUrl || "/logo.png"}
                   alt=""
                   width={400}
                   height={97}

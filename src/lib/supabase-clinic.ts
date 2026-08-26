@@ -542,6 +542,7 @@ export function mapProfile(
     role: mapRole(row.role),
     phone: row.phone ?? "",
     title: row.title,
+    isSuperadmin: (row as any).is_superadmin ?? false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
@@ -1017,8 +1018,8 @@ function mapDoctorAvailability(row: DoctorAvailabilityRow): DoctorAvailability {
     id: row.id,
     doctorId: row.doctor_id,
     dayOfWeek: row.day_of_week,
-    startTime: row.start_time,
-    endTime: row.end_time,
+    startTime: row.start_time ? row.start_time.slice(0, 5) : "",
+    endTime: row.end_time ? row.end_time.slice(0, 5) : "",
     slotMinutes: row.slot_minutes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -1071,8 +1072,8 @@ function mapSpecialistScheduleRowsToAvailability(
           id: `${row.id}:${dayOfWeek}:${slot.start}`,
           doctorId: specialistId,
           dayOfWeek,
-          startTime: slot.start,
-          endTime: slot.end,
+          startTime: slot.start ? slot.start.slice(0, 5) : "",
+          endTime: slot.end ? slot.end.slice(0, 5) : "",
           slotMinutes:
             Math.max(
               15,
@@ -1715,6 +1716,13 @@ export async function updateInvoiceLiveOrDemo(
     throw error;
   }
 
+  if (invoice.paymentStatus === "paid" && invoice.appointmentId) {
+    await client
+      .from("bookings")
+      .update({ payment_status: "paid" } as never)
+      .eq("appointment_id", invoice.appointmentId);
+  }
+
   const { error: deleteItemsError } = await client
     .from("invoice_items")
     .delete()
@@ -2039,6 +2047,11 @@ export async function createAppointmentLiveOrDemo(
     consultation_id: input.consultationId ?? null,
     completed_by: input.completedBy ?? null,
     completed_at: input.completedAt ?? null,
+    queue_number: (input as any).queue_number ?? null,
+    estimated_end: (input as any).estimated_end
+      ? new Date((input as any).estimated_end).toTimeString().slice(0, 8)
+      : null,
+    additional_doctor_ids: input.additionalDoctorIds ?? null,
   };
 
   const { data, error } = await client
@@ -2118,9 +2131,7 @@ export async function createPrescriptionLiveOrDemo(
     dosage: input.dosage,
     instructions: input.instruction,
     prescription_name: input.prescriptionName,
-    brand_name: input.brandName ?? null,
     instruction: input.instruction,
-    number_of_medications: input.numberOfMedications ?? null,
   };
 
   const { data, error } = await client
@@ -2162,9 +2173,7 @@ export async function updatePrescriptionLiveOrDemo(input: {
       dosage: input.dosage,
       instructions: input.instruction,
       prescription_name: input.prescriptionName,
-      brand_name: input.brandName ?? null,
       instruction: input.instruction,
-      number_of_medications: input.numberOfMedications ?? null,
     } as never)
     .eq("id", input.prescriptionId)
     .select("*")
@@ -2190,9 +2199,6 @@ export async function createMedicalCertificateLiveOrDemo(
     {
       consultation_id: input.consultationId,
       patient_id: input.patientId,
-      check_financial: input.checkFinancial ?? false,
-      check_school: input.checkSchool ?? false,
-      check_work: input.checkWork ?? false,
       certificate_purpose: input.certificatePurpose,
       diagnosis: input.diagnosis,
       recommendation: input.recommendation,
@@ -2331,6 +2337,8 @@ function mapClinicSettings(row: ClinicSettingsRow): ClinicSettings {
     operatingHours: Array.isArray(row.operating_hours)
       ? (row.operating_hours as ClinicSettings["operatingHours"])
       : [],
+    clinicId: (row as any).clinic_id,
+    domain: (row as any).domain,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -2342,13 +2350,28 @@ export async function getClinicSettingsLiveOrDemo() {
   }
 
   const client = requireSupabase();
-  const { data, error } = await client
-    .from("clinic_settings")
-    .select("*")
-    .limit(1)
-    .maybeSingle();
+  const clinicId = import.meta.env.VITE_CLINIC_ID;
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+
+  let query = client.from("clinic_settings").select("*");
+
+  if (clinicId) {
+    query = query.eq("clinic_id", clinicId);
+  } else if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+    query = query.eq("domain", hostname);
+  } else {
+    query = query.limit(1);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
+    const { data: fallbackData } = await client
+      .from("clinic_settings")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
+    if (fallbackData) return mapClinicSettings(fallbackData);
     throw error;
   }
 
@@ -2364,13 +2387,20 @@ export async function updateClinicSettingsLiveOrDemo(
   }
 
   const client = requireSupabase();
+  const clinicId = import.meta.env.VITE_CLINIC_ID;
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
 
-  // Fetch the current row id (singleton — only one row exists)
-  const { data: existing, error: fetchError } = (await client
-    .from("clinic_settings")
-    .select("id")
-    .limit(1)
-    .maybeSingle()) as { data: { id: string } | null; error: any };
+  let query = client.from("clinic_settings").select("id");
+
+  if (clinicId) {
+    query = query.eq("clinic_id", clinicId);
+  } else if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+    query = query.eq("domain", hostname);
+  } else {
+    query = query.limit(1);
+  }
+
+  const { data: existing, error: fetchError } = (await query.maybeSingle()) as { data: { id: string } | null; error: any };
 
   if (fetchError) throw fetchError;
 

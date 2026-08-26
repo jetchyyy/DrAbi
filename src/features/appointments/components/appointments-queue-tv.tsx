@@ -256,7 +256,7 @@ export function AppointmentsQueueTv() {
           onClick={handleUnlockAudio}
         >
           <img
-            src="/logo.png"
+            src={(clinic as any).logoUrl || "/logo.png"}
             alt={clinic.clinicName}
             className="h-20 w-auto object-contain opacity-80"
           />
@@ -311,7 +311,7 @@ export function AppointmentsQueueTv() {
           {/* Brand */}
           <div className="flex items-center gap-4">
             <img
-              src="/logo.png"
+              src={(clinic as any).logoUrl || "/logo.png"}
               alt={clinic.clinicName}
               className="h-11 w-auto object-contain opacity-90"
             />
@@ -396,7 +396,7 @@ export function AppointmentsQueueTv() {
             />
             {/* Centered watermark logo */}
             <img
-              src="/logo.png"
+              src={(clinic as any).logoUrl || "/logo.png"}
               alt=""
               aria-hidden="true"
               className="pointer-events-none absolute select-none"
@@ -669,7 +669,7 @@ export function AppointmentsQueueTv() {
               style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}
             >
               <img
-                src="/logo.png"
+                src={(clinic as any).logoUrl || "/logo.png"}
                 alt=""
                 aria-hidden="true"
                 className="h-5 w-auto object-contain opacity-20"

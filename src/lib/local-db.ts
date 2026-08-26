@@ -1766,6 +1766,16 @@ export function updateInvoiceRecord(
         updatedAt: timestamp,
       });
 
+      if (invoice.paymentStatus === "paid" && invoice.appointmentId) {
+        const booking = draft.bookings.find(
+          (item) => item.appointmentId === invoice.appointmentId,
+        );
+        if (booking) {
+          booking.paymentStatus = "paid";
+          booking.updatedAt = timestamp;
+        }
+      }
+
       draft.invoiceItems = draft.invoiceItems.filter(
         (entry) => entry.invoiceId !== invoiceId,
       );

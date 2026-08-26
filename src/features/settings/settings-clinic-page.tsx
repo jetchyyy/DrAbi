@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Building2,
@@ -14,6 +15,8 @@ import { useCallback, useState } from 'react';
 import { useController, useForm, useWatch } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
+
+import { useAuth } from '../auth/auth-context';
 
 import { FormField } from '../../components/forms/form-field';
 import { Button } from '../../components/ui/button';
@@ -35,7 +38,8 @@ const clinicSchema = z.object({
   address:       z.string().min(4, 'Address is required'),
   contactNumber: z.string().min(5, 'Contact number is required'),
   email:         z.email('Enter a valid email address'),
-  website:       z.url('Enter a valid URL (include https://)'),
+  website:       z.string().url('Enter a valid URL (include https://)').or(z.string().max(0)),
+  logoUrl:       z.string().url('Enter a valid logo URL (include https://)').or(z.string().max(0)),
   primaryColor:  z.string().min(4),
   accentColor:   z.string().min(4),
 });
@@ -52,6 +56,7 @@ const FIELD_LABELS: Record<keyof ClinicFormValues, string> = {
   contactNumber: 'Contact Number',
   email:         'Email',
   website:       'Website',
+  logoUrl:       'Logo URL',
   primaryColor:  'Primary Color',
   accentColor:   'Accent Color',
 };
@@ -316,6 +321,9 @@ function StatusModal({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export function SettingsClinicPage() {
+  const { profile } = useAuth();
+  const isSuperadmin = profile?.isSuperadmin === true;
+
   const queryClient = useQueryClient();
 
   const { data: clinic } = useQuery({
@@ -340,6 +348,7 @@ export function SettingsClinicPage() {
       contactNumber: clinic?.contactNumber ?? '',
       email:         clinic?.email         ?? '',
       website:       clinic?.website       ?? '',
+      logoUrl:       clinic?.logoUrl       ?? '',
       primaryColor:  clinic?.primaryColor  ?? '#ea580c',
       accentColor:   clinic?.accentColor   ?? '#0f766e',
     },
@@ -352,6 +361,38 @@ export function SettingsClinicPage() {
   const [pendingChanges, setPendingChanges] = useState<Change[]>([]);
   const [savedChanges,   setSavedChanges]   = useState<Change[]>([]);
   const [showStatus,     setShowStatus]     = useState(false);
+  const [uploadingLogo,  setUploadingLogo]  = useState(false);
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase) throw new Error('Supabase client is not initialized.');
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('clinic-logos')
+        .upload(filePath, file);
+        
+      if (uploadError) throw uploadError;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('clinic-logos')
+        .getPublicUrl(filePath);
+        
+      form.setValue('logoUrl', publicUrl);
+      toast.success('Logo uploaded successfully.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Logo upload failed');
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
 
   // Preview values
   const previewName      = watched.clinicName    || 'Clinic Name';
@@ -360,6 +401,7 @@ export function SettingsClinicPage() {
   const previewPhone     = watched.contactNumber || '+63 XXX XXX XXXX';
   const previewEmail     = watched.email         || 'hello@clinic.test';
   const previewWebsite   = (watched.website || 'https://clinic.test').replace(/^https?:\/\//, '');
+  const previewLogo      = watched.logoUrl       || '';
   const previewPrimary   = watched.primaryColor  || '#ea580c';
   const previewAccent    = watched.accentColor   || '#0f766e';
 
@@ -438,9 +480,13 @@ export function SettingsClinicPage() {
             {/* Mini sidebar mockup */}
             <div className="w-52 border border-slate-200 shadow-sm overflow-hidden shrink-0">
               <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-                <div className="p-1.5 text-white shrink-0" style={{ background: previewPrimary }}>
-                  <Building2 className="size-3.5" />
-                </div>
+                {previewLogo ? (
+                  <img src={previewLogo} className="h-6 w-auto object-contain shrink-0" alt="logo preview" />
+                ) : (
+                  <div className="p-1.5 text-white shrink-0" style={{ background: previewPrimary }}>
+                    <Building2 className="size-3.5" />
+                  </div>
+                )}
                 <div>
                   <p className="text-[9px] font-extrabold uppercase tracking-widest" style={{ color: previewPrimary }}>
                     {previewShortCode}
@@ -506,74 +552,119 @@ export function SettingsClinicPage() {
 
       {/* ── Form ───────────────────────────────────────────── */}
       <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-        <form className="divide-y divide-slate-100" onSubmit={onSubmit}>
-
-          {/* Identity */}
-          <div className="px-6 py-5 space-y-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Identity</p>
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField label="Clinic name" error={form.formState.errors.clinicName?.message}>
-                <Input {...form.register('clinicName')} placeholder="e.g. Odyssey Family Clinic" />
+        <form onSubmit={onSubmit}>
+          <fieldset disabled={!isSuperadmin} className="divide-y divide-slate-100 w-full">
+            {/* Identity */}
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Identity</p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField label="Clinic name" error={form.formState.errors.clinicName?.message}>
+                  <Input {...form.register('clinicName')} placeholder="e.g. Odyssey Family Clinic" />
+                </FormField>
+                <FormField label="Legal name" error={form.formState.errors.legalName?.message}>
+                  <Input {...form.register('legalName')} placeholder="e.g. Odyssey Family Clinic OPC" />
+                </FormField>
+              </div>
+              <FormField label="Short code" hint="Displayed in the sidebar header and used in document reference codes.">
+                <Input {...form.register('shortCode')} className="uppercase" placeholder="e.g. ODYSSEY" />
               </FormField>
-              <FormField label="Legal name" error={form.formState.errors.legalName?.message}>
-                <Input {...form.register('legalName')} placeholder="e.g. Odyssey Family Clinic OPC" />
+              <FormField label="Clinic Logo" error={form.formState.errors.logoUrl?.message} hint="Upload your clinic's logo (PNG or SVG recommended).">
+                <div className="flex items-center gap-4 border border-slate-200 p-3 bg-slate-50">
+                  {previewLogo ? (
+                    <div className="relative size-16 bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0">
+                      <img src={previewLogo} className="max-h-full max-w-full object-contain" alt="uploaded logo" />
+                      <button
+                        type="button"
+                        onClick={() => form.setValue('logoUrl', '')}
+                        className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full size-4 flex items-center justify-center text-[9px] hover:bg-rose-700"
+                        title="Remove logo"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="size-16 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-xs font-semibold shrink-0 bg-white">
+                      No Logo
+                    </div>
+                  )}
+                  <div className="flex-1 space-y-1">
+                    <input
+                      type="file"
+                      id="settingsLogoFileInput"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="settingsLogoFileInput"
+                      className={`inline-flex items-center justify-center px-4 py-2 border border-slate-300 bg-white text-xs font-extrabold uppercase tracking-wider text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors ${uploadingLogo ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      {uploadingLogo ? 'Uploading...' : 'Choose File / Upload'}
+                    </label>
+                    {previewLogo && (
+                      <p className="text-[10px] text-slate-400 truncate max-w-[200px]">{previewLogo}</p>
+                    )}
+                  </div>
+                </div>
               </FormField>
             </div>
-            <FormField label="Short code" hint="Displayed in the sidebar header and used in document reference codes.">
-              <Input {...form.register('shortCode')} className="uppercase" placeholder="e.g. ODYSSEY" />
-            </FormField>
-          </div>
 
-          {/* Contact */}
-          <div className="px-6 py-5 space-y-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Contact Information</p>
-            <div className="grid gap-4 md:grid-cols-3">
-              <FormField label="Contact number" error={form.formState.errors.contactNumber?.message}>
-                <Input {...form.register('contactNumber')} placeholder="+63 917 555 0134" />
-              </FormField>
-              <FormField label="Email" error={form.formState.errors.email?.message}>
-                <Input {...form.register('email')} type="email" placeholder="hello@clinic.test" />
-              </FormField>
-              <FormField label="Website" error={form.formState.errors.website?.message}>
-                <Input {...form.register('website')} placeholder="https://clinic.test" />
+            {/* Contact */}
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Contact Information</p>
+              <div className="grid gap-4 md:grid-cols-3">
+                <FormField label="Contact number" error={form.formState.errors.contactNumber?.message}>
+                  <Input {...form.register('contactNumber')} placeholder="+63 917 555 0134" />
+                </FormField>
+                <FormField label="Email" error={form.formState.errors.email?.message}>
+                  <Input {...form.register('email')} type="email" placeholder="hello@clinic.test" />
+                </FormField>
+                <FormField label="Website" error={form.formState.errors.website?.message}>
+                  <Input {...form.register('website')} placeholder="https://clinic.test" />
+                </FormField>
+              </div>
+              <FormField label="Address" error={form.formState.errors.address?.message}>
+                <Textarea {...form.register('address')} placeholder="123 Healthcare Ave, Makati City" />
               </FormField>
             </div>
-            <FormField label="Address" error={form.formState.errors.address?.message}>
-              <Textarea {...form.register('address')} placeholder="123 Healthcare Ave, Makati City" />
-            </FormField>
-          </div>
 
-          {/* Branding */}
-          <div className="px-6 py-5 space-y-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Branding Colors</p>
-            <p className="text-xs text-slate-400">
-              After saving, these colors update sidebar accents, CTA buttons, and links across all pages instantly.
-            </p>
-            <div className="grid gap-6 md:grid-cols-2">
-              <ColorPicker
-                label="Primary color"
-                name="primaryColor"
-                control={form.control}
-              />
-              <ColorPicker
-                label="Accent color"
-                name="accentColor"
-                control={form.control}
-              />
+            {/* Branding */}
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Branding Colors</p>
+              <p className="text-xs text-slate-400">
+                After saving, these colors update sidebar accents, CTA buttons, and links across all pages instantly.
+              </p>
+              <div className="grid gap-6 md:grid-cols-2">
+                <ColorPicker
+                  label="Primary color"
+                  name="primaryColor"
+                  control={form.control}
+                />
+                <ColorPicker
+                  label="Accent color"
+                  name="accentColor"
+                  control={form.control}
+                />
+              </div>
             </div>
-          </div>
+          </fieldset>
 
           {/* Actions */}
-          <div className="px-6 py-4 bg-slate-50 flex flex-wrap gap-3">
-            <Button
-              variant="primary"
-              disabled={mutation.isPending}
-              type="submit"
-            >
-              {mutation.isPending ? 'Saving…' : 'Save Clinic Settings'}
-            </Button>
+          <div className="px-6 py-4 bg-slate-50 flex flex-wrap items-center gap-3">
+            {!isSuperadmin ? (
+              <p className="text-xs text-slate-500 font-semibold italic">
+                Clinic branding and profile settings are managed by the System Superadministrator in the Console.
+              </p>
+            ) : (
+              <Button
+                variant="primary"
+                disabled={mutation.isPending}
+                type="submit"
+              >
+                {mutation.isPending ? 'Saving…' : 'Save Clinic Settings'}
+              </Button>
+            )}
           </div>
-
         </form>
       </div>
     </div>

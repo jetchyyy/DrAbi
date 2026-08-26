@@ -531,8 +531,9 @@ export function AppointmentsPage() {
         let receiptSeq = 1;
         try {
           if (isSupabaseConfigured && supabase) {
+            // receipt_code lives in company_billing_detailed, not appointments
             const { data: rcData } = await supabase
-              .from("appointments")
+              .from("company_billing_detailed" as never)
               .select("receipt_code")
               .like("receipt_code", `${companyCodePart}-%`);
             const rcRows = (rcData ?? []) as Array<{ receipt_code: string | null }>;
@@ -644,15 +645,19 @@ export function AppointmentsPage() {
 
       closeAppointmentModal();
     } catch (error) {
+      console.error("Appointment save error:", error);
+      const errMsg =
+        error instanceof Error
+          ? error.message
+          : (error as { message?: string })?.message ??
+            JSON.stringify(error) ??
+            "Something went wrong while saving the appointment.";
       setFeedbackModal({
         open: true,
         title: editingAppointment
           ? "Unable to update appointment"
           : "Unable to create appointment",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Something went wrong while saving the appointment.",
+        message: errMsg,
         variant: "error",
       });
     }

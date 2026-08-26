@@ -5,7 +5,7 @@ import {
   Stethoscope,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -195,24 +195,34 @@ export function OnlineBookingWizardModal({
       ? "warning"
       : null;
 
+  const initializedBookingIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!open || !booking) {
+      initializedBookingIdRef.current = null;
       return;
     }
 
-    setStage("confirm");
-    setBookingStatus(booking.status);
-    setPaymentStatus(booking.paymentStatus);
-    setVitals(buildVitalsSeed(patient));
-    setResult(null);
-    setError("");
+    if (booking.id !== initializedBookingIdRef.current) {
+      initializedBookingIdRef.current = booking.id;
+      setStage("confirm");
+      setBookingStatus(booking.status);
+      setPaymentStatus(booking.paymentStatus);
+      setVitals(buildVitalsSeed(patient));
+      setResult(null);
+      setError("");
+    }
   }, [booking, open, patient]);
 
   useEffect(() => {
-    if (open && patient) {
-      setVitals(buildVitalsSeed(patient));
+    if (open && patient && initializedBookingIdRef.current === booking?.id) {
+      setVitals((current) => {
+        const hasAnyValue = Object.values(current).some((val) => val.trim() !== "");
+        if (hasAnyValue) return current;
+        return buildVitalsSeed(patient);
+      });
     }
-  }, [open, patient]);
+  }, [open, patient, booking]);
 
   if (!open || !booking) {
     return null;

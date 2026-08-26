@@ -216,20 +216,18 @@ export async function createAppointmentLiveOrDemo(input: AppointmentInput) {
     scheduled_at: normalized.scheduledAt,
     queue_number: (normalized as any).queue_number ?? null,
     estimated_end: normalizeTimeOnlyValue((normalized as any).estimated_end),
-    receipt_code: (input as any).receipt_code ?? (normalized as any).receipt_code ?? null,
     status: normalized.status,
     source: normalized.source,
     visit_type: normalized.visitType,
     reason: normalized.reason,
     notes: normalized.notes,
-    teleconsultation_provider: normalized.teleconsultationProvider,
-    teleconsultation_room_name: normalized.teleconsultationRoomName,
-    teleconsultation_platform: normalized.teleconsultationPlatform,
-    teleconsultation_url: normalized.teleconsultationUrl,
+    teleconsultation_provider: null,
+    teleconsultation_room_name: normalized.teleconsultationRoomName ?? null,
+    teleconsultation_platform: normalized.teleconsultationPlatform ?? null,
+    teleconsultation_url: normalized.teleconsultationUrl ?? null,
     teleconsultation_access_instructions:
-      normalized.teleconsultationAccessInstructions,
+      normalized.teleconsultationAccessInstructions ?? null,
     additional_doctor_ids: (normalized as any).additionalDoctorIds || [],
-    company_id: (input as any).companyId ?? (normalized as any).companyId ?? null,
   };
 
   const { data, error } = await client
@@ -264,20 +262,18 @@ export async function updateAppointmentLiveOrDemo(
     scheduled_at: normalized.scheduledAt,
     queue_number: (normalized as any).queue_number ?? null,
     estimated_end: normalizeTimeOnlyValue((normalized as any).estimated_end),
-    receipt_code: (input as any).receipt_code ?? (normalized as any).receipt_code ?? null,
     status: normalized.status,
     source: normalized.source,
     visit_type: normalized.visitType,
     reason: normalized.reason,
     notes: normalized.notes,
-    teleconsultation_provider: normalized.teleconsultationProvider,
-    teleconsultation_room_name: normalized.teleconsultationRoomName,
-    teleconsultation_platform: normalized.teleconsultationPlatform,
-    teleconsultation_url: normalized.teleconsultationUrl,
+    teleconsultation_provider: null,
+    teleconsultation_room_name: normalized.teleconsultationRoomName ?? null,
+    teleconsultation_platform: normalized.teleconsultationPlatform ?? null,
+    teleconsultation_url: normalized.teleconsultationUrl ?? null,
     teleconsultation_access_instructions:
-      normalized.teleconsultationAccessInstructions,
+      normalized.teleconsultationAccessInstructions ?? null,
     additional_doctor_ids: (normalized as any).additionalDoctorIds || [],
-    company_id: (input as any).companyId ?? (normalized as any).companyId ?? null,
   };
 
   const { data, error } = await client
