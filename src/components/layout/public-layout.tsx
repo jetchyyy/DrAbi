@@ -52,7 +52,8 @@ export function PublicLayout() {
 
   const visiblePortalNavigation = portalNavigation.filter(
     (item) =>
-      !item.moduleKey || isModuleEnabled(item.moduleKey, clinic.enabledModules),
+      (!item.moduleKey || isModuleEnabled(item.moduleKey, clinic.enabledModules)) &&
+      item.label !== "Consultations",
   );
 
   const telHref = clinic.contactNumber

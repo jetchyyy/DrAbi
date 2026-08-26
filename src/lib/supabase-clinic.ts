@@ -1263,6 +1263,7 @@ export async function createPatientLiveOrDemo(
     weight: input.weight || null,
     height: input.height || null,
     vitals_recorded_at: input.vitalsRecordedAt ?? null,
+    company_id: input.companyId || null,
   };
 
   const { data, error } = await client
@@ -1370,6 +1371,7 @@ export async function updatePatientLiveOrDemo(
     weight: input.weight || null,
     height: input.height || null,
     vitals_recorded_at: input.vitalsRecordedAt ?? null,
+    company_id: input.companyId || null,
   };
 
   const { data, error } = await client
@@ -3440,6 +3442,17 @@ export async function ensurePatientForUser(user: User) {
 
   const existing = await getCurrentPatient(user.id);
   if (existing) {
+    if (metadata.company_id && existing.companyId !== metadata.company_id) {
+      const { data, error } = await client
+        .from("patients")
+        .update({ company_id: metadata.company_id } as never)
+        .eq("id", existing.id)
+        .select("*")
+        .single();
+      if (!error && data) {
+        return mapPatient(data);
+      }
+    }
     return existing;
   }
 
@@ -3467,6 +3480,7 @@ export async function ensurePatientForUser(user: User) {
     emergency_contact_name: metadata.emergency_contact_name ?? fullName,
     emergency_contact_phone:
       metadata.emergency_contact_phone ?? metadata.phone ?? null,
+    company_id: metadata.company_id ?? null,
   };
 
   const { data, error } = await client

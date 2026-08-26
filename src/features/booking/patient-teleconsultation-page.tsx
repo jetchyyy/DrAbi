@@ -34,7 +34,9 @@ function getStatusLabel(status: Appointment["status"]) {
 }
 
 function isPast(status: Appointment["status"]) {
-  return status === "completed" || status === "cancelled" || status === "no_show";
+  return (
+    status === "completed" || status === "cancelled" || status === "no_show"
+  );
 }
 
 export function PatientConsultationPage() {
@@ -43,7 +45,10 @@ export function PatientConsultationPage() {
   const { data: appointments = [], isLoading } =
     usePatientTeleconsultAppointments();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [pendingJoinAppointment, setPendingJoinAppointment] = useState<{ joinPath: string; serviceId: string } | null>(null);
+  const [pendingJoinAppointment, setPendingJoinAppointment] = useState<{
+    joinPath: string;
+    serviceId: string;
+  } | null>(null);
 
   if (isLoading) {
     return (
@@ -88,6 +93,8 @@ export function PatientConsultationPage() {
             the schedule is active.
           </p>
         </div>
+
+        {/* Book appointment CTA 
         <Link
           className="inline-flex items-center gap-2 border border-orange-600 px-5 py-2.5 text-xs font-extrabold uppercase tracking-widest text-orange-600 transition-colors hover:bg-orange-50"
           to="/portal/book"
@@ -95,6 +102,7 @@ export function PatientConsultationPage() {
           <CalendarClock className="size-3.5" />
           Book Appointment
         </Link>
+          */}
       </div>
 
       {/* Stats strip */}
@@ -152,7 +160,9 @@ export function PatientConsultationPage() {
           {activeAppointments.length > 0 && (
             <div className="space-y-4">
               {activeAppointments.map((appointment, index) => {
-                const joinable = isTeleconsultJoinableStatus(appointment.status);
+                const joinable = isTeleconsultJoinableStatus(
+                  appointment.status,
+                );
                 return (
                   <div
                     key={appointment.id}
@@ -175,7 +185,10 @@ export function PatientConsultationPage() {
                         </div>
                       </div>
                       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                        <Badge intent="info" className="text-[10px] font-extrabold uppercase tracking-widest">
+                        <Badge
+                          intent="info"
+                          className="text-[10px] font-extrabold uppercase tracking-widest"
+                        >
                           {appointment.teleconsultationPlatform}
                         </Badge>
                         <Badge

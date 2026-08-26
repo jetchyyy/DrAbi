@@ -387,12 +387,13 @@ export function AppointmentsPage() {
       patientId && patients.some((patient) => patient.id === patientId)
         ? patientId
         : (patients[0]?.id ?? "");
+    const selectedPatient = patients.find((p) => p.id === selectedPatientId);
     form.reset({
       patientId: selectedPatientId,
       doctorId: doctors[0]?.id ?? "",
       specialtyId: defaultSpecialtyId,
       serviceId: services[0]?.id ?? "",
-      companyId: "",
+      companyId: selectedPatient?.companyId ?? "",
       scheduledAt: defaultScheduledAt,
       status: "scheduled",
       source: source ?? "internal",
@@ -967,7 +968,25 @@ export function AppointmentsPage() {
                       error={form.formState.errors.patientId?.message}
                       label="Patient"
                     >
-                      <Select {...form.register("patientId")}>
+                      <Select
+                        {...form.register("patientId")}
+                        onChange={(e) => {
+                          void form.register("patientId").onChange(e);
+                          const patientId = e.target.value;
+                          const patient = patients.find((p) => p.id === patientId);
+                          if (patient?.companyId) {
+                            form.setValue("companyId", patient.companyId, {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            });
+                          } else {
+                            form.setValue("companyId", "", {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            });
+                          }
+                        }}
+                      >
                         <option value="">Select patient</option>
                         {patients.map((patient) => (
                           <option key={patient.id} value={patient.id}>
@@ -1178,7 +1197,7 @@ export function AppointmentsPage() {
                   </div>
                   <FormField
                     error={form.formState.errors.companyId?.message}
-                    label="Company (for receipt code)"
+                    label="Company"
                   >
                     <Select {...form.register("companyId")}>
                       <option value="">No company / walk-in</option>

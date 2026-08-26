@@ -386,10 +386,16 @@ export function BillingPage() {
   }, [invoicePatientSearch, patients]);
   const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) ?? null;
 
-  const selectInvoicePatient = (patient: { id: string; firstName: string; lastName: string }) => {
+  const selectInvoicePatient = (patient: { id: string; firstName: string; lastName: string; companyId?: string | null }) => {
     form.setValue('patientId', patient.id, { shouldDirty: true, shouldValidate: true });
     setInvoicePatientSearch(`${patient.firstName} ${patient.lastName}`);
     setIsInvoicePatientDropdownOpen(false);
+    // Auto-map company from patient record
+    if (patient.companyId) {
+      form.setValue('companyId', patient.companyId, { shouldDirty: true, shouldValidate: true });
+    } else {
+      form.setValue('companyId', '', { shouldDirty: true, shouldValidate: true });
+    }
   };
 
   const filteredInvoices = useMemo(
@@ -515,7 +521,7 @@ export function BillingPage() {
       paymentStatus: 'unpaid',
       paymentType: 'cash',
       referenceNumber: '',
-      companyId: '',
+      companyId: resolvedPatient?.companyId ?? '',
       items: [
         {
           description: 'General Consultation',
@@ -1273,9 +1279,9 @@ export function BillingPage() {
                   </FormField>
                   <p className="text-xs text-slate-500">Linking to an appointment ensures payment verification is tied to the specific session, preventing old invoices from authorizing access.</p>
 
-                  <FormField error={form.formState.errors.companyId?.message} label="Company (optional)">
+                  <FormField error={form.formState.errors.companyId?.message} label="Company">
                     <Select {...form.register('companyId')}>
-                      <option value="">No Company</option>
+                      <option value="">No company / walk-in</option>
                       {companies.map((company) => (
                         <option key={company.id} value={company.id}>
                           {company.companyName} {company.companyCode ? `(${company.companyCode})` : ''}

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useMutation, useQuery, type UseQueryResult } from "@tanstack/react-query";
 
 import { queryClient } from "../../../app/query-client";
 import {
@@ -27,6 +27,7 @@ import {
   listInventoryUsageLogsByPatientIdLiveOrDemo,
 } from "../../../lib/supabase-clinic";
 import type {
+  Consultation,
   InventoryUsageLog,
   LabRequestDocument,
   MedicalCertificate,
@@ -243,7 +244,7 @@ export function usePatientConsultations(
     },
     enabled: Boolean(patientId),
     ...options,
-  });
+  }) as UseQueryResult<Consultation[], Error>;
 }
 
 export function usePatientPrescriptions(
@@ -258,7 +259,7 @@ export function usePatientPrescriptions(
     },
     enabled: Boolean(patientId),
     ...options,
-  });
+  }) as UseQueryResult<Prescription[], Error>;
 }
 
 export function usePatientMedicalCertificates(
@@ -273,7 +274,7 @@ export function usePatientMedicalCertificates(
     },
     enabled: Boolean(patientId),
     ...options,
-  });
+  }) as UseQueryResult<MedicalCertificate[], Error>;
 }
 
 export function usePatientLabRequestDocuments(patientId: string | null) {
